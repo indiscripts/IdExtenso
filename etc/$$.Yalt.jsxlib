@@ -1,0 +1,358 @@
+/*******************************************************************************
+
+		Name:           Yalt
+		Desc:           Localization tool, rewrite [[global]].__
+		Path:           /etc/$$.Yalt.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =addPackage() activate() autoActivate
+		                getLocaleId() isActive()
+		DOM-access:     Locale Enumeration
+		Todo:           ---
+		Created:        150502 (YYMMDD)
+		Modified:       170407 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 170407, 'addPackage'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	Yalt is a simple and efficient localization module. Use
+	addPackage(str) to extend the translation map, then call
+	activate() to make the strings available in the addressed
+	languages.
+
+	The typical format of a Yalt package is as follows,
+	
+	      <YALT> # FRENCH # GERMAN # SPANISH
+	      Yes # Oui # Ja # Sí
+	      No # Non # Nein # No
+	      // etc
+	      </YALT>
+
+	where mapped strings are separated by ` # `, that is,
+	<SPACE><HASH><SPACE>.
+	
+	The first line has the form:
+	
+	      <YALT> # LOCALE_1 # LOCALE_2 . . .
+	
+	which determines a column for each supported locale.
+	The first column represents the default locale, which
+	is ENGLISH_LOCALE. Then, LOCALE_1, LOCALE_2, LOCALE_i
+	are the InDesign names of the other locales with
+	respect to the Locale enumeration. (The `_LOCALE`
+	suffix is optional.)
+	
+	Once Yalt is activated, use the syntax
+	
+	      __("My English string")
+	
+	to refer to the translation of that string in the current
+	Yalt locale. Thanks to this mechanism, you can write
+	your entire project using default English strings, and
+	deal separately with the localization package. (Strings
+	that have no match in the active locale will remain as
+	passed in.)
+	
+	Yalt also supports %1 to %9 placeholders, for example,
+	mapped strings such as
+	
+	      Hi %1, how are you? # Bonjour %1, comment vas-tu ?
+
+	lead the syntax __("Hi %1, how are you?", "Bob") to
+	translate into `Bonjour Bob, comment vas-tu ?` in the
+	corresponding locale.
+	
+	Empty lines, lines that starts with `//`, or lines that
+	don't contain the ` # ` separator are ignored. Also,
+	the whole Yalt package string can be nested in open and
+	closing comment tags, i.e <SLASH><STAR> and <STAR><SLASH>.
+	
+	The recommended way to add a Yalt package from within a
+	module is to create a private `YALT` key as follows:
+	
+	      YALT : $$.Yalt && $$.Yalt.addPackage
+	      (
+	      #include 'MyModule/$$.yalt.jsxres'
+	      ),
+
+	where the file $$.yalt.jsxres simply contains the
+	localization package enclosed in triple quotes. See
+	the DateFormat module for an example.
+	
+	About Yalt activation options, see detail in the API.
+
+	*/
+
+	[PRIVATE]
+
+	({
+		DEFZ : +(Locale.ENGLISH_LOCALE),            // Default Yalt-Locale ID (1st column.)
+		KPFX : '_',                                 // Key prefix.
+
+		YBEG : '<YALT>',                            // Opening tag.
+		YEND : '</YALT>',                           // Closing tag.
+		YSEP : ' # ',                               // Separator string.
+		YTMP : '\x01',                              // Temporary char, CANNOT appear in the stream.
+		YCOM : '//',                                // Comment starter (single line.)
+		YDCR : '/*',                                // Decorator marker.
+		YESC : { '#': /##/g },                      // Esc. sequences (each regex produces the associated key.)
+	})
+
+	[PRIVATE]
+
+	({
+		CURZ : µ['~'].DEFZ,                         // Current Yalt-Locale ID.
+		
+		TRNS : {},                                  // All translation keys.
+		
+		L10N : {},                                  // Current mapping (with respect to CURZ.)
+
+		PRSE : function(/*str*/s,  a,r,i,n,b,t,j,k,o,x)
+		//----------------------------------
+		// Extract keys and localized strings from an input package,
+		// append the results into TRNS.
+		// => Number of strings that have actually been added.
+		{
+			const BEG = this.YBEG,
+				  END = this.YEND,
+				  SEP = this.YSEP,
+				  TMP = this.YTMP,
+				  COM = this.YCOM,
+				  DCR = this.YDCR,
+				  ESC = this.YESC,
+				  // ---
+				  KX = this.KPFX,
+				  COL = callee.Q||(callee.Q=[]);
+	
+			// Maps a col. number to a locale ID
+			// ---
+			COL[0] = this.DEFZ;
+			COL.length = 1;
+			
+			// Parse the input string
+			// ---
+			a = s.trim().replace(RegExp.LINEs,TMP).split(TMP);
+			
+			for( r=0, n=a.length, b=0, i=-1 ; ++i < n ; )
+			{
+				if( !(s=a[i].trim())                              // Empty line after cleaning: CONTINUE.
+				 || b && ~s.indexOf(END) && (b=0,COL.length=1)    // End tag found: turn parsing OFF, reset columns, CONTINUE.
+				 || !~s.indexOf(SEP)                              // No separator found in the line: CONTINUE.
+				 || !s.indexOf(COM)                               // Line starts w/ comment marker: CONTINUE.
+				 || !s.indexOf(DCR) && !(s=s.substr(2).ltrim())   // Line starts w/ decorator marker: ltrim, if empty CONTINUE.
+				 || (b ? !(k=(t=s.split(SEP))[0]):s.indexOf(BEG)) // Empty key in ON mode, or no starting BEG tag in OFF mode: CONTINUE
+				 )
+				continue;
+
+				if( b )
+				{
+					// ON mode, and valid key k for t[1],t[2]... strings.
+					// ---
+					// COL :: [def_LocID, col1_LocID, col2_LocID...]
+					// t   :: ['Yes','Oui','Ya']  ;  k :: 'Yes'
+					// => TRNS[_k] = {col1LocID:'Oui', col2LocID:'Ya'...}
+	
+					// Apply escape sequences:  '##' => '#' ...
+					// ---
+					for( x in ESC ){ ESC.hasOwnProperty(x)&&k.replace(ESC[x],x); }
+	
+					// Extract strings in defined columns and assign key[colID]
+					// Increment r only for each *new* assignable string
+					// ---
+					for( o=this.TRNS[k=KX+k]||(this.TRNS[k]={}), j=t.length ; --j ;
+						(k=COL[j]) && (o[k]!==t[j]) && ++r && (o[k]=t[j])
+					);
+				}
+				else
+				{
+					// OFF mode, and BEG tag found.
+					// ---
+					// Parse the locales => COL :: [def_LocID, <new IDs>... ]
+					// The user can use either <MY_LOC_STRING>_LOCALE, or <MY_LOC_STRING>
+					// in whatever case. E.g. French # GERMAN # Polish_Locale
+	
+					t = s.split(SEP);
+					for(
+						x=0, o=Locale, j=t.length ;
+						--j ;
+						
+						( k=t[j].trim().toUpperCase().replace('_LOCALE','') ) &&
+					     o.hasOwnProperty(k+='_LOCALE') && ++x && (COL[j]=+o[k])
+					);
+	
+					// Turn on the parser only if at least one valid locale has been found
+					// ---
+					b = +!!x;
+				}
+			}
+
+			return r;
+		},
+
+		ACTV : function(/*uint*/zloc,  oCache,oTrans,k,t)
+		//----------------------------------
+		// Make zloc the current Yalt-Locale ID.
+		// [REM] This always (re)sets the YALT cache from scratch.
+		{
+			// Set/reset the current locale
+			// ---
+			this.CURZ = zloc;
+	
+			// Cleanup the cache
+			// ---
+			oCache = this.L10N;
+			for( k in oCache ) delete oCache.k;
+	
+			// The default locale does not invoke the cache at all
+			// ---
+			if( zloc==this.DEFZ ) return;
+	
+			// Cache the {key=>string} data for the current locale
+			// ---
+			oTrans = this.TRNS;
+			for( k in oTrans )
+			{
+				if( !oTrans.hasOwnProperty(k) ) continue;
+				t = oTrans[k];
+				if( !t.hasOwnProperty(zloc) ) continue;
+				oCache[k] = t[zloc];
+			}
+		},
+
+		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  o,k)
+		//----------------------------------
+		// Localization routine. On include stage a reference
+		// to this function is assigned to $.global.__
+		// [CHG170316] No longer use `arguments` to avoid [workspace] ref.
+		// ---
+		// [REM] Although declared 'private' this function can't rely on `this` for
+		// referencing the private module zone, as it is invoked from outside context.
+		{
+			return $.global.localize.apply(null,
+				[(s && (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) ? o[k] : s), x1,x2,x3,x4,x5,x6,x7,x8,x9]
+				);
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		// When autoActivate is 1 (default) Yalt activates during $$ loading
+		// stage so packages already added from within the framework are ready
+		// after $$.load(). But in case the client code has to load additional
+		// Yalt package(s) one can set autoActivate=0 before $$.load(), so
+		// activate() can be invoked later, which reduces processing time.
+		// [REM] As long as Yalt is not activated, the global __() function
+		// simply works as a basic pattern formatter.
+		// E.g.
+		//      #include '$$.jsxinc'
+		//      #include 'etc/$$.Yalt.jsxlib'
+		//      $$.Yalt.autoActivate = 0;
+		//  ...
+		//      $$.load();
+		//      $$.isLoaded('Yalt') // => 0
+		//  ...
+		//      $$.Yalt(...)
+		//      $$.Yalt.load(Locale.germanLocale);
+		//      $$.isLoaded('Yalt') // => 1
+		// ---
+		autoActivate : 1,
+
+		onLoad : function onLoad__i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale)
+		//----------------------------------
+		{
+			if( callee.µ.autoActivate || $.global[callee.µ.__root__].isLoaded() )
+			{
+				callee.µ.activate(iLocale);
+			}
+			else
+			{
+				// Invalidate this.load() from $$.load().
+				// ---
+				return false;
+			}
+		},
+
+		activate : function activate_i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale,  $$)
+		//----------------------------------
+		// Activate or re-activate Yalt using iLocale (default is Env.appLocaleId.)
+		// Eg: $$.Yalt.activate(Locale.GERMAN_LOCALE)
+		// => undefined
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			iLocale = +(iLocale||$$.Env.appLocaleId);
+	
+			$$.Env.isValidLocaleId(iLocale) || $$.error( __("Invalid locale identifier [%1].",iLocale), callee.µ );
+
+			(+$$.trace) && $$.trace(__("%1 > Activating %2.",callee.µ,$$.Env.localeIdToString(iLocale)));
+
+			callee.µ['~'].ACTV(iLocale);
+		},
+
+		addPackage : function addPackage_S_I(/*str*/data,  $$,I,r)
+		//----------------------------------
+		// Add a new YALT package -- This routine can be incrementally called
+		// from different modules during framework's loading stage--and even after.
+		// When possible, the client should add all packages *before* activation.
+		// => number of actually added strings.
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			if( 'string' != typeof data || !data.length )
+			{
+				$$.warn(__("%1.addPackage > Invalid data (%2). Non-empty string expected.",callee.µ,$$.JSON(data)));
+				return 0;
+			}
+
+			I = callee.µ['~'];
+			if(! (r=I.PRSE(data)) )
+			{
+				$$.warn(__("%1.addPackage > No string has been found in %2.",callee.µ,$$.JSON(data)));
+				return 0;
+			}
+
+			(+$$.trace) && $$.trace(__("%1.addPackage > %2 strings successfully added.",callee.µ,r));
+
+			// In case the cache is *already* activated, we have
+			// to call ACTV again to reflect the changes.
+			// ---
+			I.L10N.__count__ && I.ACTV(I.CURZ);
+	
+			return r;
+		},
+
+		getLocaleId : function getLocaleId_I(  i,s)
+		//----------------------------------
+		// => current Yalt-Locale ID.
+		{
+			return callee.µ['~'].CURZ;
+		},
+	
+		isActive : function isActive_B()
+		//----------------------------------
+		// Tell whether Yalt is currently activated.
+		// => 0 | 1
+		{
+			return +(0 < callee.µ['~'].L10N.__count__);
+		},
+
+	})
+
+	.addPackage
+	(
+	#include 'Yalt/$$.yalt.jsxres'
+	)

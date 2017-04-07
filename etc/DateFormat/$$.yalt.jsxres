@@ -1,0 +1,115 @@
+/*******************************************************************************
+
+		Name:           DateFormat::YALT
+		Desc:           Yalt strings (resource of the DateFormat module.)
+		Path:           /etc/DateFormat/$$.yalt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           adding other locales!
+		Created:        150509 (YYMMDD)
+		Modified:       170306 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	// Supported locales: <EN> FR DE SP.
+	// Feel free to correct, or to add new locales, as long as
+	// you don't change the keys (1st column.) Each translation
+	// string must have the following format, in a single line:
+	// key # trL1 # trL2 # etc (placeholders %1 to %9 allowed.)
+
+	//==========================================================================
+	// DATA  (keep the starting and ending triple quotes)
+	//==========================================================================
+
+"""
+	/*<YALT> # FRENCH # GERMAN # SPANISH
+
+	================================ {DDDD}
+
+	Sunday # dimanche # Sonntag # domingo
+	Monday # lundi # Montag # lunes
+	Tuesday # mardi # Dienstag # martes
+	Wednesday # mercredi # Mittwoch # miércoles
+	Thursday # jeudi # Donnerstag # jueves
+	Friday # vendredi # Freitag # viernes
+	Saturday # samedi # Samstag # sábado
+
+	================================ {DDD}
+
+	Sun # dim. # So # do.
+	Mon # lun. # Mo # lu.
+	Tue # mar. # Di # ma.
+	Wed # mer. # Mi # mi.
+	Thu # jeu. # Do # ju.
+	Fri # ven. # Fr # vi.
+	Sat # sam. # Sa # sá.
+
+	================================ {MMMM}
+
+	January # janvier # Januar # enero
+	February # février # Februar # febrero
+	March # mars # März # marzo
+	April # avril # April # abril
+	May # mai # Mai # mayo
+	June # juin # Juni # junio
+	July # juillet # Juli # julio
+	August # août # August # agosto
+	September # septembre # September # septiembre
+	October # octobre # Oktober # octubre
+	November # novembre # November # noviembre
+	December # décembre # Dezember # diciembre
+
+	================================ {MMM}
+
+	Jan # janv. # Jan # enero
+	Feb # fév. # Feb # feb.
+	Mar # mars # Mrz # marzo
+	Apr # avr. # Apr # abr.
+	May # mai # Mai # mayo
+	Jun # juin # Jun # jun.
+	Jul # juil. # Jul # jul.
+	Aug # août # Aug # agosto
+	Sep # sept. # Sep # sept.
+	Oct # oct. # Okt # oct.
+	Nov # nov. # Nov # nov.
+	Dec # déc. # Dez # dic.
+
+	================================ PATTERNS
+
+	// shortDate:  3/9/2015 # 09/03/2015 # 09.03.2015 # 9-3-2015
+	{M}/{d}/{yyyy} # {dd}/{MM}/{yyyy} # {dd}.{MM}.{yyyy} # {d}-{M}-{yyyy}
+
+	// abbrDate:   Mar 09, 2015 # 9 mars 2015 # 9. Mrz 2015 # 9 marzo 2015
+	{MMM} {dd}, {yyyy} # {d} {MMM} {yyyy} # {d}. {MMM} {yyyy} # {yyyy} {MMM} {d}
+
+	// longDate:   Friday, April 03, 2015 # vendredi 3 avril 2015 # Freitag, 3. April 2015 # viernes 3 de abril de 2015
+	{DDDD}, {MMMM} {dd}, {yyyy} # {DDDD} {d} {MMMM} {yyyy} # {DDDD}, {d}. {MMMM} {yyyy} # {DDDD} {d} de {MMMM} de {yyyy}
+
+	// shortTime:  9:06 PM # 21h06 # 21:06 # 21:06
+	{H}:{mm} {TT} # {hh}h{mm} # {hh}:{mm} # {hh}:{mm}
+
+	// longTime:   8:59:01 AM # 08:59:01 # 08:59:01 # 08:59:01
+	{H}:{mm}:{ss} {TT} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss}
+
+	// fullDateTime (cf longDate - longTime)
+	{DDDD}, {MMMM} {dd}, {yyyy} - {H}:{mm}:{ss} {TT} # {dddd} {d} {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd}, {d}. {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd} {d} de {MMMM} de {yyyy} - {hh}:{mm}:{ss}
+
+	// fileNameDateTime:  2015-04-03_21-06_59s # 2015-04-03_21h06_59s # 2015-04-03_21-06_59s # 2015-04-03_21-06_59s
+	{yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}h{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s
+
+	// monthDay:  April 04 # 4 avril # 04 April # 4 de abril
+	{MMMM} {dd} # {d} {MMMM} # {dd} {MMMM} # {d} de {MMMM}
+
+	// yearMonth: April, 2015 # avril 2015 # April 2015 # abril de 2015
+	{MMMM}, {yyyy} # {MMMM} {yyyy} # {MMMM} {yyyy} # {MMMM} de {yyyy}
+
+	</YALT>*/
+"""

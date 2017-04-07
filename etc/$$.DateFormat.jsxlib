@@ -1,0 +1,167 @@
+/*******************************************************************************
+
+		Name:           DateFormat
+		Desc:           Date formatting routine, with respect to localization if Yalt is included.
+		Path:           /etc/$$.DateFormat.jsxlib
+		Require:        Object.prototype.keys ; $$/Ext/date ; Yalt recommended.
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =format()
+		DOM-access:     NO
+		Todo:           manage UTC variants
+		Created:        150502 (YYMMDD)
+		Modified:       170405 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('DateFormat') || eval(__(MODULE, $$, 'DateFormat', 170405, 'format'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	This module implements a basic date/time formatter, fully localizable
+	through Yalt.
+
+	It supports various ready-to-use patterns ('shortDate', 'abbrDate',
+	'longDate', 'shortTime', 'longTime', ..., 'rfc2822', 'json') as well
+	as atomic formatting tokens, e.g `{yyyy}`, `{yy}`, `{MMMM}`, etc, which
+	can be included in custom patterns. See ~.TKNS for the full
+	specification.
+	
+	*/
+
+	[PRIVATE]
+
+	({
+		YALT : $$.Yalt && $$.Yalt.addPackage
+		(
+		#include 'DateFormat/$$.yalt.jsxres'
+		),
+
+		DFUL : "Sunday Monday Tuesday Wednesday Thursday Friday Saturday".split(' '),
+		DABR : "Sun Mon Tue Wed Thu Fri Sat".split(' '),
+		MFUL : "January February March April May June July August September October November December".split(' '),
+		MABR : "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(' '),
+		
+		TKNS : {
+			// Token-to-func ; YALT in use here.
+			// [REM] Each function takes a Date instance as argument, `this` being the private zone.
+			//----------------------------------
+			'yyyy': function(o){ return ''+o.getFullYear() },                    // => '1999', '2002', etc.
+			'yy':   function(o){ return (''+o.getFullYear()).substring(2) },     // => '99', '02', etc.
+			// ---
+			'MMMM': function(o){ return __(this.MFUL[o.getMonth()]) },           // => __('January') .. __('December')
+			'MMM':  function(o){ return __(this.MABR[o.getMonth()]) },           // => __('Jan') .. __('Dec')
+			'MM':   function(o){ return ('0'+(1+o.getMonth())).substr(-2) },     // => '01'..'12'
+			'M':    function(o){ return ''+(1+o.getMonth()) },                   // =>  '1'..'12'
+			// ---
+			'DDDD': function(o){ return __(this.DFUL[o.getDay()]) },             // => __('Sunday') .. __('Saturday')
+			'DDD':  function(o){ return __(this.DABR[o.getDay()]) },             // => __('Sun') .. __('Sat')
+			'dddd': function(o){ return __(this.DFUL[o.getDay()]) },             // alias of {DDDD}
+			'ddd':  function(o){ return __(this.DABR[o.getDay()]) },             // alias of {DDD}
+			'dd':   function(o){ return ('0'+o.getDate()).substr(-2) },          // => '01'..'31'
+			'd':    function(o){ return ''+o.getDate() },                        // =>  '1'..'31'
+			'w':    function(o){ return ''+o.getDay() },                         // =>  '0'..'6'    ; (0=Sunday, 6=Saturday)
+			'z':    function(o){ return ''+Date.dayOfYear(o) },                  // =>  '1'..'366'
+			// ---
+			'hh':   function(o){ return ('0'+o.getHours()).substr(-2) },         // => '00'..'23'
+			'h':    function(o){ return ''+o.getHours() },                       // =>  '0'..'23'
+			'HH':   function(o){ return ('0'+(o.getHours()%12)).substr(-2) },    // => '00'..'11'
+			'H':    function(o){ return ''+(o.getHours()%12) },                  // =>  '0'..'11'
+			'tt':   function(o){ return 12 >= o.getHours() ? 'am':'pm' },        // =>  'am'|'pm'
+			't':    function(o){ return 12 >= o.getHours() ? 'a':'p' },          // =>   'a'|'p'
+			'TT':   function(o){ return 12 >= o.getHours() ? 'AM':'PM' },        // =>  'AM'|'PM'
+			'T':    function(o){ return 12 >= o.getHours() ? 'A':'P' },          // =>   'A'|'P'
+			// ---
+			'mm':   function(o){ return ('0'+o.getMinutes()).substr(-2) },       // => '00'..'59'
+			'm':    function(o){ return ''+o.getMinutes() },                     // =>  '0'..'59'
+			// ---
+			'ss':   function(o){ return ('0'+o.getSeconds()).substr(-2) },       // => '00'..'59'
+			's':    function(o){ return ''+o.getSeconds() },                     // =>  '0'..'59'
+			// ---
+			'mss':  function(o){ return ('00'+o.getMilliseconds()).substr(-3) }, // => '000'..'999'
+			'ms':   function(o){ return ''+o.getMilliseconds() },                // =>   '0'..'999'
+		},
+	})
+
+	[PRIVATE]
+	
+	({
+		RGTK : RegExp(__("\\{(%1)\\}",µ['~'].TKNS.keys('|')),'g'),
+		
+		CURD : new Date,
+
+		REPL : function(/*str::total-match*/m,/*str::token*/k,  I,ff)
+		//----------------------------------
+		// Match replacer, used by µ.format().
+		{
+			return (ff=(I=callee.µ['~']).TKNS).hasOwnProperty(k) ? ff[k].call(I,I.CURD) : m;
+		},
+
+		PTNS : {
+			// Usual patterns, in default locale (EN). Patterns can be localized through YALT.
+			//----------------------------------
+			shortDate:          "{M}/{d}/{yyyy}",                                   // E.g. "4/3/2015"
+			abbrDate:           "{MMM} {dd}, {yyyy}",                               // E.g. "Apr 03, 2015"
+			longDate:           "{DDDD}, {MMMM} {dd}, {yyyy}",                      // E.g. "Friday, April 03, 2015"
+			// ---
+			shortTime:          "{H}:{mm} {TT}",                                    // E.g. "8:59 AM",     "9:06 PM"
+			longTime:           "{H}:{mm}:{ss} {TT}",                               // E.g. "8:59:01 AM"   "9:06:59 PM"
+			shortTimeDigits:    "{hh}:{mm}",                                        // E.g. "08:59",       "21:06"
+			longTimeDigits:     "{hh}:{mm}:{ss}",                                   // E.g. "08:59:01"     "21:06:59"
+			// ---
+			fullDateTime:       "{DDDD}, {MMMM} {dd}, {yyyy} - {H}:{mm}:{ss} {TT}", // E.g. "Friday, April 03, 2015 - 9:06:59 PM"
+			sortableDateTime:   "{yyyy}-{MM}-{dd}\t{hh}:{mm}:{ss}",                 // E.g. "2015-04-03<TAB>21:06:59"
+			fileNameDateTime:   "{yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s",                 // E.g. "2015-04-03_21-06_59s"
+			// ---
+			monthDay:           "{MMMM} {dd}",                                      // E.g. "April 04"
+			yearMonth:          "{MMMM}, {yyyy}",                                   // E.g. "April, 2015"
+			// ---
+			rfc2822:            "{DDD}, {dd} {MMM} {yyyy} {hh}:{mm}:{ss} GMT",      // E.g. "Fri, 03 Apr 2015 21:06:59 GMT"
+			iso8601:            "{yyyy}-{MM}-{dd}T{hh}:{mm}:{ss}",                  // E.g. "2015-04-03T21:06:59"
+			json:               "{yyyy}-{MM}-{dd}T{hh}:{mm}:{ss}Z",                 // E.g. "2015-04-03T21:06:59Z"
+		},
+
+	})
+
+	[PUBLIC]
+	
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+	
+	/*
+	
+	See $$/Ext/date for further detail on the Date object in JS/ExtendScript.
+	
+	*/
+
+	({
+		format : function format_S_$Date$z_S(/*str|key*/pattern,/*(Date|timestamp)=now*/dts,  I)
+		//----------------------------------
+		// Formats and localize the date `dts` (timestamp, Date instance, or "yymmdd" stamp) using
+		// the supplied pattern, which can be either a custom string (based on the existing shortcuts),
+		// or a predefined key. (Localization is performed if Yalt is installed.)
+		// ---
+		// E.g.:   format('shortDate', Date.now())
+		//         format("{DDD} {d} {MMM} {yyyy}")
+		//         format('{MM}-{yy}', 170316)
+		// ---
+		// => formatted string
+		{
+			dts = Date.guess(dts);
+	
+			// Just a fallback (`pattern` shouldn't be empty!)
+			// [REM] Date.toLocaleString() is known to be useless in ExSc :(
+			// ---
+			if( !pattern ) return dts.toLocaleString();
+			
+			(I=callee.µ['~']).CURD = dts;
+			return (__(I.PTNS[pattern]||pattern)).replace(I.RGTK,I.REPL);
+		},
+
+	})

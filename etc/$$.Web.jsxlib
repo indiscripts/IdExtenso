@@ -1,0 +1,535 @@
+/*******************************************************************************
+
+		Name:           Web
+		Desc:           Basic HTTP/1.0 client and Web-related features.
+		Path:           /etc/$$.Web.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =get() parseURI()
+		DOM-access:     ---
+		Todo:           Extend to HTTP/1.1, support for https://
+		Created:        170403 (YYMMDD)
+		Modified:       170405 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170405, 'get'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+	
+	The current version of get() supports HTTP/1.0 GET requests.
+	
+	*/
+
+	[PRIVATE]
+
+	({
+		SERR: false,                            // No-Socket flag. Must be falsy (0|false|null|undefined.)
+
+		UREG : RegExp(__( "^%1%2%3",            //  0 SRCE :: PRTO + AUTH + LOCN
+				"(?:([^:\\/?#]+):)?",           //  1 PRTO
+				__( "(?:\\/\\/(%1%2%3))?",      //  2 AUTH :: USPW + HOST + PORT
+					__( "(?:(%1%2)?@)?",        //  3 USPW :: USER + PASS
+						"([^:@]*)",             //  4 USER
+						"(?::([^:@]*))?"        //  5 PASS
+						),
+					"([^:\\/?#]*)",             //  6 HOST
+					"(?::(\\d*))?"              //  7 PORT
+					),
+				__( "(%1%2%3)",                 //  8 LOCN :: PATH + QURY + ANCH
+					__( "(%1%2)",               //  9 PATH :: DIRS + FILE
+						"((?:[^?#\\/]*\\/)*)",  // 10 DIRS
+						"([^?#]*)"              // 11 FILE
+						),
+					"(?:\\?([^#]*))?",          // 12 QURY
+					"(?:#(.*))?"                // 13 ANCH
+					)
+				)),
+
+		ELMS : ['source',                       //  0  e.g `http://Jum-Bo:XY9Z@server.com:80/a/b/test.php?x=1&y=2#c1`
+			        'protocol',                 //  1  e.g `http`
+			        'authority',                //  2  e.g `Jum-Bo:XY9Z@server.com:80`
+			            'userInfo',             //  3  e.g `Jum-Bo:XY9Z`
+			                'user',             //  4  e.g `Jum-Bo`
+			                'password',         //  5  e.g `XY9Z`
+			            'host',                 //  6  e.g `server.com`
+			            'port',                 //  7  e.g `80`
+			        'location',                 //  8  e.g `/a/b/test.php?x=1&y=2#c1`
+			            'path',                 //  9  e.g `/a/b/test.php`
+			                'directory',        // 10  e.g `/a/b/`
+			                'file',             // 11  e.g `test.php`
+			            'query',                // 12  e.g `x=1&y=2`
+			            'anchor'                // 13  e.g `c1`
+				],
+
+
+		PRSE : function(/*obj&*/r,/*str*/uri,  m,a,i,n)
+		//----------------------------------
+		// Parse `uri` and set keys in `r` according to ELMS.
+		// [RES] blog.stevenlevithan.com/archives/parseuri
+		// => undefined
+		{
+			(m = callee.Q||(callee.Q=[])).length = 0;
+			m.push.apply(m,this.UREG.exec(uri));
+			
+			// [FIX170405] `userInfo` bug in ExtendScript.
+			// ---
+			if( m[3] && 0!==m[2].indexOf(m[3]+'@') )
+			{
+				m[3] = m[4] = m[5] = void 0;
+			}
+			
+			// Extract keys.
+			// ---
+			for( n=(a=this.ELMS).length, i=-1 ; ++i < n ; r[a[i]]=m[i]||'' );
+		},
+	})
+
+	[PRIVATE]
+
+	({
+		PTNS : {
+			GET_TXT : [
+				"GET %1 HTTP/1.0",
+				"Host: %2",
+				__("User-Agent: %1",$$.Env.userAgent()),
+				"Accept: text/xml,text/*,*/*",
+				"Accept-Encoding:",
+				"Connection: keep-alive",
+				"Accept-Language: *",
+				"Accept-Charset: utf-8",
+				"","" ].join(String.CRLF),
+			GET_BIN : [
+				"GET %1 HTTP/1.0",
+				"Host: %2",
+				__("User-Agent: %1",$$.Env.userAgent()),
+				"Accept: */*",
+				"Connection: keep-alive",
+				"","" ].join(String.CRLF),
+		},
+
+		GSOK : function(/*obj*/o,/*0|1*/BIN_TARGET,/*uint*/tmo,  sx,q)
+		//----------------------------------
+		// GET socket query.
+		// o        :: { host, port, location }
+		// BIN_RES  :: whether the target is binary (1), or text-like (0)
+		// tmo      :: timeout (in seconds.)
+		// => Socket [OK] | SERR [KO]
+		{
+			(sx=new Socket).timeout = tmo;
+			
+			if( !sx.open(o.host+":"+o.port, 'BINARY') )
+			{
+				$.global[callee.µ.__root__].warn(__("%1 > Cannot open a socket at %2:%3.", callee.µ, o.host, o.port));
+				return this.SERR;
+			}
+			
+			q = __(this.PTNS[BIN_TARGET?'GET_BIN':'GET_TXT'],o.location,o.host);
+
+			if( !sx.write(q) )
+			{
+				$.global[callee.µ.__root__].warn(__("%1 > Failure while sending the query %2 to the current socket.", callee.µ, q.toSource()));
+				sx.close();
+				return this.SERR;
+			}
+			else
+			{
+				$.global[callee.µ.__root__].trace(__("%1 > Has sent the query %2 to the current socket.", callee.µ, q.toSource()));
+			}
+			
+			return sx;
+		},
+
+		READ : function(/*obj&*/q,/*?obj&*/binTarget,  $$)
+		//----------------------------------
+		// Read cnx data into the buffer. (If binTarget is supplied,
+		// transfer immediately the buffer into binTarget.data
+		// and clear the buffer.) Return the new buffer length.
+		// q :: HGET cache object.
+		// => uint [OK] | -1 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			if( q.dial != q.BDY )
+			{
+				q.buff += q.cnx.read(1);
+				return q.buff.length;
+			}
+
+			if( isNaN(q.pending) )
+			{
+				(+$$.trace) && $$.trace(__("%1 > About to read %2 bytes from the socket... (BufferSize=%3.)",callee.µ,'some',q.buff.length));
+				q.buff += q.cnx.read();
+				q.buff.length || (q.buff += q.cnx.read(1));
+				return q.buff.length;
+			}
+
+			// ---
+			// [REM] One might receive less bytes than
+			// demanded, so checking length is needed.
+			// ---
+
+			(+$$.trace) && $$.trace(__("%1 > About to read %2 bytes from the socket... (BufferSize=%3.)",callee.µ,q.pending,q.buff.length));
+			q.buff = q.cnx.read(q.pending);
+			q.pending -= q.buff.length;
+
+			if( binTarget )
+			{
+				// Bin data -> direct transfer into binTarget.data.
+				// as there is no UTF8 stuff to cleanup.
+				// ---
+				binTarget.data += q.buff;
+				q.buff = '';
+				q.seek = 0;
+			}
+
+			return 0 < q.pending ? q.buff.length : -1;
+		},
+
+		HGET : function(/*obj&*/R,/*obj*/uri,/*bool*/isBin,/*uint*/tmo,  q,cs,cc,nl,okLine,line,wip,z,x)
+		//----------------------------------
+		// Get the uri thru HTTP 1.0.
+		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
+		// `uri` must provide { host, port, location }
+		// ---
+		// [RES] https://jmarshall.com/easy/http/
+		// [RES] http://rorohiko.blogspot.fr/2008_07_01_archive.html
+		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
+		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+		// => -1 [socket-KO] | 0 [timeout] | +1 [OK]
+		{
+			q = (callee.Q||callee.Q={
+				BEG  : 1,          // Starting point.
+				HEA  : 2,          // Head stage.
+				BDY  : 3,          // Body stage.
+				END  : 4,          // Normal termination.
+				BRK  : 5,          // Timeout or break.
+				UMSK : [0xFF,0x1F,0x0F,0x07],
+				// ---
+				cnx  : null,       // Socket object, or NULL
+				dial : NaN,        // State of the transaction (among BEG | HEA | BDY | END | BRK.)
+				buff : '',         // Buffer
+				seek : 0,          // Position in the buffer
+				pending : NaN,     // Remaining byte count
+				noop : false,      // Whether no data were read yet (init to FALSE.)
+				});
+			
+			const CHR = String.fromCharCode;
+
+			// Default output.
+			// ---
+			R.status = '';
+			R.statusCode = 0;
+			R.headers ? $.global[callee.µ.__root__].kill(R.headers) : (R.headers={});
+			R.data = '';
+			delete R.error;
+
+			// Init the cache.
+			// ---
+			if( !(q.cnx=this.GSOK(uri,isBin,tmo)) ) return -1;
+			q.dial = q.BEG;
+			q.buff = '';
+			q.seek = 0;
+			q.pending = NaN;
+			q.noop = false;
+
+			// Init vars.
+			// ---
+			cs = isBin ? -1 : 0;
+			cc = 0;
+			nl = okLine = 0;
+			line = wip = "";
+
+			// Main loop.
+			// ---
+			for( z=0 ; q.dial != q.BRK && (q.dial != q.END || z > q.seek) ; z=q.buff.length )
+			{
+				z && z==q.seek && ((q.buff=''),(z=q.seek=0));
+
+				// Read from the socket.
+				// ---
+				if( !z && (q.dial != q.END) )
+				{
+					if( q.noop && !q.cnx.connected )
+					{
+						q.dial = (q.dial==q.BDY && !q.pending) ? q.END : q.BRK;
+						q.cnx = null;
+						break;
+					}
+
+					if( 0 > (z=this.READ(q,isBin&&R)) )
+					{
+						q.dial = q.END;
+						break;
+					}
+					
+					q.noop = !z;
+				}
+
+				// Read from the buffer.
+				// z :: q.buff.length
+				// ---
+				if( z <= q.seek ) continue;
+				
+				if( 0 > cs && q.dial == q.BDY )
+				{
+					// Binary stream shortcut.
+					// ---
+					R.data += q.buff;
+					q.seek = z;
+					continue;
+				}
+
+				// Next character.
+				// ---
+				x = q.buff.charCodeAt(q.seek++);
+				switch( cs )
+				{
+					case 0 :
+						if( x > 127 )
+						{
+							cs = (1*(0xC0==(0xE0&x)))||(2*(0xE0==(0xF0&x)))||(3*(0xF0==(0xF8&x)));
+							cc = x & q.UMSK[cs];
+							break;
+						}
+						// [no-break]
+					case -1 :
+						cc = x;
+						break;
+
+					default :
+						if( 0x80 != (0xC0&x) ){ cc=x; cs=0; break; }
+						cc = (cc<<6) | (0x3F&x);
+						cs--;
+				}
+				if( 0 < cs ) continue; // Need next char.
+
+				// ---
+				// Manage output (R.data, R.status, R.headers.)
+				// ---
+
+				x = cc;
+				if( q.dial == q.BDY || q.dial == q.END ){ R.data+=CHR(x); continue; }
+
+				// Line manager.
+				// ---
+				(okLine=+(nl||10==x)) && ((line=wip),(wip=''));
+				nl = 13==x ? 1 : ( ( 10==x || (wip+=CHR(x)) ), 0 );
+				if( !okLine ) continue;
+
+				if( q.dial == q.BEG )
+				{
+					// 1xx Informational     (not used in HTTP/1.0)
+					// 2xx Success           E.g  `HTTP/1.0 200 OK`
+					// 3xx Redirection       E.g  `HTTP/1.0 301 Moved Permanently`
+					// 4xx Client errors     E.g  `HTTP/1.0 404 Not Found`
+					// 5xx Server error      E.g  `HTTP/1.0 500 Internal Server Error`
+					// ---
+					(+$$.trace) && $$.trace(__("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()));
+					R.status=line;
+					if( 0 !== line.indexOf('HTTP/1.0 ') )
+					{
+						(+$$.warn) && $$.warn(__("%1 > Invalid Status-Line: 'HTTP/1.0 ' is missing!",callee.µ));
+						q.dial==q.BRK;
+						break;
+					}
+					R.statusCode = parseInt(line.substr(9),10);
+					q.dial=q.HEA;
+					continue;
+				}
+
+				if( q.dial != q.HEA ) continue;
+				if( !line.length )
+				{
+					// Headers done, body coming next. However, if statusCode
+					// is 404 or any error code, there is no reason to waste
+					// time downloading more data.
+					// ---
+					x = R.statusCode;
+					if( x < 200 || x >= 300 )
+					{
+						(+$$.warn) && $$.warn(__("%1 > Breaking connection due to status code %2.",callee.µ,x));
+						q.dial==q.BRK;
+						break;
+					}
+					q.dial=q.BDY;
+					continue;
+				}
+
+				// Head zone.
+				// ---
+				x = (line=line.split(':')).shift().trim();
+				R.headers[x] = (line=line.join(":").trim());
+
+				(+$$.trace) && $$.trace(__("%1 > HTTP Header %2: %3.",callee.µ,x,line.toSource()));
+
+				if( 'Content-Length' == x )
+				{
+					x = parseInt(line,10);
+					isNaN(x) || 0 >= x || (q.pending=x-z-q.seek);
+				}
+			}
+			
+			q.cnx && (q.cnx=(q.cnx.close(),null));
+			return q.dial==q.BRK ? 0 : 1;
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		parseURI : function parseURI_S_b_O(/*str*/uri,/*0|1=0*/VOLATILE,  o,p)
+		//----------------------------------
+		// Parse the input uri into the { protocol, authority... } structure
+		// as specified in ~.ELEMS.
+		// ---
+		// If VOLATILE is on, put the result in a temporary cache
+		// instead of creating a new object. (By default, VOLATILE=0.)
+		// => obj
+		{
+			o = VOLATILE ? (callee.Q||(callee.Q={})) : {};
+
+			callee.µ['~'].PRSE(o,uri);
+
+			// Normalize `protocol`.
+			// ---
+			o.protocol = o.protocol.toLowerCase(); // `http` | `ftp` ...
+
+			// Normalize `port` and rewrite `authority` accordingly.
+			// ---
+			if( o.host )
+			{
+				p = parseInt(o.port, 10) || 0;
+				( 0 >= p || 0xFFFF < p ) && (p=80);
+				o.port = p;
+				o.authority = __("%1%2%3", o.userInfo, (o.userInfo?'@':''), o.host+':'+o.port );
+			}
+
+			// Normalize `directory` and update accordingly.
+			// ---
+			if( '/' !== o.directory.charAt(0) )
+			{
+				o.directory = '/' + o.directory;
+				o.path = '/' + o.path;
+				o.location = '/' + o.location;
+			}
+
+			return o;
+		},
+		
+		get : function get_S_b_y_b_y_Õ(/*str*/uri,/*0|1=0*/isText,/*uint=120*/timeOut,/*0|1=0*/VOLATILE,/*?uint*/R301,  $$,r)
+		//----------------------------------
+		// Download a resource thru an HTTP/1.0 GET request and return the result
+		// in the form {status:str, statusCode:uint, headers:{}, data:str}.
+		// If something goes wrong an `error` key is added to the result
+		// and describes the issue, e.g "HTTP error or timeout."
+		// ---
+		// E.g :
+		// $$.Web('indiscripts.com/blog/public/Wordalizer-1508-Teaser.jpg')
+		// => {
+		//    status: "HTTP/1.0 200 OK",
+		//    statusCode : 200,
+		//    headers : {
+		//        "Cache-Control" : "public, max-age=604800",
+		//        "Expires" : "Wed, 12 Apr 2017 03:42:08 GMT",
+		//        "Last-Modified" : "Mon, 05 Jan 2015 05:22:39 GMT",
+		//        "Content-Type" : "image/png",
+		//        "Content-Length" : "53737",
+		//        "Date" : "Wed, 05 Apr 2017 03:42:08 GMT",
+		//        "Accept-Ranges" : "bytes",
+		//        "Server" : "LiteSpeed",
+		//        "Connection" : "Keep-Alive"
+		//        }
+		//    data : "\x89PNG\r\n\x1A\n\0\0\0\ (...) 0IEND\xAEB",
+		//    }
+		// ---
+		// If VOLATILE is on, put the result in a temporary cache
+		// instead of creating a new object. (By default, VOLATILE=0.)
+		// ---
+		// `R301` :: Number of attempts in case of 301-redirection.
+		// The HTTP response status code 301 Moved Permanently is used for
+		// permanent URL redirection, meaning current links or records
+		// using the URL that the response is received for should be
+		// updated. The new URL should be provided in the `Location` field
+		// included with the response.
+		// => obj
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			('undefined' == typeof R301) && (R301=10);
+
+			timeOut = ('number' == typeof timeOut) ? Math.max(timeOut>>>0,1) : 120;
+
+			if( 'string' != typeof uri )
+			{
+				$$.error(__("Invalid uri type (%1). Should be a string.", typeof uri),callee);
+			}
+			
+			if( 0 !== uri.indexOf('http') )
+			{
+				$$.trace(__("%1 > Prepend 'http://' to the uri %2.",callee.µ,uri.toSource()));
+				uri = 'http://' + uri;
+			}
+
+			uri = callee.µ.parseURI(uri,1);
+			
+			if( 'http' != uri.protocol )
+			{
+				$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
+			}
+
+			if( !uri.host )
+			{
+				$$.error(__("The host is missing in %1.", uri.source.toSource()),callee);
+			}
+
+			if( '/' != uri.location.charAt(0) )
+			{
+				$$.error(__("Invalid location %1 in the uri %2.", uri.location.toSource(), uri.source.toSource()),callee);
+			}
+
+			r = VOLATILE ? (callee.Q||(callee.Q={})) : {};
+			
+			switch( callee.µ['~'].HGET(r,uri,!isText,timeOut) )
+			{
+				case -1 :
+					r.error = __("Cannot open the HTTP socket.");
+					$$.warn( __("%1 > %2",callee,r.error) );
+					break;
+
+				case 0 :
+					r.error = __("HTTP error or timeout.");
+					$$.warn( __("%1 > %2",callee,r.error) );
+					break;
+				
+				default :
+					if( r.data.length + r.status.length <= 0 )
+					{
+						r.error = __("No data received from the HTTP connection.");
+						$$.warn( __("%1 > %2",callee,r.error) );
+						break;
+					}
+					if( 0 <= r.status.indexOf('301') && 0 < R301-- )
+					{
+						uri = r.headers.Location;
+						$$.warn( __("%1 > HTTP 301 Redirection to %2.",callee, uri) );
+						VOLATILE || $$.kill(r);
+						r = callee(uri,!isText,timeOut,VOLATILE,R301);
+					}
+			}
+
+			return r;
+		},
+
+	})

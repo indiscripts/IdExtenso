@@ -1,0 +1,532 @@
+/*******************************************************************************
+
+		Name:           Settings
+		Desc:           Encapsulates a set of custom settings to be handled throughout a script.
+		Path:           /etc/$$.Settings.jsxlib
+		Require:        Dom/label ; $$.kill() $$.clone()
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =access() declare() canDeclare() activate() reset() backup()
+		                addLive() objKeyCount() appKeyCount()
+		DOM-access:     extractLabel() insertLabel()
+		Todo:           session-persistent keys ; documentation.
+		Created:        150630 (YYMMDD)
+		Modified:       170407 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 170407, 'access'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	Key scopes.
+	============================================================================
+	BRANCH   TYPE     DECL  ACTIVATE   RESET       BCKP   DESCRIPTION
+	============================================================================
+	const    CNST= 1  VAL   NOOP       NOOP        NOOP   Read-only.
+	----------------------------------------------------------------------------
+	live     LIVE= 2  VAL   NOOP       NOOP        NOOP   Volatile (no default.)
+	----------------------------------------------------------------------------
+	reset    RSET= 4  DEF   DEF        DEF         NOOP   Restorable but non-persistent.
+	----------------------------------------------------------------------------
+	[engine] ENGI= 8  DEF   ?VAL:DEF   DEF         NOOP   Engine-persistent (if present.)
+	                                                      This is the default scope.
+	----------------------------------------------------------------------------
+	session  SESS=16  DEF   VAL        DEF         NOOP   Session-persistent
+	                                                      (even in main engine.)
+	----------------------------------------------------------------------------
+	obj      DOBJ=32  DEF   ?OBJ:      null?DEF:   null?  DOM-Object-persistent.
+	                        ?VAL:DEF   ?OBJ:DEF    NOOP:
+	                                               ?OBJ:
+	                                               NOOP
+	----------------------------------------------------------------------------
+	app      INDD=64  DEF   ?APP:      null?DEF:   null?  App-persistent.
+	                        ?VAL:DEF   ?APP:DEF    NOOP:
+	                                               APP
+	----------------------------------------------------------------------------
+	hyb      HYBR=96  DEF   ?OBJ:      null?DEF:   null?  Hybrid.
+	                        ?APP:      ?OBJ:       NOOP:
+	                        ?VAL:DEF   ?APP:DEF    ?OBJ:
+	                                               APP
+	----------------------------------------------------------------------------
+
+	*/
+
+	[PRIVATE]
+
+	({
+		// Scopes
+		// ---
+		CNST :  1,   // Constant key, can't be changed.
+		LIVE :  2,   // Live key, free to change, no default, volatile.
+		RSET :  4,   // Similar to live, but can be restored to its default.
+		ENGI :  8,   // Engine-persistent (if a non-main engine is in use.)
+		SESS : 16,   // Session-persistent (whatever the engine in use.)
+		DOBJ : 32,   // Object-persistent (if a DOM object is provided.)
+		INDD : 64,   // Application-persistent.
+		HYBR : 96,   // Hybrid scope (DOBJ or INDD)
+		
+		BRCH : function(/*key*/s)
+		//----------------------------------
+		// Map a user-friendly branch name to a scope.
+		// => 0 [KO]  |  1|2|4|8|... [OK]
+		{
+			return (s=callee.Q[s]) ? this[s] : 0;
+		}.setup({ Q:
+			{
+			'CONST':   'CNST',  // The branch 'CONST' is not required, use `_MYCONSTANT` instead.
+			'LIVE':    'LIVE',
+			'RESET':   'RSET',
+			'ENGINE':  'ENGI',  // The branch 'ENGINE' is not required, that's the default scope.
+			'SESSION': 'SESS',
+			'OBJ':     'DOBJ',
+			'APP':     'INDD',
+			'HYB':     'HYBR',
+			}
+		}),
+
+		FDEL : function(/*obj&*/o,/*key*/k)
+		//----------------------------------
+		// Kill and delete `o[k]`.
+		// this :: ~
+		{
+			$.global[callee.µ.__root__].kill(o[k]);
+			delete o[k];
+			return o;
+		},
+
+		FSET : function(/*obj&*/o,/*key*/k,/*any*/v)
+		//----------------------------------
+		// Kill `o[k]` first, then clone `v` in it.
+		// this :: ~
+		{
+			this.FDEL(o,k);
+			return (o[k]=$.global[callee.µ.__root__].clone(v));
+		},
+
+	})
+
+	[PRIVATE]
+	
+	({
+		SUID : '',
+		KEYS : {/*key => fct*/},
+		
+		RSBL : (µ['~'].RSET)|(µ['~'].ENGI)|(µ['~'].SESS)|(µ['~'].DOBJ)|(µ['~'].INDD)|(µ['~'].HYBR),
+
+		KSCO : function(/*key*/k)
+		//----------------------------------
+		// this :: ~
+		// => 0 [KO]  |  1|2|4|8|... [OK]
+		{
+			return callee.Q[k] || 0;
+		}.setup({ Q:{} }),
+
+		KDEF : function(/*key*/k)
+		//----------------------------------
+		// this :: ~
+		// => undefined [KO]  |  <any> [OK]
+		{
+			return callee.Q.hasOwnProperty(k) ? callee.Q[k] : (void 0);
+		}.setup({ Q:{} }),
+
+		WTCH : function(/*key*/k,/*?any*/ov,/*?any|NULL*/nv,  I)
+		//----------------------------------
+		// Key watcher. Use null to default.
+		// this :: ~.KEYS
+		{
+			return (I=callee.µ['~']),
+			(
+				( (I.CNST)&(I.KSCO(k)) ) ? ov :
+				(
+					null===nv ?
+					I.KDEF(k) :
+					[this.unwatch(k),I.FSET(this,k,nv),this.watch(k,callee)][1]
+				)
+			);
+		},
+
+	})
+
+	[PRIVATE]
+	
+	({
+		GOBJ : function(/*dom*/osp,/*any*/defRet)
+		//----------------------------------
+		// Get (extract) keys from osp SUID label.
+		{
+			return $.global[callee.µ.__root__].Dom.fromLabel(osp, this.SUID, defRet);
+		},
+
+		SOBJ : function(/*dom*/osp,/*any{}*/o)
+		//----------------------------------
+		// Set (insert) o keys into osp SUID label.
+		{
+			return $.global[callee.µ.__root__].Dom.toLabel(osp, this.SUID, o);
+		},
+
+		GAPP : function(/*any*/defRet)
+		//----------------------------------
+		// Get keys from app SUID label.
+		{
+			return this.GOBJ(app,defRet);
+		},
+
+		SAPP : function(/*any{}*/o)
+		//----------------------------------
+		// Set o keys into app SUID label.
+		{
+			return this.SOBJ(app,o);
+		},
+
+	})
+
+	[PRIVATE]
+	
+	({
+		ONUM : 0,
+		ANUM : 0,
+
+		DELK : function(  o,k)
+		//----------------------------------
+		// Delete Keys.
+		{
+			o = this.KEYS;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				o.unwatch(k);
+				this.FDEL(o,k);
+				this.FDEL(this.KDEF.Q,k);
+				delete this.KSCO.Q[k];
+			}
+		},
+
+		ADDK : function(/*key*/k,/*uint*/scope,/*any*/data)
+		//----------------------------------
+		// Add a Key. Throws an error if it already exists.
+		{
+			if( this.KEYS.hasOwnProperty(k) )
+			{
+				$.global[callee.µ.__root__].error(__("The key '%1' is already declared.",k), callee);
+			}
+
+			this.KSCO.Q[k] = scope;
+			
+			if( scope == this.LIVE || scope == this.CNST )
+			{
+				this.FSET(this.KEYS,k,data);
+			}
+			else
+			{
+				this.FSET(this.KDEF.Q,k,data);
+				this.KEYS[k] = void 0; // must be activated!
+			}
+		},
+
+		DECL : function(/*str*/suid,/*{...,LIVE:{},RESET:{},OBJ:{},APP:{},HYB:{}}*/o,  k,z,oo)
+		//----------------------------------
+		// Declare settings.
+		// [REM] Branch names are case-sensitive.
+		{
+			// Kills existing keys.
+			// ---
+			this.SUID && this.DELK();
+
+			// Set the 'Settings Unique ID.'
+			// ---
+			this.SUID = suid;
+			
+			// Parse input and create keys from scratch.
+			// ---
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				
+				if( !(z=this.BRCH(k)) )
+				{
+					// Implicit scope is determined as follows:
+					// I.CNST if key has the form '_xxx' ('_' is then removed),
+					// I.ENGI otherwise.
+					// ---
+					z = this['_' == k[0] ? 'CNST' : 'ENGI'];
+					this.ADDK(k.substr(1&z),z,o[k]);
+					continue;
+				}
+	
+				// Here o[k] is a z-scoped branch, and must be an object.
+				// ---
+				if( Object(oo=o[k])!==oo )
+				{
+					$.global[callee.µ.__root__].error(
+						__("The declaration of the branch '%1' is not valid. (Not an object.)", k),
+						callee );
+				}
+				
+				for( k in oo )
+				{
+					oo.hasOwnProperty(k) && this.ADDK(k,z,oo[k]);
+				}
+			}
+		},
+
+		ACRS : function(/*?dom|null*/host,/*bool*/DO_RESET,  o,k,z,v,vKill,indd,dobj)
+		//----------------------------------
+		// Activate or Reset declared keys.
+		{
+			o = this.KEYS;
+			indd = dobj = false;
+	
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+
+				z = this.KSCO(k);
+				v = null;
+				vKill = 0;
+
+				// Determine the activation value v (excl. CNST and LIVE.)
+				// ---
+				while( z&this.RSBL )
+				{
+					// DOBJ | INDD | HYBR
+					// ---
+					if( (z&this.HYBR) && DO_RESET && null===host ){ v=this.KDEF(k); break; }
+					
+					// DOBJ | HYBR
+					// ---
+					if( (z&this.DOBJ) )
+					{
+						host && (false===dobj) && (dobj=this.GOBJ(host));
+						if( dobj && dobj.hasOwnProperty(k) ){ vKill=1; v=dobj[k]; break; }
+					}
+
+					// INDD | HYBR
+					// ---
+					if( (z&this.INDD) )
+					{
+						(false===indd) && (indd=this.GAPP());
+						if( indd && indd.hasOwnProperty(k) ){ vKill=1; v=indd[k]; break; }
+					}
+
+					// RESET
+					// ---
+					if( DO_RESET || (z&this.RSET) || ('undefined'==typeof this.KEYS[k]) )
+					{
+						v = this.KDEF(k);
+					}
+					break;
+				}
+
+				// Change existing key into activation value.
+				// ---
+				o.unwatch(k);
+				null===v || (this.FSET(o,k,v))
+				o.watch(k,this.WTCH);
+			}
+			
+			// Indicate whether OBJ and/or APP labels have
+			// been found during activation.
+			// ---
+			(this.ONUM=dobj?dobj.__count__:0) && $.global[callee.µ.__root__].kill(dobj);
+			(this.ANUM=indd?indd.__count__:0) && $.global[callee.µ.__root__].kill(indd);
+		},
+
+		BCKP : function(/*?dom|null*/host,  indd,dobj,SKIP_HYB,zObj,zApp,o,k,z)
+		//----------------------------------
+		// Backup settings.
+		{
+			indd = this.GAPP({});                // Get the existing keys, or {}
+			dobj = host && this.GOBJ(host,{}),   // Get the existing keys, or {}
+	
+			SKIP_HYB = +(null===host);
+			zObj = zApp = 0;
+	
+			o = this.KEYS;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+	
+				z = o[K_LEVEL];
+	
+				// OBJ | HYB
+				// ---
+				if( z&this.DOBJ )
+				{
+					if( SKIP_HYB ) continue;
+					if( host ){ ++zObj; this.FSET(dobj,k,o[k]); continue; }
+				}
+	
+				// APP | HYB
+				// ---
+				if( z&this.INDD )
+				{
+					++zApp;
+					this.FSET(indd,k,o[k]);
+				}
+			}
+	
+			zObj && this.SOBJ(host,dobj) && $.global[callee.µ.__root__].kill(dobj);
+			zApp && this.SAPP(indd) && $.global[callee.µ.__root__].kill(indd);
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},OBJ:{},APP:{},HYB:{}}*/oInput,  I)
+		//----------------------------------
+		// Create the keys 'from scratch' and set their default values.
+		// [REM] Activation is required after a declaration (even app keys
+		// are not restored through `declare`). This function must be called first
+		// above all, and must be called *once* per engine scope.
+		// Recommended syntax:
+		//      $$.Settings.canDeclare() && $$.Settings.declare(...);
+		// ---
+		// => undefined
+		{
+			if( (I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings already declared. Use %1.canDeclare() to check.",callee.µ), callee )
+			}
+
+			if( ('string' != typeof suid) || suid.length < 1 )
+			{
+				$.global[callee.µ.__root__].error( __("Empty UID is not allowed."), callee )
+			}
+
+			if( oInput !== Object(oInput) )
+			{
+				$.global[callee.µ.__root__].error( __("Invalid object in settings declaration."), callee )
+			}
+
+			$.global[callee.µ.__root__].trace(__("%1 > Declare settings for uid: %2.",callee.µ,suid));
+			I.DECL(String(suid), oInput);
+		},
+		
+		canDeclare : function canDeclare_B(  I)
+		//----------------------------------
+		// Whether declare() can be invoked.
+		// => 0 [NO]  |  1 [YES]
+		{
+			return (I=callee.µ['~']).SUID ? 0 : 1;
+		},
+
+		activate : function activate_d_Õ(/*?dom*/host,  I)
+		//----------------------------------
+		// Restore each key to its most relevant value based on its scope.
+		// If host is a DOM object, use it as a source for any OBJ or HYB key.
+		// If host is not provided or 'falsy,' OBJ keys will behave at SESSION
+		// scope and HYB keys will behave at APP scope.
+		// => keys-accessor
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before activation."), callee )
+			}
+
+			I.ACRS(host, false);
+			return I.KEYS;
+		},
+
+		reset : function reset_d$null$_Õ(/*?dom|null*/host,  I)
+		//----------------------------------
+		// Reset each key to its default or stored value, based on its scope.
+		// ---
+		// If host is a DOM object or is not provided (undefined), every OBJ,
+		// APP and HYB key is activated the usual way, while all other
+		// keys are reset to their default value.
+		// ---
+		// If host===NULL, then all keys are reset to their default, including
+		// OBJ, APP and HYB keys.
+		// => keys-accessor
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling reset."), callee )
+			}
+
+			I.ACRS(host, true);
+			return I.KEYS;
+		},
+
+		backup : function backup_d$null$_(/*?dom|null*/host,  I)
+		//----------------------------------
+		// Backup the current values of label-stored keys.
+		// If host is a DOM object, use it as a target for any I_OBJ or I_HYB key.
+		// If host is undefined, backup I_HYB and I_APP keys in app.
+		// If host is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// => undefined
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling backup."), callee )
+			}
+
+			I.BCKP(host);
+		},
+
+		addLive : function addLive_Õ_Õ(/*any{}*/oLiveKeys,  I,k)
+		//----------------------------------
+		// Add LIVE keys to the existing keys.
+		// [REM] CANNOT BE USED WHILE NO ACTIVATION IS DONE
+		// => keys-accessor
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling addLive."), callee )
+			}
+
+			// New LIVE keys
+			// ---
+			for( k in oLiveKeys )
+			{
+				if( !oLiveKeys.hasOwnProperty(k) ) continue;
+				I.ADDK(k,I.LIVE,oLiveKeys[k]);
+				I.KEYS.watch(k,I.WTCH);
+			}
+	
+			return I.KEYS;
+		},
+
+
+		objKeyCount : function objKeyCount_I()
+		//----------------------------------
+		// => Number of OBJ label key retrieved during activation.
+		{
+			return callee.µ['~'].ONUM;
+		},
+	
+		appKeyCount : function appKeyCount_I()
+		//----------------------------------
+		// => Number of APP label key retrieved during activation.
+		{
+			return callee.µ['~'].ANUM;
+		},
+
+		access : function access_Õ(  I)
+		//----------------------------------
+		// => keys-accessor
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling access."), callee )
+			}
+
+			if( !I.KEYS.__count__ )
+			{
+				$.global[callee.µ.__root__].warn( __("%1 > No key available yet in the accessor.",callee.µ) );
+			}
+			
+			return I.KEYS;
+		},
+	})

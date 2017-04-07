@@ -1,0 +1,237 @@
+/*******************************************************************************
+
+		Name:           MD5
+		Desc:           Hash a string according to Message Digest 5.
+		Path:           /etc/$$.MD5.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =hash()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        150525 (YYMMDD)
+		Modified:       170407 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('MD5') || eval(__(MODULE, $$, 'MD5', 170407, 'hash'))
+
+	[PRIVATE]
+	
+	({
+		AZ16 : function(  q)
+		// ---------------------------------
+		// Return a volatile array of 16 zeroes.
+		{
+			return (q=callee.Q),
+				(q[0]=q[1]=q[2]=q[3]=q[4]=q[5]=q[6]=q[7]=q[8]=q[9]=q[10]=q[11]=q[12]=q[13]=q[14]=q[15]=0),
+				q;
+		}.setup({ Q: new Array(16) }),
+
+		AD32 : function(/*i32*/x,/*i32*/y)
+		// ---------------------------------
+		// Safe 32-bit adding in ExtendScript.
+		{
+			return 0xFFFFFFFF & (x+y);
+		},
+
+		CYCL : function(/*i32[4]&*/x,/*i32[16]*/t,/*fct*/f,  a,b,c,d)
+		// ---------------------------------
+		// Perform the transformations based on the current block (t).
+		// f *must* be a safe AD32 routine on this platform.
+		{
+			a=x[0]; b=x[1]; c=x[2]; d=x[3];
+			
+			a = ((a=f(f(a,((b&c)|(d&~b))),f(t[ 0],0xD76AA478))),f((a<< 7)|(a>>>25),b));
+			d = ((d=f(f(d,((a&b)|(c&~a))),f(t[ 1],0xE8C7B756))),f((d<<12)|(d>>>20),a));
+			c = ((c=f(f(c,((d&a)|(b&~d))),f(t[ 2],0x242070DB))),f((c<<17)|(c>>>15),d));
+			b = ((b=f(f(b,((c&d)|(a&~c))),f(t[ 3],0xC1BDCEEE))),f((b<<22)|(b>>>10),c));
+			a = ((a=f(f(a,((b&c)|(d&~b))),f(t[ 4],0xF57C0FAF))),f((a<< 7)|(a>>>25),b));
+			d = ((d=f(f(d,((a&b)|(c&~a))),f(t[ 5],0x4787C62A))),f((d<<12)|(d>>>20),a));
+			c = ((c=f(f(c,((d&a)|(b&~d))),f(t[ 6],0xA8304613))),f((c<<17)|(c>>>15),d));
+			b = ((b=f(f(b,((c&d)|(a&~c))),f(t[ 7],0xFD469501))),f((b<<22)|(b>>>10),c));
+			a = ((a=f(f(a,((b&c)|(d&~b))),f(t[ 8],0x698098D8))),f((a<< 7)|(a>>>25),b));
+			d = ((d=f(f(d,((a&b)|(c&~a))),f(t[ 9],0x8B44F7AF))),f((d<<12)|(d>>>20),a));
+			c = ((c=f(f(c,((d&a)|(b&~d))),f(t[10],0xFFFF5BB1))),f((c<<17)|(c>>>15),d));
+			b = ((b=f(f(b,((c&d)|(a&~c))),f(t[11],0x895CD7BE))),f((b<<22)|(b>>>10),c));
+			a = ((a=f(f(a,((b&c)|(d&~b))),f(t[12],0x6B901122))),f((a<< 7)|(a>>>25),b));
+			d = ((d=f(f(d,((a&b)|(c&~a))),f(t[13],0xFD987193))),f((d<<12)|(d>>>20),a));
+			c = ((c=f(f(c,((d&a)|(b&~d))),f(t[14],0xA679438E))),f((c<<17)|(c>>>15),d));
+			b = ((b=f(f(b,((c&d)|(a&~c))),f(t[15],0x49B40821))),f((b<<22)|(b>>>10),c));
+			// ---
+			a = ((a=f(f(a,((b&d)|(c&~d))),f(t[ 1],0xF61E2562))),f((a<< 5)|(a>>>27),b));
+			d = ((d=f(f(d,((a&c)|(b&~c))),f(t[ 6],0xC040B340))),f((d<< 9)|(d>>>23),a));
+			c = ((c=f(f(c,((d&b)|(a&~b))),f(t[11],0x265E5A51))),f((c<<14)|(c>>>18),d));
+			b = ((b=f(f(b,((c&a)|(d&~a))),f(t[ 0],0xE9B6C7AA))),f((b<<20)|(b>>>12),c));
+			a = ((a=f(f(a,((b&d)|(c&~d))),f(t[ 5],0xD62F105D))),f((a<< 5)|(a>>>27),b));
+			d = ((d=f(f(d,((a&c)|(b&~c))),f(t[10],0x02441453))),f((d<< 9)|(d>>>23),a));
+			c = ((c=f(f(c,((d&b)|(a&~b))),f(t[15],0xD8A1E681))),f((c<<14)|(c>>>18),d));
+			b = ((b=f(f(b,((c&a)|(d&~a))),f(t[ 4],0xE7D3FBC8))),f((b<<20)|(b>>>12),c));
+			a = ((a=f(f(a,((b&d)|(c&~d))),f(t[ 9],0x21E1CDE6))),f((a<< 5)|(a>>>27),b));
+			d = ((d=f(f(d,((a&c)|(b&~c))),f(t[14],0xC33707D6))),f((d<< 9)|(d>>>23),a));
+			c = ((c=f(f(c,((d&b)|(a&~b))),f(t[ 3],0xF4D50D87))),f((c<<14)|(c>>>18),d));
+			b = ((b=f(f(b,((c&a)|(d&~a))),f(t[ 8],0x455A14ED))),f((b<<20)|(b>>>12),c));
+			a = ((a=f(f(a,((b&d)|(c&~d))),f(t[13],0xA9E3E905))),f((a<< 5)|(a>>>27),b));
+			d = ((d=f(f(d,((a&c)|(b&~c))),f(t[ 2],0xFCEFA3F8))),f((d<< 9)|(d>>>23),a));
+			c = ((c=f(f(c,((d&b)|(a&~b))),f(t[ 7],0x676F02D9))),f((c<<14)|(c>>>18),d));
+			b = ((b=f(f(b,((c&a)|(d&~a))),f(t[12],0x8D2A4C8A))),f((b<<20)|(b>>>12),c));
+			// ---
+			a = ((a=f(f(a,(b^c^d)),f(t[ 5],0xFFFA3942))),f((a<< 4)|(a>>>28),b));
+			d = ((d=f(f(d,(a^b^c)),f(t[ 8],0x8771F681))),f((d<<11)|(d>>>21),a));
+			c = ((c=f(f(c,(d^a^b)),f(t[11],0x6D9D6122))),f((c<<16)|(c>>>16),d));
+			b = ((b=f(f(b,(c^d^a)),f(t[14],0xFDE5380C))),f((b<<23)|(b>>> 9),c));
+			a = ((a=f(f(a,(b^c^d)),f(t[ 1],0xA4BEEA44))),f((a<< 4)|(a>>>28),b));
+			d = ((d=f(f(d,(a^b^c)),f(t[ 4],0x4BDECFA9))),f((d<<11)|(d>>>21),a));
+			c = ((c=f(f(c,(d^a^b)),f(t[ 7],0xF6BB4B60))),f((c<<16)|(c>>>16),d));
+			b = ((b=f(f(b,(c^d^a)),f(t[10],0xBEBFBC70))),f((b<<23)|(b>>> 9),c));
+			a = ((a=f(f(a,(b^c^d)),f(t[13],0x289B7EC6))),f((a<< 4)|(a>>>28),b));
+			d = ((d=f(f(d,(a^b^c)),f(t[ 0],0xEAA127FA))),f((d<<11)|(d>>>21),a));
+			c = ((c=f(f(c,(d^a^b)),f(t[ 3],0xD4EF3085))),f((c<<16)|(c>>>16),d));
+			b = ((b=f(f(b,(c^d^a)),f(t[ 6],0x04881D05))),f((b<<23)|(b>>> 9),c));
+			a = ((a=f(f(a,(b^c^d)),f(t[ 9],0xD9D4D039))),f((a<< 4)|(a>>>28),b));
+			d = ((d=f(f(d,(a^b^c)),f(t[12],0xE6DB99E5))),f((d<<11)|(d>>>21),a));
+			c = ((c=f(f(c,(d^a^b)),f(t[15],0x1FA27CF8))),f((c<<16)|(c>>>16),d));
+			b = ((b=f(f(b,(c^d^a)),f(t[ 2],0xC4AC5665))),f((b<<23)|(b>>> 9),c));
+			// ---
+			a = ((a=f(f(a,(c^(b|~d))),f(t[ 0],0xF4292244))),f((a<< 6)|(a>>>26),b));
+			d = ((d=f(f(d,(b^(a|~c))),f(t[ 7],0x432AFF97))),f((d<<10)|(d>>>22),a));
+			c = ((c=f(f(c,(a^(d|~b))),f(t[14],0xAB9423A7))),f((c<<15)|(c>>>17),d));
+			b = ((b=f(f(b,(d^(c|~a))),f(t[ 5],0xFC93A039))),f((b<<21)|(b>>>11),c));
+			a = ((a=f(f(a,(c^(b|~d))),f(t[12],0x655B59C3))),f((a<< 6)|(a>>>26),b));
+			d = ((d=f(f(d,(b^(a|~c))),f(t[ 3],0x8F0CCC92))),f((d<<10)|(d>>>22),a));
+			c = ((c=f(f(c,(a^(d|~b))),f(t[10],0xFFEFF47D))),f((c<<15)|(c>>>17),d));
+			b = ((b=f(f(b,(d^(c|~a))),f(t[ 1],0x85845DD1))),f((b<<21)|(b>>>11),c));
+			a = ((a=f(f(a,(c^(b|~d))),f(t[ 8],0x6FA87E4F))),f((a<< 6)|(a>>>26),b));
+			d = ((d=f(f(d,(b^(a|~c))),f(t[15],0xFE2CE6E0))),f((d<<10)|(d>>>22),a));
+			c = ((c=f(f(c,(a^(d|~b))),f(t[ 6],0xA3014314))),f((c<<15)|(c>>>17),d));
+			b = ((b=f(f(b,(d^(c|~a))),f(t[13],0x4E0811A1))),f((b<<21)|(b>>>11),c));
+			a = ((a=f(f(a,(c^(b|~d))),f(t[ 4],0xF7537E82))),f((a<< 6)|(a>>>26),b));
+			d = ((d=f(f(d,(b^(a|~c))),f(t[11],0xBD3AF235))),f((d<<10)|(d>>>22),a));
+			c = ((c=f(f(c,(a^(d|~b))),f(t[ 2],0x2AD7D2BB))),f((c<<15)|(c>>>17),d));
+			b = ((b=f(f(b,(d^(c|~a))),f(t[ 9],0xEB86D391))),f((b<<21)|(b>>>11),c));
+	
+			x[0]=f(a,x[0]); x[1]=f(b,x[1]); x[2]=f(c,x[2]); x[3]=f(d,x[3]);
+		},
+
+	})
+
+	[PRIVATE]
+	
+	({
+
+		BLCK : function(/*str64*/s,  r,i)
+		// ---------------------------------
+		// Encode a block of 64 characters
+		// => i32[16] (volatile.)
+		{
+			for(
+				r=this.AZ16(), i=-1 ;
+				++i < 64 ;
+				r[i>>2] = s.charCodeAt(i)+(s.charCodeAt(++i) << 8)+(s.charCodeAt(++i) << 16)+(s.charCodeAt(++i) << 24)
+			);
+			return r;
+		},
+
+		DGST : function(/*str*/s,/*i32[4]&*/r,  n,t,i,a)
+		// ---------------------------------
+		// DIGEST routine. (The caller must initialize `r`.)
+		// `s` is supposed to encode bytes (0 <= s.charCodeAt(i) <= 0x7F),
+		// so if any char over 0x7F appears, s is converted into UTF8 first.
+		// [REM] This routine supports (s.length) > 2^32.
+		{
+			// Converts the string to UTF8 if necessary.
+			// ---
+			RegExp.OV7F.test(s) && (s=unescape(encodeURI(s)));
+	
+			// Save the original length.
+			// ---
+			n = s.length >>> 0;
+	
+			// Process 64-sized blocks.
+			// ---
+			for(
+				t=n-64, i=0 ;
+				i <= t ;
+				this.CYCL(r,this.BLCK(s.substring(i,i+=64)),this.AD32)
+			);
+	
+			// Process remaining characters.
+			// ---
+			for(
+				a=this.AZ16(), s=s.substring(i)+'\x80', i=s.length ;
+				i-- ;
+				a[i>>2] |= s.charCodeAt(i) << ((i%4)<<3)
+			);
+
+			56 < s.length && ( this.CYCL(r,a,this.AD32),a=this.AZ16() );
+
+			// Encode 8*n => a[14]:lo ; a[15]:hi.
+			// [REM] 8*n may be > 0xFFFF.
+			// ---
+			a[14] = (t=8*n)>>>0;
+			t===a[14] || ((t=t.toString(16)),a[15]=Number('0x'+t.substr(0,t.length-8)));
+	
+			// Final cycle.
+			// ---
+			this.CYCL(r,a,this.AD32);
+		},
+
+		DWHX : function(/*i32*/x)
+		// ---------------------------------
+		// DWORD-to-HEXA formatting.
+		// 0xHHIIJJKK  =>  `kkjjiihh`
+		{
+			// [REM] x>>>0 is needed (i32=>u32) to create an unsigned representation.
+			// ---
+			return (x=('00000000'+(x>>>0).toString(16)).substr(-8)),
+				(x.substr(6,2) + x.substr(4,2) + x.substr(2,2) + x.substr(0,2));
+		},
+
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		hash : function hash_S_H(/*str*/s,  $$,I,q)
+		//----------------------------------
+		// Compute the MD5 hash (32 chars) of the input string.
+		// E.g
+		// hash('IdExtenso') => `7127bf261e23104d72f6ea2b33f0d7c1`
+		// hash('InExtenso') => `06b02fd291587d4397fb0a62eaba9068`
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			if( 'string' != typeof s )
+			{
+				$$.error(__("Invalid argument type (%1). String expected.",typeof s), callee);
+			}
+			
+			// Initialize the array.
+			// ---
+			q = callee.Q||(callee.Q=new Array(4));
+			q[0]=0x67452301; q[1]=0xEFCDAB89;
+			q[2]=0x98BADCFE; q[3]=0x10325476;
+
+			// Get the hash data (=> q.)
+			// ---
+			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Hashing a %2-length string...",callee.µ,s.length));
+
+			I.DGST(s,q);
+			s = I.DWHX(q[0]) + I.DWHX(q[1]) + I.DWHX(q[2]) + I.DWHX(q[3]);
+
+			(+$$.trace) && $$.trace(__("%1 > Result: %2 (in %3ms.)",callee.µ,s,$$.Log.chrono));
+		
+			// Format the result.
+			// ---
+			return s;
+		},
+
+	})
