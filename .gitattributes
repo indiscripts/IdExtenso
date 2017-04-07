@@ -1,2 +1,2 @@
-* tabwidth=4
+* whitespace=space-before-tab,trailing-space,indent-with-non-tab,tabwidth=4
 *.jsx* linguist-language=JavaScript
