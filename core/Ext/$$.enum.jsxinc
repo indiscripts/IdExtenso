@@ -1,0 +1,212 @@
+/*******************************************************************************
+
+		Name:           enum
+		Desc:           Add Enumeration (E9n) & Enumerator (E8r) features.
+		Path:           /core/Ext/$$.enum.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            E9n.revSource() E9n.toSource() E8r.toSource()
+		DOM-access:     R&W
+		Todo:           ---
+		Created:        170303 (YYMMDD)
+		Modified:       170322 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// Temporary global aliases.
+	//==========================================================================
+
+	$.global.E9nProto = NothingEnum.constructor.prototype;
+	$.global.E8rProto = ('object' == typeof NothingEnum.NOTHING) && NothingEnum.NOTHING.constructor.prototype;
+
+	//==========================================================================
+	// Enumeration.prototype.revSource()
+	//==========================================================================
+
+	E9nProto.revSource = function(  k,s)
+	//----------------------------------
+	// Output an evaluable string S such as eval(S) be an object
+	// { id=>key } satisfying this[key]=id.
+	// Eg AnchorPosition.revSource() =>
+	//    "{'1095716969':'INLINE_POSITION','1095716961':'ABOVE_LINE',etc}"
+	{
+		s = '';
+		for( k in this )
+		{
+			if( !this.hasOwnProperty(k) ) continue;
+			s += "'" + this[k] + "':'" + k.toString() + "',";
+		}
+		return '({'+s+'})';
+	};
+
+	//==========================================================================
+	// Enumeration.prototype.toSource() ; Enumerator.prototype.toSource() in CS5+
+	//==========================================================================
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	In CS5 and later the syntax <Enumeration>.<EnumKey> no longer returns a
+	Number. An instance of the Enumerator object is returned instead.
+	
+	E.g: ( NothingEnum.NOTHING instanceof Enumerator ) => true
+	
+	A recurring problem with ExtendScript enumerators is, they don't provide
+	human-readable data once passed through the native toSource() method.
+	It will return either the string "({})" (CS5 and later), or at best
+	"(new Number(...))" (previous InDesign versions.)
+	
+	We usually invoke .toSource() on DOM object properties in the hope of
+	fully revealing their inner state. At best we can coerce a punctual
+	enumerator into a Number using XXX.valueOf(), which always works but
+	doesn't speak for itself at all.
+	
+	And even with objectified enumerators (CS5+) that supports .toString()
+	we only retrieve the formal key of the Enumerator, for example
+	"OPENTYPE_POSITION", but the parent Enumeration (DiacriticPositionOptions)
+	is missing so we cannot easily reconstruct a clean syntax that would
+	evaluate to the enum value.
+
+	The purpose of the current snippet is to repair Enumerator.toSource()
+	so that it provides reliable and evaluable code.
+	
+	In addition, Enumeration.toSource() is implemented for every InDesign
+	version:
+	
+	E.g: Locale.toSource() => "(Locale)"
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+	Idea based on Dirk Becker's 2014 original code at ixta.com.
+
+	Looping through $.dictionary.getClasses() allows to collect every class
+	whose Reflection has the 'enumeration' flag. From then we can both
+	
+	(a) Build a hashkey from the XML representation of the class (based on
+	    the sequence of its enum keys) so that we feed a {hash=>className}
+	    mapping. This process is achieved using an xpath() command.
+	    
+	=>  Allows to implement Enumeration.prototype.toSource().
+	
+	(b) Register each enum key in a {key=>data} structure so that data is
+	    either a number (if no unique Enumeration is attached to that value),
+	    or a <value>/<className> string otherwise.
+
+	=>  Allows to implement Enumerator.prototype.toSource() in CS5 and later.
+
+	All needed data are cached in the corresponding methods: callee.DB for
+	both, and callee.ENUM_XPATH for Enumeration's xpath request.
+	
+	Note. - The below code may consume more than 200 ms in CC 2017 (Win64.)
+	
+	[FIX170322]. - It seems that $.dictionary may return `null` in rare CS6
+	versions. In that case we just ignore the whole fixer.
+	*/
+
+	$.dictionary && (function(/*fct*/fClasses,/*fct|false*/fKeys,  QC,XP,QK,a,n,i,x,s,t,k,v)
+	{
+		const DIC = $.dictionary;
+	
+		QC = (fClasses.DB = {/*hashProps => className*/});
+		XP = (fClasses.ENUM_XPATH = "//property[datatype/type='number' or datatype/type='Enumerator']/@name");
+		QK = fKeys ? (fKeys.DB = {/*key => value[/className]*/}) : 0;
+	
+		for( a=DIC.getClasses(), n=a.length, i=-1 ; ++i < n ; )
+		{
+			x = DIC.getClass(s=a[i]).toXML();
+
+			if( 'true' != x.@enumeration ) continue;
+	
+			// Enum Classes
+			// ---
+			QC[String(x.xpath(XP))] = s;
+	
+			if( !QK ) continue; // before CS5
+	
+			// Enum Keys
+			// [FIX170319] Check whether x..property has more than one
+			// item (.length()>1) otherwise `for each` would loop inside!
+			// ---
+			x = ( 1 < (t=x..property).length() ) ? t : (t.parent());
+
+			if( null===x ){ throw Error("XML Error on Enumeration " + s); }
+
+			for each( t in x )
+			{
+				k = String(t.@name);
+				v = Number(t..value);
+				if( !(k&&v) ){ throw Error("XML Error on Enumeration " + s); }
+				QK[k] = QK.hasOwnProperty(k) ? v : (v + '/' + s);
+			}
+		}
+	})
+	(
+		(E9nProto.toSource = function toSource(/*0|1=0*/VERBOSE)
+		//----------------------------------
+		// Output an evaluable string S such as this==eval(S) for any Enumeration.
+		// Eg. Locale.toSource() => "(Locale)"
+		{
+			return '(' +
+				(
+					callee.DB[String(this.reflect.toXML().xpath(callee.ENUM_XPATH))] ||
+					( "{" + (VERBOSE?"/*not found Enumeration*/":"") + "}" )
+				) +
+				')';
+		}),
+		
+		E8rProto && (E8rProto.toSource = function toSource(/*0|1=0*/VERBOSE,  k,v,s)
+		//----------------------------------
+		// Output an evaluable string S such as this==eval(S) for any Enumerator.
+		// =>
+		//   <Enumeration>.<Enumerator> /* 0x<Hexa> [<Tag>] */
+		//   if <Enumeration> is the unique parent for that value,
+		//   Eg: AnchorPosition.INLINE_POSITION /* 0x414F5069 [AOPi] */
+		//
+		// or
+		//
+		//   0x<Hexa> /* <Enumerator> [<Tag>] */
+		//   if Enumerator's value belongs to multiple parents,
+		//   e.g: 0x74787466 /* TEXT_FRAME [txtf] */
+		//
+		// [REM] The comment part /*...*/ is added only if VERBOSE is on.
+		{
+			if( (v=callee.DB[k=String(this)]) && 'string' == typeof v )
+			{
+				// Case 1  --  String("<number>/<class>")
+				// => EnumClass.ENUM_KEY format.
+				// ---
+				s = v.substr(1+v.indexOf('/')) + '.' + k;
+				if( !VERBOSE ) return s;
+
+				v = parseInt(v,10);
+				k = v.toHexa();
+			}
+			else
+			{
+				// Case 2 -- Unknown key or number only (multiple parents.)
+				// => 0xHHHH format.
+				// ---
+				s = (v||(v=this.valueOf())).toHexa();
+				if( !VERBOSE ) return s;
+			}
+
+			return $.global.localize("%1 /* %2 [%3] */", s, k, v.toAdbe());
+		})
+	);
+
+	//==========================================================================
+	// Clear globals.
+	//==========================================================================
+
+	delete $.global.E9nProto;
+	delete $.global.E8rProto;
+	delete $.global.NothingEnum;

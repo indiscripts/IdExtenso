@@ -1,0 +1,510 @@
+﻿/*******************************************************************************
+
+		Name:           Natives
+		Desc:           Native references resolver of the JSON module.
+		Path:           /core/JSON/$$.natives.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of the JSON module.
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170330 (YYMMDD)
+		Modified:       170402 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	JSON.lave() attempts to identify references to native functions in various
+	objects and prototypes so that it can stringify those which may appear
+	within data structures. The following hosts and methods are investigated:
+	
+	[[global]]    (object)       encodeURI encodeURIComponent 
+	                             decodeURI decodeURIComponent 
+	                             isXMLName setDefaultXMLNamespace 
+	                             escape unescape eval uneval
+	                             isFinite isNaN parseInt parseFloat
+	                             localize resolve exit
+	                             beep alert confirm prompt
+	                             Array Boolean Date Error
+	                             File Folder Function Number
+	                             Object RegExp Socket String
+	                             [REM] ScriptUI functions are available too.
+	-----------------------------------------------------------------------
+	$             (object)       about toString write writeln bp
+	                             getenv setenv sleep colorPicker
+	                             evalFile list listLO summary gc
+	-----------------------------------------------------------------------
+	Math          (object)       abs acos asin atan atan2 ceil cos
+	                             exp floor log max min pow random
+	                             round sin sqrt tan
+	=======================================================================
+	Number        (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	String        (ctor)         fromCharCode toString toSource
+	-----------------------------------------------------------------------
+	Date          (ctor)         parse now UTC toString toSource
+	-----------------------------------------------------------------------
+	RegExp        (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	XML           (ctor)         settings setSettings defaultSettings
+	                             toSource
+	[REM] XML instances have no reflect at all.
+	-----------------------------------------------------------------------
+	XMLList       (ctor)         toSource
+	-----------------------------------------------------------------------
+	Error         (ctor)         runtimeError toString toSource
+	-----------------------------------------------------------------------
+	File          (ctor)         encode decode isEncodingAvailable 
+	                             openDialog saveDialog toString toSource
+	-----------------------------------------------------------------------
+	Folder        (ctor)         encode decode isEncodingAvailable 
+	                             selectDialog toString toSource
+	-----------------------------------------------------------------------
+	Namespace     (ctor)         toSource
+	-----------------------------------------------------------------------
+	QName         (ctor)         toSource
+	-----------------------------------------------------------------------
+	UnitValue     (ctor)         toSource
+	-----------------------------------------------------------------------
+	Reflection    (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	ReflectionInfo(ctor)         toString toSource
+	-----------------------------------------------------------------------
+	Socket        (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	Function      (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	Object        (ctor)         isValid toString toSource
+	-----------------------------------------------------------------------
+	Array         (ctor)         toString toSource
+	-----------------------------------------------------------------------
+	ExternalObject(ctor)         search toSource
+	=======================================================================
+	Array.prototype              concat join reverse slice sort pop push 
+	                             splice shift toString toLocaleString 
+	                             unshift toSource
+	-----------------------------------------------------------------------
+	Date.prototype               getDate getDay getYear getFullYear 
+	                             getHours getMilliseconds getMinutes 
+	                             getMonth getSeconds getTime 
+	                             getTimezoneOffset getUTCDate getUTCDay 
+	                             getUTCFullYear getUTCHours 
+	                             getUTCMilliseconds getUTCMinutes 
+	                             getUTCMonth getUTCSeconds setDate 
+	                             setFullYear setHours setMilliseconds 
+	                             setMinutes setSeconds setMonth 
+	                             setUTCDate setUTCFullYear setUTCHours 
+	                             setUTCMilliseconds setUTCMinutes 
+	                             setUTCSeconds setUTCMonth setTime 
+	                             setYear toDateString toTimeString 
+	                             toLocaleString toLocaleDateString 
+	                             toLocaleTimeString toGMTString 
+	                             toUTCString toString valueOf toSource
+	-----------------------------------------------------------------------
+	Error.prototype              toString toSource
+	-----------------------------------------------------------------------
+	File.prototype               resolve rename remove changePath 
+	                             getRelativeURI execute openDlg saveDlg 
+	                             toString toSource createAlias open 
+	                             close read readch readln write print 
+	                             writeln seek tell copy
+	-----------------------------------------------------------------------
+	Folder.prototype             resolve rename remove changePath 
+	                             getRelativeURI execute openDlg saveDlg 
+	                             toString toSource selectDlg getFiles 
+	                             create
+	-----------------------------------------------------------------------
+	Function.prototype           apply call toSource toString
+	-----------------------------------------------------------------------
+	Number.prototype             toSource toString toLocaleString 
+	                             toFixed toExponential toPrecision valueOf
+	-----------------------------------------------------------------------
+	Object.prototype             toString toLocaleString hasOwnProperty 
+	                             propertyIsEnumerable isPrototypeOf 
+	                             valueOf toSource unwatch watch
+	-----------------------------------------------------------------------
+	RegExp.prototype             toString toSource compile exec test
+	-----------------------------------------------------------------------
+	Socket.prototype             open listen close read readln write 
+	                             writeln poll
+	-----------------------------------------------------------------------
+	String.prototype             toString toSource valueOf charAt 
+	                             charCodeAt concat indexOf lastIndexOf 
+	                             slice toLowerCase toUpperCase 
+	                             toLocaleLowerCase toLocaleUpperCase 
+	                             localeCompare match replace search 
+	                             split substr substring anchor big blink 
+	                             bold fixed fontcolor fontsize italics 
+	                             link small strike sub sup
+	=======================================================================
+	[REM] The below structures do not offer actual constructor (instances
+	are produced using the function without `new`). Their `prototype` is
+	of no use (empty object.)
+
+	Namespace()                  <no dedicated methods>
+	-----------------------------------------------------------------------
+	QName()                      <no dedicated methods>
+	-----------------------------------------------------------------------
+	UnitValue()                  convert as
+	                             `~` `!` `+` `-` `*` `/` `%`
+	                             `<` `<=` `==` `===`
+	-----------------------------------------------------------------------
+	Dictionary()                 <no dedicated methods>
+	               but
+	Dictionary.prototype         getGroups getClasses getClass toXML
+	=======================================================================
+	[REM] The Window class (ctor) statically exposes all methods available to
+	a Window instance, while its prototype is a silent object proto:
+
+	          String(Window.prototype.reflect.methods)
+	       ==
+	          String(Object.prototype.reflect.methods)
+
+	In addition, Window offers `alert`, `confirm`, `prompt`, and `find`,
+	which are pure static methods (unavailable in instances.)
+	The other ScriptUI components have no constructor, they are created
+	using the add() method of the container. Here again, the corresponding
+	class functions statically provide methods available in instances
+	and the prototype is a silent object proto.
+
+	Window (ctor)                center close findElement update
+	                             add remove
+	                             show hide notify
+	                             dispatchEvent add/removeEventListener
+	                             toSource
+	                             alert confirm prompt find 
+	-----------------------------------------------------------------------
+	                             add remove
+	Panel        (function)      show hide
+	Group        (function)      dispatchEvent add/removeEventListener
+	                             toSource
+	-----------------------------------------------------------------------
+	Button       (function)
+	Checkbox     (function)
+	EditText     (function)      show hide notify
+	IconButton   (function)      dispatchEvent add/removeEventListener
+	RadioButton  (function)      toSource 
+	Scrollbar    (function)
+	Slider       (function)
+	StaticText   (function)
+	-----------------------------------------------------------------------
+	ListBox      (function)      add remove removeAll find revealItem 
+	                             show hide notify
+	                             dispatchEvent add/removeEventListener
+	                             toSource 
+	-----------------------------------------------------------------------
+	                             add remove removeAll find
+	DropDownList (function)      show hide notify
+	TreeView     (function)      dispatchEvent add/removeEventListener
+	                             toSource
+	-----------------------------------------------------------------------
+	Progressbar  (function)      show hide
+	                             dispatchEvent add/removeEventListener
+	                             toSource
+	-----------------------------------------------------------------------
+	ListItem     (function)      dispatchEvent add/removeEventListener
+	                             toSource
+	-----------------------------------------------------------------------
+	Event        (function)      toSource
+	-----------------------------------------------------------------------
+	UIEvent      (function)      toSource
+	-----------------------------------------------------------------------
+	ScriptUI     (function)      [CC] getResourceText newImage newFont
+
+	[REM] The following structures are not defined in
+	the [[global]] scope. Further investigation needed.
+
+	      Bounds* Dimension* Point DrawState Environment
+	      Events FlashPlayer KeyboardState
+	      ScriptUIBrush ScriptUIFont* ScriptUIGraphics*
+	      ScriptUIImage ScriptUIPath* ScriptUIPen
+	      LayoutManager AutoLayoutManager*
+	      Margins*
+	
+	(*) These objects wake up when JSON browses a `new Window('dialog')`.
+
+	*/
+
+	//==========================================================================
+	// NATIVE FUNCTION KEYS
+	//==========================================================================
+
+	'_!':                       'UnitValue()|',
+	'_%':                       'UnitValue()|',
+	'_*':                       'UnitValue()|',
+	'_+':                       'UnitValue()|',
+	'_-':                       'UnitValue()|',
+	'_/':                       'UnitValue()|',
+	'_<':                       'UnitValue()|',
+	'_<=':                      'UnitValue()|',
+	'_==':                      'UnitValue()|',
+	'_===':                     'UnitValue()|',
+	'_~':                       'UnitValue()|',
+	// ---
+	'_Array':                   '|',
+	'_Boolean':                 '|',
+	'_Button':                  '|',
+	'_Checkbox':                '|',
+	'_Date':                    '|',
+	'_Dictionary':              '|',
+	'_DropDownList':            '|',
+	'_EditText':                '|',
+	'_Error':                   '|',
+	'_Event':                   '|',
+	'_ExternalObject':          '|',
+	'_File':                    '|',
+	'_Folder':                  '|',
+	'_Function':                '|',
+	'_Group':                   '|',
+	'_IconButton':              '|',
+	'_ListBox':                 '|',
+	'_ListItem':                '|',
+	'_Namespace':               '|',
+	'_Number':                  '|',
+	'_Object':                  '|',
+	'_Panel':                   '|',
+	'_Progressbar':             '|',
+	'_QName':                   '|',
+	'_RadioButton':             '|',
+	'_Reflection':              '|',
+	'_ReflectionInfo':          '|',
+	'_RegExp':                  '|',
+	'_ScriptUI':                '|',
+	'_Scrollbar':               '|',
+	'_Slider':                  '|',
+	'_Socket':                  '|',
+	'_StaticText':              '|',
+	'_String':                  '|',
+	'_TreeView':                '|',
+	'_UIEvent':                 '|',
+	'_UnitValue':               '|',
+	'_Window':                  '|',
+	'_XML':                     '|',
+	'_XMLList':                 '|',
+	// ---
+	'_about':                   '$|',
+	'_abs':                     'Math|',
+	'_acos':                    'Math|',
+	'_add':                     'Window|TreeView|Panel|ListBox|Group|DropDownList|',
+	'_addEventListener':        'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListItem|ListBox|IconButton|Group|EditText|DropDownList|Checkbox|Button|',
+	'_alert':                   '|Window|',
+	'_anchor':                  'String.prototype|',
+	'_as':                      'UnitValue()|',
+	'_asin':                    'Math|',
+	'_atan':                    'Math|',
+	'_atan2':                   'Math|',
+	'_beep':                    '|',
+	'_big':                     'String.prototype|',
+	'_blink':                   'String.prototype|',
+	'_bold':                    'String.prototype|',
+	'_bp':                      '$|',
+	'_ceil':                    'Math|',
+	'_center':                  'Window|',
+	'_changePath':              'Folder.prototype|File.prototype|',
+	'_charAt':                  'String.prototype|',
+	'_charCodeAt':              'String.prototype|',
+	'_close':                   'Window|Socket.prototype|File.prototype|',
+	'_colorPicker':             '$|',
+	'_compile':                 'RegExp.prototype|',
+	'_concat':                  'Array.prototype|String.prototype|',
+	'_confirm':                 '|Window|',
+	'_convert':                 'UnitValue()|',
+	'_copy':                    'File.prototype|',
+	'_cos':                     'Math|',
+	'_create':                  'Folder.prototype|',
+	'_createAlias':             'File.prototype|',
+	'_decode':                  'Folder|File|',
+	'_decodeURI':               '|',
+	'_decodeURIComponent':      '|',
+	'_defaultSettings':         'XML|',
+	'_dispatchEvent':           'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListItem|ListBox|IconButton|Group|EditText|DropDownList|Checkbox|Button|',
+	'_encode':                  'Folder|File|',
+	'_encodeURI':               '|',
+	'_encodeURIComponent':      '|',
+	'_escape':                  '|',
+	'_eval':                    '|',
+	'_evalFile':                '$|',
+	'_exec':                    'RegExp.prototype|',
+	'_execute':                 'Folder.prototype|File.prototype|',
+	'_exit':                    '|',
+	'_exp':                     'Math|',
+	'_find':                    'Window|TreeView|ListBox|DropDownList|',
+	'_findElement':             'Window|',
+	'_fixed':                   'String.prototype|',
+	'_floor':                   'Math|',
+	'_fontcolor':               'String.prototype|',
+	'_fontsize':                'String.prototype|',
+	'_fromCharCode':            'String|',
+	'_gc':                      '$|',
+	'_getClass':                'Dictionary.prototype|',
+	'_getClasses':              'Dictionary.prototype|',
+	'_getDate':                 'Date.prototype|',
+	'_getDay':                  'Date.prototype|',
+	'_getFiles':                'Folder.prototype|',
+	'_getFullYear':             'Date.prototype|',
+	'_getGroups':               'Dictionary.prototype|',
+	'_getHours':                'Date.prototype|',
+	'_getMilliseconds':         'Date.prototype|',
+	'_getMinutes':              'Date.prototype|',
+	'_getMonth':                'Date.prototype|',
+	'_getRelativeURI':          'Folder.prototype|File.prototype|',
+	'_getResourceText':         'ScriptUI|',
+	'_getSeconds':              'Date.prototype|',
+	'_getTime':                 'Date.prototype|',
+	'_getTimezoneOffset':       'Date.prototype|',
+	'_getUTCDate':              'Date.prototype|',
+	'_getUTCDay':               'Date.prototype|',
+	'_getUTCFullYear':          'Date.prototype|',
+	'_getUTCHours':             'Date.prototype|',
+	'_getUTCMilliseconds':      'Date.prototype|',
+	'_getUTCMinutes':           'Date.prototype|',
+	'_getUTCMonth':             'Date.prototype|',
+	'_getUTCSeconds':           'Date.prototype|',
+	'_getYear':                 'Date.prototype|',
+	'_getenv':                  '$|',
+	'_hasOwnProperty':          'Object.prototype|',
+	'_hide':                    'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListBox|IconButton|Group|EditText|DropDownList|Checkbox|Button|',
+	'_indexOf':                 'String.prototype|',
+	'_isEncodingAvailable':     'Folder|File|',
+	'_isFinite':                '|',
+	'_isNaN':                   '|',
+	'_isPrototypeOf':           'Object.prototype|',
+	'_isValid':                 'Object|',
+	'_isXMLName':               '|',
+	'_italics':                 'String.prototype|',
+	'_join':                    'Array.prototype|',
+	'_lastIndexOf':             'String.prototype|',
+	'_link':                    'String.prototype|',
+	'_list':                    '$|',
+	'_listLO':                  '$|',
+	'_listen':                  'Socket.prototype|',
+	'_localeCompare':           'String.prototype|',
+	'_localize':                '|',
+	'_log':                     'Math|',
+	'_match':                   'String.prototype|',
+	'_max':                     'Math|',
+	'_min':                     'Math|',
+	'_newImage':                'ScriptUI|',
+	'_newFont':                 'ScriptUI|',
+	'_notify':                  'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|'+
+	                            'ListBox|IconButton|EditText|DropDownList|Checkbox|Button|',
+	'_now':                     'Date|',
+	'_open':                    'Socket.prototype|File.prototype|',
+	'_openDialog':              'File|',
+	'_openDlg':                 'Folder.prototype|File.prototype|',
+	'_parse':                   'Date|',
+	'_parseFloat':              '|',
+	'_parseInt':                '|',
+	'_poll':                    'Socket.prototype|',
+	'_pop':                     'Array.prototype|',
+	'_pow':                     'Math|',
+	'_print':                   'File.prototype|',
+	'_prompt':                  '|Window|',
+	'_propertyIsEnumerable':    'Object.prototype|',
+	'_push':                    'Array.prototype|',
+	'_random':                  'Math|',
+	'_read':                    'Socket.prototype|File.prototype|',
+	'_readch':                  'File.prototype|',
+	'_readln':                  'Socket.prototype|File.prototype|',
+	'_remove':                  'Window|TreeView|Panel|ListBox|Group|DropDownList|Folder.prototype|File.prototype|',
+	'_removeAll':               'TreeView|ListBox|DropDownList|',
+	'_removeEventListener':     'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListItem|ListBox|IconButton|Group|EditText|DropDownList|Checkbox|Button|',
+	'_rename':                  'Folder.prototype|File.prototype|',
+	'_replace':                 'String.prototype|',
+	'_resolve':                 '|Folder.prototype|File.prototype|',
+	'_revealItem':              'ListBox|',
+	'_reverse':                 'Array.prototype|',
+	'_round':                   'Math|',
+	'_runtimeError':            'Error|',
+	'_saveDialog':              'File|',
+	'_saveDlg':                 'Folder.prototype|File.prototype|',
+	'_search':                  'String.prototype|ExternalObject|',
+	'_seek':                    'File.prototype|',
+	'_selectDialog':            'Folder|',
+	'_selectDlg':               'Folder.prototype|',
+	'_setDate':                 'Date.prototype|',
+	'_setDefaultXMLNamespace':  '|',
+	'_setFullYear':             'Date.prototype|',
+	'_setHours':                'Date.prototype|',
+	'_setMilliseconds':         'Date.prototype|',
+	'_setMinutes':              'Date.prototype|',
+	'_setMonth':                'Date.prototype|',
+	'_setSeconds':              'Date.prototype|',
+	'_setSettings':             'XML|',
+	'_setTime':                 'Date.prototype|',
+	'_setUTCDate':              'Date.prototype|',
+	'_setUTCFullYear':          'Date.prototype|',
+	'_setUTCHours':             'Date.prototype|',
+	'_setUTCMilliseconds':      'Date.prototype|',
+	'_setUTCMinutes':           'Date.prototype|',
+	'_setUTCMonth':             'Date.prototype|',
+	'_setUTCSeconds':           'Date.prototype|',
+	'_setYear':                 'Date.prototype|',
+	'_setenv':                  '$|',
+	'_settings':                'XML|',
+	'_shift':                   'Array.prototype|',
+	'_show':                    'Window|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListBox|IconButton|Group|EditText|DropDownList|Checkbox|Button|',
+	'_sin':                     'Math|',
+	'_sleep':                   '$|',
+	'_slice':                   'Array.prototype|String.prototype|',
+	'_small':                   'String.prototype|',
+	'_sort':                    'Array.prototype|',
+	'_splice':                  'Array.prototype|',
+	'_split':                   'String.prototype|',
+	'_sqrt':                    'Math|',
+	'_strike':                  'String.prototype|',
+	'_sub':                     'String.prototype|',
+	'_substr':                  'String.prototype|',
+	'_substring':               'String.prototype|',
+	'_summary':                 '$|',
+	'_sup':                     'String.prototype|',
+	'_tan':                     'Math|',
+	'_tell':                    'File.prototype|',
+	'_test':                    'RegExp.prototype|',
+	'_toDateString':            'Date.prototype|',
+	'_toExponential':           'Number.prototype|',
+	'_toFixed':                 'Number.prototype|',
+	'_toGMTString':             'Date.prototype|',
+	'_toLocaleDateString':      'Date.prototype|',
+	'_toLocaleLowerCase':       'String.prototype|',
+	'_toLocaleString':          'Array.prototype|Object.prototype|Date.prototype|Number.prototype|',
+	'_toLocaleTimeString':      'Date.prototype|',
+	'_toLocaleUpperCase':       'String.prototype|',
+	'_toLowerCase':             'String.prototype|',
+	'_toPrecision':             'Number.prototype|',
+	'_toSource':                'Window|UIEvent|TreeView|StaticText|Slider|Scrollbar|RadioButton|Progressbar|Panel|'+
+	                            'ListItem|ListBox|IconButton|Group|Event|EditText|DropDownList|Checkbox|Button|'+
+	                            'Array.prototype|Object.prototype|Function.prototype|Folder.prototype|File.prototype|'+
+	                            'Error.prototype|RegExp.prototype|Date.prototype|String.prototype|Number.prototype|'+
+	                            'ExternalObject|Array|Object|Function|Socket|ReflectionInfo|Reflection|'+
+	                            'UnitValue|QName|Namespace|Folder|File|Error|XMLList|XML|RegExp|Date|String|Number|',
+	'_toString':                'Array.prototype|Object.prototype|Function.prototype|Folder.prototype|File.prototype|'+
+	                            'Error.prototype|RegExp.prototype|Date.prototype|String.prototype|Number.prototype|'+
+	                            'Array|Object|Function|Socket|ReflectionInfo|Reflection|Folder|File|Error|'+
+	                            'RegExp|Date|String|Number|$|',
+	'_toTimeString':            'Date.prototype|',
+	'_toUTCString':             'Date.prototype|',
+	'_toUpperCase':             'String.prototype|',
+	'_toXML':                   'Dictionary.prototype|',
+	'_unescape':                '|',
+	'_uneval':                  '|',
+	'_unshift':                 'Array.prototype|',
+	'_unwatch':                 'Object.prototype|',
+	'_update':                  'Window|',
+	'_UTC':                     'Date|',
+	'_valueOf':                 'Object.prototype|Date.prototype|String.prototype|Number.prototype|',
+	'_watch':                   'Object.prototype|',
+	'_write':                   'Socket.prototype|File.prototype|$|',
+	'_writeln':                 'Socket.prototype|File.prototype|$|',

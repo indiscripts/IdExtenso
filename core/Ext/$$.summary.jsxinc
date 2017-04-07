@@ -1,0 +1,83 @@
+/*******************************************************************************
+
+		Name:           summary
+		Desc:           Add a $.summary.diff() tool.
+		Path:           /core/Ext/$$.summary.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            $.summary.diff()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170316 (YYMMDD)
+		Modified:       170316 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	The native $.summary() method returns a list (string) of instance
+	counts for various objects created in memory. It is not as detailed as
+	$.list() but it is sufficient for basic debugging purposes. A typical
+	result of $.summary() looks like
+
+	    6 Array
+	    1 $
+	    1 Number
+	    1 XML
+	    1 RegExp
+	    1 Socket
+	    1 global
+	    1 File
+	    1 Boolean
+	    1 Date
+	    1 Folder
+	    8 Object
+	    1 String
+	    1 Error
+	  193 Function
+	    1 Math
+
+	each line being in the form <count><space><class>, with <count> right-
+	padded on 5 digits (#####.)
+	
+	As suggested by Dirk Becker in its original $.summary.diff() snippet,
+	successive calls to $.summary() allow to track the number of newly
+	created objects during some process. This is the purpose of
+	$.summary.diff(), which only highlights increments of objet counters
+	between two successive invocations.
+	
+	[REM] It is recommended (although not required) to clean up memory
+	using double garbage collection--$.gc();$.gc();--before calling
+	$.summary.diff() again.
+
+	*/
+
+	//==========================================================================
+	// $.summary.__snap__ ; $.summary.diff
+	//==========================================================================
+
+	$.summary.__snap__ = function(_,/*\d+*/n,/* [^ ]+*/k,/*[\r\n]?*/LF,  o)
+	//----------------------------------
+	// Replacement function. (Do not call directly.)
+	// [REM] Data are cached in $.summary.snapshot.
+	{
+		o = $.summary.snapshot || ($.summary.snapshot={});
+	
+		return 0 < (n = -(o[k]||0) + (o[k]=parseInt(n,10))) ?
+			( ('     '+n).substr(-5) + k + LF ) :
+			'';
+	};
+
+	($.summary.diff = function diff()
+	//----------------------------------
+	// The diff function (API).
+	// Auto-invocation at declaration stage to feed the 1st snapshot.
+	// => str (list of incremented counters separated by <NL>.)
+	{
+		return $.summary().replace(/ *(\d+)( [^ ]+)([\r\n]?)/g, $.summary.__snap__);
+	})();

@@ -1,0 +1,351 @@
+/*******************************************************************************
+
+		Name:           File
+		Desc:           File and Folder related routines.
+		Path:           /core/$$.File.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Module.
+		API:            =toFile() readBinary() writeBinary()
+		                readUTF8() writeUTF8() appendUTF8()
+		                temp()
+		DOM-access:     NO
+		Todo:           test.jsx.
+		Created:        160130 (YYMMDD)
+		Modified:       170407 (YYMMDD)
+
+*******************************************************************************/
+
+;eval(__(MODULE, $$, 'File', 170407, 'toFile'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	Binary encoding. - A special encoder, BINARY, is provided for binary
+	I/O. This encoder simply extends every 8-bit character it finds to a
+	Unicode character between 0 and 255. When using this encoder to write
+	binary files, the encoder writes the lower 8 bits of the Unicode
+	character. For example, to write the Unicode character 1000, which is
+	0x3E8, the encoder actually writes the character 232 (0xE8).
+
+	BOM. - The data of some of the common file formats (UCS2, UCS4, UTF8,
+	UTF16) starts with a special byte order mark (BOM) character (U+FEFF).
+	The File.open method reads a few bytes of a file looking for this
+	character. If it is found, the corresponding encoding is set
+	automatically and the character is skipped. If there is no BOM
+	character at the beginning of the file, open() reads the first 2 KB of
+	the file and checks whether the data might be valid UTF-8 encoded
+	data, and if so, sets the encoding to UTF-8.
+
+	When using UTF-8 encoding or 16-bit Unicode, always write the BOM
+	character "\uFEFF" as the first character of the file.
+
+	To write 16-bit Unicode files in UTF-16 format, use the encoding UCS-2.
+	This encoding uses whatever byteorder format the host platform
+	supports.
+
+	Built-in encodings are:
+	      BINARY
+	      ASCII==US-ASCII==ISO646-US==ISO-646.IRV:1991==ISO-IR-6
+	      UTF8==UTF-8==UNICODE-1-1-UTF-8==UNICODE-2-0-UTF-8==X-UNICODE-2-0-UTF-8
+	      // ---
+	      UTF16==UTF-16==ISO-10646-UTF-16
+	      UTF16LE==UTF-16LE==ISO-10646-UTF-16LE
+	      UTF16BE==UTF-16BE==ISO-10646-UTF-16BE
+	      // ---
+	      UCS2==UCS-2==ISO-10646-UCS-2
+	      UCS2LE==UCS-2LE==ISO-10646-UCS-2LE
+	      UCS2BE==UCS-2BE==ISO-10646-UCS-2BE
+	      // ---
+	      UCS4==UCS-4==ISO-10646-UCS-4
+	      UCS4LE==UCS-4LE==ISO-10646-UCS-4LE
+	      UCS4BE==UCS-4BE==ISO-10646-UCS-4BE
+	      // ---
+	      ANSI-X3.4-1968==CP367==IBM367==US==ISO646.1991-IRV
+	      CP1252==WINDOWS-1252==MS-ANSI
+	      ISO-8859-1==ISO-8859-1==ISO-8859-1:1987==ISO-IR-100==LATIN1
+	      MACINTOSH==X-MAC-ROMAN
+
+	The ASCII encoder raises errors for characters greater than 127, and
+	the BINARY encoder simply converts between bytes and Unicode
+	characters by using the lower 8 bits. The latter encoder is convenient
+	for reading and writing binary data.
+	
+	
+	File and Folder .execute() method. - Should be considered equivalent
+	to Right-Click + Open from the user perspective. In particular,
+	File.execute() is not deterministic since we don't know what
+	application might be associated to the file suffix. On Mac OS .log
+	files are usually associated to the console. In both systems .txt
+	files are usually associated to any text editor available. JS and
+	ExtendScript files (.js, .jsx) might be opened by any Adobe app,
+	or custom EDI...
+
+
+	File Creation. - To create a File object, use the File method or the
+	new operator. The constructor accepts full or partial path names, and
+	returns the new object. The CRLF sequence for the file is preset to
+	the system default, and the encoding is preset to the default system
+	encoding.
+	
+	      File(path);      // can return a Folder object!
+	      new File(path);  // always returns a File object
+
+	If the path refers to an existing folder: the File method returns a
+	Folder object instead of a File object; the new operator returns a
+	File object for a nonexisting file with the same name.
+
+
+	Opening a file. - The open method attempts to detect the encoding of
+	the open file. It reads a few bytes at the current location and tries
+	to detect the Byte Order Mark character 0xFFFE. If found, the current
+	position is advanced behind the detected character and the encoding
+	property is set to one of the strings UCS-2BE, UCS-2LE, UCS4-BE, UCS-
+	4LE, or UTF-8. If the marker character is not found, it checks for
+	zero bytes at the current location and makes an assumption about one
+	of the preceding formats (except UTF-8). If everything fails, the
+	encoding property is set to the system encoding.
+
+
+	File errors. - The following messages can be returned in the `error`
+	property:
+	--------------------------------------------------------------------
+	File or folder does not exist      The file or folder does not exist,
+	                                   but the parent folder exists.
+	--------------------------------------------------------------------
+	File or folder already exists      The file or folder already exists.
+	--------------------------------------------------------------------
+	I/O device is not open             An I/O operation was attempted on
+	                                   a file that was closed.
+	--------------------------------------------------------------------
+	Read past EOF                      Attempt to read beyond the end of
+	                                   a file.
+	--------------------------------------------------------------------
+	Conversion error                   The content of the file cannot be
+	                                   converted to Unicode.
+	--------------------------------------------------------------------
+	Partial multibyte character found  The character encoding of the file
+	                                   data has errors.
+	--------------------------------------------------------------------
+	Permission denied                  The OS did not allow the attempted
+	                                   operation.
+	--------------------------------------------------------------------
+	Cannot change directory            Cannot change the current folder.
+	--------------------------------------------------------------------
+	Cannot create                      Cannot create a folder.
+	--------------------------------------------------------------------
+	Cannot rename                      Cannot rename a file or folder.
+	--------------------------------------------------------------------
+	Cannot delete                      Cannot delete a file or folder.
+	--------------------------------------------------------------------
+	I/O error                          Unspecified I/O error.
+	--------------------------------------------------------------------
+	Cannot set size                    Setting the file size failed.
+	--------------------------------------------------------------------
+	Cannot open                        Opening of a file failed.
+	--------------------------------------------------------------------
+	Cannot close                       Closing a file failed.
+	--------------------------------------------------------------------
+	Read error                         Reading from a file failed.
+	--------------------------------------------------------------------
+	Write error                        Writing to a file failed.
+	--------------------------------------------------------------------
+	Cannot seek                        Seek failure.
+	--------------------------------------------------------------------
+	Cannot execute                     Unable to execute the specified
+	                                   file.
+	--------------------------------------------------------------------
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		FERR: false,                                        // No-File flag. Must be falsy (0|false|null|undefined.)
+		
+		EXST: function(/*File*/ff)
+		//----------------------------------
+		// Whether `ff` actually exists as a File *and* can be read.
+		// => ff [OK] | FERR [KO]
+		{
+			return ff.exists && ff.open('r') ? (ff.close(), ff) : this.FERR;
+		},
+		
+		TOFL: function(/*File|str*/fx,/*0|1*/CHK)
+		//----------------------------------
+		// Inner alias of toFile.
+		{
+			return ( (fx instanceof File) ? fx : (fx=new File(String(fx))) ) ? 
+				( CHK ? this.EXST(fx) : fx ) : this.FERR;
+		},
+		
+		OPEN: function(/*File|str*/fx,/*w|e|r*/mde,/*BINARY|UTF8|...*/enc,  ff)
+		//----------------------------------
+		{
+			if( !(ff=this.TOFL(fx,+('w'!=mde))) )
+			{
+				if( 'e' != mde ) return this.FERR;
+				ff = callee.call(this,fx,'w',enc);
+				if( !ff ) return this.FERR;
+				ff.close();
+			}
+
+			ff.encoding = 'BINARY';
+			if( !ff.open(mde) )
+			{
+				$.global[callee.µ.__root__].warn(__("%1 > Cannot open the file %2 in '%3' mode.", callee.µ, String(ff.fullName).toSource(), mde));
+				return this.FERR;
+			}
+			ff.encoding = enc;
+
+			// Unicode U+FEFF (UTF16) converts into UTF8 `EF BB BF`
+			// ---
+			if( 'w'==mde && 'U'==enc[0] ) ff.write('\uFEFF');
+
+			if( 'e'==mde ) ff.seek(0,/*EOF*/2);
+
+			return ff;
+		},
+	})
+
+	[PRIVATE]
+	
+	({
+		TPFX: 'idex_',                                      // Temporary file prefix.
+		TSFX: 'tmp',                                        // Temporary file suffix.
+		TFIL: µ['~'].FERR,                                  // Temporary file.
+		
+		TRMV: function()
+		//----------------------------------
+		// Temporary File Remover.
+		{
+			this.TFIL && (this.TFIL.remove(),(this.TFIL=this.FERR));
+		},
+		
+		STM$: function($0)
+		//----------------------------------
+		// STMP replacer.
+		{
+			return String.fromCharCode(0x41+$0.charCodeAt(0));
+		},
+
+		STMP: function(/*4..9*/n)
+		//----------------------------------
+		// Build a timestamp formed of `n` letters in [a-z]
+		// => str
+		{
+			return Date.now().toString(26).substr(-n).replace(RegExp.DIGI,this.STM$);
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		onLoad: function onLoad_()
+		//----------------------------------
+		{
+			// Remove temp file.
+			// ---
+			callee.µ['~'].TRMV();
+		},
+
+		toFile: function toFile_$File$S_b_$File$$false$(/*File|str*/fx,/*bool=0*/CHECK_EXIST)
+		//----------------------------------
+		// Return a File object based on fx (File or string.)
+		// If CHECK_EXST is on, make sure that the file actually exists.
+		// [REM] This function *does not create* the file on disk.
+		// => File | FERR
+		{
+			return callee.µ['~'].TOFL(fx,CHECK_EXIST?1:0);
+		},
+
+		readBinary: function readBinary_$File$S_S$false$(/*File|str*/fx)
+		//----------------------------------
+		// Read a file in BINARY mode and return the resulting string.
+		// => str | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'r','BINARY')) &&
+				[fx.read(),fx.close()][0];
+		},
+
+		writeBinary: function writeBinary_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s)
+		//----------------------------------
+		// Write the input string in a File in BINARY mode.
+		// => File | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'w','BINARY')) &&
+				(fx.write(s), fx.close(), fx);
+		},
+
+		readUTF8: function readUTF8_$File$S_S$false$(/*File|str*/fx)
+		//----------------------------------
+		// Read a file in UTF8 mode and return the resulting string.
+		// => str | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'r','UTF8')) &&
+				[fx.read(),fx.close()][0];
+		},
+
+		writeUTF8: function writeUTF8_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s)
+		//----------------------------------
+		// Write the input string in a File in UTF8 mode.
+		// => File | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'w','UTF8')) &&
+				(fx.write(s), fx.close(), fx);
+		},
+
+		appendUTF8: function appendUTF8_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s,/*bool=0*/NEW_LINE)
+		//----------------------------------
+		// Append the input string into a File in UTF8 mode.
+		// => File | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'e','UTF8')) &&
+				(fx[NEW_LINE?'writeln':'write'](s), fx.close(), fx);
+		},
+
+		temp: function temp_s_s_b_b_$File$$false$(/*?str*/s,/*str='tmp'*/t,/*bool=0*/SHOW_FILE,/*bool=0*/AS_BIN,  I)
+		//----------------------------------
+		// Create a temporary file having the suffix `t` (default .tmp)
+		// and write the string s. If SHOW_FILE is true call execute()
+		// on it and prevent the file from being auto-removed.
+		// ---
+		// If AS_BIN is on, use the BINARY mode (default is UTF8.)
+		// If no arg is supplied, remove existing temp file now.
+		// ---
+		// [REM] The temp file is automatically removed at each call,
+		// and at next loading stage, unless SHOW_FILE==1. Do not use
+		// this method to create files that require some persistence!
+		// => File | FERR
+		{
+			// Clear it first.
+			// ---
+			(I = callee.µ['~']).TRMV();
+			if( 'undefined' == typeof s ) return I.FERR;
+
+			// Normalize the suffix and build the whole path.
+			// => t :: "/path/to/temp/<prefix><timestamp>.<suffix>"
+			// ---
+			( 'string' == typeof t && t.length ) || (t=I.TSFX);
+			'.' == t[0] || (t = '.' + t);
+			t = String(Folder.temp) + '/' + I.TPFX + I.STMP(5) + t;
+
+			// Write the file.
+			// ---
+			I.TFIL = t = callee.µ['write'+(AS_BIN?'Binary':'UTF8')](t,s);
+
+			// Special case for SHOW_FILE==1.
+			// ---
+			SHOW_FILE && t && ((I.TFIL=I.FERR),t.execute());
+
+			return t;
+		},
+	})

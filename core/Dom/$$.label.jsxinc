@@ -1,0 +1,93 @@
+/*******************************************************************************
+
+		Name:           Label
+		Desc:           Label-related API of the Dom module.
+		Path:           /core/Dom/$$.label.jsxinc
+		Require:        $$.JSON
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Dom module.
+		API:            fromLabel() toLabel() -> $$
+		DOM-access:     extractLabel() insertLabel()
+		Todo:           ---
+		Created:        170324 (YYMMDD)
+		Modified:       170324 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		FLBL : function(/*dom*/o,/*str*/s,/*any*/defRet)
+		//----------------------------------
+		{
+			s = o.extractLabel(s);
+			return s ? $.global[callee.µ.__root__].JSON.eval(s) : defRet;
+		},
+	
+		TLBL : function(/*dom*/o,/*str*/s,/*any*/x)
+		//----------------------------------
+		{
+			x = $.global[callee.µ.__root__].JSON.lave(x);
+			o.insertLabel( s, x );
+
+			// Force doc resolution (seems to prevent CS5.5 crash.)
+			// ---
+			(o instanceof Document)&&(o.getElements());
+			
+			return x;
+		},
+
+	})
+	
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		fromLabel : function fromLabel_D_S_x_X(/*dom*/osp,/*str*/label,/*any=undefined*/defRet)
+		//----------------------------------
+		// Read osp's label and return the un-serialized data.
+		// [REM] Supports singular spec only.
+		{
+			// Assertions.
+			// ---
+			( osp===Object(osp) && ('extractLabel' in osp) ) ||
+				$.global[callee.µ.__root__].error("Invalid 'osp' argument.",callee);
+			label ||
+				$.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
+	
+			// Default ret.
+			// ---
+			('undefined'==typeof defRet) && (defRet=void 0);
+			
+			return callee.µ['~'].FLBL(osp,label,defRet);
+	
+		}.copy('..'),
+	
+		toLabel : function toLabel_D_S_X_S(/*dom*/osp,/*str*/label,/*any*/x)
+		//----------------------------------
+		// Serialize x (thru JSON) and save it into osp as a label.
+		// Supports collective specifier.
+		// => serialized string.
+		{
+			// Assertions.
+			// ---
+			( osp===Object(osp) && ('insertLabel' in osp) ) ||
+				$.global[callee.µ.__root__].error("Invalid 'osp' argument.",callee);
+			label ||
+				$.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
+	
+			return callee.µ['~'].TLBL(osp,label,x);
+	
+		}.copy('..'),
+
+	})

@@ -1,0 +1,180 @@
+/*******************************************************************************
+
+		Name:           date
+		Desc:           Extends Date features (static methods.)
+		Path:           /core/Ext/$$.date.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext.
+		API:            ymdGuess() guess()
+		                isLeapYear() daysInMonth() dayOfYear()
+		DOM-access:     ---
+		Todo:           Performance testing.
+		Created:        170306 (YYMMDD)
+		Modified:       170316 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	The JavaScript Date object supports a number of UTC (universal)
+	methods, as well as local time methods. UTC, also known as Greenwich
+	Mean Time (GMT), refers to the time as set by the World Time Standard.
+	The local time is the time known to the computer where JavaScript is
+	executed.
+
+	Where Date is called as a constructor with more than one argument, the
+	specified arguments represent local time. If UTC is desired, use
+	new Date(Date.UTC(...)) with the same arguments.
+
+	Native string methods available in ExtendScript Date.prototype are:
+
+	      toDateString
+	      toTimeString
+	      toLocaleString
+	      toLocaleDateString
+	      toLocaleTimeString
+	      toGMTString
+	      toUTCString
+	      toString
+
+	ExtendScript also statically provides:
+
+	      Date.parse(str) => uint (dateValue)
+	      Date.now()      => uint (dateValue)
+	      Date.UTC(...)   => uint (dateValue)
+
+	Valid construction syntaxes are:
+
+	      new Date(); // or just `new Date`
+	      new Date(dateValue);
+	      new Date(dateString);
+	      new Date(year, month[, date[, hours[, minutes[, seconds[, milliseconds]]]]]);
+	
+	The number `dateValue` is an uint representing the number of milliseconds
+	since 1 January 1970 00:00:00 UTC, with leap seconds ignored (Unix
+	Epoch.) Note that, by contrast, most Unix time stamp functions count in
+	seconds. A day holds 86,400,000 milliseconds. JS Date object range is
+	-100,000,000 days to 100,000,000 days relative to 01 January, 1970 UTC.
+	
+	Warning. - `new Date(x)` is invalid *if x is undefined*. Make sure you
+	*formally* skip the argument in such case,
+	
+	      new Date(x) // [KO] if 'undefined'==typeof x
+	vs.
+	      new Date()  // [OK] equivalent to new Date
+	
+	The string `dateString` should be in a format recognized by the Date.parse()
+	method and RFC2822-compliant, cf. https://tools.ietf.org/html/rfc2822#page-14
+	But parsing of date strings with the Date constructor (and Date.parse, they
+	are equivalent) is discouraged. Support for RFC2822 is by convention only.
+	Support for ISO8601 formats differs in that date-only strings
+	(e.g. "1970-01-01") are treated as UTC, not local.
+
+	Where Date is called as a constructor with more than one argument, if
+	values are greater than their logical range (e.g. 13 is provided as
+	the month value or 70 for the minute value), the adjacent value will
+	be adjusted. E.g. new Date(2013, 13, 1) is equivalent to new
+	Date(2014, 1, 1), both create a date for 2014-02-01 (note that the
+	month is 0-based). Similarly for other values: new Date(2013, 2, 1, 0,
+	70) is equivalent to new Date(2013, 2, 1, 1, 10) which both create a
+	date for 2013-03-01T01:10:00.
+
+	Date objects can only be instantiated by calling JavaScript Date as
+	a constructor: calling it as a regular function (i.e. without the new
+	operator) will return a *string* representing the current date and time
+	(instead of a Date object.)
+
+	*/
+
+	//==========================================================================
+	// Date.ymdGuess ; Date.guess()
+	//==========================================================================
+
+	Date.ymdGuess = function ymdGuess(/*str|uint*/y,/*str|uint*/m,/*str|uint*/d)
+	//----------------------------------
+	// Attemps to parse `y-m-d` as a (local) day Date.
+	// y  ::  year in 0..99 or > 1970, either as a string or a number.
+	// m  ::  month in 1..12 (natural numbering.)
+	// d  ::  day in 1..31.
+	// [REM] Used by Date.guess().
+	// => Date
+	{
+		return new Date(
+			1970 <= (y=parseInt(y,10)) ? y : ( (70 <= (y%=100) ? 1900 : 2000) + y ),
+			-1 + parseInt(m,10),
+			parseInt(d,10)
+			);
+	};
+	
+	Date.guess = function guess(/*any*/x,  t)
+	//----------------------------------
+	// Attemps to parse `x` as a Date.
+	// => Date
+	{
+		switch( typeof x )
+		{
+			case 'undefined' :
+				return new Date;
+
+			case 'object' :
+				return null===x ?
+					new Date :
+					( x instanceof Date ? x : callee(x.valueOf()) );
+
+			case 'string' :
+				return x===String(t=parseInt(x,10)) ?
+					callee(t) :
+					(
+						( t=x.match(callee.Q1||(callee.Q1=/^((?:[12]\d)?\d\d)(\D)([01]\d)\2([0-3]\d)$/)) ) ?
+						Date.ymdGuess(t[1],t[3],t[4]) :
+						new Date(Date.parse(x))
+					);
+			
+			case 'number' :
+				return 0 >= (x=parseInt(String(x),10)) ?
+					new Date :
+					(
+						( t=String(x).match(callee.Q2||(callee.Q2=/^((?:[12]\d)?\d\d)([01]\d)([0-3]\d)$/)) ) ?
+						Date.ymdGuess(t[1],t[2],t[3]) :
+						new Date(x)
+					);
+
+			default :
+				return new Date;
+		}
+	};
+
+	//==========================================================================
+	// Date.isLeapYear() ; Date.daysInMonth() ; Date.dayOfYear()
+	//==========================================================================
+
+	Date.isLeapYear = function isLeapYear(/*uint*/y)
+	//----------------------------------
+	// Whether `y` is a leap year.
+	// => 1 | 0
+	{
+		return +!( 3&y || !(y%100) && y%400 );
+	};
+
+	Date.daysInMonth = function daysInMonth(/*0..11*/m,/*uint*/y)
+	//----------------------------------
+	// Number of days in month `m` (0-based) of year `y`.
+	// => 28 | 29 | 30 | 31
+	{
+		return 1==m++ ?
+			( 28+Date.isLeapYear(y) ) :
+			( 30+(1&((8&m)?++m:m)) );
+	};
+
+	Date.dayOfYear = function dayOfYear(/*Date*/d)
+	//----------------------------------
+	// Given a Date `d` returns its day-of-year (0-based.)
+	// => 0..364  |  0..365 (leap year)
+	{
+		return ~~( (d-new Date(d.getFullYear(),0,1)) / 864e5 );
+	};

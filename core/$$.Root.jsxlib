@@ -1,0 +1,396 @@
+/*******************************************************************************
+
+		Name:           $$ (Root)
+		Desc:           IdExtenso Root module.
+		Path:           /core/$$.Root.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Module.
+		API:            =load() unload() resolve() isLoaded() kill() clone() uid()
+		                beep() error() receiveError()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        150501 (YYMMDD)
+		Modified:       170407 (YYMMDD)
+
+*******************************************************************************/
+
+;eval(__(MODULE, '$.global', $$, 170407, 'load'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	This is the root module of the framework. It provides its most
+	critical features and shouldn't be edited without caution.
+
+	The root module (referred to as `$$` in normal distributions) is
+	loaded in the [[global]] scope, so all public methods or properties
+	are easy to access from the outside using the syntax
+	`$$.publicFeature`. For example, `$$.load('TRACE')` will load
+	IdExtenso in trace mode.
+	
+	Then, a number of submodules (`$$.Env`, `$$.File`, etc) are
+	automatically installed within the root space and form together
+	the 'core' distribution. (All core modules are required.)
+
+	Optional modules, which can be included manually according to the
+	particular needs of your project, are provided in the /etc/ branch
+	of the present distribution.
+
+	*/
+
+
+	[PRIVATE]
+
+	({
+		// Already declared at this stage:
+		// __load__ : 0
+		// __mods__ : { '/':{} },
+		// in which all key-value items are to be structured as follows,
+		// <module_path> => { <public_func_key> => <func_name>|<alias_func_path> }
+
+		// HELP: [],
+		
+		// `IdExtenso` MD5 (-> uid.)
+		// This string is fixed and won't depend on version number.
+		// ---
+		MDID : '7127bf261e23104d72f6ea2b33f0d7c1',
+		
+		KILL : function(/*ref&*/o,  k,rx,t)
+		//----------------------------------
+		// Object killer.
+		{
+			if( o instanceof Array && (k=o.length) )
+			{
+				for( ; k-- ; o[k]===Object(o[k]) && callee(o[k]) );
+				o.length = 0;
+			}
+	
+			rx = o.reflect;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				
+				// Ignore non-writeable or type-unknown elements
+				// ---
+				t = rx.find(k);
+				if( (!t) || ('readwrite'!=t.type) || ('unknown'==t.dataType) ) continue;
+				
+				// Kill o[k] (noop if it's not an object)
+				// ---
+				o[k]===Object(o[k]) && callee(o[k]);
+				
+				// Delete o[k]
+				// ---
+				delete o[k];
+			}
+		},
+
+		CLNE : function(/*ref*/o)
+		//----------------------------------
+		// Object cloner.
+		// => new object
+		{
+			return callee.µ.JSON.eval(callee.µ.JSON.lave(o));
+		},
+
+		RSLV: function(/*str*/s,  r,p,t)
+		//----------------------------------
+		// Resolve Path => any | undefined
+		{
+			for(
+				r=$.global, s=s.substr(1) ;
+				0 < (p = s.indexOf('/')) ;
+				r.hasOwnProperty(t=s.substr(0,p)) ? (r=r[t],s=s.substr(1+p)) : (r=void 0,s='')
+			);
+
+			return r;
+		},
+
+		MDPS: function(  q,o,k,z)
+		//----------------------------------
+		// Module Paths => str[]&
+		{
+			(q=callee.Q||(callee.Q=[])),(o=this.__mods__),(z=0);
+			for( k in o ) '/' != k && o.hasOwnProperty(k) && q[z++]=k;
+			return (q.length=z), q;
+		},
+		
+		LOOP: function(/*fct(mod)*/fmod,/*0|1=0*/KEEP_ROOT,  a,n,i)
+		//----------------------------------
+		// Loop Through Modules Forward => undefined
+		{
+			for(
+				a=this.MDPS(), n=a.length, i=KEEP_ROOT?-1:0 ;
+				++i < n ;
+				fmod.call(this,this.RSLV(a[i]))
+			);
+		},
+
+		BACK: function(/*fct(mod)*/fmod,/*0|1=0*/KEEP_ROOT,  t,a,z,i)
+		//----------------------------------
+		// Loop Through Modules Backward => undefined
+		{
+			for(
+				a=this.MDPS(), z=KEEP_ROOT?-1:0, i=a.length ;
+				--i > z ;
+				fmod.call(this,this.RSLV(a[i]))
+			);
+		},
+
+		LDMD: function(/*obj&*/mod,/*?any*/x,/*?any*/y)
+		//----------------------------------
+		// Load Module => 0:noop | 1:processed
+		{
+			if( mod.__load__ ) return 0;
+
+			if( callee.__first__ && mod.hasOwnProperty('onEngine') )
+			{
+				callee.µ.trace(__("%1 > %2 [%3] Calling onEngine().", callee.µ, mod, mod.__modf__||'unknown'));
+				mod.onEngine(x,y);
+			}
+
+			if( mod.hasOwnProperty('onLoad') )
+			{
+				callee.µ.trace(__("%1 > %2 [%3] Calling onLoad().", callee.µ, mod, mod.__modf__||'unknown'));
+				return false===mod.onLoad(x,y) ? 0 : (mod.__load__=1);
+			}
+
+			mod.__load__ = 1;
+			return 0;
+
+		}.setup({ __first__:1 }),
+
+		ULMD: function(/*obj&*/mod)
+		//----------------------------------
+		// Unload Module => 0:noop | 1:processed
+		{
+			if( !mod.__load__ ) return 0;
+
+			if( mod.hasOwnProperty('onUnload') )
+			{
+				callee.µ.trace(__("%1 > Calling %2.onUnload().", callee.µ, mod));
+				return false===mod.onUnload() ? 0 : ((mod.__load__=0),1);
+			}
+			
+			mod.__load__ = 0;
+			return 0;
+		},
+		
+		SSCL: function(  G)
+		//----------------------------------
+		// Global cleaner after include stage.
+		{
+			G = $.global;
+
+			// Counterpart of $$/Ext.
+			// ---
+			delete Function.prototype.copy;
+
+			G.PRIVATE && delete Function.prototype[G.PRIVATE];
+			G.PUBLIC && delete Function.prototype[G.PUBLIC];
+			G.PARENT && delete Function.prototype[G.PARENT];
+
+			delete Object.prototype.setup;
+			delete Object.prototype.keys;
+			
+			delete G.PRIVATE;
+			delete G.PUBLIC;
+			delete G.PARENT;
+			delete G.__path__;
+			
+			delete G.MODULE;
+			delete G.µ;
+			
+			// Live objects cleaner.
+			// [WARN] Do not delete `G.app`!
+			// ---
+			delete G.Locale;
+			
+			'$$'==callee.µ.name || (delete G['$$']);
+		},
+		
+		CSTG:
+		{
+		#include "Root/$$.casting.jsxres"
+		},
+	})
+
+	#include "Root/$$.errors.jsxinc"
+
+	[PUBLIC]
+	({
+		// ---
+		// The root module has no onLoad handler,
+		// since all is done straight from $$.load.
+		// The root module has no onUnload handler,
+		// since all is done straight from $$.unload.
+		// ---
+
+		load: function load_ts_B(/*-1|0|1|'TRACE'|'MUTE'|'WARN'=0*/logLevel,  $$,I,ts)
+		//----------------------------------
+		// Triggers the whole loading stage. Call onEngine once, updates dynamic data.
+		// The client should invoke $$.load() when all needed modules have been included.
+		// A full program can, temporarily or definitely, call $$.unload() at some point
+		// to free up memory. Then it may call $$.load() again to reload needed modules.
+		// Loading (resp. unloading) has no effect if $$ is already loaded (resp. unloaded.)
+		// [REM] Engine-persistent tasks should be processed through onEngine handlers.
+		// ---
+		// logLevel :: one of 'MUTE' (or 0), 'WARN' (or 1), 'TRACE' (or -1), or undefined.
+		// Default mode is MUTE, then log level is preserved til the client changes it
+		// using either $$.mute(/*true*/), $$.warn(true), or $$.trace(true).
+		// (See the Log module for detail.)
+		// ---
+		// => 1 (load OK) ; 0 (noop)
+		{
+			I=($$=callee.µ)['~'];
+
+			// Already loaded?
+			// ---
+			if( $$.__load__ )
+			{
+				(+$$.warn) && $$.warn(__( "%1 > IdExtenso is already loaded.", callee.µ));
+				return 0;
+			}
+
+			// Initialize the Log.
+			// ---
+			$$.Log.init(logLevel);
+			
+			// If log level is MUTE, it may still be useful to force
+			// warning errors in the log file while debugging a script.
+			// This is is done by turning logErrors on. By default
+			// this option is activated in non-JSXBIN scripts.
+			// ---
+			$$.logErrors = 1 - $$.inBin;
+
+			// Conditional trace, timestamp.
+			// ---
+			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%3'...", callee.µ,callee.µ.__modf__/1e5,$$.Env.idEngine())));
+
+			// Engine state.
+			// ---
+			I.LDMD.__first__ ? I.SSCL() : ($$.Env['~'].ENST=0);
+
+			// Load modules (dynamic data.)
+			// ---
+			I.LOOP(I.LDMD);
+			delete I.LDMD.__first__;
+
+			// First snapshot [TODO]
+			// ---
+			// $$.snapshot();
+
+			// Trace loading time.
+			// ---
+			(+$$.trace) && $$.trace(__( "%1 > IdExtenso is now loaded. (Loading time: %2ms.)", callee.µ, Date.now() - ts));
+
+			// Set and return the __load__ flag.
+			// ---
+			return ($$.__load__=1);
+		},
+
+		unload: function unload_B(  $$,I,ts)
+		//----------------------------------
+		// Unload framework's data, calling modules' onUnload handlers in reversed
+		// order, and resetting dynamic data to their default values.
+		// [REM] Unloading $$ is highly recommended when a session-persistent
+		// program is closing, as this allows each included module to update
+		// dynamic data when the program re-runs.
+		// => 1 (unload OK) ; 0 (noop)
+		{
+			I=($$=callee.µ)['~'];
+
+			// Already unloaded?
+			// ---
+			if( !$$.__load__ ) return 0;
+
+			// Conditional trace, timestamp.
+			// ---
+			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is unloading...", callee.µ)));
+
+			// Unload modules (clear dynamic data.)
+			// ---
+			I.BACK(I.ULMD);
+
+			// ---
+			// [REM] We no longer garbage-collect refs using ($.gc();$.gc();)
+			// since this may make ID crash in some versions (?)
+			// --
+
+			// Trace unloading time.
+			// ---
+			(+$$.trace) && $$.trace(__( "%1 > IdExtenso is now unloaded. (Unloading time: %2ms.)", callee.µ, Date.now() - ts));
+
+			// Automatic Log.show (if log level != 0.)
+			// ---
+			if( $$.Log() )
+			{
+				$$.Log.mute();
+				$$.Log.show();
+			}
+			
+			// Unset the __load__ flag and return 1.
+			// ---
+			return 1-($$.__load__=0);
+		},
+
+		resolve: function resolve_S_X(/*str*/path)
+		//----------------------------------
+		// Resolve a path--either absolute or relative to $$--into
+		// *whatever* it is referring to.
+		// Eg $$.resolve("/$$/Env/")   => the Env module
+		//    $$.resolve("Env/~/OSYS") => the OSYS private key in Log
+		//    $$.resolve("/test")      => $.global.test, or undefined
+		// => module | method | any | undefined
+		{
+			('string' == typeof path) || path='';
+
+			// If path is not absolute, it is assumed based on '/$$/'
+			// ---
+			'/'==path[0] || (path=callee.µ.__path__+path);
+			'/'==path.substr(-1) || (path+='/');
+
+			return callee.µ['~'].RSLV(path);
+		},
+		
+		isLoaded: function isLoaded_s_B(/*?str*/path,  m)
+		//----------------------------------
+		// Tells whether a module path refers to a loaded module.
+		// If path is falsy/undefined, tells whether $$ is loaded.
+		// ---
+		// Eg $$.isLoaded("/$$/Env/")   => is the Env module loaded?
+		//    $$.isLoaded("Env/")       => idem (using relative path)
+		//    $$.isLoaded()             => is $$ loaded?
+		// => 0 | 1
+		{
+			return (m=callee.µ.resolve(path)) && m.__load__ ? 1 : 0;
+		},
+		
+		kill: function kill_x_(/*any&*/x)
+		//----------------------------------
+		// Destroy x and return undefined.
+		{
+			return ((x===Object(x)) && callee.µ['~'].KILL(x)), (void 0);
+		},
+		
+		clone: function clone_x_X(/*any*/x)
+		//----------------------------------
+		// Clone x (through JSON.)
+		{
+			return (x===Object(x)) ? callee.µ['~'].CLNE(x) : x;
+		},
+		
+		uid: function uid_H()
+		//----------------------------------
+		// Unique ID of the framework.
+		// => 32 char hexa string.
+		{
+			return callee.µ['~'].MDID;
+		},
+
+	})

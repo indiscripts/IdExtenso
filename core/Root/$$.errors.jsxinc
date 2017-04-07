@@ -1,0 +1,407 @@
+/*******************************************************************************
+
+		Name:           Errors
+		Desc:           Error-related API of the Root module.
+		Path:           /core/Root/$$.errors.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Root module.
+		API:            beep() logErrors error() receiveError()
+		DOM-access:     ---
+		Todo:           refine error and receiveError
+		Created:        150502 (YYMMDD)
+		Modified:       170328 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	
+	[ECMA] The function call Error(...) is equivalent to the object creation
+	expression new Error(...) with the same arguments.
+	
+	Properties of an Error instance in ExtendScript. (All are R/W.)
+	----------------------------------------------------------------------------
+	PROPERTY      CAST   STD*   NOTE
+	----------------------------------------------------------------------------
+	message       STR    YES    1st argument of the constructor.
+	name          STR    YES    The 'type' of the error, that is, the constructor
+	                            name. In ExtendScript, however, myErr.name will
+	                            return "Error" (unless rewritten) for any custom
+	                            error.
+	description   STR    NO     Alias of message. Any change in description is
+	                            reflected in message, and vice versa.
+	fileName      STR    NO     2nd argument of the constructor.
+	line          NUM    NO     3rd argument of the constructor.
+	number        NUM    NO     A conventional error-related number, default is 1
+	                            for custom errors.
+	source        STR    NO     By default, the complete source file, or any other
+	                            custom string. Unavailable in jsxbin.
+	start         NUM    NO     (No description available.)
+	end           NUM    NO     (No description available.)
+	----------------------------------------------------------------------------
+	toString()    STR    YES    Localized string in the form "Error: <message>",
+	                            in French: "Erreur: <message>", etc.
+	toSource()    STR    NO     Evaluable string supposed to rebuild the Error.
+	----------------------------------------------------------------------------
+	* Tells whether the property is standard (YES) or non-standard (NO).
+	
+	Native Error subtypes in ExtendScript (CS4).
+	----------------------------------------------------------------------------
+	CLASS*          STD  PURPOSE
+	----------------------------------------------------------------------------
+	EvalError       YES  Error that occurs regarding the global function eval().
+	                     [Obsolete.]
+	RangeError      YES  Indicates that a numeric value has exceeded its
+	                     allowable range.
+	ReferenceError  YES  An invalid reference value has been detected.
+	SyntaxError     YES  A parsing error has occurred.
+	TypeError       YES  The actual type of an operand is different than the
+	                     expected type.
+	URIError        YES  One of the global URI handling functions was used in a
+	                     way that is incompatible with its definition.
+	InternalError   NO   Internal error.
+	FatalError      NO   Fatal error.
+	IOError         NO   IO error.
+
+	----------------------------------------------------------------------------
+	* Stijn (Extendables) notes, with some versions of ExtendScript "all error
+	types (are) considered the base class Error. This problem makes it impossible
+	to do simple comparisons on errors." Indeed, myErr instanceOf <anyErrorType>
+	returns true, and myErr.constructor as well as myErr.__class__ are not
+	reliable.
+
+	ExtendScript's tools related to error management.
+	----------------------------------------------------------------------------
+	ACCESS       CAST   NOTE
+	----------------------------------------------------------------------------
+	$.error      Error  The most recent run-time error information. Assigning
+	                    error text to this property generates a run-time error;
+	                    however, the preferred way to generate a run-time error
+	                    is to throw an Error object.
+	$.fileName    STR   The script file being executed. This property is more
+	                    reliable than myError.fileName in that it still reveals
+	                    the script file name in a jsxbin context.
+	$.stack       STR   NL-separated list of called programs and functions.
+	                    E.g.  "[myscript.bin.jsx]<NL>[210]<NL>testFunc()\n"
+	$.engineName  STR   The current engine name, as specified by #targetengine.
+	                    Default is "main".
+	myFile.error  STR   "A string containing a message describing the most
+	                    recent file system error. Typically set by the file
+	                    system, but a script can set it. Setting this value
+	                    clears any error message and resets the error bit for
+	                    opened files. Empty string if there is no error."
+	                    E.g.
+	                    var ff=new File('does/not/exist.txt');
+	                    if( !ff.open('r') ) alert( ff.error );
+	                    // => File or folder does not exist
+	----------------------------------------------------------------------------
+
+	Additional Notes.
+	
+	<err>.name, <err>.number, etc., are only relevant for parse-time or runtime
+	exceptions generated by ExtendScript iself. So it is discouraged to use
+	native subclasses when constructing a custom error. A better strategy for
+	managing custom errors is manually writing custom data before throwing the
+	error:
+	
+	var e = Error("My error description.", "My custom location", <CustomLineNb>);
+	e.name = 'MyCustomError'; // do not use reserved error classes
+	e.number = <customNumber>;
+	// additional data if needed
+	throw e;
+	
+	`Error.runtimeError(uint[,str])` is a static method of the Error function. It
+	allows to fake a runtime error using a predefined error code (uint) and
+	an optional string in case the native error message expects it.
+	
+	E.g.
+	
+	      Error.runtimeError(2,'xyz');
+	=>
+	      JavaScript Error!
+	
+	      Error Number: 2
+	      Error String: xyz is undefined
+	
+	      Engine: main
+	      File: <filename>
+	      Line: <line>
+	      Source: Error.runtimeError(2,'xyz');
+
+	List of error codes:
+
+	     2        %1 is undefined
+	     3        Cannot assign value
+	     4        Unterminated string constant
+	     5        Unterminated comment
+	     6        Bad digit in number
+	     7        Language feature '%1' is not supported
+	     8        Syntax error
+	     9        Illegal use of reserved word '%1'
+	     10       Illegal break or continue outside a loop
+	     11       Label not found
+	     12       Expression is not constant
+	     13       Too many closing braces
+	     14       No matching closing brace found
+	     15       Try without catch or finally
+	     16       catch/finally without try
+	     17       Variable name expected
+	     18       Variable or value expected
+	     19       Bad argument %1
+	     20       Bad argument list
+	     21       %1 is not an object
+	     22       %1 does not have a constructor
+	     23       %1 does not have a value
+	     24       %1 is not a function
+	     25       Expected: %1
+	     26       %1 cannot work with instances of this class
+	     27       Stack overrun
+	     28       Out of memory
+	     29       Uncaught exception %1
+	     30       Illegal 'return' outside of a function body
+	     31       Bad or invalid URI: %1
+	     32       Cannot execute
+	     33       Internal error
+	     34       Execution halted
+	     35       Timeout
+	     36       Not implemented
+	     37       Character conversion error
+	     38       Partial multibyte character found
+	     39       More than one switch default
+	     40       %1 redeclared
+	     41       %1 is out of range
+	     42       Catch after unconditional catch
+	     43       Evaluation error
+	     44       Cannot convert
+	     45       Object is invalid
+	     46       %1 is read only
+	     47       Data type mismatch
+	     48       File or folder does not exist
+	     49       File or folder already exists
+	     50       I/O device is not open
+	     51       Read past EOF
+	     52       I/O error
+	     53       Permission denied
+	     54       Uncaught JavaScript exception: %1
+	     55       Object does not support the property or method '%1'
+	     56       Cannot connect to %1
+	     57       Cannot resolve reference
+	     58       I/O Timeout
+	     59       No response
+	     60       Not well-formed (invalid token)
+	     61       Unclosed token
+	     62       Mismatched tag
+	     63       Duplicate attribute
+	     64       Junk after document element
+	     65       Entity parsing error
+	     66       XML declaration not at start of external entity
+	     67       Unknown encoding
+	     68       Encoding specified in XML declaration is incorrect
+	     69       Unclosed CDATA section
+	     70       Requested feature requires DTD support
+	     71       Unexpected DOCTYPE name
+	     72       Unbound namespace prefix
+	     73       Unknown axis name: %1
+	     74       Unsupported axis
+	     75       Operand expected, but found %1
+	     76       Node set expected
+	     77       Node test expected, but found %1
+	     78       Cannot set property %1
+	     79       ActionScript error: %1
+	     // ---
+	     XML      XML error in line %1
+	     General  Error #%1
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+	
+	/*
+
+	The Errors snippet is not implemented as a specific module to make it
+	fully available throughout the framework even before completing load.
+	
+	Any custom error MUST be thrown using $$.error(message).
+	
+	All errors SHOULD be caught using $$.receiveError(e) from within a
+	catch block.
+	
+	- Message: nude error message.
+	- Location: file, line (if possible).
+	- Context: stack, engine, jsxbin.
+	- Stage: ?
+	- Logged: whether the error has been successfully logged.
+
+	*/
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		beep: 'function' == typeof $.global.beep ? function beep_(){ $.global.beep() } : function beep_(){},
+
+		// Whether errors must be forced to warn (even in MUTE log mode.)
+		// This property is actually determined at loading time according
+		// to the context, and can be freely changed by the client code.
+		// ---
+		logErrors : 1,
+
+		error: function error_S_r_(/*str*/msg,/*?ref*/src,  $$,a,i,t,ff,b,e)
+		//----------------------------------
+		// Throw a managed exception with additional information.
+		// msg :: nude error message (might be localized.)
+		// src :: if supplied, module, function or file from which
+		//        the error occured.
+		// [TODO] Improve src.exists test with respect to the current folder (?)
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			// $.stack is in the form
+			// [<file>]\n ([<number>]\n)? (<func>(<args>?)\n)+ sendError_S_r_(<args>)\n
+			// The presence of [<number>] indicates a jsxbin in the stack.
+			// ---
+			a = $.stack.split(RegExp.LINEs); // => [<file>, s1, s2, ..., sN, <here>, '']
+			while( a.length && !a.pop() );   // => [<file>, s1, s2, ..., sN]
+
+			// Format the source as a string.
+			// => src :: `[<file>]` | `<moduleName>` | `<moduleName>.<funcName>` | `<funcName>` | ''
+			// ---
+			src || (src='');
+			while( src )
+			{
+				if( b=('function' == typeof src) )
+				{
+					t = src.name;
+					if( src.hasOwnProperty('µ') )
+					{
+						0 < (i=t.indexOf('_')) && (t=t.substr(0,i));
+						t = String(src.µ) + '.' + t;
+					}
+					src = t;
+					break;
+				}
+
+				if( src && (src instanceof File) )
+				{
+					ff = src.exists ? src : false;
+					src = '[' + src.displayName + ']';
+					break;
+				}
+
+				// Fallback.
+				// ---
+				src = src.name || String(src);
+				break;
+			}
+
+			// Try to extract a source file if not yet found.
+			// ---
+			while( (!ff) && a.length && '['==a[0].charAt(0) )
+			{
+				t = a.shift();
+				t = t.substr(1,t.length-2);
+				ff = File(t);
+				if( !ff.exists ){ ff=false; break; }
+				if( !src.length ){ src='[' + ff.displayName + ']'; }
+				break;
+			}
+
+			// Try to extract a function if not yet found.
+			// ---
+			while( !b && (i=a.length) )
+			{
+				if( !(t=a[i-1]) ){ a.pop(); break; }
+				if( ')' != t.substr(-1) || -1==(i=t.indexOf('(')) ) break;
+
+				// function name
+				// ---
+				t = t.substr(0,i);
+				
+				0 < (i=t.indexOf('_')) && (t=t.substr(0,i));
+				src += ((src?'.':'') + t);
+				break;
+			}
+
+			// If Log is available and set to non-MUTE, warn the error.
+			// If logErrors is ON, force the logger to wake up.
+			// ---
+			// [REM] Being a core module, Log is available as soon as
+			// it is included, that is, almost instantly. However, we
+			// want to make `error()` very secure and always callable.
+			// So we still check whether $$.Log is there.
+			// ---
+			b = 0;
+			if( 'function' == typeof $$.Log && ($$.Log() || ($$.logErrors && $$.Log.warn(true)))  )
+			{
+				// Do not take the risk of over-erroring.
+				// ---
+				try
+				{
+					$$.Log.warn(__("%1 > %2%3%4Stack: %5",
+						src||ff||'Error',
+						msg,
+						$$.newLine,
+						$$.Log.spaces,
+						a.join('::')||'<empty>'
+						));
+					b=1;
+				}
+				catch(_){}
+			}
+	
+			// [REM] new is not required (according to ECMA.)
+			// ---
+			e = Error(/*message*/msg, /*fileName*/String(ff||$.fileName), /*line*/0);
+	
+			e.name = 'ManagedError';
+			e.managed = 1;
+			e.number = 1;                  // custom error
+
+			e.where = src;                 // might be empty
+			e.engine = $.engineName;
+			e.stack = a.join(' :: ');
+
+			e.logged = b||0;
+	
+			throw e;
+		},
+	
+		receiveError: function receiveError_$Error$_(/*Error*/e)
+		//----------------------------------
+		// [TODO]
+		{
+			//alert( {}.toSource.call(e) );
+
+			if( e.managed )
+			{
+				alert([
+					e.message,
+					'________________________________________\r',
+					__("Engine: %1", e.engine),
+					__("Where:  %1", e.where ? e.where : '<unknown>'),
+					__("Stack:  %1", e.stack),
+					__("Logged: %1", e.logged),
+					__("File:   %1", File(e.fileName).displayName)
+				].join('\r'));
+			}
+			else
+			{
+				alert([
+					e.message,
+					'________________________________________\r',
+					__("File: %1", File(e.fileName).displayName),
+					__("Line: %1", e.line)
+				].join('\r'));
+			}
+		},
+	})

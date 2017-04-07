@@ -1,0 +1,454 @@
+/*******************************************************************************
+
+		Name:           string
+		Desc:           Improves and extends String.prototype
+		Path:           /core/Ext/$$.string.jsxinc
+		Require:        __() ; /Ext/patterns
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            toSource()
+		                asPath() toPath()
+		                trim() ltrim() rtrim() charSet()
+		DOM-access:     ---
+		Todo:           Performance testing; String.lorem()
+		Created:        150510 (YYMMDD)
+		Modified:       170320 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// Static String.SourceEscapes entity.
+	//==========================================================================
+
+	String.SourceEscapes = (function(/*str[]&*/a,  i,n,k)
+	//----------------------------------
+	// Database entity used by toSource().
+	//    index   =>  <CHAR>      ( = String.<CHAR_KEY> )
+	//    <CHAR>  =>  <CHAR_KEY>
+	{
+		for(
+			n=a.length, i=-1 ;
+			++i < n ;
+			(k=a[i]),(a[a[i]=String[k]]=k)
+		);
+		return a;
+
+	})(['BK','CR','LF','DQ','SQ','TB','BS','VT','FF']);
+
+
+	//==========================================================================
+	// String.prototype.toSource()
+	//==========================================================================
+
+	// Backup of the native method
+	// => String.__toSource__
+	// ---
+	'function' == typeof String.__toSource__ ||
+	(String.__toSource__ = String.prototype.toSource);
+
+	String.prototype.toSource = function toSource(/*<DQ>|<SQ>=<DQ>*/quote,/*bool=0*/allowUTF16,  q,o,altQuote,r,i,s,k)
+	//----------------------------------
+	// Return a quote-nested string so that eval(this.toSource())===this. This function
+	// overrides the original toSource method in order to get shorter outputs. Examples:
+	//
+	//   INPUT STRING (JS)  |  OUTPUT CHARS (NATIVE METHOD)          |  OUTPUT CHARS (NEW VERSION)
+	//   -------------------------------------------------------------------------------------------
+	//   "abc"              |  (new String("abc"))                   |  "abc"
+	//   -------------------------------------------------------------------------------------------
+	//   "\\\r\n\t\v\f\0"   |  (new String("\\\r\n\t\x0B\f\x00"))    |  "\\\r\n\t\v\f\0"
+	//   -------------------------------------------------------------------------------------------
+	//   "àbçdé"            |  (new String("\u00E0b\u00E7d\u00E9"))  |  "\xE0b\xE7d\xE9"
+	//
+	// [REM] Tested on a jpeg file owning 23,052 bytes, the new method returns 60,433 characters
+	// while the native method outputs 89,653 characters. Result is 67% lighter.
+	//
+	// `quote`      : Either <DQ> (default) or <SQ>. Use myStr.toSource("'") to get single quot nesting.
+	// `allowUTF16` : Reserved. (For the time being, output is always a full ASCII string.)
+	{
+		// Aliases.
+		// ---
+		q = callee.Q;
+		o = String.SourceEscapes;
+
+		// Defaut quote is <DQ>, unless <SQ> is supplied.
+		// altQuote :: quote==<DQ> ? <SQ> : <DQ>
+		// ---
+		(String.SQ==quote) || (quote=String.DQ);
+		altQuote = String[ String.SQ==quote ? 'DQ' : 'SQ' ];
+
+		// Take advantage of native toSource() performance.
+		// ---
+		i = (r=String.__toSource__.call(this)).length;
+
+		// ---
+		// [REM] `s` cannot contain non-ASCII char at this stage
+		// so we can temporarily replace any escaped <BK> by <X1>,
+		// then safely work on instances of other escaped chars.
+		// ---
+
+		r = r.substring(q.start, i+q.end).replace(RegExp._BK, String.X1);
+		
+		// `\u00` => `\x`
+		// ---
+		q.longUni && (r=r.replace(RegExp.BKuZ, String.BK+'x'));
+
+		// Improve native escapes according to improveEsc.
+		// E.g. `\x0B` => `\v`
+		// ---
+		for(
+			s=q.improvable, i=s.length ;
+			i-- ;
+			(k='_'+o[s.charAt(i)]), (r=r.replace(RegExp[k], String[k]))
+		);
+
+		// Manage alternate quote character. (Normal case is unsafeQuote==<SQ>.)
+		// If( quote != unsafe ), nothing to do (quote is already escaped and unsafe is OK here.)
+		// If( quote == unsafe ), unsafe => \unsafe ;  \altQuote => altQuote
+		// If unsafe is empty (unusual!) all quotes are escaped, therefore
+		// we need to remove escape seq for non-quote: \altQuote => altQuote
+		// ---
+		if( quote == q.unsafeQuote )
+		{
+			k = o[quote];
+			r = r.replace(RegExp[k], String['_'+k]);    // Repl. quote by its regular escape form
+			k = o[altQuote];
+			r = r.replace(RegExp['_'+k], altQuote);     // Repl. any \altQuote by altQuote
+		}
+		else
+		{
+			q.unsafeQuote || ( r=r.replace(RegExp['_'+o[altQuote]], altQuote) );
+		}
+
+		// Special treatment for escaped NUL char. (Tricky!)
+		// `\x00` --> `\0`  (lookahead != decimalDigit)
+		// ---
+		for(
+			i=-2 ;
+			-1 != (i=r.indexOf('\\x00',i+=2)) ;
+			isNaN( +( '-' + r.charAt(4+i) ) ) && ( r = r.substr(0,1+i) + '0' + r.substr(4+i) )
+		);
+
+		// Final result.
+		// ---
+		return quote + r.replace(RegExp.X1, String._BK) + quote;
+	};
+
+	String.prototype.toSource.Q = (function(/*obj&*/R,  err,o,t,s,i,n,a)
+	//----------------------------------
+	// Cached structure (-> toSource.)
+	// => { start: int>0, end: int<0, longUni: 0|1, unsafeQuote: <DQ>|<SQ>|'', improvable: char* }
+	// [REM] The once-call function parses ExtendScript's native toSource behavior.
+	{
+		err = '';
+		o = String.SourceEscapes;
+
+		// Create a test string for analyzing the original toSource().
+		// ExtendScript produces verbose results looking like
+		// s :: `(new String("ZZ\\ZZ\rZZ\nZZ\"...\x0BZZ\fZZ\u00C0ZZ"))`
+		// ---
+		t = 'ZZ';
+		s = t + (o.join('')+'\xC0').split('').join(t) + t;
+		s = String.__toSource__.call(s);
+
+		// Compute magic offsets (start,end) so that string inside quotes
+		// *always* matches src.substring(start, end+src.length).
+		// ---
+		R.start = s.indexOf(t);
+		R.end   = (i=t.length) + s.lastIndexOf(t) - (n=s.length);
+
+		// Store escapes in array. Desired result is
+		// a :: [<_BK>,<_CR>,<_LF>,<_DQ>,<SQ>,<_TB>,<_BS>,<_VT>,<_FF>,`\u00C0`]
+		// ---
+		a = s.substring(i+R.start,-i+n+R.end).split(t);
+
+		// ---
+		// Almost every character is reduced to its shortest escape sequence.
+		// However, `\u00HH` can be shortened `\xHH` and `\x0B` is in fact `\v`.
+		// Also, <DQ> is usually escaped while <SQ> is not. We now have enough
+		// information to create a better toSource converter.
+		// [REM] We assume ExtendScript *may change* the native method,
+		// so we have to keep the algorithm fully agnostic.
+		// ---
+
+		// Whether we have to reduce `\u00HH`.
+		// ---
+		R.longUni = +(0 <= a.pop().indexOf('u00'));
+
+		// Check that String.SourceEscapes and `a` have now the same length.
+		// ---
+		if( a.length != o.length )
+		{
+			err = "A fatal error occured while analyzing String.prototype.toSource.";
+		}
+
+		// Check whether each escapable character is reduced as desired,
+		// that is, a[i] == String['_'+o[o[i]]].
+		// OK => Change a[i] into ''   (nothing to do, skip.)
+		// KO => Change a[i] into o[i] (character whose esc must be improved.)
+		// ---
+		// [REM] For the sake of abstraction we allow unsafeQuote=='', which would
+		// reflect native toSource() method to escape all quotation marks.
+		// Such case wouldn't lead to errors in the present implementation :-)
+
+		for( R.unsafeQuote='', i=a.length ; (!err) && i-- ; )
+		{
+			t = a[i];     // Native escape sequence, e.g `\r`
+			s = o[o[i]];  // Key, e.g 'CR'.
+			
+			// Match case :-)
+			// ---
+			if( t == String['_'+s] ){ a[i]=''; continue; }
+
+			// Case where ExtendScript doesn't escape a quote,
+			// usually t==<SQ>. That's OK anyway.
+			// ---
+			if( t == String.SQ || t == String.DQ ){ R.unsafeQuote=t; a[i]=''; continue; }
+
+			// ExtendScript does not escape <BK> the right way :-(
+			// ---
+			if( 'BK' == s )
+			{
+				err = __("Unexpected escape sequence %1 for the backslash.", String.__toSource__call(t));
+				break;
+			}
+
+			// ExtendScript does not output a capturable escape sequence :-(
+			// ---
+			if( ! RegExp['_'+s].test(t) )
+			{
+				err = __("Cannot capture the escape sequence %1 for the character <%2>.", String.__toSource__call(t), s);
+				break;
+			}
+			
+			// Finally, we provide a better escape sequence. Typical case is <VT>
+			// treated `\x0B` while it could be shortened `\v`. (We set a[i] to
+			// o[i] only if our own esc is shorter.)
+			// ---
+			a[i] = 2 < t.length ? o[i] : '';
+		}
+
+		if( err )
+		{
+			throw Error(__("%1 > %2", 'Ext/string', err));
+		}
+		
+		R.improvable = [a.join(''),a.length=0][0];
+		return R;
+
+	})({});
+
+
+	//==========================================================================
+	// String.prototype.asPath() ; String.prototype.toPath(str)
+	//==========================================================================
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	The added methods asPath and toPath allow to manipulate POSIX paths
+	based on the slash separator '/' and the usual shortcuts '..' and '.'
+
+	Syntax of a POSIX path
+	-----------------------------------------------------
+	<POSIX_PATH>   ::=   <SEP>? <RELAT_PATH>?
+	<RELAT_PATH>   ::=   <PATH_ELEM> ( <SEP> <PATH_ELEM> )* <SEP>?
+	<PATH_ELEM>    ::=   <NAME> | <PARENT> | <HERE>
+	<NAME>         ::=   <CHAR>+
+	<SEP>          ::=   <SLASH>+
+	<SLASH>        ::=   '/'
+	<PARENT>       ::=   '..'
+	<HERE>         ::=   '.'
+	<CHAR>         ::=   { any character except '\' and '\0' }
+	
+	[REM] In POSIX the optional trailing <SEP> in a <RELAT_PATH> is
+	allowed as a convenience, but it has no meaning and is ignored.
+	
+
+	ABSOLUTE PATH. - An Absolute Path (AP) is a string in the form:
+	
+	(1)    AP  ::    <SP> ( <XX> <SP>? )*
+	
+	OK examples:    '/' ; '/aaa' ; '/a/' ; '/a/b/c' ; '/aaa/bb/'
+	KO examples:    ''  ; '//' ; '/../a' ; '/a/./b' ; '/a/b/c//'
+	An AP is never empty, it always starts with a <SP>.
+	
+	RELATIVE PATH. - A Relative Path (RP) is a string in the form:
+	
+	(2)    RP  ::    ( <DD> <SP> )* ( <XX> <SP>? )*
+
+	OK examples:    '' ; '../' ; '../../' ; 'aaa' ; 'a/b/' ; '../a/b'
+	KO examples:    '/' ; '..' ; '.' ; './' ; 'a/..' ; '../a/b.'
+	A RP might be empty. If not, it starts with either a <DD> or a <XX>.
+	
+	NORMALIZED PATH. - A Normalized Path (NP) is either a AP or a RP.
+
+	(3a)   NP  ::    AP | RP
+	
+	that is,
+	
+	(3b)   NP  ::    ( <SP> | ( <DD> <SP> )* ) ( <XX> <SP>? )*
+	
+	In other words, Absolute and Relative Paths are said 'normalized'
+	by definition, and no other form can be said normalized. If a
+	string S is known to be normalized, it's easy to decide whether
+	it is a AP or a RP, since (S[0]==<SP>)->(S is an AP.)
+	Note also that no NP can contain a <DT> alone.
+	
+	CONTAINER VS ELEMENT. - An AP may refer to either a Container,
+	or an Element, depending on the last character of the string.
+	If AP.lastChar == <SP>, then the path refers to a Container.
+	Otherwise, it refers to an Element. For example, '/a/b/' is an
+	AP-to-Container (APC) while '/a/b' is an AP-to-Element (APE.)
+	The same definition can be used for RPs, except for the empty
+	string (which is a valid RP.) If RP.lastChar == <SP>, then the
+	path refers to a Container (RPC.) If RP.lastChar != <SP> and
+	is not empty, then it refers to an Element (RPE.) Finally, if
+	RP is empty, its reference is undefined. For example, '../'
+	or 'a/b/' are RPC, while '../a' or 'a/b/c' are RPE.
+	
+	The purpose of asPath() is to convert *any* string into a NP.
+	This is done by applying rules exposed in the implementation
+	of String.prototype.asPath below.
+	
+	*/
+	
+	String.prototype.asPath = function asPath(  a,ups,fd,q,i,s)
+	//----------------------------------
+	// Convert this into a normalized path, that is
+	// ( <SP> | ( <DD> <SP> )* ) ( <XX> <SP>? )*
+	// where:
+	// <SP> ::= '/'  ;  <DD> ::= '..'
+	// <XX> ::= [neither-<SP>-nor-<DD>]+
+	{
+		// Shortcut. (The empty string is a valid RP.)
+		// ---
+		if( !this ) return '';
+
+		// Replace triple dots (or more) by double dots,
+		// then split the string along /+ into a.
+		// ---
+		a = this.replace(RegExp.DT3, '..').split(RegExp.SLs);
+
+		// If a[0] is NON-EMPTY, the path wants to be RELATIVE
+		//    and we need to keep track of UP jumps => ups = []
+		// If a[0] is EMPTY, the path wants to be ABSOLUTE
+		//    so no UP jump can be prepended => ups = '', a.shift()
+		//    (the empty item is simultaneously removed.)
+		// ---
+		// The queue array (q) is used during the loop in a
+		// push-pop fashion to navigate within the path.
+		// ---
+		for(
+			ups = a[0] ? [] : a.shift(), q=[], i=-1 ;
+			++i < a.length ;
+			'.'==(s=a[i]) ||
+			( '..'!=s ? q.push(s) : (q.length ? q.pop() : (ups && ups.push('../'))) )
+		);
+		
+		// Format the result.
+		// ---
+		s = ( ups ? ups.join('') : '/' ) + q.join('/').replace(RegExp.DTs, '');
+		'/'!=this.substr(-1) || '/'==s.substr(-1) || (s+='/');
+		return s;
+	};
+
+	String.prototype.toPath = function toPath(/*str*/dest)
+	//----------------------------------
+	// If dest[0]==<SP>,  return dest.asPath().
+	// If !dest || !this, return (dest||this).asPath().
+	// Otherwise, return (this+<SP>+dest).asPath().
+	{
+		return (
+			dest ?
+			( (!this) || '/'==dest.charAt(0) ? dest : (this+'/'+dest) ) :
+			this
+			).asPath();
+	};
+
+	//==========================================================================
+	// String.prototype.trim() ; String.prototype.ltrim() ; String.prototype.rtrim()
+	//==========================================================================
+
+	String.prototype.trim = function trim(  i,j,cc)
+	//----------------------------------
+	// Left- and right-trim the string.
+	// <anyspace>*XXX<anyspace>*  =>  XXX.
+	{
+		for(
+			j=this.length, i=-1 ;
+			++i < j && (
+				0x20 >= (cc=this.charCodeAt(i)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
+				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+			;
+		);
+
+		while(
+			j-- && (
+				0x20 >= (cc=this.charCodeAt(j)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
+				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+		);
+
+		
+		return j < i ? '' : this.substring(i, 1+j);
+	};
+
+	String.prototype.ltrim = function ltrim(  i,j,cc)
+	//----------------------------------
+	// Left-trim the string.
+	// <anyspace>*XXX  =>  XXX.
+	{
+		for(
+			j=this.length, i=-1 ;
+			++i < j && (
+				0x20 >= (cc=this.charCodeAt(i)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
+				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+			;
+		);
+
+		return i ? this.substr(i) : this;
+	};
+
+	String.prototype.rtrim = function rtrim(  j,cc)
+	//----------------------------------
+	// Right-trim the string.
+	// XXX<anyspace>*  =>  XXX.
+	{
+		for(
+			j=this.length ;
+			j-- && (
+				0x20 >= (cc=this.charCodeAt(j)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
+				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+			;
+		);
+
+		return j < 0 ? '' : this.substring(0, 1+j);
+	};
+
+	//==========================================================================
+	// String.prototype.charSet()
+	//==========================================================================
+
+	String.prototype.charSet = function(/*0|1=0*/KEEP_ORDER,  o,u,r,z,n,i,k)
+	//----------------------------------
+	// Return, as a string, the set of characters which belong to
+	// this string (UTF16 re-ordered unless KEEP_ORDER==1)
+	// "Hello Wonderful World!"  =>  " !HWdeflnoru"
+	// ---
+	// [REM] This routine remains efficient on large strings --note that
+	// this.charAt(i) is about **90X** faster than this[i]. A 150K string
+	// was processed in 170ms vs. 15s (tested in CS4-CC.)
+	// ---
+	// [ADD170320] KEEP_ORDER param.
+	{
+		for(
+			o={}, (u=void 0), z=(r=[]).length, n=this.length, i=-1 ;
+			++i < n ;
+			o.hasOwnProperty(k=this.charAt(i)) || (o[r[z++]=k]=u)
+		);
+
+		return ( KEEP_ORDER ? r : r.sort() ).join('');
+	};

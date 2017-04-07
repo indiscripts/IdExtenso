@@ -1,0 +1,608 @@
+/*******************************************************************************
+
+		Name:           JSON
+		Desc:           Cleaner than JSON!
+		Path:           /core/$$.JSON.jsxlib
+		Require:        Ext/*
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Module.
+		API:            =lave() eval()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        170306 (YYMMDD)
+		Modified:       170402 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	KNOWN ISSUES WITH DOM OBJECTS.
+	
+	From CS4 to CC 2017 various attempts to access the `properties` of a
+	-shadow-settings spec makes InDesign crash. Paths that end with either
+	"@drop-shadow-settings" or "@inner-shadow-settings" are dangerous and
+	must be bypassed, especially in find/change preferences.
+	
+	E.g.
+	      app.changeObjectPreferences
+	         .strokeTransparencySettings
+	         .dropShadowSettings.properties      // => CRASH
+	
+	But
+	      app.pageItemDefaults
+	         .strokeTransparencySettings
+	         .dropShadowSettings.properties      // => OK (?)
+
+	Risk detection might be based on the pattern
+	
+	      /@(find|change).+shadow-settings$/
+
+
+	Also, any access to app.scriptPreferences.properties causes InDesign
+	to freeze (infinite loop?) so we must prevent JSON() from browsing
+	the specifier path "/@script-preferences".
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	Due to the special purpose of this module and the security it
+	requires, all critical references (such as the [[global]] object or
+	native constructors) have been handled in what is called here the
+	'agnostic' mode. That is, no assumption is made about the context from
+	which JSON's API could be invoked. For example, we do not suppose that
+	`$` necessarily refers to the regular ExtendScript Helper object, or
+	that `String` refers to the regular [[global]].String constructor.
+	That's why the private zone contains absolute references to all
+	important objects or functions (GLOB, GSTR, etc) we may need. The
+	whole module then relies and involves these aliases rather than the
+	usual tokens. So, even if JSON is embedded in a lexical context where
+	usual references should become irrelevant, all efforts have been made
+	to make it still run safely.
+	
+	However, the lave() function can return either usual or agnostic
+	references, depending on the lexical context from which it is invoked.
+	In most cases the regular aliases will be returned though.
+
+	*/
+
+;eval(__(MODULE, $$, 'JSON', 170402, 'lave'))
+
+	[PRIVATE]
+	
+	({
+		NEWL : $$.newLine,
+		
+		GLOB : (function(){return this}).call(null),
+		GSTR : (function(){return this.String}).call(null),
+		GOBJ : (function(){return this.Object}).call(null),
+		GREG : (function(){return this.RegExp}).call(null),
+		GNUM : (function(){return this.Number}).call(null),
+		GFCT : (function(){return this.Function}).call(null),
+	})
+	
+	[PRIVATE]
+
+	({
+		ODEL : function(/*obj&*/o,  k)
+		//----------------------------------
+		// Non-recursive Key Deleter.
+		// => `o`
+		{
+			for( k in o ) o.hasOwnProperty(k) && delete o[k];
+			return o;
+		},
+		
+		BRKN : function(/*str*/s)
+		//----------------------------------
+		// Whether s is a 'broken' spec path.
+		// => 1 (broken) | 0 (not-broken)
+		{
+			return +(
+				0 < s.indexOf('script-preferences')
+				||
+				(callee.Q||(callee.Q=/@(find|change).+shadow-settings$/)).test(s)
+			);
+		},
+
+		EST$ : function($0)
+		//----------------------------------
+		// ESTN Replacer.
+		// [REM] `this` is not the private zone, so we load
+		// the String ctor in callee.Q.
+		{
+			return callee.Q['_'+callee.Q.SourceEscapes[$0]];
+		}.setup({ Q: µ['~'].GSTR }),
+
+		ESTN : function(/*str*/s)
+		//----------------------------------
+		// Escape '\t', '\r' and '\n'
+		// XXX<TB>YYY<CR><LF>ZZZ  =>  `XXX\tYYY\r\nZZZ`
+		{
+			return s.replace(this.GREG.TBNL,this.EST$);
+		},
+
+		OTOS : function(/*obj*/o)
+		//----------------------------------
+		// E.g: => "[object RegExp]", "[object Array]" "[object global]" etc
+		{
+			return this.GOBJ.prototype.toString.call(o);
+		},
+
+		NASO : function(/*obj*/o,/*str*/k)
+		//----------------------------------
+		// Tell whether o has-NOT-OwnProperty k (secure.)
+		// => 1 | 0
+		{
+			return 1 - this.GOBJ.prototype.hasOwnProperty.call(o,k);
+		},
+
+		NATV : function(/*fct*/f,  q,s,p)
+		//----------------------------------
+		// Tell whether `f` is native.
+		// [REM] String(Object) is something like "{...[native code]...}"
+		{
+			return ( q=callee.Q||(callee.Q=this.GOBJ.toSource().substr(this.GOBJ.toSource().indexOf('{'))) ),
+				0 > (p=(s=f.toSource()).indexOf(q)) ? 0 : +(s.length == p + q.length);
+		},
+
+		// Name of an anonymous function (=> "anonymous").
+		//----------------------------------
+		ANOF : ''+((function(){}).name),
+
+		OKID : function(/*str*/s)
+		//----------------------------------
+		// Tell whether `s` is a valid JS identifier.
+		{
+			try{ this.GFCT('var '+s); return 1 }
+			catch(_){ return 0 }
+		},
+
+		REFS : function(/*ref*/o,  q,n,i)
+		//----------------------------------
+		// Reference Stack Manager (prevent cycles), init in lave()
+		// => 1 (already in stack) | 0 (just added)
+		{
+			i = n = (q=callee.Q).length;
+			while( i-- ){ if( o===q[i] ) return 1; }
+
+			return (q[n]=o), 0;
+
+		}.setup({ Q:[] }),
+
+		DOMS : function(/*dom*/o,  q,k,s,t)
+		//----------------------------------
+		// DOM Spec Cache Manager (prevent cycles), init. in lave()
+		// => 1 (already-in-stack) | 0 (just-added) | -1 (dont-browse)
+		{
+			if( (q=callee.Q).hasOwnProperty(k=o.toSpecifier()) ) return q[k];
+			
+			s = this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
+			
+			t = ( this.BRKN(k) && '/*broken*/ ' )
+				||
+				( (!o.hasOwnProperty('properties')) && '/*no-prop*/' );
+			
+			q[k] = ( this.SPCE && this.KDOM ? (t||'/*cycle*/ ') : '' ) + s;
+
+			return t ? q[k] : '';
+
+		}.setup({ Q:{} }),
+
+	})
+
+	[PRIVATE]
+	({
+		NTVF :
+		{
+		#include 'JSON/$$.natives.jsxres'
+		},
+		
+		SRCN : function(/*str*/name,/*fct*/f,  k,pfx,s,p,t)
+		//----------------------------------
+		// Search Native Function.
+		// => '' [KO] | entire-string-path-from-global [OK].
+		// E.g:
+		// `((function(){return this}).call(null))["ListItem"]`
+		// `((function(){return this}).call(null))["isNaN"]`
+		// `((function(){return this}).call(null)).Folder.prototype["changePath"]`
+		// `((function(){return this}).call(null)).UnitValue()["<="]`
+		{
+			// Agnostic global reference string.
+			// ---
+			pfx = callee.Q||(callee.Q=this['\x01global']());
+
+			// Not in registered names (NTVF)
+			// -> check in [[global]] and $
+			// ---
+			if( this.NASO(this.NTVF,k='_'+name) )
+			{
+				t = this.GLOB[name];
+				if( ('function' == typeof t) && t===f )
+				{
+					return pfx + '[' + name.toSource('"') + ']';
+				}
+
+				t = this.GLOB.$[name];
+				if( ('function' == typeof t) && t===f )
+				{
+					return this['\x01$']() + '[' + name.toSource('"') + ']';
+				}
+				
+				return '';
+			}
+			
+			name = name.toSource('"');  // `"<name>"`
+
+			// Search for this function among registered hosts.
+			// ---
+			for( s=this.NTVF[k] ; -1 != (p=s.indexOf('|')) ; )
+			{
+				// E.g :: '' | '.Folder' | '.UnitValue()' | '.String.prototype'
+				// ---
+				(t=s.substring(0,p)) && (t='.'+t);
+
+				// E.g :: `(((function(){return this}).call(null)).Folder["decode"])`
+				// ---
+				t = pfx + t + '[' + name + ']';
+				if( f===this.GLOB.eval('('+t+')') ) return t;
+				s = s.substr(1+p);
+			}
+
+			return '';
+		},
+	})
+
+	[PRIVATE]
+
+	({
+		NSOB : '({})',                                        // Not-supported-obj  --depends on SPACED in lave()
+		NSFC : '(function%1(){})',                            // Not-supported-func --depends on SPACED in lave()
+		NTFC : '(function%1(){})',                            // Native-func        --depends on SPACED in lave()
+		GBCD : '$.global',                                    // Global code        --can be changed from lave()
+		DLCD : '$',                                           // Dollar code        --can be changed from lave()
+		SPCE : '',                                            // Spaces or empty    --depends on SPACED in lave()
+
+		KDOM : 0,                                             // Keep DOM access    --depends on DOM_ACCESS in lave()
+		
+		INDT : '',                                            // Current indentation.
+		INLP : 0,                                             // Entered in a Array/Object loop.
+
+		KARR : µ['~'].OTOS([]),                               // "[object Array]"
+		KREG : µ['~'].OTOS(/z/),                              // "[object RegExp]"
+
+		ADBE : function(/*u32*/n)
+		{
+			return n.toHexa() + (this.SPCE ? ( ' /* [' + n.toAdbe() + '] */' ) : '');
+		},
+
+		//----------------------------------
+		// Scalars from typeof, and associated 'classes.'
+		//----------------------------------
+
+		'\x01undefined':  function(x){ return this.SPCE?'undefined':'void 0' },
+		// ---
+		'\x01boolean':    function(x){ return this.SPCE?this.GSTR(x):((x.valueOf()?'!0':'!1')) },
+		'\x01Boolean':    function(x){ return this['\x01boolean'](x) },
+		// ---
+		'\x01number':     $$.idVersion(7) ?
+			function(x){ return this.GSTR(x) } :
+			function(x){ return x.isAdbe() ? this.ADBE(x) : this.GSTR(x) },
+		'\x01Number':     function(x){ return this['\x01number'](x) },
+		// --- Thanks to Ext/string
+		'\x01string':     function(x){ return x.toSource() },
+		'\x01String':     function(x){ return this['\x01string'](x) },
+
+		//----------------------------------
+		// Date.
+		//----------------------------------
+
+		'\x01Date':       function(x){ return this.GLOB.uneval(x) },  // => '(new Date(zzz))'
+
+		//----------------------------------
+		// RegExp ('function'==typeof x), thanks to Ext/regexp.
+		//----------------------------------
+
+		'\x01RegExp':     function(x){ return x.toSource() },         // => 'RegExp("xyz","flg")'
+
+		//----------------------------------
+		// XML ('xml'==typeof x), and associated classes.
+		//----------------------------------
+
+		'\x01xml':        function(x){ return x.toXMLString() },      // => '<xyz>...</xyz>'
+		'\x01XML':        function(x){ return this['\x01xml'](x) },
+		'\x01XMLList':    function(x){ return this['\x01xml'](x) },
+
+		//----------------------------------
+		// Static, native and special references.
+		//----------------------------------
+
+		'\x01global':     function(x)
+		{
+			return this.INLP || 'undefined'==typeof x ?
+				this.GBCD :
+				this['\x01Object'](x)
+		},
+		'\x01$':          function(x)
+		{
+			return this.INLP || 'undefined'==typeof x ?
+				this.DLCD :
+				this['\x01Object'](x)
+		},
+		'\x01Math':       function(x)
+		{
+			return this.INLP || 'undefined'==typeof x ?
+				(this['\x01global']() + '.Math') :
+				this['\x01Object'](x)
+		},
+
+		//----------------------------------
+		// Enumeration and Enumerator, thanks to Ext/enum.
+		//----------------------------------
+
+		'\x01Enumeration':function(x){ return this.INLP ? x.toSource(this.SPCE?1:0) : this['\x01Object'](x) },
+		'\x01Enumerator': function(x){ return this.KDOM ? x.toSource(this.SPCE?1:0) : this.ADBE(this.GNUM(x)) },
+
+		//----------------------------------
+		// InDesign DOM objects (detected thru `toSpecifier`.)
+		//----------------------------------
+
+		'\x01DomObj':     function(x){ return this.DOMS(x) || this.LAVE(x.properties) },
+
+		//----------------------------------
+		// Structural objects (JS and ExtendScript.)
+		//----------------------------------
+
+		'\x01Error':      function(x)                       // => 'Error(xxx)'
+		{
+			return __( 'Error(%1,%2,%3)',
+				this.GSTR(x.description||'').toSource(),
+				this.GSTR(x.fileName||'').toSource(),
+				this.GSTR(x.line)
+				);
+		},
+
+		'\x01File':       function(x)                       // => 'File("asciiString")'
+		{
+			return __( 'File(%1)',
+				this.GSTR(x.fullName).toSource()
+				);
+		},
+
+		'\x01Folder':     function(x)                       // => 'Folder("asciiString")'
+		{
+			return __( 'Folder(%1)',
+				this.GSTR(x.fullName).toSource()
+				);
+		},
+
+		'\x01Namespace':  function(x)                       // => 'Namespace("prefix","uri")'
+		{
+			return __( 'Namespace(%1,%2)',
+				this.GSTR(x.prefix).toSource(),
+				this.GSTR(x.uri).toSource()
+				);
+		},
+
+		'\x01QName':      function(x)                       // => 'QName("uri","name")'
+		{
+			return __( 'QName(%1,%2)',
+				this.GSTR(x.uri).toSource(),
+				this.GSTR(x.localName).toSource()
+				);
+		},
+
+		'\x01UnitValue':  function(x)                       // => 'UnitValue("val_type")'
+		{
+			return __( 'UnitValue("%1")',
+				this.GSTR(x.value) + x.type
+				);
+		},
+
+		//----------------------------------
+		// Other special ExtendScript objects.
+		//----------------------------------
+
+		'\x01Reflection': function(x){ return this.NSOB },            // => '({*not supported*})'
+		'\x01ReflectionInfo':function(x){ return this.NSOB },         // => '({*not supported*})'
+		'\x01Socket':     function(x){ return '(new Socket)' },       // => '(new Socket)'
+
+
+		//----------------------------------
+		// References.
+		//----------------------------------
+
+		'\x01function':   function(x,  s,t,b)
+		//----------------------------------
+		// 'function' entry point (including the special RegExp case.)
+		// [REM] 'function' == typeof /myRegex/
+		{
+			if( this.KREG==this.OTOS(x) )
+			{
+				return this['\x01RegExp'](x);
+			}
+
+			// Search among native functions.
+			// ---
+			s = x.name;
+			if( (b=this.NATV(x)) && (t=this.SRCN(s,x)) )
+			{
+				return t;
+			}
+
+			return __(
+				this[ b ? 'NTFC' : 'NSFC'],
+				s!=this.ANOF && this.OKID(s) ? (' '+s) : ''
+				);
+		},
+
+		'\x01Function':    function(x)
+		//----------------------------------
+		// -> this['function'](x)
+		{
+			return this['\x01function'](x);
+		},
+
+		'\x01object':     function(x,  k)
+		//----------------------------------
+		// 'object' entry point.
+		{
+			// Array.
+			// [REM] Additional properties won't be stringified (!)
+			// ---
+			if( this.KARR==this.OTOS(x) ) return this['\x01Array'](x);
+
+			// Special DOM object case.
+			// ---
+			if( x.hasOwnProperty('toSpecifier') ){ return this['\x01DomObj'](x) }
+
+			// Known class, or default.
+			// ---
+			( (k=x.__class__) && ('object'!=k) && this.hasOwnProperty(k='\x01'+k) ) || (k='\x01Object');
+			
+			return this[k](x);
+		},
+
+		'\x01Object':      function(x,  q,dq,sp,a,z,s)
+		//----------------------------------
+		// Regular Object loop.
+		{
+			if( this.REFS(x) ) return '{/*cycle*/}';
+			this.INLP = 1;
+
+			dq = this.INDT = (q=this.INDT)+this.SPCE;
+			sp = this.SPCE ? ' ' : '';
+
+			z = (a=[]).length;
+			for( s in x )
+			{
+				if( this.NASO(x,s) ) continue;
+				a[z++] = s.toSource() + sp + ':' + sp + this.LAVE(x[s]);
+			}
+			
+			s = 0===z ? '{}' :
+			(	dq ?
+				( '{' + this.NEWL + dq + a.join(',' + this.NEWL + dq) + this.NEWL + q + '}' ) :
+				( '{' + sp + a.join(','+sp) + sp + '}' )
+			);
+			
+			return (a.length=0),(this.INDT=q),s;
+		},
+
+		'\x01Array':       function(x,  q,dq,sp,a,n,z,i,s,sz)
+		//----------------------------------
+		// Regular Array loop.
+		{
+			if( this.REFS(x) ) return '[/*cycle*/]';
+			this.INLP = 1;
+
+			dq = this.INDT = (q=this.INDT)+this.SPCE;
+			sp = this.SPCE ? ' ' : '';
+
+			for( z=(a=[]).length, n=x.length, i=-1, sz=0 ; ++i < n ; sz+=(a[z++]=this.LAVE(x[i])).length );
+			
+			s = 0===z ? '[]' :
+			(
+				( dq && (10 < z || 15*z < sz) ) ?
+				( '[' + this.NEWL + dq + a.join(',' + this.NEWL + dq) + this.NEWL + q + ']' ) :
+				( '[' + sp + a.join(','+sp) + sp + ']' )
+			);
+			
+			return (a.length=0),(this.INDT=q),s;
+		},
+
+	})
+
+	[PRIVATE]
+
+	({
+		LAVE : function(/*any*/x)
+		//----------------------------------
+		{
+			return null===x ? 'null' : this['\x01'+(typeof x)](x);
+		},
+	})
+
+	[PUBLIC]
+
+	({
+		lave : function lave_x_S(/*any*/x,/*0|1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
+		//----------------------------------
+		// Properly uneval (almost) anything in ExSc/SUI/InDesign context.
+		// [REM] Prevents Array/Object cycles;
+		//       Supports RegExp, File/Folder, UnitValue, XML/XMLList/QName/Namespace
+		//       Enumeration/Enumerator instance, Error, Date,
+		//       some native functions and static references, etc.
+		// `SPACED` :: whether the result must be compact (0:default) or extended (1).
+		//       Compact result is one-line ASCII unless `x` contains some XML [TODO].
+		// `DOM_ACCESS` :: whether the result should maintain DOM accesses thru
+		//       `resolve()` and enumerations.
+		// => uneval-string
+		{
+			I = callee.µ['~'];
+			t = XML.prettyPrinting;
+			ns = SPACED ? '/*non supported*/' : '';
+			nt = SPACED ? '/*native code*/' : '';
+
+			XML.prettyPrinting = !!SPACED;
+
+			I.SPCE = SPACED ? '    ' : '';
+			I.NSOB = __( '({%1})', ns );
+			I.NSFC = __('(%1{%2})','function%1()',ns);
+			I.NTFC = __('(%1{%2})','function%1()',nt);
+
+			I.INDT = '';
+			I.INLP = 0;
+
+			// Manage [[global]] and $ reference strings.
+			// ---
+			// [REM] If `$` and `$.global` point to their usual refs in the context from
+			// where lave is invoked, then it is assumed they are valid in the context of
+			// the client code as well. Otherwise, agnostic references are preferred.
+			// ---
+			if( I.GLOB===($||'').global )
+			{
+				// Usual references.
+				// ---
+				I.GBCD = '$.global';
+				I.DLCD = '$';
+			}
+			else
+			{
+				// Agnostic references.
+				// ---
+				I.GBCD = '((function(){return this}).call(null))';
+				I.DLCD = I.GBCD+'["$"]';
+			}
+
+			I.REFS.Q.length = 0;
+
+			I.KDOM = DOM_ACCESS ? 1 : 0;
+			I.ODEL(I.DOMS.Q)['/'] = DOM_ACCESS ? ('resolve(' + '/'.toSource() + ')') : '"/"';
+			// ---
+			x = I.LAVE(x);
+			// ---
+			I.REFS.Q.length = 0;
+			I.ODEL(I.DOMS.Q);
+
+			XML.prettyPrinting = t;
+			return x;
+		},
+		
+		eval : function eval_S_X(/*str*/src)
+		//----------------------------------
+		// Call eval on a 'laved' source string.
+		// => any
+		{
+			return callee.µ['~'].GLOB.eval('(' + src + ')');
+		},
+	})

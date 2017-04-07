@@ -1,0 +1,131 @@
+/*******************************************************************************
+
+		Name:           App
+		Desc:           Application-related API of /Dom.
+		Path:           /core/Dom/$$.app.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Dom module.
+		API:            fromLocaleStr() toLocaleStr() -> $$
+		DOM-access:     app.findKeyStrings() app.translateKeyString()
+		Todo:           ---
+		Created:        170324 (YYMMDD)
+		Modified:       170324 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		JOIN : function(/*str[]*/a)
+		//----------------------------------
+		// Join items.
+		// => wag
+		{
+			return a.join('|');
+		},
+
+		SHR$ : function(/*str*/x,/*str*/y)
+		//----------------------------------
+		// SHRT sorter.
+		{
+			return x.length - y.length;
+		},
+
+		SHRT : function(/*str[]&*/a)
+		//----------------------------------
+		// Return the shortest item.
+		// => str
+		{
+			return 1 < a.length ? a.sort(this.SHR$)[0] : a[0];
+		},
+
+		FLCS : function(/*str*/s,/*0|1*/SHORTEST,  q,k)
+		//----------------------------------
+		// From Locale String to ID Key(s).
+		// If SHORTEST is on, return the shortest key.
+		// => str :: idKey1|idKey2...|idKeyN or <empty>
+		{
+			return (q=callee.Q).hasOwnProperty(k=' '+s+'@'+SHORTEST) ?
+				q[k] :
+				( q[k]=this[SHORTEST?'SHRT':'JOIN'](app.findKeyStrings(s)||['']) );
+
+		}.setup({ Q:{} }),
+
+		TLCS : function(/*str*/s,  q,k)
+		//----------------------------------
+		// To Locale String (from ID Key); `s` is given w/o '$ID/' prefix.
+		// => str :: locStr or <empty>
+		{
+			return (q=callee.Q).hasOwnProperty(k=' '+s) ?
+				q[k] :
+				( q[k]=app.translateKeyString('$ID/' + s)||'' );
+
+		}.setup({ Q:{} }),
+
+	})
+	
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		fromLocaleStr : function fromLocaleStr_S_b_W(/*str*/locStr,/*0|1=0*/SHORTEST)
+		//----------------------------------
+		// Given a locale string, return the wagon of associated $ID key(s).
+		// => "key1|key2|...|keyN", or the empty string.
+		// If SHORTEST is on, return the shortest key among many.
+		// [REM] This routine is case-sensitive. It may be time consuming.
+		// ---
+		// E.g. in a French version:
+		//   ("XYZ")      => ""
+		//   ("Papier")   => "$ID/Paper"
+		//   ("Calque")   => "$ID/Layer|$ID/#LinkInfoLayerNameStr|$ID/kPreflightOD_Layer"
+		//   ("Calque",1) => "$ID/Layer"
+		//   ("Sans",1)   => "$ID/None"
+		{
+			// Assertion.
+			// ---
+			locStr || $.global[callee.µ.__root__].error("Invalid 'locStr' argument.",callee);
+	
+			return callee.µ['~'].FLCS(String(locStr),SHORTEST?1:0);
+	
+		}.copy('..'),
+	
+		toLocaleStr : function toLocaleStr_S_S(/*str*/keyStr,/*0|1=0*/CHECK,  r)
+		//----------------------------------
+		// Given a ID keystring (prefix '$ID/' is optional)
+		// return the associated locale string, or the empty string.
+		// Usually toLocaleStr('$ID/NonExistingKey') returns 'NonExistingKey'
+		// due to the default behavior of translateKeyString. Set the CHECK
+		// flag to get the empty string in case the key doesn't exist.
+		// ---
+		// E.g. in a French version:
+		//   ("$ID/None")  => "Sans"
+		//   ("Layer")     => "Calque"
+		//   ("$ID/XYZ")   => "XYZ"
+		//   ("$ID/XYZ",1) => ""
+		{
+			keyStr && '$ID/'==keyStr.substr(0,4) && (keyStr=keyStr.substr(4));
+	
+			// Assertion.
+			// ---
+			keyStr || $.global[callee.µ.__root__].error("Invalid 'keyStr' argument.",callee);
+			
+			(r=callee.µ['~'].TLCS(String(keyStr)))
+			&& CHECK
+			&& (callee.µ['~'].FLCS(r) || r='');
+			
+			return r;
+
+		}.copy('..'),
+
+	})

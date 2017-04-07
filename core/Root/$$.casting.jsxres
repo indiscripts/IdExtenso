@@ -1,0 +1,321 @@
+﻿/*******************************************************************************
+
+		Name:           Casting
+		Desc:           Casting data of the Root module.
+		Path:           /core/Root/$$.casting.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of the Root module.
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        150502 (YYMMDD)
+		Modified:       170325 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND & GUIDELINES
+	//==========================================================================
+
+	/*
+	
+	Casting is used for improving data type checking. In particular, this
+	resource provides an unified data encoding for generating auto-
+	documented help along the framework, provided that contributors follow
+	the below naming conventions.
+	
+	A set of single letters ('cast letters') has been defined. Each cast
+	letter represents some abstract data type, from very generic ones
+	(value, reference) to much more specific (bit, key, map.) Cast letters
+	belongs to the Latin alphabet, including some accented letters. They
+	all have two interesting properties:
+	
+	      (1) offering both uppercase and lowercase form,
+
+	      (2) being valid ECMA identifiers.
+	
+	The 'signature' of a function is a special identifier--used for naming
+	the function--that encodes the expected types of arguments and
+	returned value.
+	
+	A signature MUST follow this syntax:
+	
+	      <displayName>_<arg1Type>_<arg2Type>..._<retType>,
+	
+	where <displayName> is the user-friendly name of the function (not its
+	actual name, though), while the <arg(i)Type> and <retType> parts
+	reflect the expected type(s) of the considered argument, or returned
+	value. Each <type> is basically a combination of 0, 1, or more cast
+	letters. For example, S means string (STR), while YC means uint16
+	(U16) OR character (CHR). An empty <retType> is interpreted undefined.
+	E.g.:
+	
+	      function charToHexa_YC_S(...){...}
+	
+	defines a function whose displayName is charToHexa, which expects one
+	formal argument being either uint16 or character, and which returns a
+	string.
+	
+	The ending part of the signature (that is, anything *after* the last
+	underscore) is always parsed as the return type. So if the function is
+	not supposed to return anything (meaning, in fact, undefined) make
+	sure that the signature has a trailing underscore. E.g.:
+	
+	      function doSomethingWithObj_Õ_(...){...}.
+	
+	By contrast, createObj_Õ(...){...} would define a function without
+	formal argument and returning an OBJ.
+	
+	You can use the lowercase counterpart of a cast letter to indicate
+	this formal argument is optional. E.g.,
+	
+	      myFunc_S_i_S(...){...}
+	
+	takes a string and optionally a uint32, and returns a string. In
+	addition, one can declare a custom cast using the syntax
+	$MyCustomCast$ inside a type. E.g.,
+	
+	      myFunc_S_I$Date$_$RegExp$(...){...}
+	
+	has two formal arguments, a string first, then a uint32 or a 'Date',
+	and finally returns a 'RegExp'. Characters used in 'custom casts' are
+	up to you, subject that the actual function name remains valid.
+	
+	Note 1. - Custom casts are helpful because current cast letters do not
+	cover every specific type that JS offers, e.g. native structures such
+	as RegExp, Math, etc. We focus on data types that appear frequently in
+	the present framework.
+	
+	Note 2. - It is encouraged, but not required, that you use those
+	special function signatures in the PUBLIC part of your own modules.
+	Usually there is no issue with this approach, since public functions
+	are declared as methods of the current module and accessed from the
+	outside using the key, the actual function name being hidden:
+	
+	      myKey : function myFunc_Signature(...){...}.
+	
+	It is then ENCOURAGED that the display name of the function matches
+	the key:
+	
+	myKey : function myKey_X_Y_Z(...){...}     // ENCOURAGED
+	myKey : function other_X_Y_Z(...){...}     // DISCOURAGED
+	
+	*/
+
+	//==========================================================================
+	// CAST_LETTERS : DATA
+	//==========================================================================
+
+	// --------------------------------- GENERIC TYPES
+	X: {
+		code: 'ANY',
+		name: '<any>',
+		desc: "Any data, including undefined, null, NaN, {}, false, true, Infinity.",
+		test: "+(1)",
+		},
+	V: {
+		code: 'VAL',
+		name: 'value',
+		desc: "Any scalar value (excluding null), that is, anything that is not a reference.",
+		test: "+('object'!=typeof x && 'function'!=typeof x)",
+		},
+	R: {
+		code: 'REF',
+		name: 'reference',
+		desc: "Any reference, including null.",
+		test: "+('object'==typeof x || 'function'==typeof x)",
+		},
+	// --------------------------------- NUMBERS
+	Ñ: {
+		code: 'NBR',
+		name: 'number',
+		desc: "Any scalar number (double-precision 64-bit format), including +Infinity, -Infinity, and NaN.",
+		test: "+('number'==typeof x)",
+		},
+	N: {
+		code: 'NUM',
+		name: 'numeric',
+		desc: "Any finite number value, including both integers and floats.",
+		test: "+('number'==typeof x && isFinite(x))",
+		},
+	Z: {
+		code: 'U53',
+		name: 'integer',
+		desc: "Safe signed integer in the range ]-2^53,+2^53[.",
+		test: "+('number'==typeof x && !(x%1) && 2==(x+1)-(x-1))",
+		},
+	I: {
+		code: 'U32',
+		name: 'uint32',
+		desc: "Unsigned integer in the range [0,2^32[.",
+		test: "+(x===(x>>>0))",
+		},
+	Ï: {
+		code: 'I32',
+		name: 'int32',
+		desc: "Signed integer in the range [-2^31,+2^31[.",
+		test: "+(x===(x|0))",
+		},
+	U: {
+		code: 'U24',
+		name: 'uint24',
+		desc: "Unsigned integer in the range [0,2^24[. Useful for addressing Unicode values.",
+		test: "+(x===(x>>>0) && !(x>>>24))",
+		},
+	Ü: {
+		code: 'I24',
+		name: 'int24',
+		desc: "Signed integer in the range [-2^23,+2^23[.",
+		test: "+(x===(x|0) && -1==((x>>23)||-1))",
+		},
+	Y: {
+		code: 'U16',
+		name: 'uint16',
+		desc: "Unsigned integer in the range [0,2^16[.",
+		test: "+(x===(x>>>0) && !(x>>>16))",
+		},
+	Ÿ: {
+		code: 'I16',
+		name: 'int16',
+		desc: "Signed integer in [-2^16,+2^16[.",
+		test: "+(x===(x|0) && -1==((x>>15)||-1))",
+		},
+	B: {
+		code: 'BIT',
+		name: '<0|1>',
+		desc: "0 or 1. (Bijective with booleans.)",
+		test: "+(0===x || 1===x)",
+		},
+	T: {
+		code: 'TEE',
+		name: '<-1|0|+1>',
+		desc: "-1, 0, or 1",
+		test: "+(0===x || 1===x || -1===x)",
+		},
+	// --------------------------------- STRINGS
+	S: {
+		code: 'STR',
+		name: 'string',
+		desc: "Any scalar string, including empty value. (JS strings are UTF16 based.)",
+		test: "+('string'==typeof x)",
+		},
+	C: {
+		code: 'CHR',
+		name: 'character',
+		desc: "String of one unit (length=1).",
+		test: "+('string'==typeof x && 1==x.length)",
+		},
+	K: {
+		code: 'KEY',
+		name: 'key',
+		desc: "String used as an object key (property name or method name).",
+		test: "+('string'==typeof x && 'reflect'!=x)",
+		},
+	W: {
+		code: 'WAG',
+		name: 'wagons',
+		desc: "String in the form S0+C+S1+C+...+Sn where C is a CHR (separator) that doesn't appear in S0, S1,... Sn.",
+		test: "+('string'==typeof x)",
+		},
+	H: {
+		code: 'HEX',
+		name: 'hexa',
+		desc: "String formed only of hexa digits ('0'..'9','A'..'F'|'a'..'f'). The preferred form is uppercase, except in MD5 hashes.",
+		test: "+('string'==typeof x && /^[0-9A-F]+$/i.test(x))",
+		},
+	Î: {
+		code: 'NSO',
+		name: 'num_string_object',
+		desc: "Special structure whose valueOf() returns a U32 while toString() returns the associated string.",
+		test: "+(!!x && 'object'==typeof x && 'number'==typeof x.valueOf())",
+		},
+	// --------------------------------- REFS AS OBJECTS
+	Õ: {
+		code: 'OBJ',
+		name: 'object',
+		desc: "Generic object, that is, non-callable reference, including null.",
+		test: "+('object'==typeof x)",
+		},
+	O: {
+		code: 'SET',
+		name: 'set',
+		desc: "Object, excluding null, seen as a set of data of the same type.",
+		test: "+(!!x && 'object'==typeof x)",
+		},
+	Ô: {
+		code: 'BAG',
+		name: 'bag',
+		desc: "Set of references. Scheme: R{} or any valid subscheme, F{}, O{} (meta-set), A{}, etc.",
+		test: "+(!!x && 'object'==typeof x)",
+		},
+	Ö: {
+		code: 'MAP',
+		name: 'map',
+		desc: "Set of values. Scheme: V{} or any valid subscheme, U{}, S{}, etc.",
+		test: "+(!!x && 'object'==typeof x)",
+		},
+	M: {
+		code: 'MAP',
+		name: 'smap',
+		desc: "Map whose values are strings. Scheme: S{}.",
+		test: "+(!!x && 'object'==typeof x)",
+		},
+	// --------------------------------- REFS AS ARRAYS
+	Ã: {
+		code: 'ARR',
+		name: 'array',
+		desc: "Generic array. Non-null object based on the Array() constructor so that keys are ordered as uint32.",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	A: {
+		code: 'SEQ',
+		name: 'sequence',
+		desc: "Array of data of the same type.",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	Â: {
+		code: 'PRK',
+		name: 'park',
+		desc: "Sequence of references. Scheme: R[], or any valid subscheme, F[], O[], A[] (meta-seq), etc.",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	Ä: {
+		code: 'LST',
+		name: 'list',
+		desc: "Sequence of values. Scheme: V[] or any valid subscheme, U[], S[], etc.",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	L: {
+		code: 'LST',
+		name: 'slist',
+		desc: "List of strings. Scheme: S[].",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	Ë: {
+		code: 'ENT',
+		name: 'entity',
+		desc: "Array-based object that mixes slist and smap structures (LxM) so that indices link to keys and keys link back to indices.",
+		test: "+(!!x && (x instanceof Array))",
+		},
+	P: {
+		code: 'PNT',
+		name: 'point',
+		desc: "Sequence of two or three finite numbers. Scheme: N[dim] where dim=2 or 3.",
+		test: "+(!!x && (x instanceof Array) && (2==x.length || 3==x.length) && 'number'==typeof x[0] && isFinite(x[0]) && 'number'==typeof x[1] && isFinite(x[1]) && (3==x.length ? ('number'==typeof x[2] && isFinite(x[2])) ? 1) )",
+		},
+	// --------------------------------- FUNCTIONALS
+	F: {
+		code: 'FCT',
+		name: 'function',
+		desc: "Callable reference (function) seen as an input-output process, excluding RegExp.",
+		test: "+('function'==typeof x && !(x instanceof RegExp))",
+		},
+	// --------------------------------- SPECIALS
+	D: {
+		code: 'DOM',
+		name: 'DOM_object',
+		desc: "DOM object (ie specifier) excluding collection.",
+		test: "+(x===Object(x) && ('toSpecifier' in x))",
+		},

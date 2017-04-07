@@ -1,0 +1,67 @@
+/*******************************************************************************
+
+		Name:           number
+		Desc:           Extends Number.prototype
+		Path:           /core/Ext/$$.number.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            toSource() toHexa() toAdbe() isAdbe()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170307 (YYMMDD)
+		Modified:       170402 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// Number.prototype.toSource()
+	//==========================================================================
+
+	Number.prototype.toSource = function toSource()
+	//----------------------------------
+	// [TODO] May be improved to get shorter strings ("1e5" etc)
+	// => str
+	{
+		return String(this);
+	};
+
+	//==========================================================================
+	// Number.prototype.toHexa() ; Number.prototype.toAdbe() ; Number.prototype.isAdbe()
+	//==========================================================================
+
+	Number.prototype.toHexa = function toHexa()
+	//----------------------------------
+	// Return the "0xHHHH" representation of this number.
+	// E.g  123456 => "0x1E240"
+	{
+		return isNaN(this) ?
+			'NaN' :
+			( '0x' + this.toString(16).toUpperCase() );
+	};
+
+	Number.prototype.toAdbe = function toAdbe()
+	//----------------------------------
+	// Return the Adobe's 4-char string this number encodes.
+	// [REM] Only makes sense if `this` is U32.
+	// E.g  0x414F5069 => "AOPi" ; 0x74787466 => "txtf"
+	{
+		return isNaN(this) ?
+			'NaN' :
+			String.fromCharCode( 0xFF&(this>>>24), 0xFF&(this>>>16), 0xFF&(this>>>8), 0xFF&(this>>>0) );
+	};
+
+	Number.prototype.isAdbe = function isAdbe(  s)
+	//----------------------------------
+	// Whether this Number looks like an Adobe 4-char tag.
+	// [REM] Only makes sense if `this` is U32.
+	// E.g  1114394470 => 1    ;    12345 => 0
+	//  ie  0x426C4F66 [OK]        0x3039 [KO]
+	{
+
+		return +(
+			8==(s=this.toString(16).toUpperCase()).length &&
+			RegExp.ADBE.test(s)
+			);
+	};

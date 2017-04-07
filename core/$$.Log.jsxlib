@@ -1,0 +1,371 @@
+/*******************************************************************************
+
+		Name:           Log
+		Desc:           Simplified logging system.
+		Path:           /core/$$.Log.jsxlib
+		Require:        $$.File
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Module
+		API:            =log() spaces onUnload() init() push()
+		                mute() $$.mute() trace() $$.trace() warn() $$.warn()
+		                show() chrono()
+		DOM-access:     NO
+		Todo:           WINDOW device.
+		Created:        150502 (YYMMDD)
+		Modified:       170329 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// [REM] For obvious reasons the INNER methods should never
+	// call the public API (which in turn call some INNER methods!)
+	// Thus, logging low-level Log errors involves either
+	// low-level implementation, or infinite loop detection.
+	//==========================================================================
+
+	// TRACE mode will output any message whatever its severity,
+	// MUTE  mode won't output any logged messages,
+	// WARN  mode will only output messages sent thru Log.warn().
+	// ---
+	// i.e. TRACE mode can both trace and warn,
+	// WARN mode can only warn.
+	// ---
+
+
+;eval(__(MODULE, $$, 'Log', 170329, 'log'))
+
+	[PRIVATE]
+	
+	({
+		LVLS : { '-1':'TRACE', '0':'MUTE', '1':'WARNG' },
+		LDEF : 1/*WARNG*/,                                  // Default active level.
+		LCUR : 0/*MUTE*/,                                   // Current active level.
+
+		// Not used yet.
+		// ---
+		// MXSZ : 1024*512,
+		
+		FNME : 'IdExtenso.log',
+		NWLN : $$.newLine,
+
+		// Prolog and epilog patterns can provide placeholders
+		// for level (%1) and timestamp (%2). %3 is the message.
+		// ---
+		PRLG : "=======  New Logging Stage:  %1 (%2) =======",
+		MDLG : "%1  [%2]  %3",
+		EPLG : "-------  End Logging Stage:  %1 (%2) -------"+$$.newLine+$$.newLine,
+	})
+	
+	[PRIVATE]
+	
+	({
+		FPTH : String(Folder.temp + '/' + µ['~'].FNME),
+
+		FPSH : function(/*str*/s,  ff)
+		//----------------------------------
+		// Inconditionnaly push a new line into the FILE device.
+		// => 1 on success ; 0 on error.
+		{
+			ff = callee.Q || (callee.Q=new File(this.FPTH));
+			return $$.File.appendUTF8(ff,s,1) ? 1 : 0;
+		},
+
+		WPSH : function(/*str*/s,  ff,b)
+		//----------------------------------
+		// Inconditionnaly push a new line into the WINDOW device, if available.
+		// => 1 on success ; 0 on non-fatal error.
+		// [not implemented yet]
+		{
+			return 0;
+		},
+
+		PUSH : function F(/*str*/s)
+		//----------------------------------
+		// Inconditionnaly push a new line into the device(s)
+		// [TODO]
+		{
+			this.WPSH(s);
+			return this.FPSH(s);
+		},
+
+		SFMT : function(/*0|1*/RESET,/*0|1*/DMS_ONLY,  q,dt,ymd,hms,dms)
+		//----------------------------------
+		// Stamp Formatter.
+		// ---
+		// (0) If DMS_ONLY is OFF,
+		// RESET   =>   YYYY-MM-DD hh:mm:ss  (19 chars)
+		// !RESET  =>  (<NL>YYYY-MM-DD<NL>)(hh:mm:ss|<SP8>)  <MS8>  (10+18 or 18 chars)
+		// ---
+		// (1) if DMS_ONLY is ON,
+		// RESET   => '0'
+		// !RESET  => '<xxx>ms' where <xxx> is the ms delta
+		{
+			dt = new Date;
+			
+			// [REM] Can't assume $$.DateFormat is available.
+			// ---
+			ymd = __( "%1-%2-%3",
+				String(dt.getFullYear()),
+				('0'+(1+dt.getMonth())).substr(-2),
+				('0'+dt.getDate()).substr(-2)
+				);
+			hms = __( "%1:%2:%3",
+				('0'+dt.getHours()).substr(-2),
+				('0'+dt.getMinutes()).substr(-2),
+				('0'+dt.getSeconds()).substr(-2)
+				);
+	
+			q = callee.Q;
+			
+			if( RESET )
+			{
+				q.init = +dt;
+				q.ymd  = ymd;
+				q.hms  = hms;
+
+				// E.g. 2015-05-04 21:32:01
+				// ---
+				return DMS_ONLY ? '0' : __( "%1 %2", ymd, hms );
+			}
+
+			ymd==q.ymd ? (ymd='') : (q.ymd=ymd);
+			(!ymd) && hms==q.hms ? (hms='') : (q.hms=hms);
+			1e3 > (dms=dt-q.init) && (dms=('00'+dms).substr(-3));
+
+			// E.g. <NewLine>2015-05-04<NewLine>21:32:01       045
+			// ---
+			return DMS_ONLY ?
+				__("%1ms", dms) :
+				__("%1%2  %3",
+					ymd && (this.NWLN+ymd+this.NWLN),
+					hms || ('        '),
+					('        '+dms).substr(-8)
+				);
+
+		}.setup({ Q:{init:Date.now(), ymd:'', hms:''} }),
+
+	})
+
+	[PRIVATE]
+	
+	({
+		WCAN : function()
+		//----------------------------------
+		// Whether curLevel can warn  => -1 | 0 | +1
+		// [REM] Do not rely on `this`.
+		{
+			return callee.µ['~'].LCUR;
+		},
+
+		TCAN : function()
+		//----------------------------------
+		// Whether curLevel can trace => -1 | 0
+		// [REM] Do not rely on `this`.
+		{
+			return -(-1==callee.µ['~'].LCUR);
+		},
+
+		CGLV : function(/*-1:TRACE|0:MUTE|1:WARN*/nv,  ov,ts,s)
+		//----------------------------------
+		// Change Level. Change the current level to nv.
+		// nv :: -1:TRACE (full log) | 0:MUTE | +1:WARN (only warnings)
+		// If nv is missing, select the last active level in use.
+		// => new level
+		{
+			// Coerce nv into {-1,0,+1}
+			// ---
+			( nv = 'undefined' == typeof nv ? this.LDEF : +(nv||0) )
+			&&
+			( nv = 0 < nv ? 1 : -1 );
+	
+			// Nothing to change if nv===curLevel.
+			// ---
+			if( nv===(ov=this.LCUR) ) return nv;
+			
+			// Change into nv and, if nonzero, update the default active level.
+			// ---
+			(this.LCUR=nv) && (this.LDEF=nv);
+	
+			//   mute --> active  MEANS  prolog  (log on)
+			// active --> active  MEANS  midlog  (level changing)
+			// active --> mute    MEANS  epilog  (log off)
+			// ---
+			this.PUSH(
+				ov && nv ?
+				__( this.MDLG, this.SFMT(0/*update*/), 'AUTO', __("%1 > Changing level to %2.", callee.µ, this.LVLS[nv]) ) :
+				__( this[nv?'PRLG':'EPLG'], this.LVLS[nv||ov], this.SFMT(nv,!nv) )
+				);
+	
+			return nv;
+		},
+
+	})
+
+	[PUBLIC]
+	
+	({
+		// Spacing string used to prepend untagged lines (while pushing.)
+		// ---
+		spaces: (new Array(1+29)).join(' '),
+
+		init: function init_ts_(/*-1|0|1|'TRACE'|'MUTE'|'WARN'=0*/logLevel,  I)
+		//----------------------------------
+		// Initialize the Log (i.e, invalidate the file & set the level.)
+		// ---
+		// [REM] The reason why we don't use a regular `onLoad` handler is
+		// that $$.load() needs to call Log.init() *before* processing
+		// handlers (so that it can trace the loading stage itself.)
+		// [REM] We also have to invalidate the Log file for a critical
+		// reason: in engine-persistent context the user may *edit* the
+		// log within the engine time, so it is required to update the
+		// `new File(...)` reference.
+		// ---
+		// `logLevel` :: string or number reflecting the Log level. In case
+		// `logLevel` is passed as a string, only the 1st character matters
+		// ('T'|'M'|'W'), and it is case-insensitive.
+		{
+			// Invalidate the Log file.
+			// ---
+			delete callee.µ['~'].FPSH.Q;
+
+			'string' == typeof logLevel &&
+				(logLevel=logLevel.charAt(0).toUpperCase()) &&
+				(logLevel=-('T'==logLevel)+('W'==logLevel));
+			
+			callee.µ[['trace','mute','warn'][1-(0 > logLevel)+(0 < logLevel)]](true);
+		},
+
+		onUnload : function onUnload_()
+		//----------------------------------
+		// Just because it's cleaner to do so.
+		{
+			delete callee.µ['~'].FPSH.Q;
+		},
+
+		mute : function mute_$0$()
+		//----------------------------------
+		// Mute the logger.
+		// => 0
+		{
+			return callee.µ['~'].CGLV(0);
+		}.copy('..'),
+	
+		push : function push_S_(/*str*/s)
+		//----------------------------------
+		// Inconditionally push s into the current devices
+		// (whatever the current level, incl. mute.)
+		{
+			return callee.µ['~'].PUSH(s);
+		},
+
+		// ---
+		// The trace() and warn() methods provide a special valueOf
+		// implementation so that the client code can quickly
+		// check whether the current logging level allows the message
+		// to be actually logged. This is helpful when formatting the
+		// message requires time consuming computation. For example,
+		// (+$$.trace) && $$.trace(msg=function(){/*heavy process*/})
+		// will entirely skip the function call if trace is deactivated.
+		// ---
+		// +$$.warn   => -1 | 0 | +1  (non-zero in TRACE and WARN mode)
+		// +$$.trace  => -1 | 0       (non-zero only in TRACE mode)
+		// ---
+
+		trace : function trace_S$true$_T(/*str|true*/s,  I)
+		//----------------------------------
+		// (1) If s===true, activate the trace mode
+		// => -1
+		// (2) Otherwise, push the message iff current level===-1 (TRACE)
+		// => -1 if the message has been actually traced, 0 otherwise.
+		// (3) In valueOf form, that is, `trace.valueOf()` or `+trace`,
+		//     tell whether trace is supported in the current state.
+		//     E.g  `if( +$$.trace ){ do_trace_stuff() }`
+		// ---
+		// [REM] As this methods expects one argument, undefined will
+		// finally coerce into String(undefined).
+		{
+			I = callee.µ['~'];
+			return true===s ? I.CGLV(-1) :
+				(
+					-(-1 === I.LCUR)
+					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[-1], s))
+					&& -1
+				);
+		}.setup({ valueOf:µ['~'].TCAN }).copy('..'),
+
+		warn : function warn_S$true$_T(/*str|true*/s,  I)
+		//----------------------------------
+		// (1) If s===true, activate the warn mode
+		// => +1
+		// (2) Otherwise, push the message iff cur. level!==0 (TRACE or WARNG)
+		// => +1 if the message has been actually warned, 0 otherwise.
+		// (3) In valueOf form, that is, `warn.valueOf()` or `+warn`,
+		//     tell whether warn is supported in the current state.
+		//     E.g  `if( +$$.warn ){ do_warn_stuff() }`
+		// ---
+		// [REM] As this methods expects one argument, undefined will
+		// finally coerce into String(undefined).
+		{
+			I = callee.µ['~'];
+			return true===s ? I.CGLV(+1) :
+				(
+					I.LCUR
+					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[+1], s))
+					&& +1
+				);
+		}.setup({ valueOf:µ['~'].WCAN }).copy('..'),
+
+		log : function log_s_T(/*?str*/s,  I,v)
+		//----------------------------------
+		// (1) If s is undefined, return the current level
+		// => -1 (trace) | 0 (mute) | +1 (warn)
+		// (2) Otherwise: log the message iff current level!==0,
+		//     (the message is then labelled using the current level.)
+		// => -1 (actually traced) | 0 (nop) | +1 (actually warned)
+		{
+			I = callee.µ['~'];
+			return 'undefined' == typeof s ? I.LCUR :
+				(
+					(v=I.LCUR)
+					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[v], s))
+					&& v
+				);
+		},
+
+		show : function show_(  ff)
+		//----------------------------------
+		// Open the log in the default editor attached to '.log' files.
+		{
+			// Do not rely on ~.FPSH.Q, recreate the File ref instead.
+			// ---
+			if( (ff=new File(callee.µ['~'].FPTH)).exists )
+			{
+				ff.execute();
+			}
+		},
+
+		chrono : (function chrono_$Log$()
+		//----------------------------------
+		// (1) On call, triggers a basic stopwatch and
+		// returns the Log module itself.
+		// (2) On valueOf, returns the elapsed time in ms
+		// => uint
+		// (3) On toString, returns String(<elapsed_time>)
+		// => str
+		// ---
+		// Typical use:
+		//     $$.Log.chrono().trace("Start process.");
+		//     do_stuff();
+		//     $$.Log.trace(__("Done in %1 ms.",+$$.Log.chrono));
+		{
+			callee.Q = Date.now();
+			return callee.µ;
+		})
+		.setup({
+			Q: Date.now(),
+			valueOf: function(){ return Date.now()-this.Q },
+			toString: function(){ return String(Date.now()-this.Q) },
+		}),
+
+	})

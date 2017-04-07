@@ -1,0 +1,471 @@
+/*******************************************************************************
+
+		Name:           regexp
+		Desc:           Improves RegExp class and prototype.
+		Path:           /core/Ext/$$.regexp.jsxinc
+		Require:        $$/Ext/patterns
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            flags() toSource() ==()
+		DOM-access:     ---
+		Todo:           Check toSource in clinical cases ; perf tests.
+		Created:        170305 (YYMMDD)
+		Modified:       170322 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[ECMA] The RegExp constructor applies the following grammar to the
+	input pattern string. An error occurs if the grammar cannot interpret
+	the string as an expansion of Pattern.
+
+	Pattern      ::   Disjunction
+	Disjunction  ::   Alternative | ( Alternative | Disjunction )
+	Alternative  ::   <empty> | ( Alternative Term )
+	Term         ::   Assertion | Atom | ( Atom Quantifier )
+	Assertion    ::   `^` | `$` | `\b` | `\B`
+	Quantifier   ::   QPrefix | ( QPrefix `?` )
+	QPrefix      ::   `*` | `+` | `?` |
+	                  ( `{` DecDigits `}` )   |
+	                  ( `{` DecDigits `,}` )  |
+	                  ( `{` DecDigits `,` DecDigits `}` )
+
+	Atom         ::   PatternChar | `.` | ( `\` AtomEsc ) | CharClass |
+	                  `(` Disjunction `)`     |
+	                  `(?:` Disjunction `)`   |
+	                  `(?=` Disjunction `)`   |
+	                  `(?!` Disjunction `)`
+
+	PatternChar  ::   SourceChar — `^$\.*+?()[]{}|]`
+	AtomEsc      ::   DecEsc | CharEsc | CharClassEsc
+	CharEsc      ::   CtrlEsc | ( `c` CtrlLetter ) | HexEscSeq | UnicodeEscSeq | IdentityEsc
+	CtrlEsc      ::   `f` | `n` | `r` | `t` | `v`
+	CtrlLetter   ::   <any a..z A..Z>
+	IdentityEsc  ::   SourceChar — IdentifierPart
+	DecEsc       ::   DecIntLiteral [lookahead not DecDigit]
+
+	CharClassEsc ::   `d` | `D` | `s` | `S` | `w` | `W`
+	CharClass    ::   `[` [lookahead not `^`] ClassRanges `]`
+	                  `[^` ClassRanges `]`
+	ClassRanges  ::   <empty> | NonemptyCR
+	NonemptyCR   ::   ClassAtom | ( ClassAtom NonemptyCRND ) | ( ClassAtom `-` ClassAtom ClassRanges )
+	NonemptyCRND ::   ClassAtom | ( ClassAtomND NonemptyCRND ) | ( ClassAtomND `-` ClassAtom ClassRanges )
+	ClassAtom    ::   `-` | ClassAtomND
+	ClassAtomND  ::   SourceChar — `\]-)`
+	                  ( `\` ClassEsc )
+	ClassEsc     ::   DecEsc | `b` | CharEsc | CharClassEsc
+	SourceChar   ::   <any Unicode character>
+
+
+	CONSTRUCTOR CALLED AS A FUNCTION. - RegExp(pattern, flags)
+	If pattern is an object R whose [[Class]] property is "RegExp" and
+	flags is undefined, then return R unchanged. Otherwise call the RegExp
+	constructor, passing it the pattern and flags arguments and return
+	the object constructed by that constructor.
+	
+	(a) RegExp(myRegExp)             =>  returns myRegExp unchanged.
+	    myRegExp===RegExp(myRegExp)  =>  true (tested in all ExSc versions.)
+	
+	(b) RegExp(myRegExp,"any")       =>  TypeError (tested.)
+	
+	(c) RegExp("pattern","any")      =>  new RegExp('pattern','any')
+
+	CASE INSENSITIVITY. - In case-insignificant matches all characters are
+	implicitly converted to upper case immediately before they are
+	compared. However, if converting a character to upper case would
+	expand that character into more than one character (such as converting
+	"ß" (\u00DF) into "SS"), then the character is left as-is instead. The
+	character is also left as-is if it is not an ASCII character but
+	converting it to upper case would make it into an ASCII character.
+	This prevents Unicode characters such as \u0131 and \u017F from
+	matching regular expressions such as /[a-z]/i, which are only intended
+	to match ASCII letters.
+
+	Even if the pattern ignores case, the case of the two ends of a range
+	is significant in determining which characters belong to the range.
+	Thus, for example, the pattern /[E-F]/i matches only the letters E, F,
+	e, and f, while the pattern /[E-f]/i matches all upper and lower-case
+	ASCII letters as well as the symbols "[", "\", "]", "^", "_", and "`".
+
+	ESCAPING. - A ClassAtom can use any of the escape sequences that
+	are allowed in the rest of the regular expression except for \b, \B,
+	and backreferences. Inside a CharacterClass, \b means the backspace
+	character, while \B and backreferences raise errors. Using a
+	backreference inside a ClassAtom causes an error.
+
+	[ECMA2009] The characters / or backslash \ occurring in the pattern
+	shall be escaped in S as necessary to ensure that the String value
+	formed by concatenating the Strings "/", S, "/", and F can be parsed
+	(in an appropriate lexical context) as a RegularExpressionLiteral that
+	behaves identically to the constructed regular expression. For
+	example, if P is "/", then S could be "\/" or "\u002F", among other
+	possibilities, but not "/", because /// followed by F would be parsed
+	as a SingleLineComment rather than a RegularExpressionLiteral. If P is
+	the empty String, this specification can be met by letting S be "(?:)".
+	
+	But the above rules are not implemented in ExtendScript!
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	0. JSON PURPOSE: toString() vs source / toSource() / uneval.
+	__________________________________________________________________
+	
+	[ECMA] The `source` property of the newly constructed object is set to
+	an implementation-defined string value in the form of a Pattern based
+	on [the one used in constructing the RegExp instance].
+	
+	(But) an implementation may choose to take advantage of `source` being
+	allowed to be different from the source passed to the RegExp
+	constructor to escape special characters. For example, in the
+	regular expression obtained from new RegExp("/"), source could be,
+	among other possibilities, "/" or "\/". The latter would permit the
+	entire result ("/\//") of the toString call to have the form
+	RegularExpressionLiteral.
+	
+	In ExtendScript, myRegExp.source is implemented (although not
+	documented) and it returns a string that exactly reflects the inner
+	pattern (w/o slashes and flags),
+
+	      /a\\[a-zé\xE9\|]e+/g.source  =>  `a\\[a-zé\xE9\|]e+`
+	
+	But if the RegExp has been built using a string pattern, it
+	is not safe to use its source in a literal regex, because:
+	
+	      RegExp("/").source  =>  `/`
+	
+	and /// yields undefined ; /\// should be used here, which
+	by the way properly works regarding its `source` property:
+	
+	      /\//.source          =>  `\/`
+	
+	Similar comments could be done regarding RegExp(""), whose
+	source is "" while it should be "(?:)" as suggested in [ECMA2009].
+	
+	Now, myRegExp.toString() returns the whole pattern string
+	*including* in/out slashes and flags:
+	
+	      String(/a\\[a-zé\xE9\|]e+/g)  =>  `/a\\[a-zé\xE9\|]e+/g`
+	
+	Note, however, that flags are reordered in 'gim' order:
+	
+	      String(/abc/mig)     =>  `/abc/gim`
+	
+	But the issue remains regarding string-based RegExp:
+	
+	      String(RegExp("/"))  =>  `///`  (KO)
+	
+	which won't evaluate to the original regex (=>undefined).
+	
+	The method toSource() and the function uneval() are NOT properly
+	implemented in CS4-CS6, while in CC they return a string of the
+	form "(new RegExp(/xyz/f))". But the '/' test still fails:
+	
+	      eval(RegExp('/').toSource());  =>  ERROR! (due to ///)
+	
+	Thus, the safest way of stringifying a RegExp in all ExtendScript
+	versions is not
+	
+	      "RegExp(" + String(myRegExp) + ")"   // almost good...
+	
+	Instead, we operate as described in RegExp.prototype.toSource()
+	below, making sure that `/` and `\` are always treated the same
+	way and do not lead to tricky issues.
+
+
+	1. UPPERCASE DIGITS IN \uHHHH AND \xHH.
+	__________________________________________________________________
+
+	In CS4, escape sequences of the form \uHHHH and \xHH are not recognized
+	if lowercase hexa digits are used in the RegExp pattern.
+
+	E.g   /f\xeate/.test("fête")   // => CS4: false (KO) ; CS6/CC: true (OK)
+
+	Workaround. - Always use uppercase hexa digits in literal regex,
+
+	      /f\xEAte/.test("fête")   // => true (OK) all versions
+
+
+	2. LASTINDEX ISSUE.
+	__________________________________________________________________
+
+	According to [ECMA], String.prototype.search(RegExp) shouldn't
+	modify the lastIndex property of the regex. But ExtendScript has a
+	generic issue in updating RegExp.lastIndex in various contexts. E.g:
+	
+	      var reg = /bar/;
+	      alert( 'foobar'.search(reg) );    // => 3
+	      alert( 'foobar'.search(reg) );    // => -1 !
+
+	The second search(...) fails because reg.lastIndex has been modified
+	during the first call. (This bug may be really harmful if you're used
+	to 'precompile' your regex for optimization purpose.)
+
+	Workaround. - Always set `reg.lastIndex=0` before each call to the
+	search() method.
+
+
+	3. CLASS RANGE AND DASH `-`.
+	__________________________________________________________________
+
+	[ECMA] The '-' character can be treated literally or it can denote a range.
+	It is treated literally if it is the first or last character of ClassRanges,
+	the beginning or end limit of a range specification, or immediately follows
+	a range specification.
+
+	In ExtendScript (all versions) the pattern /[a\x2Dz]/ is treated as the
+	/[a-z]/ class range, that is, /[a\x2Dz]/.test('b')==true. In other words,
+	`\x2D` is not a valid escape of `-` in that context.
+	
+	Workaround. - Use `\-` instead, or position the dash as specified in [ECMA].
+
+
+	4. VERTICAL BAR `|` IN CLASS CONTEXT.
+	__________________________________________________________________
+
+	According to [ECMA], the characters that require escaping in class context
+	are: '\' ']' '-' and ')'. In CS5, however, the pipe '|' may also require
+	escaping.
+	
+	Workaround. - Use `\|` in any context.
+
+
+	5. NEGATED CLASS BUG (CS4) --MAYBE RELATED TO BACKTRACKING.
+	__________________________________________________________________
+
+	In CS4, a negated class based on at least one range and additional items,
+	such as [^a-cjk], seems to erroneously match the ending bound of the
+	input string:
+	
+	      /xyz[^a-cjk]/.test("xyz")   // => CS4: true (KO) ; CS5+: false (OK)
+	      "abc".search(/[^a-cjk]/)    // => CS4: 3 (KO) ; CS5+: -1 (OK)
+	
+	So, under the above conditions the CS4 engine behaves as if the input had
+	a final ghost character which is regarded as matching the negated class.
+	This bug is specific to the case where the negated class wants to match
+	the end-of-string position, the regex works fine when the input string
+	still provides character(s) to eat:
+	
+	      /xyz[^a-z0-9]/.test("xyz@")  // => true  (OK) all versions
+	      /xyz[^a-z0-9]/.test("xyz5")  // => false (OK) all versions
+
+	Workaround. - It is usually possible to use a negative lookahead rather
+	than the negated class, subject that we also force the regex to consume
+	one more char after the lookahead. So replacing `[^xxx]` by `(?![xxx]).`
+	solves the problem:
+	
+	      /xyz(?![a-z0-9])./.test("xyz5")  // => false (OK) all versions
+	      /xyz(?![a-z0-9])./.test("xyz@")  // => true  (OK) all versions
+	      /xyz(?![a-z0-9])./.test("xyz")   // => false (OK) all versions
+
+	      "xyz5".match(/xyz(?![a-z0-9])./) // => null  (OK) all versions
+	      "xyz@".match(/xyz(?![a-z0-9])./) // => foo@  (OK) all versions
+	      "xyz".match(/xyz(?![a-z0-9])./)  // => null  (OK) all versions
+
+
+	6. BACKTRACKING BUGS (CS6 AND LATER.)
+	__________________________________________________________________
+
+	Note. - By default JS RegExp quantifiers are greedy, e.g `a*` entirely
+	captures "aaaaaa". (One can make any quantifier non-greedy by
+	adding ? after it, e.g. /a*?/, /a+?/, etc.)
+	
+	Greedy quantifiers ( +, *, {m,n} ) may cause issues in ExtendScript
+	when mixed with optional sub-patterns, especially in CS6 and later.
+
+	      /(aA?|bB?)+$/.test("bx")   // => CS4: false (OK) ; CS6-CC: FREEZE!
+
+	      /(a|bB?)+$/.test("bx")     // => CS4: false (OK) ; CS6-CC: FREEZE!
+
+	It sounds like these 'explosive quantifiers' are not properly addressed
+	due to backtracking bugs that affect other parts of the regex engine.
+	Thus, CS6-CC doesn't interpret the scheme /((A|B)|C)/ the right way:
+
+	      /^((a|b)|c)+$/.test("ac")  // => CS4: true (OK) ; CS6-CC: false (KO)
+
+	while
+
+	      /^((a|b)|c)+$/.test("ca")  // => true  (OK) all versions
+
+	Interestingly,
+
+	      /^(c|(a|b))+$/.test("ac")  // => CC: true  (OK)
+	      /^(c|(a|b))+$/.test("ca")  // => CC: true  (OK)
+
+	Since /((A|B)|C)/ is equivalent to /(A|B|C)/ there is no reason--in
+	principle--to use those additional capturing parentheses. However,
+	a more robust rule should be observed to avoid flaws.
+	
+	Guess. - Maybe (5) and (6) symptoms reflect the same issue in opposite
+	directions (CS4 vs. CS6-CC--not tested in CS5.) The reason why CS4
+	wrongly returns 3 on `"abc".search(/[^a-cjk]/)`, advancing the index
+	to the end of the input, could also be the reason why it succeeds in
+	breaking the loop that affects CS6-CC on `/(aA?|bB?)+$/.test("bx")`.
+	[To be investigated.]
+
+
+	7. ISSUE INVOLVING THE NUL CHARACTER (U+0000)
+	__________________________________________________________________
+
+	ExtendScript 3.x (CS4) has several flaws in processing the NUL
+	character, especially in the context of the split() method. Everything
+	happens as if '\x00' was interpreted as a reserved value or something
+	of a breakpoint. Given
+	
+	      s = "A\x00B\x00C\x00D";
+	
+	      s.split('\x00')  // => CS4: ["", "", "", "", "", "", "", ""] (KO)
+	                       // => CS5: ["A", "B", "C", "D"] (OK)
+
+	Also, String.prototype.replace() cannot properly address U+0000 in both
+	CS4, CS5, and CS6--while String.prototype.match() seems to work.
+
+	Workaround. - Rewrite the prototyped methods wherever needed! [TODO]
+
+	*/
+
+	//==========================================================================
+	// RegExp.prototype.flags()
+	//==========================================================================
+
+	RegExp.prototype.flags = function flags()
+	//----------------------------------
+	// Flag-string of the regex in g-i-m order. See [ECMA].
+	// => '' | 'g' | 'i' | 'm' | 'gi' | 'gm' | 'im' | 'gim'
+	{
+		return (this.global ?'g':'') +
+			(this.ignoreCase?'i':'') +
+			(this.multiline ?'m':'');
+	};
+
+	//==========================================================================
+	// RegExp.prototype.toSource() ; RegExp.prototype['==']
+	//==========================================================================
+
+	RegExp.prototype.toSource = function toSource()
+	//----------------------------------
+	// Return a valid, ASCII-safe, uneval-string S for this
+	// regex such as `this` is equivalent to eval(S).
+	// [TODO] Normalize the result to improve ==() reliability.
+	// ---
+	// [REM] `S` has the form 'RegExp("str","flg")' where
+	//       "str" comes from String.prototype.toSource(),
+	//       so the full result is ASCII-safe and one-line.
+	// ---
+	// [REM] RegExp.prototype['=='] is implemented using
+	//       the present method, so we have this==eval(S).
+	{
+		// ALGORITHM IN USE.
+		// ---
+		// Problem. - `this` is a valid RegExp, but we don't
+		// know whether it has been created thru a string,
+		// RegExp("xyz"), or from a literal /xyz/. In either
+		// cases this.source matches `xyz` but:
+		//   (a)  "xyz"  MAY   contain '/' unescaped,
+		//   (b)  /xyz/ CANNOT contain '/' unescaped,
+		// Therefore the `source` is not consistent if
+		// the declaration involved the '/' character.
+		// For example, say source == `a\/b`
+		// in case (a) the pattern is /a\\\/b/, matching `a\/b`
+		// in case (b) the pattern is /a\/b/  , matching `a/b`
+		// (a) RegExp("a\\/b","g")
+		// ---
+		// Solution:
+		// 1. Replace /BKBK/ by `\x5C`   { `\\` } => `\x5C`
+		// 2. Replace /BKSL/ by <SL>     { `\/` } => `/`
+		// 3. Replace /SL/  by `\x2F`    { `/`  } => `\x2F`
+	
+		return $.global.localize(
+			'RegExp(%1,"%2")',
+			(this.source || '(?:)')             // As [ECMA] suggests for ''.
+				.replace(RegExp.BKBK,'\\x5C')   // Step 1.
+				.replace(RegExp.BKSL,String.SL) // Step 2.
+				.replace(RegExp.SL,'\\x2F')     // Step 3.
+				.toSource(),
+			this.flags()
+			);
+	};
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	Two regexes may capture exactly the same matches despite different
+	patterns. For example, /\d/ vs. /[0-9]/. However, we shall consider
+	such regexes *distinct* in the current implementation, based on the
+	fact that the patterns /\d/ and /[0-9]/ differ in syntax whatever
+	their equivalent semantics. By contrast, /aa\rbb\x01/ should be
+	regarded as strictly identical to /aa\x0Dbb\u0001/ in the sense those
+	patterns actually map to the same characters.
+
+	Thus, although not easily defined at a formal level, the identity
+	operator over RegExp objects can be roughly approximated based on the
+	`source` property. Even in ExtendScript's implementation, the same
+	source always reflects the same pattern. That is, given two patterns
+	P1 and P2 forming regular expressions R1 and R2 whose `source` strings
+	are resp. S1 and S2, we always have:
+
+	      S1 == S2  ->  P1 == P2   (from which we'll declare R1 == R2)
+
+	For example, the source `x\/y` can be reached from either
+	R1 = RegExp("x\\/y") or R2 = /x\/y/, and it turns out that those two
+	regexes have the same underlying pattern, namely /x\/y/.
+
+	Thus, checking whether R1.source == R2.source is SUFFICIENT to return
+	R1 == R2. But having equal sources is not a NECESSARY condition, as
+	the same pattern may have distinct sources. Noting that RegExp("x\\/y")
+	actually reduces to RegExp("x/y"), we already have an obvious example
+	at hand:
+
+	      (a) RegExp("x/y").source == `x/y`
+
+	      (b)        /x\/y/.source == `x\/y`
+
+	also,
+
+	      (c)    /x\u002Fy/.source == `x\u002Fy`
+
+	which all describe the same pattern /x\/y/.
+
+	Example 2:
+	---------
+	      (a) RegExp("x\\y").source == `x\y`   (== /x\y/.source)
+
+	      (b)   RegExp("xy").source == `xy`    (== /xy/.source)
+
+	both describe the pattern /xy/ --since \y means nothing but y.
+
+	Example 3:
+	---------
+	(a) RegExp("x\\t").source == `x\t`   (== /x\t/.source)
+
+	(b)  RegExp("x\t").source == `x<TB>` (== /x<TB>/.source)
+
+	both describing the match `x<TB>`. (Note here that /x\t/ is
+	in no way equivalent to /xt/!)
+
+	*/
+
+	RegExp.prototype['=='] = function(/*RegExp*/re)
+	//----------------------------------
+	// Tell whether two regexes are based on the same pattern.
+	// => true | false
+	{
+		// The first test is faster (sufficient condition),
+		// it avoids to invoke toSource where not required.
+		// ---
+		return this.source == re.source || this.toSource() == re.toSource();
+	};
