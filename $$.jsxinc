@@ -1,0 +1,158 @@
+/*******************************************************************************
+
+		Name:           IdExtenso Entry Point
+		Desc:           Includes the core libraries.
+		Path:           $$.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Entry point.
+		API:            ---
+		DOM-access:     ---
+		Todo:           Check that $.gc() does not cause issues.
+		Created:        160731 (YYMMDD)
+		Modified:       170405 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+	
+	Every module is created using the macro `MODULE` this way,
+	
+	      eval(__(MODULE, <1_host>, <2_name>, <3_modf>, <4_auto>))
+
+	where
+	
+	      <1_host> :: Evaluable ref to the container,
+	                  e.g '$.global' or '$$'.
+	      <2_name> :: Name of the incoming module,
+	                  e.g '$$' or 'Env'.
+	      <3_modf> :: Revision date as yymmdd number
+	                  (e.g. 170317, default is NaN.)
+	      <4_auto> :: Name of the automatic method
+	                  (default is 'toString'.)
+
+	Once created, every module `MyMod` is a Function that satisfies
+	the following rules:
+
+	          MyMod === <1_host>[<2_name>]
+	                === eval(MyMod.toSource())
+	
+	      MyMod.name == <2_name>
+	                 == String(MyMod)
+	                 == MyMod.toString()
+
+	      MyMod(x,y) -> MyMod[<4_auto>].call(this,x,y)
+
+	Every module also has the following properties:
+
+	      __load__ :: 0|1  (Loading state.)
+	      __modf__ :: uint (Revision date in yymmdd form.)
+	      __auto__ :: str  (Name of the automatic method.)
+	      __root__ :: str  (Name of the root module, '$$')
+	      __path__ :: str  (Path of the module, e.g '/$$/Env/')
+	           '~' :: obj  (Private zone, see below.)
+
+	The __path__ property of a module has the form /$$/xxx/.../,
+	it always starts and ends with a slash (/). Root module's
+	__path__ is '/$$/' --assuming $.global['$$'] is originally
+	set to '$$'.
+	
+	A set of private keys (object) is available in MyMod['~'],
+	referred to as the Private Module Zone.
+
+	MyMod.load() and MyMod.unload() are automatically defined on
+	including time and shouldn't be overridden. Instead, one has
+	the option of creating a public onLoad(...) and/or onUnload()
+	method attached to the module. Such method(s), when present,
+	will be invoked on loading time through $$.load().
+	
+	In addition the global `µ` variable points out to the current
+	module within the including stage, so that
+	
+	      µ      === <current-module>
+	      µ['~'] === <private-module-zone>
+	
+	Also, the global `$$` variable points out to the root module
+	within the whole including stage, even if '$$' is not the
+	final name of the installation.
+
+	*/
+
+	if( (function(){return this}).call(null)!==($||'').global || this!==$.global )
+	//----------------------------------
+	// Check that:
+	// (1) $.global refers to the [[global]] scope;
+	// (2) the current context *is* the [[global]] scope.
+	{
+		throw Error("IdExtenso must be loaded in the global scope!");
+	}
+
+	// Per-session run count (1, 2, 3, ...) -- cf Env module.
+	// [REM] Values managed through $.setenv/getenv are session
+	// persistent, even in the 'main' engine.
+	// ---
+	$.setenv('IDEXTENSO',1+(+($.getenv('IDEXTENSO')||0)));
+
+	if( 'function' != typeof $.global['$$'] && ($.global['\x24\x24']='$$') )
+	//----------------------------------
+	// Core including block.
+	// Keep the two occurences of the string `$$` above unless you
+	// want to install IdExtenso under a different (global) key.
+	// [REM] Whatever your choice, the key `$$` will remain functional
+	// within the whole including scope, so nothing else has to change.
+	{
+		// Localize shortcut. (Redefined later if Yalt is included.)
+		// ---
+		$.global.__ = $.global.localize;
+	
+		// Make sure __path__ is undefined before using the MODULE macro.
+		// ---
+		delete $.global.__path__;
+	
+		// Some temporary global strings.
+		// [REM] Autodeleted once the framework has been loaded.
+		// ---
+		$.global.PRIVATE = "PRIVATE";
+		$.global.PUBLIC  = "PUBLIC";
+		$.global.PARENT  = "PARENT";
+	
+		// Macro `MODULE`. (See implementation notes.)
+		// ---
+		$.global.MODULE = """
+		(
+			($.global.µ=(%1['%2']=(function %2(x,y,z,t){return callee[callee.__auto__].call(callee,x,y,z,t)}))).setup
+				({
+					__root__: $$.name||(($.global.$$=$.global.µ).name),
+					__load__: 0,
+					__modf__: +%3,
+					__auto__: ''!='%4' && 'undefined'!='%4' ? '%4' : 'toString',
+					__path__: (%1.__path__||'/') + '%2/',
+	
+					'~'     : %1.__path__ ? {} : {__mods__:{'/':{}}},
+					toString: function toString(){ return '%2' },
+					toSource: function toSource(){ return '%1["%2"]' },
+					
+					load:     %1.__path__ ? Function('x,y', 'return ' + $$.name + '["~"].LDMD(%1["%2"],x,y)') : (void 0),
+					unload:   %1.__path__ ? Function('return ' + $$.name + '["~"].ULMD(%1["%2"])') : (void 0),
+				})
+		)
+		""";
+	
+		// Core includes (order matters.)
+		// ---
+		#include 'core/$$.Ext.jsxinc'
+		
+		#include 'core/$$.Root.jsxlib'
+		#include 'core/$$.Env.jsxlib'
+		#include 'core/$$.JSON.jsxlib'
+		#include 'core/$$.File.jsxlib'
+		#include 'core/$$.Log.jsxlib'
+		#include 'core/$$.Dom.jsxlib'
+		
+		$.gc();$.gc();
+	}
