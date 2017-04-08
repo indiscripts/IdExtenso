@@ -270,7 +270,7 @@
 
 			// Conditional trace, timestamp.
 			// ---
-			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%3'...", callee.µ,$$.Env.idEngine())));
+			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%2'...", callee.µ,$$.Env.idEngine())));
 
 			// Engine state.
 			// ---
