@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =get() parseURI()
 		DOM-access:     ---
-		Todo:           Extend to HTTP/1.1, support for https://
+		Todo:           Support for https://
 		Created:        170403 (YYMMDD)
-		Modified:       170405 (YYMMDD)
+		Modified:       170408 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170405, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170408, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -202,6 +202,7 @@
 		// [RES] http://rorohiko.blogspot.fr/2008_07_01_archive.html
 		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
 		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+		// [FIX170408] Supports `HTTP/1.1` responses as well.
 		// => -1 [socket-KO] | 0 [timeout] | +1 [OK]
 		{
 			q = (callee.Q||callee.Q={
@@ -333,9 +334,9 @@
 					// ---
 					(+$$.trace) && $$.trace(__("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()));
 					R.status=line;
-					if( 0 !== line.indexOf('HTTP/1.0 ') )
+					if( 0 !== line.indexOf('HTTP/1.') )
 					{
-						(+$$.warn) && $$.warn(__("%1 > Invalid Status-Line: 'HTTP/1.0 ' is missing!",callee.µ));
+						(+$$.warn) && $$.warn(__("%1 > Invalid Status-Line: 'HTTP/1.x' is missing!",callee.µ));
 						q.dial==q.BRK;
 						break;
 					}
