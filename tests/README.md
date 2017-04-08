@@ -37,3 +37,11 @@ _Demonstrates:_
 * Some nice options behind it (verbose vs. compact format…)
 * `$$.File.temp()` to output the result in a temp file (and open it.)
  
+##### `GetWebImage.jsx`
+
+Download a PNG through `http` and load it in a ScriptUI dialog.   
+_Demonstrates:_
+   
+* `$$.Web(url)`, shortcut of `$$.Web.get(url)`.
+* Using `toSource()` with binary strings is more compact w/ IdExtenso.
+* Tracing steps thru `$$.trace()`, and more details on Log levels.
