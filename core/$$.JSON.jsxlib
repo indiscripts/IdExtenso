@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       170402 (YYMMDD)
+		Modified:       170408 (YYMMDD)
 
 *******************************************************************************/
 
@@ -75,7 +75,7 @@
 
 	*/
 
-;eval(__(MODULE, $$, 'JSON', 170402, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 170408, 'lave'))
 
 	[PRIVATE]
 	
@@ -535,7 +535,7 @@
 	[PUBLIC]
 
 	({
-		lave : function lave_x_S(/*any*/x,/*0|1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
+		lave : function lave_x_b_b_S(/*any*/x,/*0|1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
 		//----------------------------------
 		// Properly uneval (almost) anything in ExSc/SUI/InDesign context.
 		// [REM] Prevents Array/Object cycles;
