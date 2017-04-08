@@ -12,11 +12,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       170408 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 170407, 'load'))
+;eval(__(MODULE, '$.global', $$, 170408, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -270,7 +270,7 @@
 
 			// Conditional trace, timestamp.
 			// ---
-			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%3'...", callee.µ,callee.µ.__modf__/1e5,$$.Env.idEngine())));
+			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%3'...", callee.µ,$$.Env.idEngine())));
 
 			// Engine state.
 			// ---
