@@ -1,5 +1,4 @@
 # *IdExtenso*  [alpha]
-------------
 
 *ExtendScript Framework for InDesign Ninjas.*
 
@@ -27,7 +26,7 @@ By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is 
 
 - Still works fine in a `JSXBIN` export of your final project.
 
-- Fixes (at best as possible) compatibility issues between ExtenScript and/or InDesign DOM versions.
+- Fixes (at best as possible) compatibility issues between ExtendScript and/or InDesign DOM versions.
 
 - Various—and always growing—additional modules that you can plug at wish through `#include`. Among the available modules of the `/etc` branch: **Yalt** (localization engine), **Web** (HTTP/1.0 getter), **Settings** (multiscope settings manager), **MD5**, **DateFormat**, and more coming soon!
 
