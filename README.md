@@ -90,6 +90,6 @@ Below is a basic snippet that illustrates how to use some ***IdExtenso's*** core
 
 > _Note._ — The global identifier `$$` refers to ***IdExtenso***'s root API. You can reach all features—including those available in the installed modules—from this root identifier. For example, use `$$.File.writeUTF8()` to invoke the `writeUTF8` method of the **File** module.
 
-Other [ready-to-use scripts](tree/master/tests) are available in the `/tests` directory.
+Other [ready-to-use scripts](tests) are available in the `/tests` directory.
 
 ###### *(To be continued. Work-in-Progress!)*
