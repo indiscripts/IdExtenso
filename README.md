@@ -47,6 +47,49 @@ By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is 
 
 Congratulations! You're now ready to use all ***IdExtenso*** features in your script!
 
-Give a look at `$$.test-json.jsx` for a basic example.
+### Quick Example
+
+Below is a basic snippet that illustrates how to use some ***IdExtenso's*** core modules, namely **Log**, **JSON**, and **File**. Use it as a template to familiarize yourself with the framework.
+
+    #target 'indesign'
+
+    // IdExtenso entry point.
+    // ---
+    #include 'path/to/$$.jsxinc'
+
+    // ---
+    // Additional includes are possible here.
+    // e.g: #include 'path/to/etc/Yalt.jsxlib'
+    // ---
+
+    // Load the framework.
+    // ---
+    $$.load('TRACE');
+
+    // Your script goes here.
+    // ======================
+    try
+    {
+	    $$.Log.chrono().trace("Processing some huge JSON task...");
+	    var json = $$.JSON(app.properties.activeDocument,1);
+
+	    $$.Log.trace(__("JSON done in %1 ms.",+$$.Log.chrono));
+	
+	    alert( "The result should show up in a temporary file..." );
+	    $$.File.temp(json,'tmp',1/*SHOW*/);
+    }
+    catch(e)
+    {
+	    $$.receiveError(e);
+    }
+    // ======================
+
+    // Unload the framework.
+    // ---
+    $$.unload();
+
+> _Note._ — The global identifier `$$` refers to ***IdExtenso***'s root API. You can reach all features—including those available in the installed modules—from this root identifier. For example, use `$$.File.writeUTF8()` to invoke the `writeUTF8` method of the **File** module.
+
+Other [ready-to-use scripts](tree/master/tests) are available in the `/tests` directory.
 
 ###### *(To be continued. Work-in-Progress!)*
