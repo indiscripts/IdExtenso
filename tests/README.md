@@ -45,3 +45,14 @@ _Demonstrates:_
 * `$$.Web(url)`, shortcut of `$$.Web.get(url)`.
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
+
+##### `YaltIsGreat.jsx`
+
+Basic features of the localization module (**Yalt**.)   
+_Demonstrates:_
+   
+* Including an optional module (from `/etc`.)
+* Adding a localization package of your own.
+* Using the `__()` function with a Yalt string.
+* Activating another locale.
+* Inserting a placeholder in a translation string.
