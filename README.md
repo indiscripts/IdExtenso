@@ -6,15 +6,15 @@
 
 ***IdExtenso*** is a work-in-progress API dedicated to ExtendScript developers looking for a robust solution in the particular field of InDesign scripting. Think of it as a toolbox based on efficient and growing building blocks.
 
-Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects? Would you like to trace debug messages in a log file the easy way? And always making sure that the environment (operating system, InDesign version, locale, script engine) is properly addressed? ***IdExtenso*** natively provides those features as they are parts of its core structure.
+Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects? Would you like to trace your debug messages in a log file the easy way? And always making sure that the environment (operating system, InDesign version, locale, script engine) is properly addressed? ***IdExtenso*** natively provides these features as they are parts of its core structure.
 
 The framework is designed to support ExtendScript from version `3.92` to `4.5` and InDesign from `v.6.0` (CS4) to `12.x` (CC 2017) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can now save 30% of the original result length, and `RegExp.prototype["=="]` is now implemented so that you can compare regexes using `==`.
 
 ### What *IdExtenso* Is Not
 
-Anyway, ***IdExtenso*** is definitely not a “syntactic sugar” provider. Its main purpose is to deal with ExtendScript—which is not just JavaScript—and to make InDesign easier to automate. In fact, care has been taken to limit the addition of pure JS helpers that one could easily find in other well-known libraries.
+Anyway, ***IdExtenso*** is definitely not a “syntactic sugar” provider. Its main purpose is to deal with ExtendScript—which is not pure JavaScript—and to make InDesign easier to automate. In fact, care has been taken to limit the addition of JS helpers that one could easily find in other well-known libraries.
 
-By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is about articulating a complete workspace! Thus, it doesn't make sense to use it in tiny projects that don't involve topics like localization, performance, user interface, modularity, compatibility, code-factoring, robustness, settings management, etc.
+By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is about articulating a complete workspace! Thus, it doesn't make sense to use it in small projects that don't involve topics like localization, performance, user interface, modularity, compatibility, code-factoring, robustness, settings management, etc.
 
 ### Key Points
 
@@ -22,13 +22,13 @@ By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is 
 
 - Light-weight and very *non-polluting* regarding the `[[global]]` scope.
 
-- Smart support of persistent engines created via `#targetengine` directives.
+- Smart support of persistent engines created via the `#targetengine` directive.
 
 - Still works fine in a `JSXBIN` export of your final project.
 
 - Fixes (at best as possible) compatibility issues between ExtendScript and/or InDesign DOM versions.
 
-- Various—and always growing—additional modules that you can plug at wish through `#include`. Among the available modules of the `/etc` branch: **Yalt** (localization engine), **Web** (HTTP/1.0 getter), **Settings** (multiscope settings manager), **MD5**, **DateFormat**, and more coming soon!
+- Various—and always growing—additional modules that you can plug at wish through `#include`. Among the available modules of the `/etc` branch are: **Yalt** (localization engine), **Web** (HTTP/1.0 getter), **Settings** (multiscope settings manager), **MD5**, **DateFormat**, and more coming soon!
 
 ### Getting Started
 
@@ -36,10 +36,9 @@ By the way, ***IdExtenso*** does not pretend to form a *library*. Rather, it is 
 
 1. Download the latest distribution of ***IdExtenso*** (ZIP file) and unzip the whole structure at a location available to the `Scripts Panel` folder. You must have at least `$$.jsxinc` (the entry point) and the `/core` subfolder (`/etc` contains optional modules, but there are great too!)
 
+2. Either create a sample script (`myTest.jsx`) or simply open one of those provided in `/tests`. 
 
-2. Either create a sample script (`myTest.jsx`) or simply open the provided one (`$$.test-json.jsx`). 
-
-3. The script must contain the directive `#include '$$.jsxinc'` (which includes the framework), and then you have a global reference `$$` within which ***IdExtenso***'s API is fully available.
+3. The script must contain a directive `#include 'path/to/$$.jsxinc'` (which includes the framework), and then a global reference `$$` is available from which you can access ***IdExtenso***'s API.
 
 4. If relevant, include every additional module you may need—e.g. `#include etc/Web.jsxlib`—so that `$$.Web` will be added too. (All methods and properties are documented in each module.)
 
@@ -49,7 +48,7 @@ Congratulations! You're now ready to use all ***IdExtenso*** features in your sc
 
 ### Quick Example
 
-Below is a basic snippet that illustrates how to use some ***IdExtenso's*** core modules, namely **Log**, **JSON**, and **File**. Use it as a template to familiarize yourself with the framework.
+Below is a basic snippet that illustrates how to use some ***IdExtenso***'s core modules, namely **Log**, **JSON**, and **File**. Use it as a template to familiarize yourself with the framework.
 
     #target 'indesign'
 
@@ -92,4 +91,4 @@ Below is a basic snippet that illustrates how to use some ***IdExtenso's*** core
 
 Other [ready-to-use scripts](tests) are available in the `/tests` directory.
 
-###### *(To be continued. Work-in-Progress!)*
+###### *(To be continued.)*
