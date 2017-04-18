@@ -556,7 +556,9 @@
 			t = XML.prettyPrinting;
 
 			// [ADD170418] Normalize SPACED ; set I.RDCD.
+			// Warning: (undefined < 0) is TRUE in ExtendScript (!)
 			// ---
+			SPACED || (SPACED=0);
 			I.RDCD = +(0 > SPACED);
 			SPACED = +(0 < SPACED);
 
