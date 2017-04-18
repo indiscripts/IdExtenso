@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           test.jsx.
 		Created:        160130 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       170417 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 170407, 'toFile'))
+;eval(__(MODULE, $$, 'File', 170417, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -260,7 +260,7 @@
 		toFile: function toFile_$File$S_b_$File$$false$(/*File|str*/fx,/*bool=0*/CHECK_EXIST)
 		//----------------------------------
 		// Return a File object based on fx (File or string.)
-		// If CHECK_EXST is on, make sure that the file actually exists.
+		// If CHECK_EXIST is on, make sure that the file actually exists.
 		// [REM] This function *does not create* the file on disk.
 		// => File | FERR
 		{
@@ -288,6 +288,8 @@
 		readUTF8: function readUTF8_$File$S_S$false$(/*File|str*/fx)
 		//----------------------------------
 		// Read a file in UTF8 mode and return the resulting string.
+		// [REM] No conversion is performed here, meaning that the
+		// output is regarded as UTF8 (loaded in a JS-UTF16 string.)
 		// => str | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'r','UTF8')) &&
@@ -297,6 +299,8 @@
 		writeUTF8: function writeUTF8_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s)
 		//----------------------------------
 		// Write the input string in a File in UTF8 mode.
+		// [REM] No conversion is performed here, meaning that the
+		// input is regarded as UTF8 (loaded in a JS-UTF16 string.)
 		// => File | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'w','UTF8')) &&
@@ -306,6 +310,8 @@
 		appendUTF8: function appendUTF8_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s,/*bool=0*/NEW_LINE)
 		//----------------------------------
 		// Append the input string into a File in UTF8 mode.
+		// [REM] No conversion is performed here, meaning that the
+		// input is regarded as UTF8 (loaded in a JS-UTF16 string.)
 		// => File | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'e','UTF8')) &&
