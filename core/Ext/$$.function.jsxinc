@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            copy() [PRIVATE]() [PUBLIC]() [PARENT]()
+		API:            copy() self() [PRIVATE]() [PUBLIC]() [PARENT]()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       170417 (YYMMDD)
 
 *******************************************************************************/
 
@@ -25,7 +25,7 @@
 	// <this> :: public method of the current module.
 	// ---
 	// Temporarily provide a .copy utility to any public method
-	// so it is also available from any other *existing* module.
+	// in order to make it available from any other *existing* module.
 	// newPath :: path of the alias method to be registered. Any valid
 	//            function path, either absolute eg "/$$/myModule/myFuncAlias"
 	//            or relative to the current module eg "../../myFuncAlias"
@@ -40,6 +40,24 @@
 		'.' == newPath.substr(-1) && (newPath+='/');
 
 		this.__copy__ = newPath;
+		return this;
+	};
+
+	//==========================================================================
+	// Function.prototype.self()
+	// [REM] Autodeleted once the framework has been loaded.
+	//==========================================================================
+
+	Function.prototype.self = function(/*obj|null*/context,/*any*/x,/*any*/y)
+	//----------------------------------
+	// <this> :: method of the current module.
+	// ---
+	// [ADD170417] Temporarily provide a .self utility to any public method
+	// so that it invokes itself with x and y args, and returns itself.
+	// [REM] Autodeleted once the framework has been loaded.
+	// => this
+	{
+		this.call(context,x,y);
 		return this;
 	};
 
