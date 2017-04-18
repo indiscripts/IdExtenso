@@ -12,11 +12,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       170408 (YYMMDD)
+		Modified:       170417 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 170408, 'load'))
+;eval(__(MODULE, '$.global', $$, 170417, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -190,10 +190,11 @@
 			// Counterpart of $$/Ext.
 			// ---
 			delete Function.prototype.copy;
+			delete Function.prototype.self;
 
 			G.PRIVATE && delete Function.prototype[G.PRIVATE];
-			G.PUBLIC && delete Function.prototype[G.PUBLIC];
-			G.PARENT && delete Function.prototype[G.PARENT];
+			G.PUBLIC  && delete Function.prototype[G.PUBLIC];
+			G.PARENT  && delete Function.prototype[G.PARENT];
 
 			delete Object.prototype.setup;
 			delete Object.prototype.keys;
