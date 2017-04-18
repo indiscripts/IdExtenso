@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       170408 (YYMMDD)
+		Modified:       170418 (YYMMDD)
 
 *******************************************************************************/
 
@@ -71,11 +71,11 @@
 	
 	However, the lave() function can return either usual or agnostic
 	references, depending on the lexical context from which it is invoked.
-	In most cases the regular aliases will be returned though.
+	In most cases the regular aliases will be returned.
 
 	*/
 
-;eval(__(MODULE, $$, 'JSON', 170408, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 170418, 'lave'))
 
 	[PRIVATE]
 	
@@ -271,6 +271,7 @@
 		GBCD : '$.global',                                    // Global code        --can be changed from lave()
 		DLCD : '$',                                           // Dollar code        --can be changed from lave()
 		SPCE : '',                                            // Spaces or empty    --depends on SPACED in lave()
+		RDCD : 0,                                             // Reduced form       --depends on SPACED in lave()
 
 		KDOM : 0,                                             // Keep DOM access    --depends on DOM_ACCESS in lave()
 		
@@ -289,14 +290,14 @@
 		// Scalars from typeof, and associated 'classes.'
 		//----------------------------------
 
-		'\x01undefined':  function(x){ return this.SPCE?'undefined':'void 0' },
+		'\x01undefined':  function(x){ return this.RDCD?'void 0':'undefined' },
 		// ---
-		'\x01boolean':    function(x){ return this.SPCE?this.GSTR(x):((x.valueOf()?'!0':'!1')) },
+		'\x01boolean':    function(x){ return this.RDCD?((x.valueOf()?'!0':'!1')):this.GSTR(x) },
 		'\x01Boolean':    function(x){ return this['\x01boolean'](x) },
-		// ---
+		// --- [FIX170418]
 		'\x01number':     $$.idVersion(7) ?
-			function(x){ return this.GSTR(x) } :
-			function(x){ return x.isAdbe() ? this.ADBE(x) : this.GSTR(x) },
+			function(x){ return x.isAdbe() ? this.ADBE(x) : this.GSTR(x) } :
+			function(x){ return this.GSTR(x) },
 		'\x01Number':     function(x){ return this['\x01number'](x) },
 		// --- Thanks to Ext/string
 		'\x01string':     function(x){ return x.toSource() },
@@ -535,21 +536,30 @@
 	[PUBLIC]
 
 	({
-		lave : function lave_x_b_b_S(/*any*/x,/*0|1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
+		lave : function lave_x_t_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
 		//----------------------------------
-		// Properly uneval (almost) anything in ExSc/SUI/InDesign context.
+		// [CHG170418] Properly uneval (almost) anything in ExSc/SUI/InDesign context.
 		// [REM] Prevents Array/Object cycles;
 		//       Supports RegExp, File/Folder, UnitValue, XML/XMLList/QName/Namespace
 		//       Enumeration/Enumerator instance, Error, Date,
 		//       some native functions and static references, etc.
-		// `SPACED` :: whether the result must be compact (0:default) or extended (1).
-		//       Compact result is one-line ASCII unless `x` contains some XML [TODO].
+		// `SPACED` :: whether the result must be reduced(-1), compact(0:default) or extended(+1).
+		//       Compact means one-line ASCII -- unless `x` contains some XML [TODO].
+		//       Extended(+1) means multiline and verbose.
+		//       Reduced(-1) is similar to compact, but it provides additional shortcuts
+		//       such as `!0` instead of `true`, etc. [ADD170418]
 		// `DOM_ACCESS` :: whether the result should maintain DOM accesses thru
 		//       `resolve()` and enumerations.
 		// => uneval-string
 		{
 			I = callee.µ['~'];
 			t = XML.prettyPrinting;
+
+			// [ADD170418] Normalize SPACED ; set I.RDCD.
+			// ---
+			I.RDCD = +(0 > SPACED);
+			SPACED = +(0 < SPACED);
+
 			ns = SPACED ? '/*non supported*/' : '';
 			nt = SPACED ? '/*native code*/' : '';
 
