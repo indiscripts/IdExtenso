@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       170418 (YYMMDD)
+		Modified:       170419 (YYMMDD)
 
 *******************************************************************************/
 
@@ -75,7 +75,7 @@
 
 	*/
 
-;eval(__(MODULE, $$, 'JSON', 170418, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 170419, 'lave'))
 
 	[PRIVATE]
 	
@@ -283,7 +283,11 @@
 
 		ADBE : function(/*u32*/n)
 		{
-			return n.toHexa() + (this.SPCE ? ( ' /* [' + n.toAdbe() + '] */' ) : '');
+			return n.toHexa() + (
+				this.RDCD ?
+				'' :
+				__( "%2/*%2[%1]%2*/", n.toAdbe(), this.SPCE?' ':'')
+			);
 		},
 
 		//----------------------------------
