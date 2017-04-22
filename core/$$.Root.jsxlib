@@ -12,11 +12,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       170417 (YYMMDD)
+		Modified:       170422 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 170417, 'load'))
+;eval(__(MODULE, '$.global', $$, 170422, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -211,7 +211,10 @@
 			// [WARN] Do not delete `G.app`!
 			// ---
 			delete G.Locale;
-			
+			delete G.UndoModes;
+			delete G.UserInteractionLevels;
+			delete G.MeasurementUnits;
+
 			'$$'==callee.µ.name || (delete G['$$']);
 		},
 		
