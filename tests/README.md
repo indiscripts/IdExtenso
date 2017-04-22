@@ -36,7 +36,17 @@ _Demonstrates:_
 * `$$.JSON.lave()` routine (just calling `$$.JSON()`, as this is the `auto` method.)
 * Some nice options behind it (verbose vs. compact format…)
 * `$$.File.temp()` to output the result in a temp file (and open it.)
- 
+
+##### `EnvSummary.jsx` vs. `EnvSummary.bin.jsx`
+
+Report scripting context from the Env module.   
+_Demonstrates:_
+   
+* Usage of `$$.Env.domVersion()`, alias: `$$.domVersion()`
+* Usage of `$$.Env.summary()`, alias: `$$.Env()`
+* Main script and Running code status (JSX vs. JSXBIN), see `EnvSummary.bin.jsx` for additional information.
+* Log in TRACE mode.
+
 ##### `GetWebImage.jsx`
 
 Download a PNG through `http` and load it in a ScriptUI dialog.   
