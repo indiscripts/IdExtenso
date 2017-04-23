@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       170402 (YYMMDD)
+		Modified:       170423 (YYMMDD)
 
 *******************************************************************************/
 
@@ -31,14 +31,27 @@
 	// Number.prototype.toHexa() ; Number.prototype.toAdbe() ; Number.prototype.isAdbe()
 	//==========================================================================
 
-	Number.prototype.toHexa = function toHexa()
+	Number.prototype.toHexa = function toHexa(/*str='0x'*/prefix,/*uint=0*/zeroPad,  s)
 	//----------------------------------
-	// Return the "0xHHHH" representation of this number.
-	// E.g  123456 => "0x1E240"
+	// Return the "0xHHHH" representation of this number. (Uppercase hexa digits.)
+	// [ADD170423] `prefix`   If provided (string), reset the prefix (default is "0x").
+	// [ADD170423] `zeroPad`  If > 0, minimum length of the hexa representation.
+	// ---
+	// E.g  toHexa(123456)          => "0x1E240"
+	// E.g  toHexa(123456, "U+")    => "U+1E240"
+	// E.g  toHexa(123, "")         => "7B"
+	// E.g  toHexa(123, "", 4)      => "007B"
 	{
-		return isNaN(this) ?
-			'NaN' :
-			( '0x' + this.toString(16).toUpperCase() );
+		if( isNaN(this) ) return 'NaN';
+
+		( 'string' == typeof prefix ) || (prefix='0x');
+		( 'number' == typeof zeroPad && 0 < (zeroPad >>>= 0) ) || (zeroPad=0);
+		
+		s = this.toString(16).toUpperCase();
+		
+		return prefix +
+			( zeroPad && 0 < (zeroPad-=s.length) ? Array(1+zeroPad).join('0') : '' ) +
+			s;
 	};
 
 	Number.prototype.toAdbe = function toAdbe()
