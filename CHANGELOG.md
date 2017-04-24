@@ -1,6 +1,6 @@
 ##### [170424]
   - Added `Yalt.hasKey()` (check whether a translation key is present)
-  - Fixed `YALT.onLoad()` cast name
+  - Fixed `Yalt.onLoad()` cast name
 
 ##### [170423]
   - Added `prefix` and `zeroPad` params to `Number.prototype.toHexa` [*`core/Ext/$$.number.jsxinc`*]
