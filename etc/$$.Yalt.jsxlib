@@ -8,7 +8,7 @@
 		Core:           NO
 		Kind:           Module.
 		API:            =addPackage() activate() autoActivate
-		                getLocaleId() isActive()
+		                getLocaleId() isActive() hasKey()
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
@@ -241,6 +241,15 @@
 				[(s && (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) ? o[k] : s), x1,x2,x3,x4,x5,x6,x7,x8,x9]
 				);
 		},
+		
+		HASK : function(/*str*/s)
+		//----------------------------------
+		// [ADD170424] Whether the key-string `s` is known from L10N.
+		// [REM] Alias of hasKey.
+		// => 1 [OK] | 0 [KO]
+		{
+			return this.L10N.hasOwnProperty(this.KPFX+s) ? 1 : 0;
+		},
 	})
 
 	//==========================================================================
@@ -349,6 +358,14 @@
 		// => 0 | 1
 		{
 			return +(0 < callee.µ['~'].L10N.__count__);
+		},
+		
+		hasKey : function hasKey_S_B(/*str*/keyString)
+		//----------------------------------
+		// [ADD170424] Whether keyString is available among Yalt translation strings.
+		// => 0 | 1
+		{
+			return keyString ? callee.µ['~'].HASK(keyString) : 0;
 		},
 
 	})
