@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       170424 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 170407, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 170424, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -271,8 +271,9 @@
 		// ---
 		autoActivate : 1,
 
-		onLoad : function onLoad__i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale)
+		onLoad : function onLoad_i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale)
 		//----------------------------------
+		// [FIX170424] Fixed function cast name.
 		{
 			if( callee.µ.autoActivate || $.global[callee.µ.__root__].isLoaded() )
 			{
