@@ -1,4 +1,5 @@
 ##### [170424]
+  - Added `Yalt.hasKey()` (check whether a translation key is present)
   - Fixed `YALT.onLoad()` cast name
 
 ##### [170423]
