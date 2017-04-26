@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Web
-		Desc:           Basic HTTP/1.0 client and Web-related features.
+		Desc:           Basic HTTP/1.x client and Web-related features.
 		Path:           /etc/$$.Web.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           Support for https://
 		Created:        170403 (YYMMDD)
-		Modified:       170408 (YYMMDD)
+		Modified:       170426 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170408, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170426, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -189,7 +189,10 @@
 				q.seek = 0;
 			}
 
-			return 0 < q.pending ? q.buff.length : -1;
+			// [FIX170426] Buffer wasn't transferred!
+			// Needed to replace `0 < ...` by `0 <= ...` (!)
+			// ---
+			return 0 <= q.pending ? q.buff.length : -1;
 		},
 
 		HGET : function(/*obj&*/R,/*obj*/uri,/*bool*/isBin,/*uint*/tmo,  q,cs,cc,nl,okLine,line,wip,z,x)
@@ -316,7 +319,7 @@
 				// ---
 
 				x = cc;
-				if( q.dial == q.BDY || q.dial == q.END ){ R.data+=CHR(x); continue; }
+				if( q.dial == q.BDY || q.dial == q.END ){ R.data += CHR(x); continue; }
 
 				// Line manager.
 				// ---
@@ -376,7 +379,7 @@
 					isNaN(x) || 0 >= x || (q.pending=x-z-q.seek);
 				}
 			}
-			
+
 			q.cnx && (q.cnx=(q.cnx.close(),null));
 			return q.dial==q.BRK ? 0 : 1;
 		},
