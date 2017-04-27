@@ -9,15 +9,16 @@
 		Kind:           Module.
 		API:            =toFile() readBinary() writeBinary()
 		                readUTF8() writeUTF8() appendUTF8()
+		                macLineFeed() winLineFeed() unixLineFeed()
 		                temp()
 		DOM-access:     NO
 		Todo:           test.jsx.
 		Created:        160130 (YYMMDD)
-		Modified:       170417 (YYMMDD)
+		Modified:       170427 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 170417, 'toFile'))
+;eval(__(MODULE, $$, 'File', 170427, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -166,7 +167,10 @@
 	
 	({
 		FERR: false,                                        // No-File flag. Must be falsy (0|false|null|undefined.)
-		
+
+		LNFD: $$.inWin ? 'Windows' : 'Unix',                // [ADD170427] Default lineFeed. To change it, use either
+		                                                    // µ.macLineFeed(), µ.winLineFeed(), µ.unixLineFeed()
+
 		EXST: function(/*File*/ff)
 		//----------------------------------
 		// Whether `ff` actually exists as a File *and* can be read.
@@ -185,6 +189,7 @@
 		
 		OPEN: function(/*File|str*/fx,/*w|e|r*/mde,/*BINARY|UTF8|...*/enc,  ff)
 		//----------------------------------
+		// [CHG170427] Added lineFeed support.
 		{
 			if( !(ff=this.TOFL(fx,+('w'!=mde))) )
 			{
@@ -201,6 +206,10 @@
 				return this.FERR;
 			}
 			ff.encoding = enc;
+			
+			// Linefeed?
+			// ---
+			if( 'w'==mde ) ff.lineFeed = this.LNFD;
 
 			// Unicode U+FEFF (UTF16) converts into UTF8 `EF BB BF`
 			// ---
@@ -353,5 +362,27 @@
 			SHOW_FILE && t && ((I.TFIL=I.FERR),t.execute());
 
 			return t;
+		},
+
+		unixLineFeed : function unixLineFeed_()
+		//----------------------------------
+		// [ADD170427] Change file creation lineFeed into "Unix", ie <LF>.
+		{
+			callee.µ['~'].LNFD = "Unix";
+		},
+
+		macLineFeed : function macLineFeed_()
+		//----------------------------------
+		// [ADD170427] Change file creation lineFeed into "Macintosh", ie <CR>.
+		// [REM] Classic Mac OS <CR> is considered obsolete.
+		{
+			callee.µ['~'].LNFD = "Macintosh";
+		},
+
+		winLineFeed : function winLineFeed_()
+		//----------------------------------
+		// [ADD170427] Change file creation lineFeed into "Windows", ie <CRLF>.
+		{
+			callee.µ['~'].LNFD = "Windows";
 		},
 	})
