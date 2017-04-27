@@ -1,0 +1,68 @@
+/*******************************************************************************
+
+		Name:           scriptui
+		Desc:           Extends ScriptUI static properties.
+		Path:           /core/Ext/$$.scriptui.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext.
+		API:            FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
+		DOM-access:     ---
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       170427 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	COMBINED ALIGNMENTS.
+
+	In ScriptUI, alignment options (`alignment` and `alignChildren`
+	properties) support the array form [<horizAlign>, <vertAlign>]. This
+	makes sense in controlling the overall strategy of a container having
+	subcontainers. Thus, we often need to pass arguments such as
+	['left','top'] or ['fill','fill'], which creates temporary arrays that
+	could be avoided using static data structures. This is done by
+	globally declaring ScriptUI.FT, .LT, and so on.
+
+	*/
+
+	//==========================================================================
+	// Temporary global aliases.
+	//==========================================================================
+
+	$.global.ALIG = ScriptUI.Alignment;
+
+	//==========================================================================
+	// Combined Alignments (ScriptUI.FT, ScriptUI.LT, etc.)
+	// [REM] ALIG.FILL, ALIG.LEFT, etc., just encodes uint numbers.
+	//==========================================================================
+
+	ScriptUI.setup({
+		LT : [ALIG.LEFT,   ALIG.TOP],       // [ 3, 1 ]
+		RT : [ALIG.RIGHT,  ALIG.TOP],       // [ 4, 1 ]
+		FT : [ALIG.FILL,   ALIG.TOP],       // [ 5, 1 ]
+		CT : [ALIG.CENTER, ALIG.TOP],       // [ 6, 1 ]
+		// ---
+		LB : [ALIG.LEFT,   ALIG.BOTTOM],    // [ 3, 2 ]
+		RB : [ALIG.RIGHT,  ALIG.BOTTOM],    // [ 4, 2 ]
+		FB : [ALIG.FILL,   ALIG.BOTTOM],    // [ 5, 2 ]
+		CB : [ALIG.CENTER, ALIG.BOTTOM],    // [ 6, 2 ]
+		// ---
+		LC : [ALIG.LEFT,   ALIG.CENTER],    // [ 3, 6 ]
+		RC : [ALIG.RIGHT,  ALIG.CENTER],    // [ 4, 6 ]
+		FC : [ALIG.FILL,   ALIG.CENTER],    // [ 5, 6 ]
+		CC : [ALIG.CENTER, ALIG.CENTER],    // [ 6, 6 ]
+		});
+
+	//==========================================================================
+	// Clear globals.
+	//==========================================================================
+
+	delete $.global.ALIG;
