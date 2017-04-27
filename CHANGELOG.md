@@ -1,3 +1,6 @@
+##### [170427]
+  - Added `File.macLineFeed()`, `File.winLineFeed()`, and `File.unixLineFeed()` to control newline character(s) during file creation.
+
 ##### [170426]
   - Bug fixed in `Web.get()` when `isText` option was turned ON. (No data were returned.)
 
