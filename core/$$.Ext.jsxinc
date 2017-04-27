@@ -13,7 +13,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        160731 (YYMMDD)
-		Modified:       170322 (YYMMDD)
+		Modified:       170427 (YYMMDD)
 
 *******************************************************************************/
 
@@ -56,3 +56,7 @@
 	// Temporarily extends Function.prototype.
 	// ---
 	#include 'Ext/$$.function.jsxinc'
+
+	// Extends ScriptUI static properties.
+	// ---
+	#include 'Ext/$$.scriptui.jsxinc'
