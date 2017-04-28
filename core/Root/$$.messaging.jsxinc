@@ -1,0 +1,112 @@
+/*******************************************************************************
+
+		Name:           Messaging
+		Desc:           Simple Messaging API of the Root module.
+		Path:           /core/Root/$$.messaging.jsxinc
+		Require:        Ext/scriptui
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Root module.
+		API:            success()
+		DOM-access:     ---
+		Todo:           Fix dual-screen issues
+		Created:        170427 (YYMMDD)
+		Modified:       170428 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+	
+	Provides simple messaging functions for quick prompts, warnings, or
+	pending messages.
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		// Default title for message widgets.
+		//----------------------------------
+		TTLE : '\xA0' + "IdExtenso",
+
+		SLMG : function(/*str*/msg,/*str|false*/title,/*uint*/msec,  s,n,ML,xm,ym,w)
+		//----------------------------------
+		// Sleeping Message (based on a palette.)
+		// [REM] Palettes usually show up on $.screens[0] whatever app screen.
+		// [CS4] If borderless==false (titlebar shown) app screen is focused on.
+		{
+			// UI resource pattern.
+			// ---
+			s = """palette
+			{
+				text:               %1,
+				properties:         { borderless: %2 },
+				orientation:        'column',
+				alignChildren:      ['center','top'],
+				margins:            %3,
+				_:StaticText
+				{
+					text:           %4,
+					properties:     { name: 'S0', multiline: %5 },
+				},
+			}""";
+
+			// UI params.
+			// ---
+			n = msg.length;
+			ML = 30 < n || RegExp.LINE.test(msg); // multiline?
+			xm = Math.max(30,3*(20-n));
+			ym = 15 + (xm>>>1);
+			s = __(s,
+				(title||'').toSource(),
+				!title,
+				__("[%1,%2,%1,%2]",xm,ym),
+				msg.toSource(),
+				ML
+			);
+
+			// Window + sleep.
+			// ---
+			w = new Window(s);
+			w.show();
+			$.sleep(msec);
+			
+			// Required if a persistent engine is running.
+			// ---
+			if( 'dialog' != w.type ) w.hide();
+		},
+ 
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		success: function success_S_s_i(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=auto*/seconds)
+		//----------------------------------
+		// [170427] Displays a OK message box during a short time.
+		// `message` :: String to be prompted.
+		// `title`   :: Title of the box (default is "IdExtenso")
+		//              -1 => remove the title bar.
+		// `seconds` :: Delay, in seconds.
+		// ---
+		// E.g  $$.success("Web data have been entirely retrieved.", "MyTool", 3);
+		{
+			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
+			callee.µ['~'].SLMG(
+				msg,
+				-1===title ? false : (title||callee.µ['~'].TTLE),
+				seconds*1e3
+				);
+		},
+
+	})
