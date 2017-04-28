@@ -1,3 +1,6 @@
+## 1.70428
+  - Included the messaging API (quick prompts etc.) in the Root module. Method: `$$.success(message)`.
+
 ##### [170427]
   - Added `File.macLineFeed()`, `File.winLineFeed()`, and `File.unixLineFeed()` to control newline character(s) during file creation.
 
