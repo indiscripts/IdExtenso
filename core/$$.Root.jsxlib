@@ -12,11 +12,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       170422 (YYMMDD)
+		Modified:       170428 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 170422, 'load'))
+;eval(__(MODULE, '$.global', $$, 170428, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -224,7 +224,13 @@
 		},
 	})
 
+	// Error manager API.
+	// ---
 	#include "Root/$$.errors.jsxinc"
+
+	// [ADD170428] Simple messaging API.
+	// ---
+	#include "Root/$$.messaging.jsxinc"
 
 	[PUBLIC]
 	({
