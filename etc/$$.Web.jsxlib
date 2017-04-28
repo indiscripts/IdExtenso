@@ -7,30 +7,54 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =get() parseURI()
+		API:            =get() parseURI() browse()
 		DOM-access:     ---
-		Todo:           Support for https://
+		Todo:           Support for https/ssl (possible?)
 		Created:        170403 (YYMMDD)
-		Modified:       170426 (YYMMDD)
+		Modified:       170428 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170426, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170428, 'get'))
 
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
 
 	/*
-	
-	The current version of get() supports HTTP/1.0 GET requests.
-	
+
+	The current version of get() sends `HTTP/1.0 GET` requests but should deal
+	with any 1.x answer. However, since https is not supported (yet), if the
+	server emits a 301 redirection to 'https' the function will throw an
+	"invalid protocol" error.
+
 	*/
 
 	[PRIVATE]
 
 	({
 		SERR: false,                            // No-Socket flag. Must be falsy (0|false|null|undefined.)
+
+		// [ADD170428] OS suffix and templates for url shortcuts.
+		// ---
+		OSSX: $$.inMac ? 'webloc' : 'url',
+
+		OSTP: $$.inMac ?
+			[
+			'<?xml version="1.0" encoding="UTF-8"?>',
+			'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+			'<plist version="1.0">',
+				'<dict>',
+					'\t<key>URL</key>',
+					'\t<string>%1</string>',
+				'</dict>',
+			'</plist>',
+			].join(String.LF) :
+			[
+			'[InternetShortcut]',
+			'URL=%1',
+			''
+			].join(String.CRLF),
 
 		UREG : RegExp(__( "^%1%2%3",            //  0 SRCE :: PRTO + AUTH + LOCN
 				"(?:([^:\\/?#]+):)?",           //  1 PRTO
@@ -467,6 +491,8 @@
 		// using the URL that the response is received for should be
 		// updated. The new URL should be provided in the `Location` field
 		// included with the response.
+		// ---
+		// [FIX170428] Fixed typos left in `$$.warn()` calls.
 		// => obj
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -487,7 +513,7 @@
 			}
 
 			uri = callee.µ.parseURI(uri,1);
-			
+
 			if( 'http' != uri.protocol )
 			{
 				$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
@@ -509,31 +535,59 @@
 			{
 				case -1 :
 					r.error = __("Cannot open the HTTP socket.");
-					$$.warn( __("%1 > %2",callee,r.error) );
+					$$.warn( __("%1 > %2",callee.µ,r.error) );
 					break;
 
 				case 0 :
 					r.error = __("HTTP error or timeout.");
-					$$.warn( __("%1 > %2",callee,r.error) );
+					$$.warn( __("%1 > %2",callee.µ,r.error) );
 					break;
 				
 				default :
 					if( r.data.length + r.status.length <= 0 )
 					{
 						r.error = __("No data received from the HTTP connection.");
-						$$.warn( __("%1 > %2",callee,r.error) );
+						$$.warn( __("%1 > %2",callee.µ,r.error) );
 						break;
 					}
 					if( 0 <= r.status.indexOf('301') && 0 < R301-- )
 					{
 						uri = r.headers.Location;
-						$$.warn( __("%1 > HTTP 301 Redirection to %2.",callee, uri) );
+						$$.warn( __("%1 > HTTP 301 Redirection to %2.",callee.µ, uri) );
 						VOLATILE || $$.kill(r);
 						r = callee(uri,!isText,timeOut,VOLATILE,R301);
 					}
 			}
 
 			return r;
+		},
+
+		browse : function browse_S(/*str*/uri,  $$,I,ff)
+		//----------------------------------
+		// [ADD170428] Try to open this uri in the client-side browser.
+		// [REM] This routine does not check the uri. Make sure it is
+		// valid and has an explicit protocol (http, ftp, etc.)
+		// => 1 [OK] | 0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			if( 'string' != typeof uri )
+			{
+				$$.error(__("Invalid uri type (%1). Should be a string.", typeof uri),callee);
+			}
+
+			ff = $$.File.temp(__(I.OSTP, uri),I.OSSX,0,1);
+	
+			if( !ff )
+			{
+				$$.warn( __("%1 > Unable to create the temporary url file based on %2.",callee.µ, uri) );
+				return 0;
+			}
+	
+			ff.execute();
+			$.sleep(500);
+			return 1;
 		},
 
 	})
