@@ -11,9 +11,51 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       170423 (YYMMDD)
+		Modified:       170429 (YYMMDD)
 
 *******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[ECMA] The Number type has exactly 18,437,736,874,454,810,627 values
+	(2^64−2^53+3), representing double-precision 64-bit format IEEE 754
+	values as specified in the IEEE Standard for Binary Floating-Point
+	Arithmetic, except that the 9,007,199,254,740,990 (2^53−2) distinct
+	`Not-a-Number` values of the IEEE Standard are represented in
+	ECMAScript as a single special NaN value. (The NaN value is
+	produced by the program expression `NaN`.) In some implementations,
+	external code might be able to detect a difference between various
+	Not-a-Number values, but such behaviour is implementation-dependent;
+	to ECMAScript code, all NaN values are indistinguishable from each
+	other.
+
+	There are two other special values, called positive Infinity and
+	negative Infinity. These two infinite Number values are produced
+	by the program expressions `+Infinity` (or simply `Infinity`) and
+	`-Infinity`.
+	
+	The other 18,437,736,874,454,810,624 (2^64−2^53) values are called
+	the finite numbers. Half of these are positive numbers and half are
+	negative numbers; for every finite positive Number value there is a
+	corresponding negative value having the same magnitude.
+	
+	Note that there is both a positive zero and a negative zero. For
+	brevity, these values are also referred to for expository purposes by
+	the symbols +0 and −0, respectively. Note that these two different
+	zero Number values are produced by the program expressions +0 (or
+	simply 0) and -0.
+	
+	[REM] In ExtendScript, `+0 === -0` return true. The only way to
+	make a distinction between positive and negative zero is to
+	use a check routine looking like
+	
+	      function isNegativeZero(x) { return 0===x && (1/x < 0) }
+
+	*/
 
 	//==========================================================================
 	// Number.prototype.toSource()
