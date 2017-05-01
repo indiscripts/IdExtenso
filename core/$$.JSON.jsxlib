@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       170419 (YYMMDD)
+		Modified:       170501 (YYMMDD)
 
 *******************************************************************************/
 
@@ -75,7 +75,7 @@
 
 	*/
 
-;eval(__(MODULE, $$, 'JSON', 170419, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 170501, 'lave'))
 
 	[PRIVATE]
 	
@@ -265,21 +265,21 @@
 	[PRIVATE]
 
 	({
-		NSOB : '({})',                                        // Not-supported-obj  --depends on SPACED in lave()
-		NSFC : '(function%1(){})',                            // Not-supported-func --depends on SPACED in lave()
-		NTFC : '(function%1(){})',                            // Native-func        --depends on SPACED in lave()
-		GBCD : '$.global',                                    // Global code        --can be changed from lave()
-		DLCD : '$',                                           // Dollar code        --can be changed from lave()
-		SPCE : '',                                            // Spaces or empty    --depends on SPACED in lave()
-		RDCD : 0,                                             // Reduced form       --depends on SPACED in lave()
-
-		KDOM : 0,                                             // Keep DOM access    --depends on DOM_ACCESS in lave()
+		NSOB : '({})',                               // Not-supported-obj  --depends on SPACED in lave().
+		NSFC : '(function%1(){})',                   // Not-supported-func --depends on SPACED in lave().
+		NTFC : '(function%1(){})',                   // Native-func        --depends on SPACED in lave().
+		SNAN : 'Number.NaN',                         // Secure NaN [ADD170501] --may be REDUCED to '+{}'.
+		GBCD : '$.global',                           // Global code        --can be changed from lave().
+		DLCD : '$',                                  // Dollar code        --can be changed from lave().
+		SPCE : '',                                   // Spaces or empty    --depends on SPACED in lave().
+		RDCD : 0,                                    // Reduced form       --depends on SPACED in lave().
+		KDOM : 0,                                    // Keep DOM access    --depends on DOM_ACCESS in lave()
 		
-		INDT : '',                                            // Current indentation.
-		INLP : 0,                                             // Entered in a Array/Object loop.
+		INDT : '',                                   // Current indentation.
+		INLP : 0,                                    // Entered in a Array/Object loop.
 
-		KARR : µ['~'].OTOS([]),                               // "[object Array]"
-		KREG : µ['~'].OTOS(/z/),                              // "[object RegExp]"
+		KARR : µ['~'].OTOS([]),                      // "[object Array]"
+		KREG : µ['~'].OTOS(/z/),                     // "[object RegExp]"
 
 		ADBE : function(/*u32*/n)
 		{
@@ -298,10 +298,11 @@
 		// ---
 		'\x01boolean':    function(x){ return this.RDCD?((x.valueOf()?'!0':'!1')):this.GSTR(x) },
 		'\x01Boolean':    function(x){ return this['\x01boolean'](x) },
-		// --- [FIX170418]
+		// --- [FIX170418] Alternate functions were swapped!
+		// --- [CHG170501] Improving NaN output => this.SNAN ('Number.NaN').
 		'\x01number':     $$.idVersion(7) ?
-			function(x){ return x.isAdbe() ? this.ADBE(x) : this.GSTR(x) } :
-			function(x){ return this.GSTR(x) },
+			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this[x.isAdbe()?'ADBE':'GSTR'](x) } :
+			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this.GSTR(x) },
 		'\x01Number':     function(x){ return this['\x01number'](x) },
 		// --- Thanks to Ext/string
 		'\x01string':     function(x){ return x.toSource() },
@@ -565,6 +566,10 @@
 			SPACED || (SPACED=0);
 			I.RDCD = +(0 > SPACED);
 			SPACED = +(0 < SPACED);
+
+			// [ADD170501] Secured NaN.
+			// ---
+			I.SNAN = I.RDCD ? '+{}' : 'Number.NaN';
 
 			ns = SPACED ? '/*non supported*/' : '';
 			nt = SPACED ? '/*native code*/' : '';
