@@ -1,3 +1,6 @@
+##### [170501]
+  - Slight improvement of `JSON` module: safer `NaN` string no longer relying on `[[global]].NaN` (which is writable.)
+
 ## 1.70428
   - Included the messaging API (quick prompts etc.) in the Root module. Method: `$$.success(message)`.
   - Added `$$.Web.browse(url)` (in `etc/Web` module), which allows to open an url in the client-side browser.
