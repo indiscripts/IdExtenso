@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Fix dual-screen issues
 		Created:        170427 (YYMMDD)
-		Modified:       170428 (YYMMDD)
+		Modified:       170504 (YYMMDD)
 
 *******************************************************************************/
 
@@ -73,6 +73,12 @@
 			// ---
 			w = new Window(s);
 			w.show();
+
+			// [ADD170504] Calling update() here seems to solve (rare?) issues on MacOS
+			// [RES] https://forums.adobe.com/message/9484275#9484275
+			// ---
+			w.update();
+
 			$.sleep(msec);
 			
 			// Required if a persistent engine is running.
