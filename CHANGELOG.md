@@ -1,3 +1,6 @@
+##### [170504]
+  - Added the _Window.update()_ trick in `~.SLMG()` (sleep message), thanks to [https://forums.adobe.com/message/9484275#9484275].
+
 ##### [170501]
   - Slight improvement of `JSON` module: safer `NaN` string no longer relying on `[[global]].NaN` (which is writable.)
 
