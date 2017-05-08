@@ -1,3 +1,6 @@
+##### [170508]
+  - Make sure `$$.success()` treats the param `title` as a string.
+
 ##### [170504]
   - Added the _Window.update()_ trick in `~.SLMG()` (sleep message), thanks to https://forums.adobe.com/message/9484275#9484275.
 
