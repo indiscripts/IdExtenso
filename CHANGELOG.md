@@ -1,5 +1,5 @@
 ##### [170508]
-  - Better type checking in `$$.success()`0151—make sure it treats the relevant params as strings.
+  - Better type checking in `$$.success()`—make sure it treats the relevant params as strings.
 
 ##### [170504]
   - Added the _Window.update()_ trick in `~.SLMG()` (sleep message), thanks to https://forums.adobe.com/message/9484275#9484275.
