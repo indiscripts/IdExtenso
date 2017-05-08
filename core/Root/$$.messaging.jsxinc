@@ -111,7 +111,7 @@
 			// [CHG170508] Better type checking.
 			// ---
 			msg = String(msg);
-			title = -1===title ? false : (String(title)||callee.µ['~'].TTLE);
+			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
 
 			callee.µ['~'].SLMG(msg, title, 1e3*seconds);
