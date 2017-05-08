@@ -104,15 +104,17 @@
 		// `title`   :: Title of the box (default is "IdExtenso")
 		//              -1 => remove the title bar.
 		// `seconds` :: Delay, in seconds.
+		// [CHG170508] Coerce msg and title into string (if relevant.)
 		// ---
 		// E.g  $$.success("Web data have been entirely retrieved.", "MyTool", 3);
 		{
+			// [CHG170508] Better type checking.
+			// ---
+			msg = String(msg);
+			title = -1===title ? false : (String(title)||callee.µ['~'].TTLE);
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
-			callee.µ['~'].SLMG(
-				msg,
-				-1===title ? false : (String(title)||callee.µ['~'].TTLE), // [CHG170508] Force String(title).
-				seconds*1e3
-				);
+
+			callee.µ['~'].SLMG(msg, title, 1e3*seconds);
 		},
 
 	})
