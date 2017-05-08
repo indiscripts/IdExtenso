@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Fix dual-screen issues
 		Created:        170427 (YYMMDD)
-		Modified:       170504 (YYMMDD)
+		Modified:       170508 (YYMMDD)
 
 *******************************************************************************/
 
@@ -110,7 +110,7 @@
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
 			callee.µ['~'].SLMG(
 				msg,
-				-1===title ? false : (title||callee.µ['~'].TTLE),
+				-1===title ? false : (String(title)||callee.µ['~'].TTLE), // [CHG170508] Force String(title).
 				seconds*1e3
 				);
 		},
