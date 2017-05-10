@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       170325 (YYMMDD)
+		Modified:       170510 (YYMMDD)
 
 *******************************************************************************/
 
@@ -181,6 +181,12 @@
 		name: 'int16',
 		desc: "Signed integer in [-2^16,+2^16[.",
 		test: "+(x===(x|0) && -1==((x>>15)||-1))",
+		},
+	Ý: {
+		code: 'BYT',
+		name: 'int8',
+		desc: "Signed integer in [-2^8,+2^8[.",
+		test: "+(x===(x|0) && -1==((x>>7)||-1))",
 		},
 	B: {
 		code: 'BIT',
