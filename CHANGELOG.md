@@ -1,3 +1,6 @@
+##### [170511]
+  - Added `File.batchToString(/*str*/myCommand)` in the **File** module. For the time being this method is only available to Windows platforms. It allows to quickly send a batch command that supports `> file` output, and returns the result as a string. For example, `$$.File.batchToString("VER")` returns the result of the command `> VER`. Handy and transparent!
+
 ##### [170510]
   - Added the byte type (i.e `int8`) in `$$.casting.jsxres`.
 
