@@ -9,16 +9,17 @@
 		Kind:           Module.
 		API:            =toFile() readBinary() writeBinary()
 		                readUTF8() writeUTF8() appendUTF8()
+		                batchToString()
 		                macLineFeed() winLineFeed() unixLineFeed()
 		                temp()
 		DOM-access:     NO
 		Todo:           test.jsx.
 		Created:        160130 (YYMMDD)
-		Modified:       170427 (YYMMDD)
+		Modified:       170511 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 170427, 'toFile'))
+;eval(__(MODULE, $$, 'File', 170511, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -219,6 +220,21 @@
 
 			return ff;
 		},
+
+		WAIT: function(/*File*/ff,/*uint=1000*/t,  r)
+		//----------------------------------
+		// [ADD170511]
+		// Wait until ff exists w/ respect to a maximum delay.
+		// [REM] Useful when ff is created from an external process.
+		// ff :: the file to wait for.
+		// t  :: maximum delay, in ms (default=1000.)
+		// => File [OK] | FERR [KO]
+		{
+			t || (t=1000);
+			for( t=(t/10)>>>0 ; (r=!ff.exists)&&t-- ; $.sleep(10),(ff=File(ff)) );
+			return r ? I.FERR : ff;
+		},
+
 	})
 
 	[PRIVATE]
@@ -362,6 +378,52 @@
 			SHOW_FILE && t && ((I.TFIL=I.FERR),t.execute());
 
 			return t;
+		},
+		
+		batchToString: $$.inWin ?
+		function batchToString_S_S(/*str*/cmd,  I,out,ff)
+		//----------------------------------
+		// Send a WIN batch command for output in a temporary file and return
+		// the result string from that file. The command `cmd` MUST support
+		// to be suffixed ` > tempFilePath`, e.g "@ECHO OFF<NL>SET".
+		// [REM] Returns false if something fails for whatever reason.
+		// => str [OK] | FALSE [KO]
+		{
+			I = callee.µ['~'];
+
+			// Temporary output file.
+			// ---
+			out = File(String(Folder.temp) + '/' + I.TPFX + I.STMP(5) + '.tmp');
+			
+			// Append out's full path to the command.
+			// ---
+			cmd = String(cmd||'') + ' > ' + out.fsName;
+
+			// Create a temporary bat to be executed.
+			// ---
+			ff = callee.µ.temp(cmd,'bat',0,1);
+			if( !ff ) return false;             // Unable to create the bat.
+			if( !ff.execute() ) return false;   // Bat exec failure.
+
+			// Wait for output file availability.
+			// ---
+			if( !(out=I.WAIT(out,500)) ) return false;
+			
+			// Read the result into a string.
+			// ---
+			cmd = callee.µ.readBinary(out);
+			
+			// Clean up
+			// ---
+			callee.µ.temp();
+			out.remove();
+			return cmd || false;
+		}:
+		function batchToString_S_S(/*str*/cmd,  I,out,ff)
+		//----------------------------------
+		// [TODO] Send a MAC bash script etc.
+		{
+			return false;
 		},
 
 		unixLineFeed : function unixLineFeed_()
