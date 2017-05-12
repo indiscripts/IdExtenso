@@ -1,0 +1,114 @@
+﻿/*******************************************************************************
+
+		Name:           Winver
+		Desc:           Windows version matcher.
+		Path:           /core/JSON/$$.winver.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of the Env module.
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170512 (YYMMDD)
+		Modified:       170512 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] https://en.wikipedia.org/wiki/Ver_(command)
+
+	*/
+
+	//==========================================================================
+	// WINDOWS VERSION
+	// as captured by /\d+\.\d+\.\d+(?:\.\d\d?)?/
+	//==========================================================================
+
+	'4.00.950':            "%1 95 OSR1",
+	'4.00.1111':           "%1 95 OSR2",
+	'4.00.1381':           "%1 NT 4.0",
+	'4.03.1212':           "%1 95 OSR2.1",
+	'4.03.1214':           "%1 95 OSR2.5",
+	'4.1':                 "%1 98",                   // 3-char fallback
+	'4.10.1998':           "%1 98",
+	'4.10.2222':           "%1 98 SE",
+	'4.90.2380.2':         "%1 ME Beta",
+	'4.90.2419':           "%1 ME Beta 2",
+	'4.90.2476':           "%1 Millenium Beta",
+	'4.90.3000':           "%1 Millenium",
+	// ---
+	'5.0':                 "%1 2000",                 // 3-char fallback
+	'5.0.2195':            "%1 2000 Professional",
+	'5.00.1515':           "%1 NT 5.0 Beta",
+	'5.00.2031':           "%1 2000 Beta 3",
+	'5.00.2128':           "%1 2000 RC2",
+	'5.00.2183':           "%1 2000 RC3",
+	'5.00.2195':           "%1 2000",
+	'5.1':                 "%1 XP",                   // 3-char fallback
+	'5.1.2505':            "%1 XP (RC 1)",
+	'5.1.2600':            "%1 XP",
+	'5.1.2600.11':         "%1 XP SP1",
+	'5.1.2600.21':         "%1 XP SP2",
+	'5.2':                 "%1 XP x64",               // 3-char fallback
+	'5.2.3541':            "%1 .NET Server interim",
+	'5.2.3590':            "%1 .NET Server Beta 3",
+	'5.2.3660':            "%1 .NET Server Release Candidate 1",
+	'5.2.3718':            "%1 .NET Server 2003 RC2",
+	'5.2.3763':            "%1 Server 2003 Beta",
+	'5.2.3790':            "%1 Home Server 2003",
+	'5.2.3790.11':         "%1 Server 2003 SP1",
+	'5.2.3790.12':         "%1 Server 2003",
+	// ---
+	'6.0':                 "%1 Vista",                // 3-char fallback
+	'6.0.5048':            "%1 Longhorn",
+	'6.0.5112':            "%1 Vista Beta 1",
+	'6.0.5219':            "%1 Vista CTP",
+	'6.0.5259':            "%1 Vista TAP Preview",
+	'6.0.5270':            "%1 Vista CTP December",
+	'6.0.5308':            "%1 Vista CTP February",
+	'6.0.5342':            "%1 Vista CTP Refresh",
+	'6.0.5365':            "%1 Vista April EWD",
+	'6.0.5381':            "%1 Vista Beta 2 Preview",
+	'6.0.5384':            "%1 Vista Beta 2",
+	'6.0.5456':            "%1 Vista Pre-RC1 Build 5456",
+	'6.0.5472':            "%1 Vista Pre-RC1 Build 5472",
+	'6.0.5536':            "%1 Vista Pre-RC1 Build 5536",
+	'6.0.5600.16':         "%1 Vista RC1",
+	'6.0.5700':            "%1 Vista Pre-RC2",
+	'6.0.5728':            "%1 Vista Pre-RC2 Build 5728",
+	'6.0.5744.16':         "%1 Vista RC2",
+	'6.0.5808':            "%1 Vista Pre-RTM Build 5808",
+	'6.0.5824':            "%1 Vista Pre-RTM Build 5824",
+	'6.0.5840':            "%1 Vista Pre-RTM Build 5840",
+	'6.0.6000':            "%1 Vista",
+	'6.0.6000.16':         "%1 Vista RTM",
+	'6.0.6001':            "%1 Vista SP1",
+	'6.0.6002':            "%1 Vista SP2",
+	'6.1':                 "%1 7",                    // 3-char fallback
+	'6.1.7600':            "%1 7",
+	'6.1.7600.16':         "%1 7 RTM",
+	'6.1.7601':            "%1 7 SP1",
+	'6.1.8400':            "%1 Home Server 2011",
+	'6.2':                 "%1 8",                    // 3-char fallback
+	'6.2.10211':           "%1 Phone 8",
+	'6.2.9200':            "%1 8",
+	'6.2.9200.16':         "%1 8 RTM",
+	'6.3':                 "%1 8.1",                  // 3-char fallback
+	'6.3.9200':            "%1 8.1",
+	'6.3.9600':            "%1 8.1 Update 1",
+	// ---
+	'10.':                 "%1 10",                   // 3-char fallback
+	'10.0.10041':          "%1 10 Technical Preview 5",
+	'10.0.10049':          "%1 10 Technical Preview 6",
+	'10.0.10240':          "%1 10 Threshold 1",
+	'10.0.10586':          "%1 10 Threshold 2",
+	'10.0.14393':          "%1 10 Redstone 1",
+	'10.0.14915':          "%1 10 Insider Preview",
+	'10.0.15063':          "%1 10 Redstone 2",
+	'10.0.9926':           "%1 10 Technical Preview 4",
