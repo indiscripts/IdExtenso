@@ -9,17 +9,18 @@
 		Kind:           Module.
 		API:            =toFile() readBinary() writeBinary()
 		                readUTF8() writeUTF8() appendUTF8()
+		                readUTF16() writeUTF16() appendUTF16()
 		                batchToString()
 		                macLineFeed() winLineFeed() unixLineFeed()
 		                temp()
 		DOM-access:     NO
 		Todo:           test.jsx.
 		Created:        160130 (YYMMDD)
-		Modified:       170511 (YYMMDD)
+		Modified:       170512 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 170511, 'toFile'))
+;eval(__(MODULE, $$, 'File', 170512, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -188,7 +189,7 @@
 				( CHK ? this.EXST(fx) : fx ) : this.FERR;
 		},
 		
-		OPEN: function(/*File|str*/fx,/*w|e|r*/mde,/*BINARY|UTF8|...*/enc,  ff)
+		OPEN: function(/*File|str*/fx,/*w|e|r*/mde,/*BINARY|UTF8|UCS2*/enc,  ff,b,w)
 		//----------------------------------
 		// [CHG170427] Added lineFeed support.
 		{
@@ -201,12 +202,17 @@
 			}
 
 			ff.encoding = 'BINARY';
-			if( !ff.open(mde) )
+			
+			// [ADD170512] Allow up to 100ms for opening.
+			// ---
+			for( w=10 ; !(b=ff.open(mde)) && w-- ; $.sleep(10) );
+			
+			if( !b )
 			{
 				$.global[callee.µ.__root__].warn(__("%1 > Cannot open the file %2 in '%3' mode.", callee.µ, String(ff.fullName).toSource(), mde));
 				return this.FERR;
 			}
-			ff.encoding = enc;
+			('BINARY' != enc) && (ff.encoding = enc);
 			
 			// Linefeed?
 			// ---
@@ -231,8 +237,12 @@
 		// => File [OK] | FERR [KO]
 		{
 			t || (t=1000);
-			for( t=(t/10)>>>0 ; (r=!ff.exists)&&t-- ; $.sleep(10),(ff=File(ff)) );
-			return r ? I.FERR : ff;
+			for( t=(t/10)>>>0 ; (r=!ff.exists)&&t-- ; )
+			{
+				$.sleep(10);
+				ff = File(ff);
+			}
+			return r ? this.FERR : ff;
 		},
 
 	})
@@ -343,13 +353,49 @@
 				(fx[NEW_LINE?'writeln':'write'](s), fx.close(), fx);
 		},
 
-		temp: function temp_s_s_b_b_$File$$false$(/*?str*/s,/*str='tmp'*/t,/*bool=0*/SHOW_FILE,/*bool=0*/AS_BIN,  I)
+		readUTF16: function readUTF16_$File$S_S$false$(/*File|str*/fx)
+		//----------------------------------
+		// [ADD170511] Read a file in UTF8 mode and return the resulting string.
+		// [REM] No conversion is performed here, meaning that the
+		// output is regarded as UTF16.
+		// => str | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'r','UCS2')) &&
+				[fx.read(),fx.close()][0];
+		},
+
+		writeUTF16: function writeUTF16_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s)
+		//----------------------------------
+		// [ADD170511] Write the input string in a File in UTF8 mode.
+		// [REM] No conversion is performed here, meaning that the
+		// input is regarded as UTF16.
+		// => File | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'w','UCS2')) &&
+				(fx.write(s), fx.close(), fx);
+		},
+
+		appendUTF16: function appendUTF16_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s,/*bool=0*/NEW_LINE)
+		//----------------------------------
+		// [ADD170511] Append the input string into a File in UTF16 mode.
+		// [REM] No conversion is performed here, meaning that the
+		// input is regarded as UTF16.
+		// => File | FERR
+		{
+			return (fx=callee.µ['~'].OPEN(fx,'e','UCS2')) &&
+				(fx[NEW_LINE?'writeln':'write'](s), fx.close(), fx);
+		},
+
+		temp: function temp_s_s_b_b_$File$$false$(/*?str*/s,/*str='tmp'*/t,/*bool=0*/SHOW_FILE,/*str|bool=0*/enc,  I)
 		//----------------------------------
 		// Create a temporary file having the suffix `t` (default .tmp)
 		// and write the string s. If SHOW_FILE is true call execute()
 		// on it and prevent the file from being auto-removed.
 		// ---
-		// If AS_BIN is on, use the BINARY mode (default is UTF8.)
+		// [CHG170511] If `enc` is 1 use the BINARY mode; if `enc` is 0 use UTF8;
+		// if `enc` is any XYZ string, use `writeXYZ` if available. (Fallback is UTF8.)
+		// This change is retro-compatible with the previous `AS_BIN` param.
+		// ---
 		// If no arg is supplied, remove existing temp file now.
 		// ---
 		// [REM] The temp file is automatically removed at each call,
@@ -370,8 +416,12 @@
 			t = String(Folder.temp) + '/' + I.TPFX + I.STMP(5) + t;
 
 			// Write the file.
+			// [CHG170511] Allow new encodings ('UTF16'...)
 			// ---
-			I.TFIL = t = callee.µ['write'+(AS_BIN?'Binary':'UTF8')](t,s);
+			enc = 1==enc ? 'Binary' : String(enc||'UTF8');
+			callee.µ.hasOwnProperty(enc='write'+enc) || (enc='writeUTF8');
+
+			I.TFIL = t = callee.µ[enc](t,s);
 
 			// Special case for SHOW_FILE==1.
 			// ---
@@ -381,14 +431,17 @@
 		},
 		
 		batchToString: $$.inWin ?
-		function batchToString_S_S(/*str*/cmd,  I,out,ff)
+		function batchToString_S_S(/*str*/cmd,  $$,I,out,ff)
 		//----------------------------------
+		// [CHG170512] Support of `%1` placeholder.
 		// Send a WIN batch command for output in a temporary file and return
-		// the result string from that file. The command `cmd` MUST support
-		// to be suffixed ` > tempFilePath`, e.g "@ECHO OFF<NL>SET".
+		// the result string from that file. The command `cmd` MUST contain
+		// a `%1` placeholder that represents the temp output file,
+		// e.g "@ECHO OFF<NL>SET > %1".
 		// [REM] Returns false if something fails for whatever reason.
 		// => str [OK] | FALSE [KO]
 		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			I = callee.µ['~'];
 
 			// Temporary output file.
@@ -397,28 +450,79 @@
 			
 			// Append out's full path to the command.
 			// ---
-			cmd = String(cmd||'') + ' > ' + out.fsName;
+			cmd = String(cmd||'');
+			if( -1 == cmd.indexOf('%1') )
+			{
+				(+$$.warn) && $$.warn(__("%1 > The command %2 must contain a %%1 placeholder.",callee.µ,cmd.toSource()));
+				return false;
+			}
+
+			cmd = __(cmd,'"'+out.fsName+'"');
 
 			// Create a temporary bat to be executed.
 			// ---
-			ff = callee.µ.temp(cmd,'bat',0,1);
-			if( !ff ) return false;             // Unable to create the bat.
-			if( !ff.execute() ) return false;   // Bat exec failure.
+			(+$$.trace) && $$.trace(__("%1 > Creating a batch file for the command:%2%3",
+				callee.µ,
+				$$.newLine+$$.Log.spaces,
+				cmd.toSource(String.SQ)
+				));
+
+			ff = callee.µ.temp(cmd,'bat',0,'Binary');
+			if( !ff )
+			{
+				(+$$.warn) && $$.warn(__("%1 > Unable to create the batch file %2.",callee.µ,String(ff)));
+				return false;
+			}
+			else
+			{
+				(+$$.trace) && $$.trace(__("%1 > Batch file %2 successfully created.",callee.µ,String(ff)));
+			}
+
+			if( !ff.execute() )
+			{
+				(+$$.warn) && $$.warn(__("%1 > Failed to execute the batch command:%2%3",
+					callee.µ,
+					$$.newLine+$$.Log.spaces,
+					cmd.toSource(String.SQ)
+					));
+				return false;
+			}
+			else
+			{
+				(+$$.trace) && $$.trace(__("%1 > Batch file successfully executed.",callee.µ,String(ff)));
+			}
 
 			// Wait for output file availability.
 			// ---
-			if( !(out=I.WAIT(out,500)) ) return false;
+			if( !(out=I.WAIT(out,1000)) )
+			{
+				(+$$.warn) && $$.warn(__("%1 > Cannot create the output file.",callee.µ,String(out)));
+				return false;
+			}
+			else
+			{
+				(+$$.trace) && $$.trace(__("%1 > Output file %2 ready for reading.",callee.µ,String(out)));
+			}
 			
 			// Read the result into a string.
 			// ---
 			cmd = callee.µ.readBinary(out);
-			
+
 			// Clean up
 			// ---
 			callee.µ.temp();
 			out.remove();
-			return cmd || false;
-		}:
+			
+			if( !cmd.length )
+			{
+				(+$$.warn) && $$.warn(__("%1 > Unable to read the file: %2",callee.µ,String(out)));
+				return false;
+			}
+
+			(+$$.trace) && $$.trace(__("%1 > Result of the batch command: %2",callee.µ,cmd.toSource()));
+			return cmd;
+		}
+		:
 		function batchToString_S_S(/*str*/cmd,  I,out,ff)
 		//----------------------------------
 		// [TODO] Send a MAC bash script etc.
