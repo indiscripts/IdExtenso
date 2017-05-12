@@ -1,4 +1,5 @@
 ##### [170512]
+  - Major update of the **Env** module now including a Windows version checker based on `File.batchToString("VER > %1")`. Allows to fix OS signature in ExtendScript versions that return a wrong `$.os` string.
   - Updated `File.batchToString()` in the **File** module. Now requires a `%1` placeholder for the temporary output.
   - Added `readUTF16()`, `writeUTF16()`, and `appendUTF16()`.
 
