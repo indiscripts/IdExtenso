@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       170510 (YYMMDD)
+		Modified:       170521 (YYMMDD)
 
 *******************************************************************************/
 
@@ -141,7 +141,7 @@
 		test: "+('number'==typeof x && isFinite(x))",
 		},
 	Z: {
-		code: 'U53',
+		code: 'I53', // [FIX170521]
 		name: 'integer',
 		desc: "Safe signed integer in the range ]-2^53,+2^53[.",
 		test: "+('number'==typeof x && !(x%1) && 2==(x+1)-(x-1))",
