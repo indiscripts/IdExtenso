@@ -1,3 +1,6 @@
+##### [170521]
+  - Fixed integer code (`U53 -> I53`) in `$$.casting.jsxres`.
+
 ##### [170512]
   - Major update of the **Env** module now including a Windows version checker based on `File.batchToString("VER > %1")`. Allows to fix OS signature in ExtendScript versions that return a wrong `$.os` string.
   - Updated `File.batchToString()` in the **File** module. Now requires a `%1` placeholder for the temporary output.
