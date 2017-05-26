@@ -7,11 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            copy() self() [PRIVATE]() [PUBLIC]() [PARENT]()
+		API:            copy() self()
+		                [PRIVATE]() [PUBLIC]() [PARENT]() [PROTO]()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       170417 (YYMMDD)
+		Modified:       170527 (YYMMDD)
 
 *******************************************************************************/
 
@@ -22,7 +23,7 @@
 
 	Function.prototype.copy = function(/*str*/newPath)
 	//----------------------------------
-	// <this> :: public method of the current module.
+	// <this> :: public method of the current module or class.
 	// ---
 	// Temporarily provide a .copy utility to any public method
 	// in order to make it available from any other *existing* module.
@@ -50,7 +51,7 @@
 
 	Function.prototype.self = function(/*obj|null*/context,/*any*/x,/*any*/y)
 	//----------------------------------
-	// <this> :: method of the current module.
+	// <this> :: method of the current module or class.
 	// ---
 	// [ADD170417] Temporarily provide a .self utility to any public method
 	// so that it invokes itself with x and y args, and returns itself.
@@ -62,18 +63,18 @@
 	};
 
 	//==========================================================================
-	// Function.prototype.PRIVATE()
-	// Function.prototype.PUBLIC()
-	// Function.prototype.PARENT()
+	// Function.prototype.PRIVATE() -- [PRIVATE] zone of both modules and classes
+	// Function.prototype.PUBLIC()  -- [PUBLIC]  zone of both modules and classes
+	// Function.prototype.PARENT()  -- [PARENT]  zone of both modules and classes
 	// [REM] Autodeleted once the framework has been loaded.
 	//==========================================================================
 
 	Function.prototype[PRIVATE] = function(/*obj*/o,  priv,s,k)
 	//----------------------------------
-	// <this> :: current module.
+	// <this> :: current module or class.
 	// ---
-	// Temporarily provide a generic [PRIVATE] utility to any module,
-	// for registering private members in this['~'].
+	// Temporarily provide a generic [PRIVATE] utility to any module
+	// or class, for registering private members in this['~'].
 	// [REM] Autodeleted once the framework has been loaded.
 	// => this
 	{
@@ -95,16 +96,23 @@
 		return this;
 	};
 
-	Function.prototype[PUBLIC] = function F(/*obj*/o,  path,mods,k,s,t,p,oo)
+	Function.prototype[PUBLIC] = function F(/*obj*/o,/*bool=0*/inProto,  path,target,mods,k,s,t,p,oo)
 	//----------------------------------
-	// <this> :: current module.
+	// <this> :: current module or class.
+	// Alias: [STATIC]
+	// [CHG170503] Added the `isProto` param. This method is used by [PROTO].
 	// ---
-	// Temporarily provide a generic [PUBLIC] utility to any module,
-	// for registering public members in this.
+	// Temporarily provide a generic [PUBLIC] (i.e [STATIC] ) utility
+	// to any module or class, for registering public members in this.
 	// [REM] Autodeleted once the framework has been loaded.
 	// => this
 	{
 		path = this.__path__;   // eg '/$$/Env/'
+
+		// [ADD170503] E.g '/$$/BigInt/prototype/'
+		// ---
+		inProto && (path += 'prototype/');
+		target = inProto ? this.prototype : this;
 
 		// Make sure this module path is registered
 		// in $$'s private __mods__.
@@ -174,19 +182,20 @@
 				}
 			}
 
-			this[k] = o[k];
+			target[k] = o[k];
 		}
 		return this;
 	};
 
 	Function.prototype[PARENT] = function F(/*obj*/o,  parent)
 	//----------------------------------
-	// <this> :: current module.
+	// <this> :: current module or class.
 	// ---
-	// Temporarily provide a generic [PARENT] utility to any module
-	// for registering public members in its parent.
+	// Temporarily provide a generic [PARENT] utility to any module or
+	// class for registering PUBLIC members in its *parent*. That's
+	// somehow a shortcut of this.<parent>[PUBLIC](o), returning this.
 	// [REM] Autodeleted once the framework has been loaded.
-	// => this (current module)
+	// => this (current module or class)
 	{
 		// this.__path__ :: /$$/SomeModule/SubModule/  =>  $.global['$$']['SomeModule']
 		// this.__path__ :: /$$/ => $.global
@@ -194,5 +203,19 @@
 		parent = $.global[this.__root__].resolve((this.__path__).toPath('../'));
 		parent[PUBLIC](o);
 
+		return this;
+	};
+
+	Function.prototype[PROTO] = function F(/*obj*/o,  parent)
+	//----------------------------------
+	// <this> :: current class.
+	// ---
+	// Temporarily provide a generic [PROTO] utility to any class
+	// for registering members in its `prototype` object.
+	// That's a shortcut of this[PUBLIC](o,/*inProto*/1), returning this.
+	// [REM] Autodeleted once the framework has been loaded.
+	// => this (current class)
+	{
+		this[PUBLIC](o,1);
 		return this;
 	};
