@@ -1,0 +1,2767 @@
+/*******************************************************************************
+
+		Name:           BigInt
+		Desc:           Implements Java's BigInteger Interface.
+		Path:           /etc/$$.BigInt.jsxlib
+		Require:        String.prototype.ltrim() ; __() ; $$.error()
+		                (The Random module is needed for prime generation.)
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class.
+		API:            =create()
+		    Prototype:  abs() add() and() andNot() bitCount() bitLength()
+		                changeBit() clearBit() compareTo() divide()
+		                divideAndRemainder() equals() flipBit()
+		                gcd() getLowestSetBit() isEven()
+		                isProbablePrime() max() min() mod() modInverse()
+		                modPow() modPowInt() multiply() negate()
+		                nextProbablePrime() not() or() pow() remainder()
+		                setBit() shiftLeft() shiftRight() signum() square()
+		                subtract() testBit() toByteArray() toByte()
+		                toShort() toInt() toLong() toString() xor()
+		    Operators:  ==  <  <=  +  -  *  /  %  <<  >>  >>>  ~  &  |  ^
+		DOM-access:     NO
+		Todo:           prototype.toSource(), nextProbablePrime(), toLong()
+		Created:        170503 (YYMMDD)
+		Modified:       170527 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 170527))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] docs.oracle.com/javase/1.5.0/docs/api/java/math/BigInteger.html
+	[RES] cacr.uwaterloo.ca/hac/
+	[RES] www-cs-students.stanford.edu/%7Etjw/jsbn/
+	[RES] github.com/clipperz/javascript-crypto-library/blob/master/js/
+	      Clipperz/Crypto/BigInt.js
+	[RES] Check primes: http://www.numberempire.com/primenumbers.php
+
+	The class `BigInt` implements in ExtendScript the BigInteger interface
+	as specified in Java.math. It allows to manipulate immutable
+	arbitrary-precision integers. "All operations behave as if BigIntegers
+	were represented in two's-complement notation. BigInteger provides
+	analogues to all of primitive integer operators, and all relevant
+	methods. Additionally, BigInteger provides operations for modular
+	arithmetic, GCD calculation, primality testing, prime generation, bit
+	manipulation, and a few other miscellaneous operations."
+	
+	This implementation is deeply inspired by Tom Wu's `jsbn` library, but
+	it makes it more compliant with both ExtendScript and IdExtenso logics.
+	All basic operators are overloaded so that, for example,
+	
+	      (BigInt("123456789123456")*99)%987 <= BigInt("0xABCDABCDABCD")
+	
+	becomes now a perfectly valid syntax. The constructor supports either
+	the (string,radix) form, straight JS numbers, byte arrays, or even
+	the `(bits,Random)` and `(bits,certainty,Random)` forms.
+
+	Semantics of arithmetic operations mimic those of JS arithmetic
+	operators. Semantics of bitwise logical operations mimic those of JS
+	bitwise integer operators. The binary operators (and, or, xor)
+	implicitly perform sign extension on the shorter of the two operands
+	prior to performing the operation. Comparison operations perform
+	signed integer comparisons.
+
+	Modular arithmetic operations are provided to compute residues,
+	perform exponentiation, and compute multiplicative inverses. These
+	methods always return a non-negative result, between 0 and (modulus-1),
+	inclusive.
+
+	Bit operations operate on a single bit of the two's-complement
+	representation of their operand. If necessary, the operand is sign-
+	extended so that it contains the designated bit. None of the single-
+	bit operations can produce a BigInteger with a different sign from the
+	BigInteger being operated on, as they affect only a single bit, and
+	the "infinite word size" abstraction provided by this class ensures
+	that there are infinitely many "virtual sign bits" preceding each
+	BigInteger.
+
+	Not implemented yet:
+	
+	- [static] valueOf(long val)
+	- BigInt(int signum, byte[] magnitude) // One of the constructor format.
+	- nextProbablePrime()
+	- double doubleValue()
+	- float floatValue()
+	- int hashCode()
+	- long longValue()
+
+	*/
+
+
+	// =====================================================
+	// GENERIC TOOLS AND CONSTANTS
+	// =====================================================
+
+	[PRIVATE]
+
+	({
+		// Default certainty in probablePrime() [static] and isProbablePrime().
+		// Given a certainty c, the associated probability is `1 - (1/2)^c`.
+		// ---
+		DCTY : 10, // => probability ~ 0.999.
+
+		LWPM : function(/*uint*/x)
+		// ---------------------------------
+		// (Low-Prime.) Tell whether x is a low prime. (0 < x <= 997.)
+		// => TRUE [OK] | FALSE [KO]
+		{
+			return 0 <= callee.Q.indexOf(String.fromCharCode(x));
+		}.setup({
+		Q : String.fromCharCode.apply(null,
+			[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,
+			101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,
+			193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,
+			293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,
+			409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,
+			521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,
+			641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,
+			757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,
+			881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997]
+			),
+		at:    function(i){ return this.Q.charCodeAt(i) },
+		size:  function() { return this.Q.length },
+		last:  function() { return this.at(-1+this.size()) },
+		limit: function() { return (1 << 26) / this.last() },
+		}),
+
+		HPPM : function(/*LWPM*/server,/*uint*/i,  k,q,z,m,p)
+		// ---------------------------------
+		// (Huge-Product-Prime.) Compute the highest product
+		// `prime(i)*prime(i+1)*...` based on server.at(index)
+		// and with respect to server.limit(). Returns and
+		// cache a read-only array [product, 1+lastIndex].
+		// ---
+		// `server` :: Server of sequential (low) prime numbers
+		//             in the form { size(), limit(), at() }
+		// `i`      :: Index of the lowest prime to pick from
+		//             the server--i.e server.at(i).
+		// => [ uint < server.limit() , uint > i ]
+		{
+			// [REM] It is assumed here that the server is fixed
+			// (that is, ~.LWPM in the current implementation),
+			// so the cache key simply relies on the input index.
+			// ---
+			q=(callee.Q||callee.Q={});
+			if( q.hasOwnProperty(k='_'+i) ) return q[k];
+			
+			for(
+				z=server.size(), m=server.limit(), p=server.at(i) ;
+				++i < z && p < m ;
+				p *= server.at(i)
+			);
+			
+			return (q[k]=[p,i]);
+		},
+	
+		DGAT : function(/*str*/s,/*uint*/i)
+		// ---------------------------------
+		// (Digit-At.) Integer value of digit s[i], or -1, or NaN.
+		// Digits are lowercase (`0123456789abcdefghijklmnopqrstuvwxyz`)
+		// => 0..35 [OK] | -1 [minus-sign] | NaN [otherwise]
+		{
+			return ( 0x30 <= (i=s.charCodeAt(i)) && 0x39 >= i ) ? ( -0x30+i ) :
+				( ( 0x61 <= i && 0x7A >= i ) ? ( -0x57+i ) : ( -(0x2D==i) || Number.NaN ) );
+		},
+	
+		NBTS : function(/*int*/x,  r,t)
+		// ---------------------------------
+		// (Number-of-Bits.) Bit length of the int x.
+		// => 1..32
+		{
+			return ( r=1 ),
+				( (t = x >>> 16) && ((x=t),(r+=16)) ),
+				( (t = x  >>  8) && ((x=t),(r+= 8)) ),
+				( (t = x  >>  4) && ((x=t),(r+= 4)) ),
+				( (t = x  >>  2) && ((x=t),(r+= 2)) ),
+				( (t = x  >>  1) && (++r) ),
+				r;
+		},
+	
+		LBIT : function(/*int*/x,  r)
+		// ---------------------------------
+		// (Lowest-Bit.) Index of lowest set bit in x, x < 2^31
+		// => 0..31 | -1 [x==ZERO]
+		{
+			if( x == 0 ) return -1;
+			return ( r=0 ),
+				( (0xFFFF&x) || ((x >>=16),(r+=16)) ),
+				( (  0xFF&x) || ((x >>= 8),(r+= 8)) ),
+				( (   0xF&x) || ((x >>= 4),(r+= 4)) ),
+				( (     3&x) || ((x >>= 2),(r+= 2)) ),
+				( (     1&x) || (++r) ),
+				r;
+		},
+	
+		CKSZ : function(/*2..36*/radix,  q,k)
+		// ---------------------------------
+		// Chunk size adjusted to this radix (memoized.)
+		// (Values based on bits==30.)
+		//        RADIX  ->  CKSZ
+		//     ------------------
+		//            2  ->   30 
+		//            3  ->   18 
+		//            4  ->   15 
+		//            5  ->   12 
+		//            6  ->   11 
+		//         7..8  ->   10 
+		//        9..10  ->    9 
+		//       11..13  ->    8 
+		//       14..19  ->    7 
+		//       20..32  ->    6 
+		//       33..36  ->    5 
+		{
+			return (q=callee.Q).hasOwnProperty(k='_'+radix) ?
+				q[k] :
+				( q[k] = Math.floor(callee.numerator/Math.log(radix)) );
+		}.setup({
+			Q : {},
+			numerator : 30*Math.LN2
+		}),
+
+	})
+
+	// =====================================================
+	// PRIVATE TOOLS
+	// =====================================================
+
+	[PRIVATE]
+	
+	({
+		AM30 : function(/*BigInt*/T,/*uint*/i,/*uint30*/x,/*BigInt&*/R,/*uint*/j,/*uint*/c,/*uint*/count,  v,xl,xh,l,h,m)
+		// ---------------------------------
+		// Compute R[j]+=(x*T[i]) and propagate carries, avoiding a huge
+		// mult-and-extract. Condition: T[i] < 0x40000000.
+		//   i     :: start index in T.
+		//   x     :: multiplier    < 2*0x40000000.
+		//   R     :: destination BigInt&.
+		//   j     :: start index in R.
+		//   c     :: initial carry < 3*0x40000000.
+		//   count :: number of chunks to alter.
+		// => Final carry.
+		{
+			for(
+				(xl=0x7FFF&x), (xh=x>>15) ;
+				count-- ;
+				( v = T[i++] ),
+				( m = xh*(l=0x7FFF&v) + xl*(h=v>>15) ),
+				( l = xl*l+((0x7FFF&m)<<15)+R[j]+(0x3FFFFFFF&c) ),
+				( c = (l>>>30)+(m>>>15)+xh*h+(c>>>30) ),
+				( R[j++] = 0x3FFFFFFF&l)
+			);
+			return c;
+		},
+
+		INVD : function(/*BigInt*/T,  x,y)
+		// ---------------------------------
+		// (Inv-Digit.) Return the negative inverse `-1/T % 2^30`
+		// used in Montgomery redux.
+		// => -2^30 < uint < 2^30
+		{
+			if( T.size < 1 || 0 == (1&(x=T[0])) ) return 0;
+	
+			y =      3&x;                                // y == 1/x mod 2^2
+			y =    0xF&(y*(2-(0xF&x)*y));                // y == 1/x mod 2^4
+			y =   0xFF&(y*(2-(0xFF&x)*y));               // y == 1/x mod 2^8
+			y = 0xFFFF&(y*(2-(((0xFFFF&x)*y)&0xFFFF)));  // y == 1/x mod 2^16
+	
+			// Inverse mod 0x40000000.
+			// [REM] Requires ability to handle 48-bit integers,
+			// which is the case in ExtendScript :-)
+			// ---
+			y = (y*(2-x*y%0x40000000))%0x40000000;       // y == 1/x mod 2^30
+	
+			// Negative inverse.
+			// ---
+			return 0 < y ? (0x40000000-y) : -y;
+		},
+	
+		IPOW : function(/*BigInt*/T,/*uint32*/e,/*obj*/api,  G,R,R2,i,t)
+		// ---------------------------------
+		// (Int-Pow.) Return `T^e` (e < 2^32) using the provided api.
+		// api :: { convert(), sqrTo(), mulTo(), revert() }
+		// [WRN] Mutation of the returned object is prohibited!
+		// => BigInt
+		{
+			if( e > 0xFFFFFFFF || e < 1 ) return this.ONE;
+	
+			for(
+				G=api.convert(T), R=this.CNEW(G), R2=this.CNEW(), i=-1+this.NBTS(e) ;
+				i-- ;
+				api.sqrTo(R,R2), ( 0 < (e&(1<<i)) ? api.mulTo(R2,G,R) : ((t=R),(R=R2),(R2=t)) )
+			);
+	
+			return api.revert(R);
+		},
+
+		IMOD : function(/*BigInt*/T,/*uint26*/n,  d,r,i)
+		// ---------------------------------
+		// (Int-Mod.) Return the uint `T % n` (given n < 2^26.)
+		// [REM] Shortcut used by mod() when the modulus is small,
+		// which avoids invoking ~.DVR2.
+		// => uint (< n)
+		{
+			if( n <= 0 ) return 0; // checkpoint.
+	
+			r = T.neg && (n-1);
+
+			if( !T.size ) return r;
+			if( 0 == (d=0x40000000%n) ) return T[0]%n;
+			for( i=T.size ; i-- ; r=(d*r+T[i])%n );
+	
+			return r;
+		},
+
+		MLRB : function(/*BigInt*/T,/*uint*/cty,  ONE,M1,k,R,LP,z,mF,mR,X,i,j)
+		// ---------------------------------
+		// (Miller-Rabin-Algo.) TRUE if T is 'probably prime.'
+		// Returns true if primality prob is > 1 - (1/2)^cty, assuming cty >= 1.
+		// [RES] en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
+		{
+			// M1 = T - 1
+			// ---
+			M1 = T.subtract(ONE=this.ONE);
+
+			// Just checking M1 is even (i.e T is odd.)
+			// ---
+			if( 0 >= (k=M1.getLowestSetBit()) ) return false;
+
+			// Find R  s.t.  M1 == R * 2^k
+			// ---
+			R = M1.shiftRight(k);
+
+			// Normalize certainty.
+			// [REM] The normalized limit (1+cty)/2 can't be
+			// greater than LWPM.size(), which is about 180.
+			// ---
+			cty = (1+cty)>>1;
+			z = (LP=this.LWPM).size();
+			cty > z && (cty=z);
+
+			for( mF=Math.floor, mR=Math.random, X=this.CNEW(), i=-1 ; ++i < cty ; )
+			{
+				this.FI30(X,LP.at(mF(z*mR())));    // Pick a prime X at random.
+				X = X.modPow(R,T);                 // X = X ^ R % T
+
+				// While  X==1  OR  X==M1  try something else.
+				// ---
+				if( 0==X.compareTo(ONE) || 0==X.compareTo(M1) ) continue;
+
+				for( j=1 ; j++ < k && X.compareTo(M1) ; )
+				{
+					X = X.modPowInt(2,T);          // X = X^2 % T
+					if( 0==X.compareTo(ONE) ) return false;
+				}
+	
+				if( X.compareTo(M1) ) return false;
+			}
+
+			return true;
+		},
+
+		RXPW : function(/*BigInt*/T,/*size*/z,/*uint*/k,  p,d,NZ,r,km)
+		// ---------------------------------
+		// (To-Radix-Power-of-Two.) Converts a non-ZERO positive BigInt
+		// into a radix-string, radix being 2^k and z being T.size.
+		// This private routine is called by toString when needed.
+		// ---
+		// Conditions:
+		//    (1)  z==T.size > 0  AND  T.neg==0
+		//    (2)  k :: 1..5  (radix=2^k.)
+		// => str
+		{
+			p = 30 - (30*z)%k;
+			d = T[--z]>>p;
+			NZ = 0 < d && 30 > p;
+			r = NZ ? d.toString(36) : ''; 
+	
+			for( km=-1+(1<<k) ; 0 <= z ; (NZ||(NZ=0<d))&&(r+=d.toString(36)) )
+			{
+				p < k ?
+				( d = ((T[z]&((1<<p)-1))<<(k-p)) | (T[--z]>>(p+=30-k)) ) :
+				( (d=km&(T[z]>>(p-=k))), (p <= 0 && ((p+=30),(--z))) );
+			}
+	
+			return NZ ? r : '0';
+		},
+	
+		RXOT : function(/*BigInt*/T,/*uint*/rx,  cs,pw,k,q,P,Q,R,s)
+		// ---------------------------------
+		// (To-Radix-Other.) Converts a non-ZERO positive BigInt into
+		// a radix-string, radix not being a power of 2, i.e radix != 2^e.
+		// This private routine is called by toString when needed.
+		// ---
+		// Conditions:
+		//    (1)  T.size > 0  AND  T.neg==0
+		//    (2)  rx :: 2..36 except {2,4,8,16,32}
+		// => str
+		{
+			cs = this.CKSZ(rx);    // E.g  rx==10 -> cs=9
+			pw = Math.pow(rx,cs);  // E.g  10^9  (< 2^30)
+
+			// Memoize BigInt(pw). (No need to re-create that object!)
+			// ---
+			k = '_' + rx;
+			P = (q=callee.Q).hasOwnProperty(k) ? q[k] : (q[k]=this.FI30(null,pw));
+
+			// T == P * Q + R        ( R < P )
+			// ---
+			Q = this.CNEW();
+			R = this.CNEW();
+			this.DVR2(T,P, Q,R);
+
+			// Everything below is based on Number.toString(rx) :-)
+			// ---
+			for( s='' ; 0 < Q.signum() ; this.DVR2(Q,P, Q,R) )
+			{
+				// Nice trick--grabs all relevant digits.
+				// ---
+				s = (pw+R.toInt()).toString(rx).substr(1) + s;
+			}
+			return R.toInt().toString(rx) + s;
+		}
+		.setup({ Q:{} }),
+
+	})
+
+	//==========================================================================
+	// PRIVATE SETTERS
+	//==========================================================================
+
+	/*
+
+	All methods of the form `~.F<XYZ>(BigInt&...)` act as private setters;
+	they clear and update their first argument (and return it) according
+	to additional data.
+
+	*/
+
+	[PRIVATE]
+
+	({
+
+		CNEW : function(/*?BigInt*/src)
+		// ---------------------------------
+		// Agnostically construct a New BigInt. If `src` (BigInt) is provided,
+		// apply it as a model thru FBIG and return the resulting clone.
+		// (1) CNEW()   =>  New Zero BigInt.
+		// (2) CNEW(X)  =>  Clone of X.  [supports NAN and infinite bigs.]
+		// => BigInt.
+		{
+			return src ? this.FBIG(new callee.µ, src) : (new callee.µ);
+		},
+	
+		FBIG : function(/*BigInt&*/T,/*BigInt*/X,  x,i)
+		// ---------------------------------
+		// (From-Big.) Re/set T from another Big, that is,
+		// copy X's data into T. The caller is responsible for
+		// checking X's validity.  [supports NAN and infinite bigs.]
+		// => (BigInt T)&
+		{
+			for( i=Math.max(x=X.size,T.size) ; i-- ; i < x ? (T[i]=X[i]) : (delete T[i]) );
+			X.spe ? (T.spe=X.spe) : (delete T.spe);
+			return (T.size=x), (T.neg=X.neg), T;
+		},
+	
+		FZRO : function(/*BigInt&*/T,  i)
+		// ---------------------------------
+		// (From-Zero.) Clear T, that is, copy ZERO's data into T.
+		// => (BigInt T)&
+		{
+			T || (T=this.CNEW());
+
+			for( i=T.size ; i-- ; delete T[i] );
+			return (delete T.spe), (T.size=T.neg=0), T;
+		},
+
+		FNAN : function(/*BigInt&*/T)
+		// ---------------------------------
+		// (From-NaN.) Clear T and make it NaN.
+		// => (BigInt T)& == NAN
+		{
+			this.FZRO(T||(T=this.CNEW()));
+			return (T.spe='NaN'), T;
+		},
+
+		FINF : function(/*BigInt&*/T,/*0|1*/neg)
+		// ---------------------------------
+		// (From-Infinity.) Clear T and make it (+/-)infinite.
+		// => (BigInt T)& == NEG_INF | POS_INF
+		{
+			this.FZRO(T||(T=this.CNEW()));
+			T.spe = neg ? 'NEGATIVE_INFINITY' : 'POSITIVE_INFINITY';
+			T.neg = neg ? -1 : 0;
+			return T;
+		},
+
+		FSPE : function(/*BigInt&*/T,/*NaN|+inf|-inf|0*/num)
+		// ---------------------------------
+		// (From-Special.) Clear T and make it non finite or zero
+		// according to the Number num.
+		// [WRN] If num is finite and non-zero, ZERO is returned.
+		// => (BigInt T&) == ZERO | NAN | NEG_INF | POS_INF
+		{
+			return isFinite(num) ?
+				this.FZRO(T) :
+				( isNaN(num) ? this.FNAN(T) : this.FINF(T, 0 > num) );
+		},
+
+		FI30 : function(/*BigInt&*/T,/*int30*/n)
+		// ---------------------------------
+		// (From-Int-30.) Re/set T from the integer n provided
+		// it is a signed value in the range [-2^30,+2^30[. The caller
+		// is responsible for checking the validity of n.
+		// If T is null, set it to a New BigInt.
+		// => (BigInt T)&
+		{
+			if( 0===n ) return this.FZRO(T);
+
+			T || (T=this.CNEW());
+
+			// Signed integer in the range [-2^30,+2^30[
+			// ---
+			T.neg = 0 > n ? -1 : 0;
+			( T.size = ( 0 < n || n < -1 ) ? 1 : 0 )
+			&& ( T[0] = T.neg ? (0x40000000+n) : n );
+			return T;
+		},
+
+		FSTR : function(/*BigInt&*/T,/*str|byte[]*/src,/*uint=auto*/rx,  I,t,re,m,k)
+		// ---------------------------------
+		// Re/set T from a string and a radix, or from a byte array (radix 256.)
+		// 1. If rx is undefined or 0-like:
+		//    (a) If src is not an array, the assumed radix is 10 except when src begins
+		//        with `0x` or `0X`, in which case a radix of 16 is assumed;
+		//    (b) Otherwise, the assumed radix is 256 (byte stream.)
+		// 2. If rx is a valid radix != 256 while src is provided as an array,
+		//    a TypeError is thrown.
+		// => T&  [might be NAN.]
+		// ---
+		// This routine attempts to comply with ECMA's parseInt logics at best.
+		// A static function HOST.parseBigInt() might be implemented using
+		//
+		//    HOST.parseBigInt = function parseBigInt(src,rx)
+		//    { return $$.BigInt['~'].FSTR(new $$.BigInt,src,rx) };
+		//
+		// [ECMA] The parseInt function produces an integer value dictated by interpretation
+		// of the contents of the string argument according to the specified radix. Leading
+		// white space in string is ignored. If radix is undefined or 0, it is assumed to be
+		// 10 except when the number begins with the character pairs 0x or 0X, in which case
+		// a radix of 16 is assumed. If radix is 16, number may also optionally begin with the
+		// character pairs 0x or 0X. Note: parseInt may interpret only a leading portion of
+		// string as an integer value; it ignores characters that cannot be interpreted as
+		// part of the notation of an integer, and no indication is given that any such
+		// characters were ignored.
+		{
+			// ECMA spec + added rules -> default radix calculation (10, 16, 256.)
+			// [REM] using String(src) rather than String(src||'0') is conform
+			// to ECMA's parseInt rules.
+			// ---
+			( t = src && src instanceof Array )
+			||
+			( src = 256 === rx ? String(src) : String(src).ltrim().toLowerCase() );
+
+			re = callee.Q||(callee.Q=/^(-)?0x(.*)$/);
+
+			( rx|=0 )
+				|| ( t && (rx=256) )                    // 256 (byte array.)
+				|| ( !(m=src.match(re)) && (rx=10) )    //  10 (decimal string.)
+				|| ( rx = ((src=(m[1]||'')+m[2]),16) ); //  16 (hexa string, `0x` removed.)
+
+			if( 2 > rx || 36 < rx )
+			{
+				return 256==rx   ?
+					this.FBTS(T,src) :                  // Byte stream case (rx=256, k=8.)
+					this.FNAN(T);                       // NaN (ECMA-compliance.)
+			}
+	
+			if( t )
+			{
+				throw TypeError(__("Invalid radix (%1). Byte arrays only support 256.",rx));
+			}
+	
+			// Determine the appropriate from-radix method.
+			// ---
+			k = 10 != rx && (4*(16==rx)||3*(8==rx)||1*(2==rx)||5*(32==rx)||2*(4==rx));
+
+			return this.FZRO(T), ( k ? this.FSPW(T,src,k) : this.FSNP(T,src,rx) );
+		},
+
+		FSNP : function(/*BigInt&*/T,/*str*/s,/*uint*/rx,  cs,pw,f,z,b,ng,j,w,i,x)
+		// ---------------------------------
+		// (From-StringRadix-NonPowerOfTwo.) Re/set T from a lowercase
+		// radix-string, radix not being a power of 2, i.e rx != 2^n.
+		// This routine is called by FSTR when needed.
+		// s  :: [-0-9a-zA-Z]+  (other chars are ignored.)
+		// rx :: 2..36 except {2,4,8,16,32}
+		// => (BigInt T)&  [might be NAN.]
+		{
+			cs = this.CKSZ(rx);    // E.g  rx==10 -> cs=9
+			pw = Math.pow(rx,cs);  // E.g  10^9  (< 2^30)
+			f = this.DGAT;
+	
+			for( z=s.length, b=ng=j=w=0, i=-1 ; ++i < z ; )
+			{
+				if( isNaN(x=f(s,i)) ) continue;
+				if( -1==x ){ ng||(ng=!T.signum()); continue; }
+
+				b = 1; // some digit has been found.
+
+				w = x + rx*w;
+				if( ++j < cs ) continue;
+
+				this.DMUL(T,pw);                // T *= pw
+				this.ADOF(T,w,0);               // T += w
+
+				j = w = 0;
+			}
+
+			if( b && 0 < j )
+			{
+				this.DMUL(T,Math.pow(rx,j));    // T *= rx^j
+				this.ADOF(T,w,0);               // T += w
+			}
+
+			return b ?
+				(ng ? this.NEGT(T) : T) :
+				this.FNAN(T);
+		},
+	
+		FSPW : function(/*BigInt&*/T,/*str*/s,/*1|2|3|4|5*/k,  f,b,z,i,ng,sh)
+		// ---------------------------------
+		// (From-StringRadix-PowerOfTwo.) Re/set T from a lowercase
+		// radix-string, radix being 2^k (where 1 <= k <= 5.)
+		// This routine is called by FSTR when needed.
+		// The caller is responsible for checking the validity of s, k.
+		// s :: [-0-9a-zA-Z]+  (other chars are ignored.)
+		// k :: 1..5  (radix=2^k.)
+		// => (BigInt T)&  [might be NAN.]
+		{
+			f = this.DGAT;
+			T.neg = 0;
+	
+			for( b=z=ng=sh=0, i=s.length ; i-- ; )
+			{
+				if( isNaN(x=f(s,i)) || ( -1==x && (ng=1) ) ) continue;
+				
+				b = 1; // some digit has been found.
+
+				ng = 0;
+	
+				0 == sh ? ( T[z++] = x ) :
+				(
+					sh+k > 30 ?
+					( (T[-1+z] |= (x&((1<<(30-sh))-1))<<sh),(T[z++]=(x>>(30-sh))) ) :
+					(  T[-1+z] |= x<<sh  )
+				);
+	
+				30 <= (sh+=k) && (sh-=30);
+			}
+	
+			return b ?
+				(ng ? this.NEGT(this.CLMP(T,z)) : this.CLMP(T,z)) :
+				this.FNAN(T);
+		},
+	
+		FBTS : function(/*BigInt&*/T,/*str|byte[]*/s,  f,z,i,sh,x)
+		// ---------------------------------
+		// (From-Byte-Stream.) Re/set T from a byte stream,
+		// the implicit radix being 2^8=256.
+		// s :: either an Array of bytes, or the equivalent string
+		//      (therefore, each elem or char-code is < 256.)
+		// This private routine is called by FSTR when needed.
+		// The caller is responsible for checking the validity of s.
+		// [REM] If s is empty, return ZERO.
+		// => (BigInt T)&  [cannot be NAN.]
+		{
+			// Convert s into a string. (Should be faster, IMHO.)
+			// ---
+			// [REM] String.fromCharCode(cc1, cc2, cc3, ...)
+			// Each cc_i is converted to a character by applying the
+			// operation ToUint16 (and regarding the resulting 16-bit
+			// integer as the code unit value of a character.) Storing
+			// bytes (aka signed int8) thru uint16 is safe, for 
+			// the sign-bit of the byte is necessarily preserved.
+			// E.g: -109 == 10010011b == 0x93  -->  0xFF93 (charCode)
+			// Then, the bitwise-AND `0xFF & 0xFF93` reverts to 0x93
+			// which *as a signed byte* will be interpreted -109.
+			// ---
+			(s instanceof Array) && (s=String.fromCharCode.apply(null,s));
+			
+			f = this.DGAT;
+			T.neg = 0;
+	
+			for( z=sh=0, i=s.length ; i-- ; )
+			{
+				// [REM] Seen as a JS int32 x is of course >=0, but the
+				// sign of the *byte* is still testable using 0x80 mask.
+				// ---
+				x = 0xFF&s.charCodeAt(i);
+				
+				if(  0 == sh ){ T[z++]=x; sh=8; continue; }
+				if( 22 >= sh ){ T[-1+z] |= x<<sh; sh = 22 == sh ? 0 : (8+sh); continue; }
+				T[-1+z] |= (x&((1<<(30-sh))-1))<<sh;
+				T[z++] = (x>>(30-sh));
+				sh -= 22;
+			}
+	
+			// [REM] The 1st byte determines the sign of the BigInt.
+			// ---
+			(0x80&s.charCodeAt(0)) && (T.neg=-1) && 0 < sh && ( T[z-1] |= ((1<<(30-sh))-1)<<sh );
+	
+			return this.CLMP(T,z);
+		},
+	
+		FRNG : function(/*BigInt&*/T,/*Random*/RNG,/*uint*/bits,/*?int*/certainty,  q,t)
+		// ---------------------------------
+		// (From-Random-Number-Generator.) Re/set T from a RNG.
+		// RNG must provide a `nextBytes()` method as specified in IdExtenso's
+		// Random class.
+		// ---
+		// (1) If !certainty, produce a randomly generated BigInteger, uniformly
+		//     distributed over the range 0 to (2^bits-1), inclusive. The
+		//     uniformity of the distribution assumes that a fair source of
+		//     random bits is provided in RNG. This setter always constructs
+		//     a non-negative BigInteger. 
+		// (2) Otherwise, constructs a randomly generated positive BigInteger
+		//     that is probably prime, with the specified `bits` length. It is
+		//     recommended that the probablePrime method be used in preference to
+		//     this setter unless there is a compelling need to specify a certainty.
+		// ---
+		// => (BigInt T)&  [cannot be NAN.]
+		{
+			(q = callee.Q||(callee.Q=[])).length = 0;
+	
+			// Original process:
+			// q.length = 1+(bits>>3); RNG.nextBytes(q);
+			// ---
+			q.push.apply(q,RNG.nextBytes(1+(bits>>3),1));
+
+			0 < (t=7&bits) ? (q[0]&=((1<<t)-1)) : (q[0]=0);
+			this.FBTS(T,q);
+			
+			if( !certainty ) return T;
+	
+			// Force MSB set.
+			// ---
+			T.testBit(t=-1+bits) || this.BTW2(T,this.ONE.shiftLeft(t),T.or.Q);
+			
+			// Force odd.
+			// ---
+			T.isEven() && this.ADOF(T,1,0);
+	
+			while( !T.isProbablePrime(certainty) )
+			{
+				this.ADOF(T,2,0);
+				if( T.bitLength() > bits ) this.SUB2(T,this.ONE.shiftLeft(t));
+			}
+			
+			return T;
+		},
+
+	})
+
+	//==========================================================================
+	// PRIVATE OPERATORS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+
+		CLMP : function(/*BigInt&*/T,/*?uint*/z,  i,c)
+		// ---------------------------------
+		// (Clamp.) Clamp off excess high words.
+		// If z is supplied, preset T.size to z.
+		// [REM] Only supports finite BigInts.
+		// => (BigInt T)&
+		{
+			i = T.size;
+			'undefined' == typeof z && (z=i);
+
+			while( i > z ) delete T[--i];
+
+			T.size = z;
+			if( !z ) return T;
+
+			for( c=0x3FFFFFFF&T.neg ; z && c==T[z-1] ; delete T[--z] );
+			return (T.size=z),T;
+		},
+	
+		DMUL : function(/*BigInt&*/T,/*uint>1*/n,  z)
+		// ---------------------------------
+		// T *= n, T >= 0, 1 < n < 0x40000000
+		// [REM] Only supports finite BigInts.
+		// => (BigInt T)&
+		{
+			return (z=T.size), (T[z]=this.AM30(T,0,-1+n,T,0,0,z)), this.CLMP(T,1+z);
+		},
+	
+		ADOF : function(/*BigInt&*/T,/*uint*/n,/*uint*/w,  z)
+		// ---------------------------------
+		// (Add-Offset.) T += n << w words, T >= 0
+		// [REM] Only supports finite BigInts.
+		// => (BigInt T)&
+		{
+			if( 0 == n ) return T;
+			
+			for( z=T.size ; z <= w ; T[z++]=0 );
+	
+			for(
+				T[w]+=n ;
+				T[w] >= 0x40000000 ;
+				( T[w]-=0x40000000 ), ( ++w >= z && (T[z++]=0) ), (++T[w])
+			);
+	
+			return (T.size=z),T;
+		},
+	
+		MIEV : function(/*BigInt&*/T,/*BigInt*/M,/*BigInt&*/V,/*BigInt&*/D, U,A,B,C)
+		// ---------------------------------
+		// (Mod-Inv-Even.) Subroutine of modInverse.
+		// => undefined
+		{
+			// Init.
+			// ---
+			this.FBIG(V,T);
+			this.FI30(D,1);
+			U = this.CNEW(M); // clone
+			(A=this.FI30(null,1)), (B=this.FI30(null,0)), (C=this.FI30(null,0));
+
+			while( U.signum() )
+			{
+				for( ; U.isEven() ; this.RSH2(U,1) )
+				{
+					( A.isEven() && B.isEven() ) || ( this.ADD2(A,T), this.SUB2(B,M) );
+					this.RSH2(A,1);
+					this.RSH2(B,1);
+				}
+	
+				for( ; V.isEven() ; this.RSH2(V,1) )
+				{
+					( C.isEven() && D.isEven() ) || ( this.ADD2(C,T), this.SUB2(D,M) );
+					this.RSH2(C,1);
+					this.RSH2(D,1);
+				}
+	
+				0 <= U.compareTo(V) ?
+				( this.SUB2(U,V), this.SUB2(A,C), this.SUB2(B,D) ) :
+				( this.SUB2(V,U), this.SUB2(C,A), this.SUB2(D,B) );
+			}
+		},
+	
+		MIOD : function(/*BigInt&*/T,/*BigInt*/M,/*BigInt&*/V,/*BigInt&*/D, U,B)
+		// ---------------------------------
+		// (Mod-Inv-Odd.) Subroutine of modInverse.
+		// => undefined
+		{
+			// Init.
+			// ---
+			this.FBIG(V,T);
+			this.FI30(D,1);
+			U = this.CNEW(M); // clone
+			B = this.FI30(null,0);
+
+			while( U.signum() )
+			{
+				for( ; U.isEven() ; this.RSH2(U,1), (B.isEven()||this.SUB2(B,M)), this.RSH2(B,1) );
+	
+				for( ; V.isEven() ; this.RSH2(V,1), (D.isEven()||this.SUB2(D,M)), this.RSH2(D,1) );
+	
+				0 <= U.compareTo(V) ?
+				( this.SUB2(U,V), this.SUB2(B,D) ) :
+				( this.SUB2(V,U), this.SUB2(D,B) );
+			}
+		},
+
+		NEGT : function(/*BigInt&*/T)
+		// ---------------------------------
+		// (Negate-This.) Put `-T` in T and return T.
+		// [REM] Only supports finite BigInts.
+		// => (BigInt T)&
+		{
+			return this.SUB2(this.ZERO,T,T);
+		},
+
+		/*
+
+		Except ~.DVR2() --which has two targets and returns undefined-- all
+		methods of the form `~.<XYZ>2(T,...,R)` perform some operation based
+		on T and next operands, and store the result in R. If the argument R
+		is undefined, it is implicitly set to T& itself, meaning the result is
+		stored in the first operand. It R===null, a new BigInt is constructed
+		for storing the result. In any case the method always returns R (being
+		either the supplied reference, T&, or a newly created BigInt.)
+		
+		All these methods are designed so that the option R===T (that is,
+		R originally undefined) still works with no side effect.
+
+		*/
+
+		ADD2 : function(/*BigInt*/T,/*BigInt*/X,/*(BigInt=T)&*/R,  i,c,m,x,z)
+		// ---------------------------------
+		// (Add-To.) Put `T + X` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+	
+			for(
+				c=0, i=-1, m=Math.min(x=X.size,z=T.size) ;
+				++i < m ;
+				(c+=T[i]+X[i]),(R[i]=0x3FFFFFFF&c),(c>>=30)
+			);
+	
+			if( x < z )
+			{
+				for( c+=X.neg ; i < z ; (c+=T[i]), (R[i++]=0x3FFFFFFF&c), (c>>=30) );
+				c += T.neg;
+			}
+			else
+			{
+				for( c+=T.neg ; i < x ; (c+=X[i]), (R[i++]=0x3FFFFFFF&c), (c>>=30) );
+				c += X.neg;
+			}
+	
+			R.neg = 0 > c ? -1 : 0;
+			0 < c ? ( R[i++] = c ) : ( -1 > c && (R[i++]=0x40000000+c) );
+	
+			return this.CLMP(R,i);
+		},
+	
+		SUB2 : function(/*BigInt*/T,/*BigInt*/X,/*(BigInt=T)&*/R,  i,c,m,x,z)
+		// ---------------------------------
+		// (Sub-To.) Put `T - X` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+	
+			for(
+				m=Math.min(x=X.size,z=T.size), c=0, i=-1 ;
+				++i < m ;
+				(c+=T[i]-X[i]),(R[i]=0x3FFFFFFF&c),(c>>=30)
+			);
+	
+			if( x < z )
+			{
+				for( c-=X.neg ; i < z ; (c+=T[i]),(R[i++]=0x3FFFFFFF&c),(c>>=30) );
+				c += T.neg;
+			}
+			else
+			{
+				for( c+=T.neg ; i < x ; (c-=X[i]),(R[i++]=0x3FFFFFFF&c),(c>>=30) );
+				c -= X.neg;
+			}
+	
+			R.neg = 0 > c ? -1 : 0;
+			-1 > c ? ( R[i++] = 0x40000000+c ) : ( 0 < c && (R[i++]=c) );
+	
+			return this.CLMP(R,i);
+		},
+	
+		MUL2 : function(/*BigInt*/T,/*BigInt*/X,/*(BigInt=T)&*/R,  ng,A,z,x,i)
+		// ---------------------------------
+		// (Mult-To.) Put `T * X` in R and return R.
+		// [REM] T should be the larger value if appropriate.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			ng = T.neg != X.neg;                    // Whether the result will be negative.
+	
+			z = (A=T.abs()).size;                   // Positive T.
+			x = (X=X.abs()).size;                   // Positive X.
+
+			// [REM] Thanks to the abs() call above, A now owns cloned data
+			// so we can safely allow the optional assignment R=T :-)
+			// ---
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg && (R.neg=0);
+
+			for( R.size=x+(i=z) ; i-- ; R[i]=0 );      // Cleanup (if needed.)
+	
+			for( i=-1 ; ++i < x ; R[i+z]=this.AM30(A,0,X[i],R,i,0,z) );
+	
+			return this.CLMP( ng ? this.NEGT(R) : R );
+		},
+	
+		SQU2 : function(/*BigInt*/T,/*(BigInt=T)&*/R,  A,z,i,c)
+		// ---------------------------------
+		// (Square-To.) Put `T^2` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			z = (A=T.abs()).size;                   // Positive T.
+	
+			// [REM] Thanks to the abs() call above, A now owns cloned data
+			// so we can safely allow the optional assignment R=T :-)
+			// ---
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg && (R.neg=0);
+			if( !z ) return this.CLMP(R,0);
+
+			for( i=R.size=2*z ; i-- ; R[i]=0 );      // Cleanup (if needed.)
+
+			for( i=0 ; i < z-1 ; ++i )
+			{
+				c = this.AM30(A,i,A[i],R,2*i,0,1);
+				if( (R[i+z]+=this.AM30(A,1+i,2*A[i],R,1+2*i,c,z-i-1)) < 0x40000000 ) continue;
+				R[i+z] -= 0x40000000;
+				R[i+z+1] = 1;
+			}
+			(z=R.size) && (R[z-1] += this.AM30(A,i,A[i],R,2*i,0,1));
+
+			return this.CLMP(R);
+		},
+
+		MLO2 : function(/*BigInt*/T,/*BigInt*/X,/*uint*/n,/*(BigInt=T)&*/R,  i,j)
+		// ---------------------------------
+		// (Multiply-Lower-To.) R = lower n words of `T*X`, X.size <= n
+		// `T` should be the larger one if appropriate.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Assumes X,T >= 0, and only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg && R.neg = 0;
+
+			i = Math.min(T.size+X.size,n);
+
+			R.size = i;
+			while( i ) R[--i]=0;
+	
+			for( j=R.size-T.size ; i < j ; ++i )
+				R[i+T.size] = this.AM30(T,0,X[i],R,i,0,T.size);
+	
+			for( j=Math.min(X.size,n) ; i < j ; ++i )
+				this.AM30(T,0,X[i],R,i,0,n-i);
+	
+			return this.CLMP(R);
+		},
+	
+		MUP2 : function(/*BigInt*/T,/*BigInt*/X,/*uint*/n,/*(BigInt=T)&*/R,  i)
+		// ---------------------------------
+		// (Multiply-Upper-To.) R = `T*X` without lower n words, n > 0
+		// `T` should be the larger one if appropriate.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] assumes X,T >= 0; and only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg && R.neg = 0;
+
+			--n;
+			i = T.size + X.size - n;
+
+			R.size = i;
+			while( i-- ) R[i] = 0;
+	
+			for( i=Math.max(n-T.size,0) ; i < X.size ; ++i )
+			{
+				R[T.size+i-n] = this.AM30(T,n-i,X[i],R,0,0,T.size+i-n);
+			}
+	
+			return this.DRS2(this.CLMP(R),1);
+		},
+
+		BTW2 : function(/*BigInt*/T,/*BigInt*/X,/*fct*/op,/*(BigInt=T)&*/R,  ng,m,x,z,i,t)
+		// ---------------------------------
+		// (Bitwise-Operation-To.) Put `T op X` (bitwise) in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			ng = T.neg;
+			m = Math.min(x=X.size, z=T.size);
+	
+			R || ( R = null===R ? this.CNEW() : T);
+	
+			for( i=-1 ; ++i < m ; R[i]=op(T[i],X[i]) );
+	
+			if( x < z )
+			{
+				t = 0x3FFFFFFF&X.neg;
+				for( i=m-1 ; ++i < z ; R[i]=op(T[i],t) );
+				R.size = z;
+			}
+			else
+			{
+				t = 0x3FFFFFFF&ng;
+				for( i=m-1 ; ++i < x ; R[i]=op(t,X[i]) );
+				R.size = x;
+			}
+	
+			return (R.neg=op(ng,X.neg)), this.CLMP(R);
+		},
+	
+		LSH2 : function(/*BigInt*/T,/*uint*/n,/*(BigInt=T)&*/R,  ng,z,bs,cbs,bm,ds,c,i)
+		// ---------------------------------
+		// (Left-Shift-To) Put `T << n` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			ng = T.neg;
+			z = T.size;
+
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg = ng;
+
+			ds = Math.floor(n/30);
+			
+			for (
+				bm=-1+(1<<(cbs=30-(bs=n%30))), c=0x3FFFFFFF&(ng<<bs), i=z ;
+				i-- ;
+				(R[1+i+ds]=(T[i]>>cbs)|c), (c=(T[i]&bm)<<bs)
+			);
+	
+			for( i=ds ; i-- ; R[i]=0 );
+	
+			return (R[ds]=c), this.CLMP(R,1+ds+z);
+		},
+	
+		RSH2 : function(/*BigInt*/T,/*uint*/n,/*(BigInt=T)&*/R,  ng,z,ds,bs,cbs,bm,i)
+		// ---------------------------------
+		// (Right-Shift-To) Put `T >> n` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			ng = T.neg;
+			z = T.size;
+
+			R || ( R = null===R ? this.CNEW() : T);
+			R.neg = ng;
+
+			ds = Math.floor(n/30);
+			if( ds >= z ){ return (R.size=0), R }
+	
+			for(
+				cbs=30-(bs=n%30), bm=-1+(1<<bs), R[0]=T[i=ds]>>bs ;
+				++i < z ;
+				(R[-1+i-ds]|=(T[i]&bm)<<cbs),(R[i-ds]=T[i]>>bs)
+			);
+	
+			0 < bs && (R[-1+z-ds]|=(ng&bm)<<cbs);
+			
+			return this.CLMP(R,z-ds);
+		},
+	
+		DLS2 : function(/*BigInt*/T,/*uint*/n,/*(BigInt=T)&*/R,  i)
+		// ---------------------------------
+		// (Dig-Left-Shift-To) Put `T << n*30` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+
+			for( i=T.size ; i-- ; R[i+n]=T[i] );
+			for( i=n ; i-- ; R[i]=0 );
+			return (R.neg=T.neg), this.CLMP(R, n+T.size);
+		},
+	
+		DRS2 : function(/*BigInt*/T,/*uint*/n,/*(BigInt=T)&*/R,  z,i)
+		// ---------------------------------
+		// (Dig-Right-Shift-To) Put `T >> n*30` in R and return R.
+		// (a) If R is NULL, create a New BigInt for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// [REM] Only supports finite arguments.
+		// => (BigInt R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+
+			for( z=T.size, i=n-1 ; ++i < z ; R[i-n]=T[i] );
+			return (R.neg=T.neg), this.CLMP(R, z > n ? (z-n) : 0);
+		},
+
+		DVR2 : function(/*BigInt*/T,/*BigInt*/X,/*?BigInt&*/Q,/*?BigInt&*/R,  ng,opp,x,z,argR,argQ,A,nsh,a,a0,at,d1,d2,e,i,j,mF,qd)
+		// ---------------------------------
+		// (Div-And-Remain-To.) Divide T by X, quotient and remainder to Q, R.
+		// T = X * (Q) + (R)
+		// Either Q or R may be undefined (-> volatile identifier.)
+		// Condition: R !== Q
+		// [REM] Only supports finite arguments, but may generate non-finite result(s).
+		// => undefined
+		{
+			// Keep track of opposite operands.
+			// ---
+			opp = (ng=T.neg) != X.neg;
+	
+			x = (X=X.abs()).size;      // Positive X.
+			if( !x )
+			{
+				// X == ZERO
+				// ---
+				Q && this.FSPE(Q,T.signum()/0);
+				R && this.FSPE(R,Number.NaN);
+				return;
+			}
+	
+			z = (A=T.abs()).size;      // Positive T.
+			if( z < x )
+			{
+				Q && this.FI30(Q,0);
+				R && this.FBIG(R,T);
+				return;
+			}
+			T = A;
+
+			// ---
+			// [REM] Thanks to the abs() call above, T and X now refer
+			// to cloned data so original bigs won't be altered.
+			// ---
+	
+			// R passed in?
+			// ---
+			argR = R ? 1 : 0;
+			R || (R=callee.Rm||(callee.Rm=this.CNEW()));
+	
+			// Normalize modulus
+			// ---
+			A = callee.A || (callee.A=this.CNEW());
+
+			0 < ( nsh = 30 - this.NBTS(X[-1+x]) ) ?
+				( this.LSH2(X,nsh,A), this.LSH2(T,nsh,R) ) :
+				( this.FBIG(A,X), this.FBIG(R,T) );
+
+			if( !(a0=A[-1+(a=A.size)]) ) return;
+
+			// Hardcoded constants.
+			// (0) FV = Math.pow(2,52)
+			// (1) F1 =   52-DB = 52-30     = 22
+			// (2) V1 = 1 << F1 = 1 << 22   = 0x400000
+			// (3) F2 = 2*DB-52 = 2*30-52   = 8
+			// (4) V2 = 1 << F2 = 1 << 8    = 0x100
+			// ---
+			at = /*V1*/0x400000*a0 + ( 1 < a ? (A[-2+a] >> /*F2*/8) : 0 );
+			d1 = /*FV*/(callee.P2_52||(callee.P2_52=Math.pow(2,52)))/at;
+			d2 = /*V1*/0x400000/at;
+			e =  /*V2*/0x100;
+
+			j = -a + (i=R.size);
+
+			// Q passed in?
+			// ---
+			argQ = Q ? 1 : 0;
+			Q || (Q=callee.Qt||(callee.Qt=this.CNEW()));
+
+			this.DLS2(A,j,Q);                         // Q = A << 30*j
+
+			if( R.compareTo(Q) >= 0 )
+			{
+				R[R.size++] = 1; // R[size]=1
+				this.SUB2(R,Q);  // R = R - Q
+			}
+
+			// Negative A so we can replace sub with am later.
+			// ---
+			this.DLS2(this.ONE,a,Q);                  // Q = 1 << 30*a
+			this.SUB2(Q,A,A);                         // A = Q - A
+			while( A.size < a ) A[A.size++]=0;        // Restore A.size==a by zeroing chunks
+
+			for( mF=Math.floor ; j-- ; )
+			{
+				// Quotient digit.
+				// ---
+				qd = a0 == R[--i] ? 0x3FFFFFFF : mF( d1*R[i] + d2*(e+R[i-1]) );
+				if( qd <= (R[i]+=this.AM30(A,0,qd,R,j,0,a)) ) continue;
+	
+				// Try it out.
+				// ---
+				this.DLS2(A,j,Q);
+				for( this.SUB2(R,Q) ; --qd > R[i] ; this.SUB2(R,Q) );
+			}
+	
+			argQ &&
+				( this.DRS2(R,a,Q), (opp && this.NEGT(Q)) );
+			argR &&
+				( this.CLMP(R,a), (0 < nsh && this.RSH2(R,nsh)), (ng && this.NEGT(R)) );
+		},
+
+	})
+
+	//==========================================================================
+	// ZERO - ONE - TEN
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Reset during onEngine.
+		// ---
+		ZERO :    null,
+		ONE :     null,
+		TEN :     null,
+		// ---
+		NAN :     null,
+		POS_INF : null,
+		NEG_INF : null,
+	})
+
+	//==========================================================================
+	// STATIC API
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+
+		AlgoClassic : function AlgoClassic_$BigInt$_(/*BigInt*/M)
+		// ---------------------------------
+		{
+			this.input = M;
+		}
+		.prototype.setup
+		({
+			convert : function(/*BigInt*/X)
+			// ---------------------------------
+			// If either X < 0 or X >= this.input, return X % input.
+			// Otherwise return X itself.
+			// => BigInt | X
+			{
+				return ( X.neg < 0 || X.compareTo(this.input) >= 0 ) ?
+					X.mod(this.input) :
+					X;
+			},
+			revert : function(/*BigInt*/X)
+			// ---------------------------------
+			// Identity.
+			// => X&
+			{
+				return X;
+			},
+			reduce : function(/*BigInt&*/X)
+			// ---------------------------------
+			// => X&
+			{
+				return this.constructor.µ['~'].DVR2(X,this.input,null,X), X;
+			},
+			mulTo : function(/*BigInt*/X,/*BigInt*/Y,/*BigInt&*/R)
+			// ---------------------------------
+			// => undefined
+			{
+				this.reduce(this.constructor.µ['~'].MUL2(X,Y,R));
+			},
+			sqrTo : function(/*BigInt*/X,/*BigInt&*/R)
+			// ---------------------------------
+			// => undefined
+			{
+				this.reduce(this.constructor.µ['~'].SQU2(X,R));
+			},
+		}).constructor,
+
+
+		AlgoMontgomery : function AlgoMontgomery_$BigInt$_(/*BigInt*/M)
+		// ---------------------------------
+		{
+			this.input = M;
+			this.mp = callee.µ['~'].INVD(M);
+			this.mpl = this.mp&0x7FFF;
+			this.mph = this.mp>>15;
+			this.mt2 = 2*M.size;
+		}
+		.prototype.setup
+		({
+			convert : function(/*BigInt*/X,  I,R)
+			// ---------------------------------
+			// X*R mod input
+			// => BigInt
+			{
+				I = this.constructor.µ['~'];
+				
+				R = I.DLS2(X.abs(),this.input.size,null);
+				I.DVR2(R,this.input,null,R);
+				
+				if( X.neg && R.compareTo(I.ZERO) > 0 ) I.SUB2(this.input,R,R);
+				return R;
+			},
+			revert : function(/*BigInt*/X)
+			// ---------------------------------
+			// X/R mod input
+			// => BigInt
+			{
+				return this.reduce(this.constructor.µ['~'].CNEW(X)); // clone
+			},
+			reduce : function(/*BigInt&*/X,  I,hi,lo,z,i,j,u0)
+			// ---------------------------------
+			// X = X/R mod input
+			// => X&
+			{
+				I = this.constructor.µ['~'];
+
+				// Pad X so AM30 has enough room later
+				// ---
+				while( X.size <= this.mt2 ) X[X.size++]=0;
+
+				for( hi=this.mph, lo=this.mpl, z=this.input.size, i=-1 ; ++i < z ; )
+				{
+					j = 0x7FFF&X[i];
+					u0 = 0x3FFFFFFF&(j*lo+(((j*hi+(X[i]>>15)*lo)&0x7FFF)<<15));
+					
+					// Use AM30 to combine the multiply-shift-add into one call.
+					// ---
+					X[j=i+z] += I.AM30(this.input,0,u0,X,i,0,z);
+		
+					// Propagate carry
+					// ---
+					while( X[j] >= 0x40000000 ){ X[j]-=0x40000000; X[++j]++; }
+				}
+
+				I.DRS2(I.CLMP(X),z);
+
+				if( X.compareTo(this.input) >= 0 ) I.SUB2(X,this.input);
+		
+				return X;
+			},
+			mulTo : function(/*BigInt*/X,/*BigInt*/Y,/*BigInt&*/R)
+			// ---------------------------------
+			// R = "XY/R mod input"; X,Y != R
+			// => undefined
+			{
+				this.reduce(this.constructor.µ['~'].MUL2(X,Y,R));
+			},
+			sqrTo : function(/*BigInt*/X,/*BigInt&*/R)
+			// ---------------------------------
+			// R = "X^2/R mod input"; X != R
+			// => undefined
+			{
+				this.reduce(this.constructor.µ['~'].SQU2(X,R));
+			},
+		}).constructor,
+
+
+		AlgoExponent : function AlgoExponent_()
+		// ---------------------------------
+		{
+		}
+		.prototype.setup
+		({
+			convert : function(X){ return X },
+			revert :  function(X){ return X },
+			mulTo : function(/*BigInt*/X,/*BigInt*/Y,/*BigInt&*/R)
+			// ---------------------------------
+			// => undef
+			{
+				this.constructor.µ['~'].MUL2(X,Y,R);
+			},
+		
+			sqrTo : function(/*BigInt*/X,/*BigInt&*/R)
+			// ---------------------------------
+			// => undef
+			{
+				this.constructor.µ['~'].SQU2(X,R);
+			},
+		}).constructor,
+
+
+		AlgoBarrett : function AlgoBarrett_$BigInt$_(/*BigInt*/M,  I)
+		// ---------------------------------
+		{
+			this.q3 = (I=callee.µ['~']).CNEW();
+			I.DLS2(I.ONE,2*M.size,this.r2=I.CNEW());
+			this.mu = this.r2.divide(M);
+			this.input = M;
+		}
+		.prototype.setup
+		({
+			convert : function(/*BigInt*/X)
+			// ---------------------------------
+			// => BigInt
+			{
+				if( X.neg < 0 || X.size > 2*this.input.size ) return X.mod(this.input);
+				if( X.compareTo(this.input) < 0 ) return X;
+				return this.reduce(this.constructor.µ['~'].CNEW(X)); // clone
+			},
+			revert : function(/*BigInt*/X)
+			// ---------------------------------
+			{
+				return X;
+			},
+			reduce : function(/*BigInt&*/X,  I,t)
+			// ---------------------------------
+			// X = X mod m (HAC 14.42)
+			// => X&
+			{
+				I = this.constructor.µ['~'];
+
+				I.DRS2(X,this.input.size-1,this.r2);
+				
+				X.size > (t=1+this.input.size) && I.CLMP(X,t);
+				
+				I.MUP2(this.mu,this.r2,t,this.q3);
+				I.MLO2(this.input,this.q3,t,this.r2);
+		
+				while( X.compareTo(this.r2) < 0 ) I.ADOF(X,1,t);
+		
+				I.SUB2(X,this.r2);
+				while( X.compareTo(this.input) >= 0 ) I.SUB2(X,this.input);
+				
+				return X;
+			},
+			mulTo : function(/*BigInt*/X,/*BigInt*/Y,/*BigInt&*/R)
+			// ---------------------------------
+			// R = X*Y mod input; X,Y != R
+			// => undef
+			{
+				this.reduce(this.constructor.µ['~'].MUL2(X,Y,R));
+			},
+			sqrTo : function(/*BigInt*/X,/*BigInt&*/R)
+			// ---------------------------------
+			// R = X^2 mod input; X != R
+			// => undef
+			{
+				this.reduce(this.constructor.µ['~'].SQU2(X,R));
+			},
+		}).constructor,
+
+	})
+
+	[STATIC]
+	
+	({
+
+		onEngine: function onEngine_(  I)
+		// ---------------------------------
+		{
+			$.global.BigInt = callee.µ; // globalize me!
+			
+			I = callee.µ['~'];
+			callee.µ.ZERO    = I.ZERO =    I.FZRO();
+			callee.µ.ONE     = I.ONE =     I.FI30(null,1);
+			callee.µ.TEN     = I.TEN =     I.FI30(null,10);
+			// ---
+			callee.µ.NAN     = I.NAN =     I.FNAN(null);
+			callee.µ.POS_INF = I.POS_INF = I.FINF(null, 0);
+			callee.µ.NEG_INF = I.NEG_INF = I.FINF(null,-1);
+		},
+
+		probablePrime: function probablePrime(/*uint*/bits,/*Random=auto*/rng,  $$,I)
+		// ---------------------------------
+		// Return a positive BigInt that is probably prime, with the
+		// specified bit length `bits`. Optionally a new Random instance
+		// can be passed in via `rng`, otherwise a default one is created.
+		// => New BigInt.
+		{
+			$$ = $.global[callee.µ.__root__];
+
+			if( !rng )
+			{
+				if( !$$.isLoaded('/$$/Random/') )
+				{
+					$$.error(__("IdExtenso's Random module is not available. Make sure it has been properly loaded."), callee);
+				}
+				rng = new $$.Random();
+			}
+
+			if( 'function' != typeof rng.nextBytes )
+			{
+				$$.error(__("Invalid Random generator (%1) passed in BigInt.probablePrime(bits[,Random]).",$$.JSON(rng)), callee);
+			}
+
+			I = callee.µ['~'];
+			return I.FRNG(I.CNEW(),rng,bits>>>=0,I.DCTY);
+		},
+
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_X_iô_ô_(/*var*/src,/*?uint32|Random*/b,/*?Random*/c,  $$,t,rng)
+		// ---------------------------------
+		// Constructor:
+		//   ()                 ::  Create a zero Big.
+		//   (src:BigInt)       ::  Clone the supplied Big.
+		//   (src:Number)       ::  Create a Big from an integral Number.
+		//   (src:String,       ::  Create a Big from a String representation
+		//     radix:uint=auto)     in the specified radix (default=automatic.)
+		//   (src:byte[])       ::  Translate a byte array containing the two's-complement
+		//                          binary representation of a Big into a Big.
+		// ---
+		//   (int bits,         ::  Construct a randomly generated BigInt, uniformly
+		//    Random rng)           distributed over the range 0 to (2^bits-1), inclusive.
+		//                          The uniformity of the distribution assumes that a fair
+		//                          source of random bits is provided in rng. Note that this
+		//                          constructor always constructs a non-negative BigInteger. 
+		//   (int bits,         ::  Construct a randomly generated positive BigInt that is
+		//    int certainty,        probably prime, with the specified bits.
+		//    Random rng)
+		//
+		// [REM] The form `(int signum, byte[] magnitude)` is not implemented.
+		// ---------------------------------
+		// Data structure:
+		//       `size` (uint)  ::  Number of internal chunks in use.
+		//                          this.size==0  iff  this BI represents 0 or -1.
+		//                          If size is undefined, it is not initialized.
+		//        `neg` (0|-1)  ::  Whether `this` represents a negative value (-1)
+		//                          or a positive-or-zero value (0).
+		//     `0`,`1`,`2`, etc ::  Internal chunks.
+		{
+			// Default structure is ZERO. No argument -> done.
+			// ---
+			delete this.spe;
+			this.size = this.neg = 0;
+
+			// Explicitly Non-Finite.
+			// ---
+			if( 'number' == typeof src && !isFinite(src) )
+			{
+				return callee.µ['~'].FSPE(this,src);
+			}
+			if( 'string' == typeof src && Number.hasOwnProperty(src) && !isFinite(t=Number[src]) )
+			{
+				return callee.µ['~'].FSPE(this,t);
+			}
+
+			// Implicitly Zero. (Shortcut.)
+			// ---
+			if( !src ) return;
+
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			switch( typeof src )
+			{
+				case 'string' :
+					callee.µ['~'].FSTR(this,src,b); return;
+				
+				case 'object' :
+					if( callee.µ===src.constructor )
+						{ callee.µ['~'].FBIG(this,src); return }
+	
+					if( src instanceof Array )
+						{ callee.µ['~'].FBTS(this,src); return }
+					
+					// no break . . .
+	
+				default :
+					src = Number(src)||0;
+
+					if( 'undefined' != (t=typeof b) ) break;
+	
+					// Signed integer in the range [-2^30,+2^30[
+					// ---
+					if( src===(src|0) && -1==((src>>(30))||-1) )
+						{ callee.µ['~'].FI30(this,src); return }
+	
+					// Fallback for safe signed JS integer in ]-2^53,+2^53[
+					// -> invoke ~.FSNP()
+					// ---
+					if( !(src%1) && 2==(src+1)-(src-1) )
+						{ callee.µ['~'].FSNP(this,String(src),10); return }
+					
+					// Floor src. (Is there a better fallback?)
+					// ---
+					src = Math.floor(src);
+					callee.µ['~'].FSNP(this,String(src),10);
+					return;
+			}
+	
+			if( 0 > src )
+			{
+				$$.error(__("Invalid argument bits (%1) in BigInt(bits, [certainty,] Random).", $$.JSON(src)), callee);
+			}
+	
+			if( 'number' == t && src < 2 )
+			{
+				// Shortcut: no need to random if bitLength is 1.
+				callee.µ['~'].FI30(this,1);
+				return;
+			}
+	
+			// ---
+			// Random construction syntaxes.
+			// src :: number (bits)
+			// b   :: Random | certainty
+			// c   :: Random (if b is certainty)
+			// ---
+
+			rng = 0;
+			while( !rng )
+			{
+				if( b && 'function' == typeof b.nextBytes )
+				{
+					rng = b;
+					'number' == typeof c || (c=0);
+					break;
+				}
+
+				if( c && 'function' == typeof c.nextBytes )
+				{
+					rng = c;
+					if( 'number' == typeof b ){ c=b; break; }
+					$$.error(__("Invalid argument certainty (%1) in BigInt(bits, certainty, Random).", $$.JSON(b)), callee);
+				}
+				
+				$$.error(__("No Random generator provided in BigInt(bits, [certainty,] Random)."), callee);
+			}
+
+			if( c < 0 )
+			{
+				$$.error(__("Invalid argument certainty (%1) in BigInt(bits, certainty, Random).", c), callee);
+			}
+			
+			callee.µ['~'].FRNG(this, /*Random*/rng, /*bits*/src, /*certainty|0*/c);
+		},
+
+		abs : function abs_$BigInt$()
+		// ---------------------------------
+		// => New BigInt whose value is the absolute value of this.
+		// Non-finite value is supported since both negate() and
+		// ~.CNEW() support such case.
+		{
+			return this.neg ? this.negate() : callee.µ['~'].CNEW(this);
+		},
+	
+		add : function add_$BigInt$X_$BigInt$(/*BigInt|any*/X,  t)
+		// ---------------------------------
+		// => New BigInt whose value is `this + X`, non-finite
+		// operands being supported.
+		// ---
+		// [ECMA] Addition is a commutative operation, but not always
+		// associative. Regarding non-finite values, the result of an
+		// addition is determined using the rules of IEEE754 arithmetic.
+		// (The present implementation does not address negative zero.)
+		// (1) If either operand is NaN, the result is NaN.
+		// (2) The sum of two infinities of opposite sign is NaN.
+		// (3) The sum of two infinities of the same sign is the
+		//     infinity of that sign.
+		// (4) The sum of an infinity and a finite value is equal to
+		//     the infinite operand. (...)
+		// [ALGO] If either x or y is non-finite, the result of
+		//        `(isFinite(x)?0:x) + (isFinite(y)?0:y)` is a
+		//        non-finite Number that fits the rules above.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+			
+			return ( (t=this.spe) || X.spe ) ?
+				callee.µ['~'].FSPE( null, (t?Number[t]:0)+(X.spe?Number[X.spe]:0) ) :
+				callee.µ['~'].ADD2( this, X, null );
+		},
+	
+		and : function and_$BigInt$X_$BigInt$(/*BigInt|any*/X)
+		// ---------------------------------
+		// => New BigInt whose value is `this & X`, non-finite
+		// operands being supported as follows:
+		// NF & X = X & NF = 0
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return (this.spe || X.spe) ?
+				callee.µ.ZERO :
+				callee.µ['~'].BTW2(this, X, callee.Q, null);
+		}
+		.setup({ Q: function(x,y){return x&y} }),
+	
+		andNot : function andNot_$BigInt$X_$BigInt$(/*BigInt|any*/X)
+		// ---------------------------------
+		// => New BigInt whose value is `this & ~X`, non-finite
+		// operands being supported as follows:
+		// (1) NF &~ X = 0  ; (2) F &~ NF = F
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return this.spe ?
+				callee.µ.ZERO :
+				( X.spe ?
+					callee.µ['~'].CNEW(this) :
+					callee.µ['~'].BTW2(this, X, callee.Q, null)
+				);
+		}.
+		setup({ Q: function(x,y){ return x&~y } }),
+	
+		bitCount : function bitCount_I(  z,x,q,i)
+		// ---------------------------------
+		// Number of bits in the two's complement representation of
+		// this BigInt *that differ from its sign bit*. That is,
+		// (a) number of 1's in representation of positive values,
+		// (b) number of 0's in representation of negative values,
+		// E.g (00...00)1011001001b  ==  +713 => 5  ;  0 => 0
+		//     (11...11)0100110111b  ==  -713 => 4  ; -1 => 0
+		// ---
+		// Support of non-finite value:
+		//     NAN => NaN   ;   NEG_INF,POS_INF => +Infinity
+		// => uint | NaN | Infinity
+		{
+			if( z=this.spe ) return Math.abs(Number[z]);
+			for(
+				z=this.size, r=0, x=0x3FFFFFFF&this.neg, q=callee.Q, i=-1 ;
+				++i < z ;
+				r += q(this[i]^x)
+			);
+			return r;
+		}
+		.setup({ Q: function(x,r){for(r=0;x;(x&=(x-1)),++r );return r} }),
+	
+		bitLength : function bitLength_I(  z)
+		// ---------------------------------
+		// Number of bits in the *minimal* two's-complement representation
+		// of this BigInt, excluding a sign bit.
+		// E.g (00...00)1011001001b  ==  +713 => 10  ;  0 => 0
+		//     (11...11)0100110111b  ==  -713 => 10  ; -1 => 0 
+		// ---
+		// Support of non-finite value:
+		//     NAN => NaN   ;   NEG_INF,POS_INF => +Infinity
+		// => uint | NaN | Infinity
+		{
+			if( z=this.spe ) return Math.abs(Number[z]);
+			return (z=this.size) ?
+				( 30*(--z) + callee.µ['~'].NBTS(this[z]^(0x3FFFFFFF&this.neg)) ) :
+				0;
+		},
+
+		changeBit : function changeBit_I_F_$BigInt$(/*uint*/n,/*fct*/op,  I,R)
+		// ---------------------------------
+		// => New BigInt whose value is `this op (1<<n)`.
+		// [REM] Added to the original spec.
+		// Support of non-finite value => this&.
+		{
+			if( this.spe ) return this;
+
+			if( 'function' != typeof op ){ op() /*not-a-function-error*/ }
+			n >>>= 0;
+
+			return (I=callee.µ['~']), (R=I.ONE.shiftLeft(n)), I.BTW2(this, R,op,R);
+		},
+
+		clearBit : function clearBit_I_$BigInt$(/*uint*/n)
+		// ---------------------------------
+		// => New BigInt whose value is equivalent to this BigInt
+		// with the designated bit cleared, i.e `this & ~(1<<n)`.
+		// ---
+		// Support of non-finite value => based on changeBit().
+		{
+			return this.changeBit(n, this.andnot.Q);
+		},
+	
+		compareTo : function compareTo_$BigInt$X_Ï(/*BigInt|any*/X,  t,x,r,z)
+		// ---------------------------------
+		// Compares this BigInt with the specified argument. This method
+		// is provided in preference to individual methods for each of the six
+		// boolean comparison operators (<, ==, >, >=, !=, <=).
+		// [ECMA] The comparison x < y, where x and y are values, produces
+		// true, false, or undefined (which indicates that at least one operand
+		// is NaN). However, the comparison x <= y returns either true or
+		// false, as it translates into !(y < x).
+		// => int32 | NaN
+		// ---
+		// ret  > 0   <--> this  > X  (excluding +inf > +inf and -inf > -inf.)
+		// ret  < 0   <--> this  < X  (excluding +inf < +inf and -inf < -inf.)
+		// ret == 0   <--> this == X  (including +inf == +inf and -inf == -inf.)
+		// isNaN(ret) <--> isNaN(this) OR isNaN(X)
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			// Non-finite value somewhere.
+			// ---
+			if( (t=this.spe) || X.spe )
+			{
+				x = X.spe;
+				if( 'NaN'==t || 'NaN'==x ) return Number.NaN;
+
+				// Either t or x is infinite.
+				// ---
+				if( t===x ) return 0;      // Equal infinities (ECMA compliant.)
+
+				t = t ? Number[t] : 0;     // Using 0 as a fallback is ok as
+				x = x ? Number[x] : 0;     // this guarantees the desired output
+				return t < x ? -1 : +1;    // relative to any signed infinity.
+			}
+
+			// Opposite signs.
+			// ---
+			if( r=this.neg-X.neg ) return r;
+
+			// Same sign, compare sizes.
+			// ---
+			if( r=(z=this.size)-X.size ) return this.neg ? -r : r;
+
+			while( z-- ) if( r=this[z]-X[z] ) return r;
+
+			return 0;
+		},
+	
+		divide : function divide_$BigInt$X_$BigInt$(/*BigInt|any*/X,  t,I,Y)
+		// ---------------------------------
+		// => New BigInt whose value is `this/X`, non-finite
+		// operands or result being supported.
+		// ---
+		// [ECMA] Regarding non-finite values, the result of division is
+		// determined by the specification of IEEE 754 arithmetic, noting
+		// that in the present implementation, zero is always +0.
+		// (1) If either operand is NaN, the result is NaN.
+		// (2) The sign of the result is positive if both operands have
+		//     the same sign, negative if the operands have different signs.
+		// (3) Division of an infinity by an infinity results in NaN.
+		// (4) Division of an infinity by a zero results in an infinity.
+		//     (In this implementation, infinity's sign is preserved.)
+		// (5) Division of an infinity by a non-zero finite value results in
+		//     a signed infinity. The sign is determined by the rule already
+		//     stated above.
+		// (6) Division of a finite value by an infinity results in zero.
+		// ---
+		// (7) Division of a zero by a zero results in NaN; division of zero
+		//     by any other finite value results in zero.
+		// (8) Division of a non-zero finite value by a zero results in a
+		//     signed infinity. (In this implementation the sign of the
+		//     result is this of the finite value.)
+		// [ALGO] If x is non-finite OR y is non-finite-or-zero, the result of
+		//        `(isFinite(x)?signum(x):x) / (isFinite(y)?signum(y):y)`
+		//        is a non-finite-or-zero Number that fits the rules above.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			I = callee.µ['~'];
+
+			return ( (t=this.spe) || X.spe || (!X.signum()) ) ?
+				I.FSPE(null, (t?Number[t]:this.signum())/(X.spe?Number[X.spe]:X.signum())) :
+				( I.DVR2(this, X, Y=I.CNEW()), Y );
+		},
+	
+		divideAndRemainder : function divideAndRemainder_$BigInt$X_b_A(/*BigInt|any*/X,/*0|1=0*/VOLATILE,  a,t,x,I,Y,R)
+		// ---------------------------------
+		// Array of two new BigIntegers containing the quotient and the remainder,
+		// that is, `[ this/X , this%X ]`, non-finite operands or result being
+		// supported. See rules under divide().
+		// ---
+		// If VOLATILE, return a volatile array, cached, whose references are
+		// guaranteed until the function is invoked again.
+		// => [BigInt, BigInt]
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+			(a = VOLATILE ? (callee.Q||(callee.Q=[])) : []).length=0;
+
+			I = callee.µ['~'];
+
+			if( (t=this.spe) || X.spe || (!X.signum()) )
+			{
+				t = t ? Number[t] : this.signum();
+				x = X.spe ? Number[X.spe] : X.signum();
+				Y = I.FSPE(null, t/x);
+				R = I.FSPE(null, t%x);
+			}
+			else
+			{
+				I.DVR2(this, X, Y=I.CNEW(), R=I.CNEW());
+			}
+
+			return a.push(Y,R), a;
+		},
+	
+		equals : function equals_$BigInt$X_$Boolean$(/*BigInt|any*/X)
+		// ---------------------------------
+		// Compares this BigInt with the specified argument for equality.
+		// TRUE iff X is numerically equal to this. Supports non-finite
+		// operands, thanks to compareTo().
+		// => true [OK]  |  false [KO]
+		{
+			return 0===this.compareTo(X);
+		},
+	
+		flipBit : function flipBit_I_$BigInt$(/*uint*/n)
+		// ---------------------------------
+		// => New BigInt whose value is equivalent to this BigInt
+		// with the designated bit flipped, i.e `this ^ (1<<n)`.
+		// ---
+		// Support of non-finite value => based on changeBit().
+		{
+			return this.changeBit(n,this.xor.Q);
+		},
+	
+		gcd : function gcd_$BigInt$X_$BigInt$(/*BigInt|any*/X,  A,B,I,t,i,g)
+		// ---------------------------------
+		// => new BigInt whose value is the greatest common divisor
+		// of `abs(this)` and `abs(X)`. Returns 0 if this==0 && X==0.
+		// ---
+		// Support of non-finite operands:
+		// => this.abs().min(X.abs())
+		//    (1) If this or X is NAN, return NAN.
+		//    (2) If both this and X are infinite, return POS_INF.
+		//    (3) Otherwise, return the abs() of the finite value.
+		{
+			if( this.spe || X.spe ) return this.abs().min(X.abs());
+
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			A = this.abs();
+			B = X.abs();
+			A.compareTo(B) < 0 && ((t=A),(A=B),(B=t));
+	
+			// ---
+			// A >= B
+			// ---
+	
+			if( 0 > (g=B.getLowestSetBit()) ) return A;
+			if( g > (i=A.getLowestSetBit()) ) g=i;
+	
+			I = callee.µ['~'];
+			
+			0 < g && ( I.RSH2(A, g), I.RSH2(B, g) );
+	
+			while( 0 < A.signum() )
+			{
+				0 < (i=A.getLowestSetBit()) && I.RSH2(A, i);
+				0 < (i=B.getLowestSetBit()) && I.RSH2(B, i);
+				I.RSH2(0 <= A.compareTo(B) ? I.SUB2(A,B) : I.SUB2(B,A),1);
+			}
+	
+			return 0 < g ? I.LSH2(B, g) : B;
+		},
+	
+		getLowestSetBit : function getLowestSetBit_Ÿ(  i,z,t)
+		// ---------------------------------
+		// Index of the rightmost (lowest-order) one bit in this BigInt
+		// (the number of zero bits to the right of the rightmost one bit).
+		// Returns -1 if this BigInt contains no one bits.
+		// ---
+		// Support of non-finite value:
+		//     NAN => NaN   ;   NEG_INF | POS_INF => +Infinity
+		// => uint [OK] | -1 [KO] | NaN | Infinity
+		{
+			if( z=this.spe ) return Math.abs(Number[z]);
+			for( z=this.size, i=-1 ; ++i < z && !(t=this[i]) ; );
+			return t ? ( 30*i + callee.µ['~'].LBIT(t) ) : ( this.neg ? 30*z : -1 );
+		},
+
+		isEven : function isEven_$Boolean$()
+		// ---------------------------------
+		// TRUE iff this Big is even. (Added to the original spec.)
+		// ---
+		// Support of non-finite value => undefined
+		// => bool | undefined
+		{
+			return this.spe ?
+				void(0) :
+				0 == ( this.size ? (1&this[0]) : this.neg );
+		},
+
+		isProbablePrime : function isProbablePrime_i_$Boolean$(/*uint=auto*/certainty,  I,LP,HP,X,z,t,x,i,j)
+		// ---------------------------------
+		// TRUE   if this BigInt is 'probably prime' (w/ respect to certainty),
+		// FALSE  if this BigInt is definitely composite.
+		// Non-finite value => false.
+		// ---
+		// `certainty` :: measure of the uncertainty that the caller is willing to
+		// tolerate. If the call returns TRUE the probability that this BigInt
+		// is prime exceeds (1-(1/2)^certainty). The execution time of this method
+		// is proportional to the value of this parameter (default is ~.DCTY.)
+		// ---
+		// [REM] Probability of primality is >= (1-(1/2)^certainty), unless
+		// certainty is <=0 (in which case the method always returns FALSE.)
+		// ---
+		// => bool
+		{
+			if( this.spe ) return false;
+
+			I = callee.µ['~'];
+
+			'undefined' == typeof certainty && (certainty=I.DCTY);
+			if( 0 >= (certainty|=0) ) return false;
+
+			// Working on |X|
+			// ---
+			X = this.abs();
+
+			// Trivial Test #1 -- is X a well-known low prime?
+			// ---
+			LP = I.LWPM;
+			if( 1 == X.size && X[0] <= LP.last() ) return LP(X[0]);
+
+			// Trivial Test #2 -- is X even?
+			// ---
+			if( X.isEven() ) return false;
+
+			// Trivial Test #3 -- is there a prime product pp and a
+			// prime number pn so that X % pp is a multiple of pn?
+			// ---
+			for( HP=I.HPPM, z=LP.size(), i=1/*skip 2*/ ; i < z ; )
+			{
+				x = I.IMOD(X,(t=HP(LP,i))[0]);
+				j = t[1];
+				while( i < j ) if( !(x%(LP.at(i++))) ) return false;
+			}
+
+			// OK, we need to go further -> Miller-Rabin Test.
+			// ---
+			return I.MLRB(X, certainty);
+		},
+	
+		max : function max_$BigInt$X_$BigInt$X(/*BigInt|any*/X,  c)
+		// ---------------------------------
+		// Maximum of this BigInt and X, non-finite operands being supported.
+		// [REM] Either this or X or NAN is returned, NOT A NEW OBJECT.
+		// => (this|X)& | NAN
+		{
+			return isNaN(c=this.compareTo(X)) ? callee.µ.NAN : ( c > 0 ? this : X );
+		},
+	
+		min : function min_$BigInt$X_$BigInt$X(/*BigInt|any*/X,  c)
+		// ---------------------------------
+		// Minimum of this BigInt and X, non-finite operands being supported.
+		// [REM] Either this or X or NAN is returned, NOT A NEW OBJECT.
+		// => (this|X)& | NAN
+		{
+			return isNaN(c=this.compareTo(X)) ? callee.µ.NAN : ( c < 0 ? this : X );
+		},
+
+		mod : function mod_$BigInt$X_$BigInt$(/*BigInt|any*/X,  I,t,x,R)
+		// ---------------------------------
+		// => New BigInt whose value is `this mod X`,
+		// X can be either a BigInt or a JS integer.
+		// This method differs from `remainder` in that it always
+		// returns a non-negative Big.
+		// ---
+		// Support of non-finite operands or result.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			I = callee.µ['~'];
+
+			if( (t=this.spe) || X.spe || (!X.signum()) )
+			{
+				t = t ? Number[t] : this.signum();
+				x = X.spe ? Number[X.spe] : X.signum();
+				return I.FSPE(null, t%x);
+			}
+
+			// IMOD Shortcut in case X is a uint < 2^26 (0x4000000.)
+			// ---
+			if( X===X>>>0 && X < 0x4000000 ) return I.FI30(null,I.IMOD(this,X));
+
+			// General case.
+			// ---
+			I.DVR2(this.abs(),X,null,R=I.CNEW());
+	
+			return this.neg && R.compareTo(I.ZERO) > 0 ? I.SUB2(X, R,R) : R;
+		},
+
+		modInverse : function modInverse_$BigInt$X_$BigInt$(/*BigInt|any*/M,  mev,I,V,D)
+		// ---------------------------------
+		// => New BigInt whose value is R s.t. `this*R = 1 mod M`.
+		// [REM] Should throw an exception if M <= 0, or this BigInt
+		// has no multiplicative inverse mod M (that is, this BigInt
+		// is not relatively prime to M). In the present implementation,
+		// ZERO is returned on any failure.
+		// ---
+		// Support of non-finite operands => I.ZERO.
+		{
+			(M && M instanceof callee.µ) || (M=new callee.µ(M));
+
+			I = callee.µ['~'];
+			
+			if( this.spe || M.spe ) return I.ZERO;
+
+			mev = M.isEven();
+			if( (this.isEven() && mev) || !M.signum() ) return I.ZERO;
+	
+			I[mev ? 'MIEV' : 'MIOD' ]( this, M, V=I.CNEW(), D=I.CNEW() );
+	
+			if( V.compareTo(I.ONE) ) return I.ZERO;
+			if( D.compareTo(M) >= 0 ) return D.subtract(M);
+			if( !D.neg ) return D;
+	
+			return I.ADD2(D, M).neg ? D.add(M) : D;
+		},
+	
+		modPow : function modPow_$BigInt$X_$BigInt$X_$BigInt$(/*BigInt|any*/E,/*BigInt|any*/M,  I,i,k,k1,km,R,api,a,n,a2,j,w,is1,r2,t)
+		// ---------------------------------
+		// => New BigInt whose value is `this^E mod M`.
+		// (Unlike pow, this method allows negative exponents.) 
+		// ---
+		// Support of non-finite operands => NAN
+		{
+			(E && E instanceof callee.µ) || (E=new callee.µ(E));
+			(M && M instanceof callee.µ) || (M=new callee.µ(M));
+
+			I = callee.µ['~'];
+
+			if( this.spe || E.spe || M.spe ) return I.NAN;
+			
+			if( !(i=E.bitLength()) ) return I.FI30(null,1);
+
+			api = new callee.µ[8 > i ?'AlgoClassic':(M.isEven()?'AlgoBarrett':'AlgoMontgomery')](M);
+
+			k = (1*(i<18)) || (3*(i<48)) || (4*(i<144)) || (5*(i<768)) || 6;
+			k1 = -1 + k;
+			km = -1 + (1<<k);
+
+			// Precomputation
+			// ---
+			n = 1 + (a=[null,api.convert(this)]).length;
+			if( 1 < k ) for
+			(
+				api.sqrTo(a[1],a2=I.CNEW()) ;
+				n <= km ;
+				api.mulTo(a2,a[n-2],(a[n]=I.CNEW())), (n+=2)
+			);
+
+			// Loop.
+			// ---
+			r2 = I.CNEW();
+			R = I.FI30(null,is1=1);
+			for( i=-1+I.NBTS(E[j=-1+E.size]) ; j >= 0 ; )
+			{
+				i >= k1 ?
+					( w = km&(E[j]>>(i-k1)) ) :
+					(
+						( w = (E[j]&(-1+(1<<(1+i))))<<(k1-i) ),
+						( 0 < j && ( w |= (E[j-1]>>(30+i-k1)) ) )
+					);
+	
+				for( n=k ; !(1&w) ; (w>>=1),--n );
+				0 > (i-=n) && ( (i+=30),--j );
+	
+				if( is1 )
+				{
+					I.FBIG(R, a[w]);
+					is1 = 0;
+				}
+				else
+				{
+					while( 1 < n ){ api.sqrTo(R,r2) ; api.sqrTo(r2,R) ; n-=2; }
+					0 < n ? api.sqrTo(R,r2) : ((t=R),(R=r2),(r2=t));
+					api.mulTo(r2,a[w],R);
+				}
+				
+				for( ;
+					0 <= j && !(E[j]&(1<<i)) ;
+					api.sqrTo(t=R,R=r2),(r2=t),
+					( 0 > --i && ((i=29),--j) )
+				);
+			}
+	
+			return api.revert(R);
+		},
+
+		modPowInt : function modPowInt_I_$BigInt$X_$BigInt$(/*uint32*/e,/*BigInt*/M)
+		// ---------------------------------
+		// => New BigInt whose value is this^e % M, 0 <= e < 2^32
+		// Select Classic vs. Montgomery algorithm depending on the context.
+		// [REM] Ret < M.
+		// ---
+		// Support of non-finite operands => NAN
+		{
+			(M && M instanceof callee.µ) || (M=new callee.µ(M));
+
+			if( this.spe || M.spe ) return callee.µ['~'].NAN;
+
+			e >>>= 0;
+
+			return callee.µ['~'].IPOW(
+				this,
+				e,
+				new callee.µ[(256>e||M.isEven())?'AlgoClassic':'AlgoMontgomery'](M)
+				);
+		},
+	
+		multiply : function multiply_$BigInt$X_$BigInt$(/*BigInt|any*/X,  t,I)
+		// ---------------------------------
+		// => New BigInt whose value is `this*X`, non-finite
+		// operands being supported.
+		// ---
+		// [ECMA] The * operator performs multiplication, producing
+		// the product of its operands. Multiplication is commutative,
+		// not always associative in ECMAScript. Regarding non-finite
+		// values, the result of a multiplication is governed by the
+		// rules of IEEE 754 arithmetic:
+		// (1) If either operand is NaN, the result is NaN.
+		// (2) The sign of the result is positive if both operands have
+		//     the same sign, negative otherwise.
+		// (3) Multiplication of an infinity by a zero results in NaN.
+		// (4) Multiplication of an infinity by an infinity results in an
+		//     infinity. The sign is determined by the rule already stated.
+		// (5) Multiplication of an infinity by a finite non-zero value
+		//     results in a signed infinity. The sign is determined by the
+		//     rule already stated above.
+		// [ALGO] If either x or y is non-finite, the result of
+		//        `(isFinite(x)?signum(x):x) * (isFinite(y)?signum(y):y)`
+		//        is a non-finite Number that fits the rules above.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return ( (t=this.spe) || X.spe ) ?
+				callee.µ['~'].FSPE(null, (t?Number[t]:this.signum())*(X.spe?Number[X.spe]:X.signum())) :
+				( (I=callee.µ['~']), I.MUL2(this, X, null) );
+		},
+	
+		negate : function negate_$BigInt$(  I)
+		// ---------------------------------
+		// => New BigInt whose value is `-this`, non-finite value
+		// being supported.
+		{
+			return (I=callee.µ['~']),
+				( this.spe ? I.FSPE(null,-Number[this.spe]) : I.SUB2(I.ZERO,this,null) );
+		},
+	
+		nextProbablePrime : function nextProbablePrime_$NaN$()
+		// ---------------------------------
+		// [TODO] Returns the first BigInt greater than this one that
+		// is probably prime. The probability that the number returned
+		// by this method is composite does not exceed 2^(-100). This
+		// method will never skip over a prime when searching: if it
+		// returns p, there is no prime q such that `this` < q < p.
+		{
+			return callee.µ['~'].NAN;
+		},
+	
+		not : function not_$BigInt$(  ng,R,z,i)
+		// ---------------------------------
+		// => New BigInt whose value is `~this`. (This method returns
+		// a negative value iff this one is non-negative.)
+		// ---
+		// Support of non-finite value => NEG_ONE
+		{
+			// Because NEG_INF must produce NEG_ONE as well.
+			// ---
+			ng = this.spe ? 0 : this.neg;
+
+			for(
+				R=callee.µ['~'].CNEW(), z=this.size, i=-1 ;
+				++i < z ;
+				R[i] = 0x3FFFFFFF & ~this[i]
+			);
+			return (R.size=z),(R.neg=~ng), R;
+		},
+
+		or : function or_$BigInt$X_$BigInt$(/*BigInt|any*/X)
+		// ---------------------------------
+		// => New BigInt whose value is `this|X`. (This method returns
+		// a negative BigInt iff either this or X is negative.)
+		// ---
+		// Support of non-finite operands:
+		// (1) NF|NF = ZERO  ;  (2) NF|F = F|NF = F
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return this.spe ?
+				( X.spe ? callee.µ.ZERO : X ) :
+				( X.spe ? callee.µ['~'].CNEW(this) : callee.µ['~'].BTW2(this, X, callee.Q, null) );
+		}
+		.setup({ Q: function(x,y){return x|y} }),
+
+		pow : function pow_I_$BigInt$(/*uint*/e)
+		// ---------------------------------
+		// => New BigInt whose value is `this^e`, `e` being an integer
+		// rather than a BigInt.
+		// ---
+		// Support of non-finite value:
+		// (1) NF^0 => ONE  ;  (2) NF^e => SPE(Math.pow(nf,e))
+		{
+			e >>>= 0;
+
+			if( !e ) return callee.µ.ONE; // including if this is non-finite.
+
+			return this.spe ?
+				callee.µ['~'].FSPE(null, Math.pow(Number[this.spe],e)) :
+				callee.µ['~'].IPOW(this, e, new callee.µ['AlgoExponent']);
+		},
+
+		remainder : function remainder_$BigInt$X_$BigInt$(/*BigInt|any*/X,  I)
+		// ---------------------------------
+		// => New BigInt whose value is `this % X`.
+		// This method differs from `mod` in that it may
+		// return a negative value.
+		// ---
+		// Support of non-finite operands => as in mod().
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			I = callee.µ['~'];
+
+			if( (t=this.spe) || X.spe || (!X.signum()) )
+			{
+				t = t ? Number[t] : this.signum();
+				x = X.spe ? Number[X.spe] : X.signum();
+				return I.FSPE(null, t%x);
+			}
+
+			return I.DVR2(this, X, null, R=I.CNEW()), R;
+		},
+	
+		setBit : function setBit_I_$BigInt$(/*uint*/n)
+		// ---------------------------------
+		// => New BigInt whose value is equivalent to this
+		// one with the designated bit set, i.e `this|(1<<n)`
+		// ---
+		// Support of non-finite value => based on changeBit
+		{
+			return this.changeBit(n, this.or.Q);
+		},
+	
+		shiftLeft : function shiftLeft_Ï_$BigInt$(/*int*/n,  t)
+		// ---------------------------------
+		// => New BigInt whose value is `this << n`.
+		// The shift distance, n, may be negative, in which case this
+		// method performs a right shift.
+		// ---
+		// Support of non-finite value => this&
+		{
+			if( this.spe ) return this;
+
+			n |= 0;
+			return ((t= n < 0) && (n=-n)),
+				callee.µ['~'][t ? 'RSH2' : 'LSH2' ](this,n,null);
+		},
+	
+		shiftRight : function shiftRight_Ï_$BigInt$(/*int*/n)
+		// ---------------------------------
+		// => New BigInt whose value is `this >> n` (sign extension is
+		// performed.) The shift distance, n, may be negative, in which
+		// case this method performs a left shift.
+		// ---
+		// Support of non-finite value => based on shiftLeft.
+		{
+			return this.shiftLeft(-(n|=0));
+		},
+	
+		signum : function signum_T()
+		// ---------------------------------
+		// Sig-num of this BigInt.
+		// ---
+		// Support of non-finite value: NEG_INF=>-1, NAN=>0, POS_INF=>+1.
+		// => -1 | 0 | 1
+		{
+			return this.neg || +( 1 < this.size || ( 0 < this.size && 0 < this[0] ) );
+		},
+
+		square : function square_$BigInt$(  t)
+		// ---------------------------------
+		// => New BigInt whose value is `this^2`, non-finite value
+		// being supported.
+		// [REM] Added to the original spec.
+		{
+			return (t=this.spe) ?
+				callee.µ['~'].FSPE(null, Number[t]*Number[t]) :
+				callee.µ['~'].SQU2(this, null);
+		},
+
+		subtract : function subtract_$BigInt$X_$BigInt$(/*BigInt|any*/X,  t)
+		// ---------------------------------
+		// => New BigInt whose value is `this-X`, non-finite
+		// operands being supported.
+		// ---
+		// [ECMA] Given numeric operands a and b, it is always the case
+		// that `a-b` produces the same result as `a +(-b)`. See details
+		// for addition under the add() method.
+		// [ALGO] If either x or y is non-finite, the result of
+		//        `(isFinite(x)?0:x) - (isFinite(y)?0:y)` is a
+		//        non-finite Number that fits the rules above.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return ( (t=this.spe) || X.spe ) ?
+				callee.µ['~'].FSPE(null, (t?Number[t]:0)-(X.spe?Number[X.spe]:0)) :
+				callee.µ['~'].SUB2(this, X, null);
+		},
+	
+		testBit : function testBit_I_$Boolean$(/*uint*/n,  j)
+		// ---------------------------------
+		// TRUE iff the nth bit is set. Computes ((this & (1<<n))!=0).
+		// ---
+		// Support of non-finite value => undefined
+		// => bool | undefined
+		{
+			n >>>= 0;
+			return this.spe ?
+				void(0) :
+				!!( this.size <= (i=Math.floor(n/30)) ? this.neg : (this[i]&(1<<(n%30))) );
+		},
+	
+		toByteArray : function toByteArray_A(  ng,a,i,p,k,d)
+		// ---------------------------------
+		// Returns a byte array containing the two's-complement representation of
+		// this BigInt. The byte array will be in big-endian byte-order:
+		// the most significant byte is in the 0th element. The array will contain
+		// the minimum number of bytes required to represent this BigInt,
+		// including at least one sign bit, which is (ceil((this.bitLength()+1)/8)).
+		// ---
+		// Support of non-finite value => [TODO]
+		// => byte[]
+		{
+			if( this.spe ) return [];
+
+			a = [ng=this.neg];
+			if( !(i=this.size) ) return a;
+	
+			k = 0;
+			p = 30-(30*i--)%8;
+	
+			30 > p
+			&& (d=this[i]>>p) != ((0x3FFFFFFF&ng)>>p)
+			&& ( a[k++] = (d|(ng<<(30-p))) );
+	
+			while( 0 <= i )
+			{
+				if( 8 > p )
+				{
+					d = (this[i]&((1<<p)-1))<<(8-p);
+					d |= (this[--i]>>(p+=22));
+				}
+				else
+				{
+					d = 0xFF&(this[i]>>(p-=8));
+					0 >= p && ((p+=30),--i);
+				}
+	
+				(0x80&d) && (d|=-256);
+				k || (0x80&ng)==(0x80&d) || ++k;
+				( k || d!=ng ) && (a[k++]=d);
+			}
+	
+			return a;
+		},
+
+		toByte : function toByte_Ý()
+		// ---------------------------------
+		// (Original: byteValue.) Coerce this BigInt into a byte (int8.)
+		// ---
+		// Support of non-finite value => 0
+		// => int8
+		{
+			return this.spe ?
+				0 :
+				( this.size ? ((this[0]<<24)>>24) : this.neg );
+		},
+	
+		toShort : function toShort_Ÿ()
+		// ---------------------------------
+		// (Original: shortValue.) Coerce this BigInt into a short.
+		// ---
+		// Support of non-finite value => 0
+		// => int16
+		{
+			return this.spe ?
+				0 :
+				( this.size ? ((this[0]<<16)>>16) : this.neg );
+		},
+
+		toInt : function toInt_Ï(  z,ng)
+		// ---------------------------------
+		// (Original: intValue.) Coerce this BigInt into an int.
+		// This conversion is analogous to a narrowing primitive conversion from
+		// long to int: if this Big is too big to fit in an int, only the
+		// low-order 32 bits are returned.
+		// [REM] This conversion can lose information about the overall magnitude
+		// of the BigInt value as well as return a result with the opposite sign.
+		// ---
+		// Support of non-finite value => 0
+		// => int32
+		{
+			if( this.spe ) return 0; // ECMA compliance.
+
+			z = this.size;
+			ng = this.neg;
+			if( !z ) return ng;
+			if( 1==z ) return ng ? this[0]-0x40000000 : this[0];
+			return ((3&this[1])<<30)|this[0];
+		},
+
+		toLong : function toLong_$NaN$()
+		// ---------------------------------
+		// (Original: longValue.) Coerce this BigInt into a long.
+		// [TODO]
+		{
+			return Number.NaN;
+		},
+
+		toString : function toString_y_S(/*uint=10*/rx,  z,k)
+		// ---------------------------------
+		// String representation of this BigInt (in given radix.)
+		// [REM] The dig-to-char mapping provided by Number.toString(36)
+		// is used, and a minus sign is prepended if appropriate.
+		// ---
+		// If the radix is outside the range from 2 to 36 inclusive,
+		// it will default to 10.
+		// ---
+		// [ECMA COMPLIANCE] The optional radix should be an integer value in
+		// the inclusive range 2 to 36. If radix not present or is undefined
+		// the Number 10 is used as the value of radix. If ToInteger(radix) is
+		// the Number 10 then this Number value is given as an argument to the
+		// ToString abstract operation; the resulting String value is returned.
+		// If ToInteger(radix) is not an integer between 2 and 36 inclusive
+		// throw a RangeError exception. If ToInteger(radix) is an integer from
+		// 2 to 36, but not 10, the result is a String representation of this
+		// Number value using the specified radix. Letters a-z are used for digits
+		// with values 10 through 35.
+		// The toString function is not generic; it throws a TypeError exception
+		// if its this value is not a Number or a Number object. Therefore, it
+		// cannot be transferred to other kinds of objects for use as a method.
+		// ---
+		// Support of non-finite value => 'NaN' | 'Infinity' | '-Infinity'
+		// => str
+		{
+			// ECMA compliance.
+			// ---
+			if( this.spe ) return String(Number[this.spe]);      // 'NaN' | 'Infinity' | '-Infinity'
+
+			rx = 'undefined' == typeof rx ? 10 : (rx|0);
+			if( 2 > rx || 36 < rx ){ return (0).toString(rx) }   // Mimick RangeError
+	
+			// Shortcut ; negative redirection.
+			// ---
+			if( !(z=this.size) ) { return String(this.neg) }     // '-1' | '0'
+			if( this.neg )       { return '-' + this.negate().toString(rx) }
+	
+			// Determine the appropriate RX method.
+			// ---
+			k = 10 != rx && (4*(16==rx)||3*(8==rx)||1*(2==rx)||5*(32==rx)||2*(4==rx));
+			return k ? callee.µ['~'].RXPW(this, z,k) : callee.µ['~'].RXOT(this, rx);
+		},
+	
+		xor : function xor_$BigInt$X_$BigInt$(/*BigInt|any*/X)
+		// ---------------------------------
+		// => New BigInt whose value is `this ^ X`.
+		// ---
+		// Support of non-finite operands:
+		// (1) NF^NF => ZERO  ;  (2) F^NF == NF^F == F.
+		{
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
+
+			return this.spe ?
+				( X.spe ? callee.µ.ZERO : X ) :
+				callee.µ['~'].BTW2(this, X, callee.Q, null);
+		}
+		.setup({ Q: function(x,y){return x^y} }),
+	})
+
+	//==========================================================================
+	// PUBLIC OPERATORS
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		'==' : function equals(/*any*/x)
+		// ---------------------------------
+		{
+			return this.equals(x)
+		},
+
+		'<'  : function lessThan(/*any*/x)
+		// ---------------------------------
+		{
+			return this.compareTo(x) < 0
+		},
+
+		'<=' : function lessThanOrEquals(/*any*/x)
+		// ---------------------------------
+		{
+			return this.compareTo(x) <= 0
+		},
+
+		'+'  : function unaryPlusOrAdd(/*?any*/x)
+		// ---------------------------------
+		{
+			return 'undefined' == typeof x ? this : this.add(x)
+		},
+
+		'-'  : function unaryMinusOrSub(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		{
+			return 'undefined' == typeof x ?
+				this.negate() :
+				(rv?new callee.µ(x):this).subtract(rv?this:x);
+		},
+
+		'*'  : function multiply(/*any*/x)
+		// ---------------------------------
+		{
+			return this.multiply(x);
+		},
+
+		'/'  : function divide(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		{
+			return (rv?new callee.µ(x):this).divide(rv?this:x);
+		},
+
+		'%'  : function modulus(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		{
+			return (rv?new callee.µ(x):this).mod(rv?this:x);
+		},
+
+		'<<' : function leftShift(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		{
+			return (rv?new callee.µ(x):this).shiftLeft(rv?this.toInt():x);
+		},
+
+		'>>' : function rightShift(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		{
+			return (rv?new callee.µ(x):this).shiftRight(rv?this.toInt():x);
+		},
+
+		'>>>': function unsignedRightShift(/*?any*/x,/*bool*/rv,  t)
+		// ---------------------------------
+		// This operator is not standard and, in principle, irrelevant.
+		// "The unsigned right shift operator (>>>) is omitted, as
+		// this operation makes little sense in combination with the
+		// 'infinite word size' abstraction provided by BigInt."
+		// However, an implementation is provided as proposed at
+		// <http://stackoverflow.com/questions/5281852/>
+		// It simply returns `this.abs() >> x`.
+		{
+			if( rv )
+			{
+				t = new callee.µ(x);
+				x = this.toInt()>>>0;
+			}
+			else
+			{
+				t = this;
+				x >>>= 0;
+			}
+			
+			return (t.signum() >= 0 ? t : t.negate()).shiftRight(x);
+		},
+
+		'~'  : function bitwiseNot()
+		// ---------------------------------
+		{
+			return this.not();
+		},
+
+		'&'  : function bitwiseAnd(/*any*/x)
+		// ---------------------------------
+		{
+			return this.and(x);
+		},
+
+		'|'  : function bitwiseOr(/*any*/x)
+		// ---------------------------------
+		{
+			return this.or(x);
+		},
+
+		'^'  : function bitwiseXor(/*any*/x)
+		// ---------------------------------
+		{
+			return this.xor(x);
+		},
+	})
