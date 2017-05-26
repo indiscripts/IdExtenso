@@ -7,16 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module.
-		API:            =load() unload() resolve() isLoaded() kill() clone() uid()
-		                beep() error() receiveError()
+		API:            =load() unload() getLoadStamp()
+		                resolve() isLoaded() kill() clone()
+		                uid() beep() error() receiveError() success()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       170428 (YYMMDD)
+		Modified:       170527 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 170428, 'load'))
+;eval(__(MODULE, '$.global', $$, 170527, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -60,9 +61,14 @@
 		// ---
 		MDID : '7127bf261e23104d72f6ea2b33f0d7c1',
 		
+		// [ADD170520] Hires timer stamp, initialized at loading stage.
+		// ---
+		HRTM : 0,
+		
 		KILL : function(/*ref&*/o,  k,rx,t)
 		//----------------------------------
-		// Object killer.
+		// (Kill.) Object killer.
+		// => undefined
 		{
 			if( o instanceof Array && (k=o.length) )
 			{
@@ -92,7 +98,7 @@
 
 		CLNE : function(/*ref*/o)
 		//----------------------------------
-		// Object cloner.
+		// (Clone.) Object cloner.
 		// => new object
 		{
 			return callee.µ.JSON.eval(callee.µ.JSON.lave(o));
@@ -100,12 +106,18 @@
 
 		RSLV: function(/*str*/s,  r,p,t)
 		//----------------------------------
-		// Resolve Path => any | undefined
+		// (Resolve-Path.) Given a full path s :: "/...", return its
+		// target whatever it may be. For design reasons s MUST begin
+		// with the character '/' which represents the [[global]] object.
+		// [REM] Technically, the leading character of s is skipped.
+		// => any [OK] | undefined [KO]
 		{
 			for(
 				r=$.global, s=s.substr(1) ;
-				0 < (p = s.indexOf('/')) ;
-				r.hasOwnProperty(t=s.substr(0,p)) ? (r=r[t],s=s.substr(1+p)) : (r=void 0,s='')
+				s && 0 < (p=s.indexOf('/')) ;
+				s = r.hasOwnProperty(t=s.substr(0,p)) ?
+					( (r=r[t]), s.substr(1+p) ) :
+					( r=void 0 )
 			);
 
 			return r;
@@ -113,7 +125,9 @@
 
 		MDPS: function(  q,o,k,z)
 		//----------------------------------
-		// Module Paths => str[]&
+		// (Module-Paths.) Collect and return the module paths
+		// in a volatile array.
+		// => str[]&
 		{
 			(q=callee.Q||(callee.Q=[])),(o=this.__mods__),(z=0);
 			for( k in o ) '/' != k && o.hasOwnProperty(k) && q[z++]=k;
@@ -122,7 +136,8 @@
 		
 		LOOP: function(/*fct(mod)*/fmod,/*0|1=0*/KEEP_ROOT,  a,n,i)
 		//----------------------------------
-		// Loop Through Modules Forward => undefined
+		// (Loop-Thru.) Loop through modules forward
+		// => undefined
 		{
 			for(
 				a=this.MDPS(), n=a.length, i=KEEP_ROOT?-1:0 ;
@@ -133,7 +148,8 @@
 
 		BACK: function(/*fct(mod)*/fmod,/*0|1=0*/KEEP_ROOT,  t,a,z,i)
 		//----------------------------------
-		// Loop Through Modules Backward => undefined
+		// (Backward-Loop-Thru.) Loop through modules backward.
+		// => undefined
 		{
 			for(
 				a=this.MDPS(), z=KEEP_ROOT?-1:0, i=a.length ;
@@ -144,7 +160,8 @@
 
 		LDMD: function(/*obj&*/mod,/*?any*/x,/*?any*/y)
 		//----------------------------------
-		// Load Module => 0:noop | 1:processed
+		// (Load-Module.) Load the given module.
+		// => 0:noop | 1:processed
 		{
 			if( mod.__load__ ) return 0;
 
@@ -167,7 +184,8 @@
 
 		ULMD: function(/*obj&*/mod)
 		//----------------------------------
-		// Unload Module => 0:noop | 1:processed
+		// (Unload-Module.) Unload mod.
+		// => 0:noop | 1:processed
 		{
 			if( !mod.__load__ ) return 0;
 
@@ -181,9 +199,9 @@
 			return 0;
 		},
 		
-		SSCL: function(  G)
+		ISCL: function(  G)
 		//----------------------------------
-		// Global cleaner after include stage.
+		// (Include-Stage-Cleaner.) Global cleaner after include stage.
 		{
 			G = $.global;
 
@@ -194,17 +212,22 @@
 
 			G.PRIVATE && delete Function.prototype[G.PRIVATE];
 			G.PUBLIC  && delete Function.prototype[G.PUBLIC];
+			G.STATIC  && delete Function.prototype[G.STATIC]; // [ADD170503] Alias of [PUBLIC]()
 			G.PARENT  && delete Function.prototype[G.PARENT];
+			G.PROTO   && delete Function.prototype[G.PROTO];  // [ADD170503] Alias of [PUBLIC](obj,inProto=1)
 
 			delete Object.prototype.setup;
 			delete Object.prototype.keys;
 			
 			delete G.PRIVATE;
 			delete G.PUBLIC;
+			delete G.STATIC;
 			delete G.PARENT;
+			delete G.PROTO;
 			delete G.__path__;
 			
 			delete G.MODULE;
+			delete G.CLASS;
 			delete G.µ;
 			
 			// Live objects cleaner.
@@ -267,6 +290,12 @@
 				return 0;
 			}
 
+			// [ADD170520] Stamp the load instant in microseconds. Used in
+			// entropy collectors (Random), etc. See getLoadInstant().
+			// Should be the unique call to $.hiresTimer within IdExtenso.
+			// ---
+			I.HRTM = $.hiresTimer;
+
 			// Initialize the Log.
 			// ---
 			$$.Log.init(logLevel);
@@ -284,7 +313,7 @@
 
 			// Engine state.
 			// ---
-			I.LDMD.__first__ ? I.SSCL() : ($$.Env['~'].ENST=0);
+			I.LDMD.__first__ ? I.ISCL() : ($$.Env['~'].ENST=0);
 
 			// Load modules (dynamic data.)
 			// ---
@@ -302,6 +331,14 @@
 			// Set and return the __load__ flag.
 			// ---
 			return ($$.__load__=1);
+		},
+
+		getLoadStamp: function getLoadStamp_I()
+		//----------------------------------
+		// [ADD170520] Return the hires stamp of the load instant.
+		// => uint32 (might be greater?)
+		{
+			return callee.µ['~'].HRTM;
 		},
 
 		unload: function unload_B(  $$,I,ts)
