@@ -2137,9 +2137,14 @@
 		// ---
 		// Support of non-finite operands or result.
 		{
-			(X && X instanceof callee.µ) || (X=new callee.µ(X));
-
 			I = callee.µ['~'];
+
+			// IMOD Shortcut in case X is a uint < 2^26 (0x4000000.)
+			// [FIX170527] Had to be repositioned here.
+			// ---
+			if( 'number' == typeof X && (X===X>>>0) && X < 0x4000000 ) return I.FI30(null,I.IMOD(this,X));
+
+			(X && X instanceof callee.µ) || (X=new callee.µ(X));
 
 			if( (t=this.spe) || X.spe || (!X.signum()) )
 			{
@@ -2147,10 +2152,6 @@
 				x = X.spe ? Number[X.spe] : X.signum();
 				return I.FSPE(null, t%x);
 			}
-
-			// IMOD Shortcut in case X is a uint < 2^26 (0x4000000.)
-			// ---
-			if( X===X>>>0 && X < 0x4000000 ) return I.FI30(null,I.IMOD(this,X));
 
 			// General case.
 			// ---
