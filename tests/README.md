@@ -56,6 +56,17 @@ _Demonstrates:_
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
 
+##### `PlayWithBigInt.jsx`
+
+Computing arbitrary-precision big integers using **BigInt** module.   
+_Demonstrates:_
+   
+* Including an optional module (see above.)
+* Various ways of declaring `BigInt` instances.
+* Using operators: `==`, `<`, `<=`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `~`, `&`, `|`, `^`.
+* Divide-and-Remainder method, primality.
+* Finding a huge prime number.
+
 ##### `YaltIsGreat.jsx`
 
 Basic features of the localization module (**Yalt**.)   
