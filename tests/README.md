@@ -61,7 +61,7 @@ _Demonstrates:_
 Computing arbitrary-precision big integers using **BigInt** module.   
 _Demonstrates:_
    
-* Including an optional module (see above.)
+* Including an optional module (from `/etc`.)
 * Various ways of declaring `BigInt` instances.
 * Using operators: `==`, `<`, `<=`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `~`, `&`, `|`, `^`.
 * Divide-and-Remainder method, primality.
