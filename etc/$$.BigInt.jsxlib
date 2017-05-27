@@ -20,8 +20,9 @@
 		                subtract() testBit() toByteArray() toByte()
 		                toShort() toInt() toLong() toString() xor()
 		    Operators:  ==  <  <=  +  -  *  /  %  <<  >>  >>>  ~  &  |  ^
+		                [REM] ++ and -- are *not* supported.
 		DOM-access:     NO
-		Todo:           prototype.toSource(), nextProbablePrime(), toLong()
+		Todo:           prototype.toSource(), toLong()
 		Created:        170503 (YYMMDD)
 		Modified:       170527 (YYMMDD)
 
@@ -82,11 +83,10 @@
 	that there are infinitely many "virtual sign bits" preceding each
 	BigInteger.
 
-	Not implemented yet:
+	Not implemented (yet):
 	
 	- [static] valueOf(long val)
 	- BigInt(int signum, byte[] magnitude) // One of the constructor format.
-	- nextProbablePrime()
 	- double doubleValue()
 	- float floatValue()
 	- int hashCode()
@@ -2318,15 +2318,27 @@
 				( this.spe ? I.FSPE(null,-Number[this.spe]) : I.SUB2(I.ZERO,this,null) );
 		},
 	
-		nextProbablePrime : function nextProbablePrime_$NaN$()
+		nextProbablePrime : function nextProbablePrime_$BigInt$(/*uint=auto*/certainty,  I,R)
 		// ---------------------------------
-		// [TODO] Returns the first BigInt greater than this one that
+		// => First BigInt greater than this one that
 		// is probably prime. The probability that the number returned
-		// by this method is composite does not exceed 2^(-100). This
+		// by this method is composite does not exceed 1/2^(certainty). This
 		// method will never skip over a prime when searching: if it
 		// returns p, there is no prime q such that `this` < q < p.
 		{
-			return callee.µ['~'].NAN;
+			I = callee.µ['~'];
+			
+			if( this.spe ) return I.FNAN(null);
+
+			// Force odd and run.
+			// ---
+			
+			for( 
+				(R=this.abs()).isEven() && I.ADOF(R,1,0) ;
+				!R.isProbablePrime(certainty) ;
+				I.ADOF(R,2,0)
+			);
+			return R;
 		},
 	
 		not : function not_$BigInt$(  ng,R,z,i)
@@ -2651,6 +2663,9 @@
 
 	//==========================================================================
 	// PUBLIC OPERATORS
+	// [WARN] `--` and `++` cannot be overloaded, and they *are not equivalent*
+	//        to `X=X[op](1)`. In ExtendScript X++ and X-- coerces X into a
+	//        Number, so the BigInt is lost! Use X+=1 (resp. X-=1) instead.
 	//==========================================================================
 
 	[PROTO]
