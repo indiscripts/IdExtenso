@@ -67,7 +67,7 @@ try
 	alert(
 	[
 		__( "X + Y = %1",            X+Y ),
-		__( "X / Y - Z = %1",        X/Y - 123*Z ),
+		__( "X / Y - Z = %1",        X/Y - Z ),
 		__( "X % Z = %1",            X%Z ),
 
 		"\rCombined with regular numbers:\r---------",
