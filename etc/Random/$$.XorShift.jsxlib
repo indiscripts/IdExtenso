@@ -1,0 +1,206 @@
+/*******************************************************************************
+
+		Name:           XorShift
+		Desc:           XorShift+ Random-Number Generator
+		                (state:128bits, seed:64bits, out:64bits.)
+		Path:           /etc/Random/$$.XorShift.jsxlib
+		Require:        $$.Random
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (of $$.Random.)
+		API:            =next() seedSize stateType() outType() seed() uint32()
+		                uint53() ubig64()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170521 (YYMMDD)
+		Modified:       170526 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'XorShift','Random')); exit(); }
+;$$.Random.hasOwnProperty('XorShift') || eval(__(MODULE, $$.Random.toSource(), 'XorShift', 170526, 'next'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] https://en.wikipedia.org/wiki/Xorshift
+	[RES] http://xoroshiro.di.unimi.it/
+	[RES] http://hackaday.com/2015/12/28/v8-javascript-fixes-horrible-random-number-generator/
+	[RES] https://github.com/lapo-luchini/xorshift128p
+	
+	*/
+
+	//==========================================================================
+	// CORE
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+
+		NEXT: function(/*uint32[4]&*/s,/*uint32[2]&*/r,  q)
+		// ---------------------------------
+		// => uint32[2]&
+		{
+			// Original uint64 algo:
+			// ---
+			// Q = S[0];
+			// S[0] = S[1];
+			// Q ^= Q << 23;
+			// S[1] = Q ^ S[0] ^ (Q >> 18) ^ (S[0] >> 5);
+			// return (uint64) S[0] + S[1];
+	
+			q = callee.Q||(callee.Q=[0,0]);
+
+			// Q = S[0]
+			// ---
+			q[0] = s[0];                                                              // HI
+			q[1] = s[1];                                                              // LO
+
+			// S[0] = S[1]
+			// ---
+			s[0] = s[2];                                                              // HI
+			s[1] = s[3];                                                              // LO
+
+			// Q ^= Q << 23
+			// ---
+			q[0] ^= ((q[0]<<23)|(q[1]>>>9));                                          // HI
+			q[1] ^= ( q[1]<<23);                                                      // LO
+
+			// S[1] = Q ^ S[0] ^ (Q >> 18) ^ (S[0] >> 5)
+			// ---
+			s[2] = q[0] ^ s[0] ^  (q[0]>>>18)             ^  (s[0]>>>5);              // HI
+			s[3] = q[1] ^ s[1] ^ ((q[1]>>>18)|(q[0]<<14)) ^ ((s[1]>>>5)|(s[0]<<27));  // LO
+
+			// R = S[0] + S[1]
+			// ---
+			r[0] = ((s[0]>>>=0) + (s[2]>>>=0));                                       // HI
+			r[1] = ((s[1]>>>=0) + (s[3]>>>=0));                                       // LO
+			r[1] !== (r[1]>>>=0) && (++r[0]);                                         // carry
+			r[0]>>>=0;
+
+			return r;
+		},
+
+		JUMP: function(/*uint32[4]&*/s, q,a,r,f,s,i,j)
+		// ---------------------------------
+		// Equivalent to 2^64 calls to NEXT().
+		// [REM] Allows to generate 2^64 non-overlapping parallel sequences.
+		// => undefined
+		{
+			q = callee.Q||(callee.Q=[0x635D2DFF,0x8A5CD789,0x5C472F96,0x121FD215]);
+			a = q.TMP1||(q.TMP1=[0,0,0,0]);
+			r = q.TMP2||(q.TMP2=[0,0]);
+			f = this.NEXT;
+
+			for( a[0]=a[1]=a[2]=a[3]=0, i=-1 ; ++i < 4 ; )
+			for( j = -1 ; ++j < 32; )
+			{
+				(q[i]&(1<<j))&&((a[0]^=s[0]),(a[1]^=s[1]),(a[2]^=s[2]),(a[3]^=s[3]));
+				f(s,r);
+			}
+		
+			s[0] = (a[0]>>>0);
+			s[1] = (a[1]>>>0);
+			s[2] = (a[2]>>>0);
+			s[3] = (a[3]>>>0);
+		},
+
+	})
+
+	//==========================================================================
+	// NORMALIZED API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		// Number of uint32s required for seeding.
+		// ---
+		seedSize: 2,
+
+		stateType: function stateType_A()
+		// ---------------------------------
+		// Create a new state structure (128 bits.)
+		// => state& :: uint32[4]
+		{
+			return [0,0,0,0];
+		},
+
+		outType: function outType_A()
+		// ---------------------------------
+		// Create a new output structure (64 bits.)
+		// => out& :: uint32[2]
+		{
+			return [0,0];
+		},
+
+		seed: function seed_A_A_(/*uint32[2]*/x,/*uint32[4]&*/state)
+		// ---------------------------------
+		// 64-bit seeding, given the seed x and the state state&.
+		// [REM] The state must be seeded so that it is not everywhere zero.
+		// => undefined
+		{
+			state[0] = x[0];
+			state[1] = x[1];
+
+			if( !state[0] && !state[1] )
+			{
+				$.global[callee.µ.__root__].error(
+					__("The state must be seeded so that it is not everywhere zero."),
+					callee
+					);
+			}
+		},
+
+		next: function next_A_A_A(/*uint32[4]&*/state,/*uint32[2]&*/out)
+		// ---------------------------------
+		// Return the next output (out&) from the state state&.
+		// => out&
+		{
+			return callee.µ['~'].NEXT(state, out);
+		},
+
+		uint32: function uint32_A_I(/*uint32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return an uint32.
+		// [REM] By convention, take the lowest bits, i.e out[1].
+		// => uint32
+		{
+			return out[1];
+		},
+
+	})
+
+	//==========================================================================
+	// EXTENDED API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		uint53: function uint53_A_Z(/*int32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return an uint53.
+		// => uint53
+		{
+			return out[1] + (out[0]&0x1FFFFF)*0x100000000;
+		},
+
+		ubig64: function ubig64_A_$BigInt$(/*int32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return a BigInt64.
+		// [REM] This method blindly assumes $$.BigInt's availability.
+		// => BigInt64.
+		{
+			// Takes advantage of BigInt's overloaded operators.
+			// ---
+			return ( $.global[callee.µ.__root__].BigInt(out[0]) << 32 ) | out[1];
+		},
+
+	})

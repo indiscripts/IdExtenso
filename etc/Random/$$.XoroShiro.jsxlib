@@ -1,0 +1,188 @@
+/*******************************************************************************
+
+		Name:           XoroShiro
+		Desc:           XOR/Rotate/Shift/Rotate Random-Number Generator
+		                (state:128bits, seed:64bits, out:64bits.)
+		Path:           /etc/Random/$$.XoroShiro.jsxlib
+		Require:        $$.Random
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (of $$.Random.)
+		API:            =next() seedSize stateType() outType() seed() uint32()
+		                uint53() ubig64()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170522 (YYMMDD)
+		Modified:       170526 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'XoroShiro','Random')); exit(); }
+;$$.Random.hasOwnProperty('XoroShiro') || eval(__(MODULE, $$.Random.toSource(), 'XoroShiro', 170526, 'next'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] http://xoroshiro.di.unimi.it/
+	
+	This is the successor to xorshift128+. It is the fastest full-period
+	generator passing BigCrush without systematic failures, but due to the
+	relatively short period it is acceptable only for applications with a
+	mild amount of parallelism; otherwise, use a xorshift1024* generator.
+	
+	Beside passing BigCrush, this generator passes the PractRand test suite
+	up to (and included) 16TB, with the exception of binary rank tests,
+	which fail due to the lowest bit being an LFSR; all other bits pass all
+	tests. We suggest to use a sign test to extract a random Boolean value.
+	
+	Note that the generator uses a simulated rotate operation.
+	
+	The state must be seeded so that it is not everywhere zero. If you have
+	a 64-bit seed, we suggest to seed a splitmix64 generator and use its
+	output to fill s.
+
+	*/
+
+	//==========================================================================
+	// CORE
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		NEXT: function(/*uint32[4]&*/s,/*uint32[2]&*/r,  q,t)
+		// ---------------------------------
+		// => uint32[2]&
+		{
+			// Original uint64 algo:
+			// ---
+			// Q = S[0] ^ S[1];
+			// S[0] = ( (S[0] << 55) | (S[0] >> 9) ) ^ Q ^ (Q << 14);
+			// S[1] =  (Q << 36) | (Q >> 28);
+			// return (uint64) S[0] + S[1];
+
+			q = callee.Q||(callee.Q=[0,0]);
+
+			// Q = S[0] ^ S[1]
+			// ---
+			q[0] = s[0] ^ s[2];                                            // HI
+			q[1] = s[1] ^ s[3];                                            // LO
+			
+			// S[0] = Q ^ (Q << 14) ^ ( (S[0] << 55) | (S[0] >> 9) )
+			// ---
+			t = (s[1]<<23) | (s[0]>>>9);                                   // HI
+			s[1] = q[1] ^  (q[1]<<14) ^ ((s[1]>>>9)|(s[0]<<23));           // LO
+			s[0] = q[0] ^ ((q[0]<<14)|(q[1]>>>18)) ^ t;                    // HI
+
+			// S[1] = (Q << 36) | (Q >> 28)
+			// ---
+			s[2] = (q[0]>>>28)|(q[1]<<4);                                  // HI
+			s[3] = (q[1]>>>28)|(q[0]<<4);                                  // LO
+
+			// R = S[0] + S[1]
+			// ---
+			r[0] = ((s[0]>>>=0) + (s[2]>>>=0));                            // HI
+			r[1] = ((s[1]>>>=0) + (s[3]>>>=0));                            // LO
+			r[1] !== (r[1]>>>=0) && (++r[0]);                              // carry
+			r[0]>>>=0;
+
+			return r;
+		},
+	})
+
+	//==========================================================================
+	// NORMALIZED API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		// Number of uint32s required for seeding.
+		// ---
+		seedSize: 2,
+
+		stateType: function stateType_A()
+		// ---------------------------------
+		// Create a new state structure (128 bits.)
+		// => state& :: uint32[4]
+		{
+			return [0,0,0,0];
+		},
+
+		outType: function outType_A()
+		// ---------------------------------
+		// Create a new output structure (64 bits.)
+		// => out& :: uint32[2]
+		{
+			return [0,0];
+		},
+
+		seed: function seed_A_A_(/*uint32[2]*/x,/*uint32[4]&*/state)
+		// ---------------------------------
+		// 64-bit seeding, given the seed x and the state state&.
+		// [REM] The state must be seeded so that it is not everywhere zero.
+		// => undefined
+		{
+			state[0] = x[0];
+			state[1] = x[1];
+
+			if( !state[0] && !state[1] )
+			{
+				$.global[callee.µ.__root__].error(
+					__("The state must be seeded so that it is not everywhere zero."),
+					callee
+					);
+			}
+		},
+
+		next: function next_A_A_A(/*uint32[4]&*/state,/*uint32[2]&*/out)
+		// ---------------------------------
+		// Return the next output (out&) from the state state&.
+		// => out&
+		{
+			return callee.µ['~'].NEXT(state, out);
+		},
+
+		uint32: function uint32_A_I(/*uint32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return an uint32.
+		// [REM] By convention, take the lowest bits, i.e out[1].
+		// => uint32
+		{
+			return out[1];
+		},
+
+	})
+
+	//==========================================================================
+	// EXTENDED API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		uint53: function uint53_A_Z(/*int32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return an uint53.
+		// => uint53
+		{
+			return out[1] + (out[0]&0x1FFFFF)*0x100000000;
+		},
+
+		ubig64: function ubig64_A_$BigInt$(/*int32[2]*/out)
+		// ---------------------------------
+		// Given the current output (out), return a BigInt64.
+		// [REM] This method blindly assumes $$.BigInt's availability.
+		// => BigInt64.
+		{
+			// Takes advantage of BigInt's overloaded operators.
+			// ---
+			return ( $.global[callee.µ.__root__].BigInt(out[0]) << 32 ) | out[1];
+		},
+
+	})
+

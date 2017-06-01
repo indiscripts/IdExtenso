@@ -1,0 +1,154 @@
+/*******************************************************************************
+
+		Name:           MultiRec
+		Desc:           Combined Multiple Recursive MRG32k3a PRNG
+		                (state:192bits, seed:64bits, out:32bits.)
+		Path:           /etc/Random/$$.MultiRec.jsxlib
+		Require:        $$.Random
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.Random.)
+		API:            =next() seedSize stateType() outType() seed() uint32()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170523 (YYMMDD)
+		Modified:       170527 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'MultiRec','Random')); exit(); }
+;$$.Random.hasOwnProperty('MultiRecursive') || eval(__(MODULE, $$.Random.toSource(), 'MultiRec', 170527, 'next'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] https://github.com/dworthen/prng#mrg32k3a
+
+	One of Pierre L'Ecuyer's Combined Multiple Recursive PRNGs. (...) The period
+	is about 2^191, and it passes TestU01 BigCrush battery of tests.
+
+	*/
+
+	//==========================================================================
+	// CORE
+	//==========================================================================
+
+	[PRIVATE]
+	({
+		NEXT: function(/*uint32[6]&*/s,  r,p1,p2)
+		// ---------------------------------
+		// => uint32
+		{
+			r = 0|((p1=0x156ABC*s[1]-0xC5EE8*s[0])/0xFFFFFF2F);
+			p1 -= r * 0xFFFFFF2F;
+			0 > p1 && (p1+=0xFFFFFF2F);
+		
+			s[0] = s[1];
+			s[1] = s[2];
+			s[2] = p1;
+		
+			r = 0|((p2=0x80CFC*s[5]-0x14E9DD*s[3])/0xFFFFA6BB);
+			p2 -= r * 0xFFFFA6BB;
+			0 > p2 && (p2+=0xFFFFA6BB);
+		
+			s[3] = s[4];
+			s[4] = s[5];
+			s[5] = p2;
+		
+			r = p1 - p2;
+			return 0 >= r ? (0xFFFFFF2F+r) : r;
+		},
+	})
+
+	//==========================================================================
+	// NORMALIZED API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		// Number of uint32s required for seeding.
+		// (Could be greater than two.)
+		// ---
+		seedSize: 2,
+
+		stateType: function stateType_A()
+		// ---------------------------------
+		// Create a new state structure (192 bits.)
+		// => state& :: uint32[6]
+		{
+			return [0,0,0,0,0,0];
+		},
+
+		outType: function outType_I()
+		// ---------------------------------
+		// Create a new output structure (32 bits.)
+		// => out :: uint32
+		{
+			return 0;
+		},
+
+		seed: function seed_A_A_(/*uint32[]*/x,/*uint32[6]&*/state,  i,v,t,j,h)
+		// ---------------------------------
+		// 64-bit seeding, given the seed x and the state state&.
+		// [REM] The state must be seeded with a non-empty array.
+		// => undefined
+		{
+			if( !(i=x.length) )
+			{
+				$.global[callee.µ.__root__].error(
+					__("The state must be seeded with a non-empty array."),
+					callee
+					);
+			}
+
+			for( v=0xEFC8249D ; i-- ; )
+			for( t=x[i], j=-1 ; ++j < 6 ; state[j] += (v>>>0) )
+			{
+				if( h=0xFFFF&t )
+				{
+					v = (h=0.02519603282416938*(v+=h))>>>0;
+					v = ((h-=v),(h*=v)) >>> 0;
+					v += 0x100000000*(h-=v);
+				}
+				if( h=t>>>16 )
+				{
+					v = (h=0.02519603282416938*(v+=h))>>>0;
+					v = ((h-=v),(h*=v)) >>> 0;
+					v += 0x100000000*(h-=v);
+				}
+			}
+
+			for( v=0, i=-1 ; ++i < 6 ; )
+			{
+				(state[i] %= (2 < i ? 0xFFFFA6BB : 0xFFFFFF2F)) && (v=1);
+			}
+
+			if( !v )
+			{
+				$.global[callee.µ.__root__].error(
+					__("The state must be seeded so that it is not everywhere zero."),
+					callee
+					);
+			}
+		},
+
+		next: function next_A_I(/*uint32[6]&*/state)
+		// ---------------------------------
+		// Return the next output from the state state&.
+		// => out :: uint32
+		{
+			return callee.µ['~'].NEXT(state);
+		},
+
+		uint32: function uint32_I_I(/*uint32*/out)
+		// ---------------------------------
+		// Identity routine (to comply with the normalized API.)
+		// => uint32
+		{
+			return out;
+		},
+	})

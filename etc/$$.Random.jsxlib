@@ -1,0 +1,544 @@
+/*******************************************************************************
+
+		Name:           Random
+		Desc:           Implements Java's Random Interface.
+		Path:           /etc/$$.Random.jsxlib
+		Require:        BigInt module strongly recommended.
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class.
+		API:            =create()
+		       Static:  onEngine() onLoad() generateSeed() normalizeSeed()
+		    Prototype:  next() nextInt() next53() next64() nextFloat() nextBytes()
+		DOM-access:     app.performanceMetric [only if available]
+		Todo:           Decide whether $$.Random should be global-ized.
+		Created:        170511 (YYMMDD)
+		Modified:       170601 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Random') || eval(__(CLASS, $$, 'Random', 170601))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] https://en.wikipedia.org/wiki/Pseudorandom_number_generator
+	[RES] https://github.com/dworthen/prng
+	[RES] <docs.oracle.com/javase/7/docs/api/java/util/Random.html>
+	[RES] <docs.oracle.com/javase/7/docs/api/java/security/SecureRandom.html>
+	[RES] <docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html>
+
+	1. Original Java's Random class.
+	
+	An instance of this class is used to generate a stream of pseudorandom
+	numbers. If two instances of Random are created with the same seed,
+	and the same sequence of method calls is made for each, they will
+	generate and return identical sequences of numbers. In order
+	to guarantee this property, particular algorithms are specified for the
+	class Random. (...) Subclasses of class Random are permitted to use
+	other algorithms, so long as they adhere to the general contracts for
+	all the methods.
+	
+	In the original Oracle's specification, the method `next(int bits)` is
+	implemented by atomically updating the 48-bit seed to
+	
+	      (seed ^ 0x5DEECE66) & ((1L << 48) - 1)
+
+	and returning
+
+	      (int)(seed >>> (48 - bits)).
+
+	This is a linear congruential pseudo-RNG, as defined by D. H. Lehmer and
+	described by Donald E. Knuth in The Art of Computer Programming, V.3.
+	But that kind of algorithms is notoriously unsafe. The present
+	implementation skips the original specification on this part and
+	directly provides a SecureRandom object instead, while complying at
+	best with rules and API of the Random class.
+	
+	The original methods `nextDouble()`, `nextLong()`, `nextBoolean()`,
+	and `nextGaussian()` are not implemented here. Instead, next64() can
+	be used to deal with `long` data encoded as BigInt (if available.)
+	In addition the method `next53()` generates safe JS integers within
+	0 and 2^53, and `nextFloat()` results from computing `next53()/2^53`.
+
+	2. Additions from SecureRandom.
+	
+	SecureRandom provides a cryptographically strong RNG. A
+	cryptographically strong random number minimally complies with the
+	statistical random number generator tests specified in FIPS 140-2,
+	Security Requirements for Cryptographic Modules, section 4.9.1.
+	Additionally, SecureRandom must produce non-deterministic output.
+	Therefore any seed material passed to a SecureRandom object must be
+	unpredictable, and all SecureRandom output sequences must be
+	cryptographically strong, as described in RFC 1750: Randomness
+	Recommendations for Security.
+	
+	The present implementation makes Random secure, meaning that a
+	'secure Random' instance is obtained via the no-argument contructor:
+
+	      var secureRNG = new Random();
+	
+	More detail on construction arguments are provided under the
+	`create()` method.
+
+	Many implementations are in the form of a pseudo-random number
+	generator (PRNG), which means they use a deterministic algorithm to
+	produce a pseudo-random sequence from a true random seed. Other
+	implementations may produce true random numbers, and yet others
+	may use a combination of both techniques.
+
+	Typical clients invoke the following methods to retrieve random bytes:
+
+	      var secureRNG = new Random();
+	      var bytes = secureRNG.nextBytes(100);
+
+	Callers may also invoke the `generateSeed()` method to generate a
+	given number of seed numbers (to seed other RNGs, for example). In
+	the present implementation, seed numbers are uint32 (not bytes.)
+
+	      var seedArray = Random.generateSeed(4); // 4*32 = 128 bits
+
+	*/
+
+	[PRIVATE]
+
+	({
+		// Default PRNG.
+		// ---
+		DEFG : 'XoroShiro',
+
+		DM12 : function(  v)
+		// ---------------------------------
+		// (DOM-UINT12-Entropy.) Get uint12 entropy from the DOM, if possible.
+		// [REM] PerformanceMetric's 'DB Instance Count' seems a good candidate
+		// for adding entropy in large-scale apps. However we always check
+		// whether the metric value has changed before returning it.
+		// => uint12 [KO] | 0 [KO]
+		{
+			if( app.properties.modalState ) return 0;
+			v = 0xFFF&app.performanceMetric(callee.Q);
+			return v && v!=callee.LAST ? (callee.LAST=v) : 0;
+		}
+		.setup({ Q: +PerformanceMetricOptions.DATABASE_INSTANTIATE_COUNT, LAST:0 }),
+
+		MASH: function(/*any*/x,  q,i,h)
+		// ---------------------------------
+		// (Mashup-Anything.) Return a quasi-random uint32 from any data.
+		// [REM] This routine is not by itself a safe generator, it just produces
+		// pretty unpredictable outputs based on both its current state and the
+		// passed argument.
+		// => uint32
+		{
+			q = callee.Q;
+			x = (x=String(x))+x.length;
+			
+			for( i = x.length ; i-- ; q += 0x100000000*(h-=q) )
+			{
+				q = (h=0.02519603282416938*(q+=x.charCodeAt(i)))>>>0;
+				q = ((h-=q),(h*=q)) >>> 0;
+			}
+			return (callee.Q = (q>>>0));
+		}
+		.setup({ Q: 0xEFC8249D }),
+
+		POOL: function(/*?any*/junk,  a,q,mR,k,i)
+		// ---------------------------------
+		// (64-bit-Pool.) Add junk to the pool. If junk is falsy,
+		// get entropy from either InDesign DOM, or timestamp.
+		// Finally, blend that junk with Math.random() results.
+		// Data are then available in `POOL.DATA` (uint32[2].)
+		// [REM] This function maintains the following properties:
+		//    1. Once invoked, the pool never rejects a zero element.
+		//    2. The pool always rejects two distinct uint32 elements,
+		//       regarded either as a single 64-bit seed, or as
+		//       two successive 32-bit seeds if needed so.
+		//    3. The probability that the pool rejects an element
+		//       already used is infinitesimal (in principle), and
+		//       strictly zero within the last hundred POOL calls.
+		// => undefined
+		{
+			junk = this.MASH(junk||(junk=String(this.DM12()||'')+(+new Date)));
+
+			a = callee.DATA;
+			q = callee.Q;
+			mR = Math.random;
+
+			do
+			{
+				a[0] ^= ((0xFF&(65536*mR()))<<24) | ((0xFFFF&junk)<<8) | (0xFF&(65536*mR()));
+				k = '_' + (a[0]>>>=0).toString(36);
+			}
+			while( (0==a[0]) || q[k] );
+			q[k] = 1;
+
+			do
+			{
+				a[1] ^= ((0xFF&(65536*mR()))<<24) | ((junk>>>16)<<8) | (0xFF&(65536*mR()));
+				k = '_' + (a[1]>>>=0).toString(36);
+			}
+			while( (0==a[1]) || q[k] );
+			q[k] = 1;
+
+			if( q.__count__ <= callee.BKP_MAX ) return;
+			i = 2;
+			for( k in q )
+			{
+				if( !q.hasOwnProperty(k) ) continue;
+				delete q[k];
+				if( i-- ) break;
+			}
+		}
+		.setup({ DATA:[0,0], Q:{}, BKP_MAX:100 }),
+	})
+
+	//==========================================================================
+	// STATIC API
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+
+		onEngine: function onEngine_(  I)
+		// ---------------------------------
+		// [TODO] Do we globalize callee.µ?
+		{
+			// Globalize me?
+			// $.global.Random = callee.µ;
+		},
+		
+		onLoad: function onLoad_(  I,$$)
+		// ---------------------------------
+		// Loading stage. Collect entropy.
+		{
+			I = callee.µ['~'];
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			// Seed the ~.MASH routine with loadStamp (onLoad only.)
+			// This likely makes the initial state of MASH unique.
+			// ---
+			I.MASH($$.getLoadStamp());
+
+			// Initialize the 64-bit pool. (From then, generateSeed
+			// is functional.)
+			// ---
+			I.POOL();
+		},
+		
+		generateSeed: function generateSeed_i_b_A(/*uint=2*/count,/*bool=0*/VOLATILE,  I,a,r,n,i)
+		// ---------------------------------
+		// Generate and return a new array formed of `count` random integers.
+		// In this implementation, a seed refers to an array of uint32. If
+		// count is omitted, two numbers are generated so that the default
+		// seed is 64-bit long (the size of the pool.) It is rarely needed
+		// to use greater seeds. (See ~.POOL for more technical detail.)
+		// If VOLATILE is on, return a temporary cached array.
+		// ---
+		// [REM] In practice, the client app is not supposed to invoke
+		// generateSeed() again and again to get a secure random sequence.
+		// The purpose of generateSeed() is to provide highly unpredictable
+		// *entry point(s)* based on the entropy collected in the 'pool.'
+		// However, successive calls do not guarantee the statistical
+		// features (distribution, etc) that PRNGs are intended to offer.
+		// ---
+		// => uint32[count]
+		{
+			if( !(a=(I=callee.µ['~']).POOL.DATA)[0] )
+			{
+				$.global[callee.µ.__root__].error(
+					__("The pool has not been initialized. Make sure Random is properly loaded."),
+					callee
+					);
+			}
+			
+			r = VOLATILE ? (callee.Q||(callee.Q=[])) : [];
+
+			(count>>>=0) || (count=2);
+			
+			for( i=0 ; i < count ; (r[i++]=a[0]), (r[i++]=a[1]), I.POOL() );
+
+			return (r.length=count), r;
+		},
+		
+		normalizeSeed: function normalizeSeed_X_i_b_A(/*any*/x,/*uint=2*/count,/*bool=0*/VOLATILE,  r,i)
+		// ---------------------------------
+		// Given any data x, return a normalized array of uint32 of the
+		// size `count`, with no random noise added. This routine is used
+		// by Random's constructor in case an explicit seed is passed in.
+		// If VOLATILE is on, return a temporary cached array.
+		// [REM] Numeric seeds remain unchanged if:
+		//   (a) `x` is an nonzero uint32 and count==1.
+		// OR
+		//   (b) `x` is an array of nonzero uint32s and x.length==count.
+		// In any other case the seed results from transforming x's data,
+		// although in a deterministic way.
+		// ---
+		// => uint32[count]
+		{
+			r = VOLATILE ? (callee.Q||(callee.Q=[])) : [];
+
+			(count>>>=0) || (count=2);
+			
+			if( 1==count && x && 'number' == typeof x )
+			{
+				r[0] = x>>>0;
+				return (r.length=1), r;
+			}
+			
+			r.length = 0;
+			if( x instanceof Array && count <= (i=x.length) && 'number' == typeof x[0] )
+			{
+				for( ; i-- ; r[i%count]^=x[i] );
+			}
+			else
+			{
+				x = (x=String(x))+x.length;
+				while( x.length < count ) x += x;
+				for( i=x.length ; i-- ; r[i%count]^=x.charCodeAt(i) );
+			}
+			for( i=count ; i-- ; r[i] = (r[i]>>>0)||(count-i) );
+
+			return r;
+		},
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_x_sf_(/*?any*/seed,/*str|fct=auto*/RNG,  sz)
+		// ---------------------------------
+		// Constructor. Instantiates a new random number generator.
+		// ---
+		// If seed is omitted or falsy, sets the seed of the RNG to a
+		// value very likely to be distinct from any other invocation.
+		// If seed is provided, it will determine the initial value of the
+		// internal state of the pseudo-RNG.
+		// ---
+		// The `RNG` argument, optional, provides either a RNG module, or
+		// the name of an existing one (e.g `MultiRec`, `XorShift`, etc.)
+		// Default RNG is given by the private key `~.DEFG`.
+		// Any RNG module *must* at least feature the following members:
+		//   .seedSize    => number of uint32s required for seeding.
+		//   .stateType() => create a new state structure (can be a scalar.)
+		//   .outType()   => create a new output structure (can be a scalar.)
+		//   .seed(uint32[sz],state&,out&) => init. the state from a seed.
+		//   .next(state&,out&) => goto next state and return out&.
+		//   .uint32(out) => given an output, return its uint32 reflection.
+		// Optionally the RNG API may be augmented as follows:
+		//   .uint53(out) => given an output, return its uint53 reflection.
+		//   .ubig64(out) => given an output, return its BigInt64 reflection.
+		// ---
+		// [REM] Thus, as a minimal condition, every RNG must have the ability
+		// to produce uint32 sequences. In the present implementation, state
+		// and output structures are stored in the Random instance itself, which
+		// delegates calculations to the selected RNG module. (The latter is
+		// not a `class`, as it does not instantiate data.)
+		// ---
+		// Sample usages:
+		//     var rng1 = new $$.Random(123456, 'MultiRec'); // explicit seed and RNG
+		//     var rng2 = $$.Random(); // auto-seed, auto-RNG, `new` is optional
+		{
+			while( 'function' != typeof RNG )
+			{
+				RNG = callee.µ[String(RNG||callee.µ['~'].DEFG)] || '';
+			}
+
+			this.rng = RNG;
+			this.state = this.rng.stateType();
+			this.out = this.rng.outType();
+
+			// If no seed is provided, generate it randomly,
+			// otherwise normalize it.
+			// => uint32[]
+			// ---
+			sz = this.rng.seedSize || 2;
+			seed = seed ?
+				callee.µ.normalizeSeed(seed, sz, 1) :
+				callee.µ.generateSeed(sz, 1);
+			
+			this.rng.seed(seed, this.state, this.out);
+		},
+		
+		next: function next_i_I(/*uint=32*/bits,  r)
+		// ---------------------------------
+		// Generate the next pseudorandom number. The general
+		// contract of `next` is that it returns an int value and
+		// if the argument bits is between 1 and 32 (inclusive),
+		// then that many low-order bits of the returned value
+		// will be (approx.) independently chosen bit values,
+		// each of which is (approx.) equally likely to be 0 or 1.
+		// [REM] Based on RNG.uint32() delegation.
+		// ---
+		// [REM] The present implementation makes no distinction between
+		// `next(<undefined>)` and the form `nextInt(<undefined>)`
+		// documented in the original specification as follows:
+		// > Returns the next pseudorandom, uniformly distributed int
+		// > value from this RNG's sequence. The general contract of
+		// > nextInt() is that one int value is pseudorandomly generated
+		// > and returned. All 2^32 possible int values are produced with
+		// > (approximately) equal probability.
+		// ---
+		// => uint32
+		{
+			this.out = this.rng.next(this.state, this.out);
+
+			(bits >>>= 0) || (bits=32);
+
+			r = this.rng.uint32(this.out);
+
+			//return bits < 32 ? (r&(-1+(1<<bits))) : r;
+			return bits < 32 ? (r>>>(32-bits)) : r;
+		},
+
+		nextInt: function nextInt_I_I(/*uint32*/nSup,  $$,r,t)
+		// ---------------------------------
+		// Returns a pseudorandom, uniformly distributed uint between
+		// 0 (inclusive) and nSup (exclusive), drawn from this RNG's
+		// sequence. The general contract of nextInt(nSup) is that one
+		// uint value in the specified range is pseudorandomly generated
+		// and returned. All n possible int values are produced with
+		// (approximately) equal probability.
+		// [REM] From the original specification:
+		// > The algorithm rejects values that would result in an uneven
+		// > distribution (due to the fact that 2^31 is not divisible by
+		// > nSup.) The probability of a value being rejected depends on
+		// > nSup. The worst case is nSup = 2^30+1 (...)
+		// > The algorithm treats the case where n is a power of 2 specially:
+		// > it returns the correct number of high-order bits from the
+		// > underlying PRNG. In the absence of special treatment, the correct
+		// > number of low-order bits would be returned. Linear congruential
+		// > PRNG are known to have short periods in the sequence of values
+		// > of their low-order bits. Thus, this special case greatly increases
+		// > the length of the sequence of values returned by successive calls
+		// > to this method if nSup is a small power of two.
+
+		{
+			if( nSup !== (nSup>>>0) )
+			{
+				$$ = $.global[callee.µ.__root__]; // agnostic reference
+				
+				$$.error(
+					__("Invalid nSup argument (%1). Should be a positive 32-bit integer.", $$.JSON(nSup)),
+					callee
+					);
+			}
+
+			if( nSup > 2 && nSup == (nSup & -nSup) )
+			{
+				// nSup is a power of two, 2^t, where t > 1.
+				// ---
+				for( t=2 ; nSup > (1 << t) ; ++t );
+				return this.next(31) >> (31-t);
+			}
+
+			do{ r = (t=this.next(31)) % nSup }
+			while( nSup < 1 + r - t );
+
+			return r;
+		},
+
+
+		next53: function next53_Z(  f)
+		// ---------------------------------
+		// Generate the next pseudorandom uint53.
+		// [REM] This method is generic and relies on next(), which it
+		// invokes twice to make up a full 53-bit number. However, if
+		// the PRNG provides a uint53() method (typically in case it
+		// deals with 64-bit output), RNG.uint53() will be called instead.
+		// (Not available in the original specification.)
+		// ---
+		// => uint53
+		{
+			this.out = this.rng.next(this.state, this.out);
+
+			return 'function' == typeof (f=this.rng.uint53) ?
+				// Dedicated method.
+				f(this.out) :
+				// Default process.
+				( this.rng.uint32(this.out) + 0x100000000*this.next(21) );
+		},
+
+		next64: function next64_$BigInt$()
+		// ---------------------------------
+		// Generate the next pseudorandom BigInt (64 bits), assuming
+		// $$.BigInt is available. (If BigInt is not available, this
+		// method fails causing a runtime error.)
+		// [REM] This method is generic and relies on next(), which it
+		// invokes twice to make up a full 64-bit number. However, if the
+		// PRNG provides a ubig64() method (typically in case it deals with
+		// 64-bit output), then RNG.ubig64() will be called instead.
+		// (Not available in the original specification.)
+		// ---
+		// => BigInt (64-bit, positive.)
+		{
+			this.out = this.rng.next(this.state, this.out);
+
+			return 'function' == typeof (f=this.rng.ubig64) ?
+				// Dedicated method.
+				f(this.out) :
+				// Default process --taking advantage of BigInt's operators.
+				( ($.global[callee.µ.__root__].BigInt(this.rng.uint32(this.out))<<32)|this.next() );
+		},
+
+		nextFloat: function nextFloat_()
+		// ---------------------------------
+		// Generate the next pseusorandom float53, that is,
+		// this.next53() / 2^53.
+		// [REM] Math.pow(2,53) === 0x20000000000000.
+		// [RES] The general contract of nextFloat is that one float value,
+		// chosen (approx.) uniformly from the range 0.0 (inclusive) to 1.0
+		// (exclusive), is pseudorandomly generated and returned. In the
+		// original spec all 2^24 possible float values of the form m/2^24,
+		// where m is a positive integer < 2^24, are produced with (approx.)
+		// equal probability. The present implementation uses the 2^53 upper
+		// bound instead.
+		// ---
+		// => [0,1(
+		{
+			return this.next53() / 0x20000000000000;
+		},
+
+		nextBytes: function nextBytes_(/*uint*/count,/*bool=0*/VOLATILE,  r,i,t,z)
+		// ---------------------------------
+		// Generate `count` random bytes and place them into an array.
+		// If VOLATILE is on, return a temporary cached array.
+		// ---
+		// [REM] This method relies on next(), it retrieves 3 bytes (24 bits)
+		// from each uint32, causing `ceil(count/3)` calls. (By contrast, the
+		// algorithm of the original spec takes all 32 bits from each uint32.)
+		// => uint8[count]
+		{
+			r = VOLATILE ? (callee.Q||(callee.Q=[])) : [];
+			for(
+				(count>>>=0), i=0 ;
+				i < count ;
+				(t=this.next()), (r[i++]=0xFF&(t>>>=4)), (r[i++]=0xFF&(t>>=8)), (r[i++]=0xFF&(t>>=8))
+			);
+			return (r.length=count), r;
+		},
+
+	})
+
+	/*
+	
+	Below are the default PRNG modules released with IdExtenso's Random
+	class. Do not change that, unless you know what you are doing. The
+	client app can easily branch additional module(s) if you feel like
+	they provide better algorithms or results. Just make sure that a new
+	PRNG module exposes the API detailed under the `create()` method. Keep
+	in mind that your PRNG module *should not instantiate* states or data
+	associated to the generator, it only features calculation routines
+	accessed from the Random instance as specified above.
+	
+	*/
+
+	#include 'Random/$$.XorShift.jsxlib'
+	#include 'Random/$$.XoroShiro.jsxlib'
+	#include 'Random/$$.MultiRec.jsxlib'
