@@ -1,3 +1,6 @@
+##### [170603]
+  - Cosmetic addition: background & notice of the **MD5** module (`/etc/$$.MD5.jsxlib`).
+
 ##### [170601]
   - Added the **Random** class (`/etc/Random.jsxlib`) and its dependencies, cf. `/etc/Random/` directory.
 
