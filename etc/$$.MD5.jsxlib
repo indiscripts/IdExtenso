@@ -11,11 +11,35 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150525 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       170603 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('MD5') || eval(__(MODULE, $$, 'MD5', 170407, 'hash'))
+;$$.hasOwnProperty('MD5') || eval(__(MODULE, $$, 'MD5', 170603, 'hash'))
+
+	//==========================================================================
+	// BACKGROUND & NOTICE
+	//==========================================================================
+
+	/*
+
+	MD5 is a widely used hash function, commonly involved in file
+	integrity checking, among other purposes. MD5 *is not* collision
+	resistant and *is not* suitable for security applications like SSL
+	certificates or digital signatures.
+	
+	The present implementation is fast enough for basic needs. It is quite
+	compact and has no dependencies. You can use it in (non-cryptographic)
+	projects that require the generation of simple 32-sized hash keys
+	without the need of crucial security in terms of collision resistance.
+	
+	E.g:            var ID = $$.MD5.hash('IdExtenso');
+	                // => resulting hash string.
+	
+	Note that `hash()` is the single available public method and has been
+	made 'automatic', so you can call `$$.MD5(myString)` as well.
+
+	*/
 
 	[PRIVATE]
 	
@@ -201,10 +225,12 @@
 
 		hash : function hash_S_H(/*str*/s,  $$,I,q)
 		//----------------------------------
-		// Compute the MD5 hash (32 chars) of the input string.
+		// Compute the MD5 hash of the input string. Result is a hex
+		// string formed of 32 characters in [0-9a-h], lowercase.
 		// E.g
 		// hash('IdExtenso') => `7127bf261e23104d72f6ea2b33f0d7c1`
 		// hash('InExtenso') => `06b02fd291587d4397fb0a62eaba9068`
+		// => str  [32 hex characters]
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			I = callee.µ['~'];
@@ -229,7 +255,7 @@
 
 			(+$$.trace) && $$.trace(__("%1 > Result: %2 (in %3ms.)",callee.µ,s,$$.Log.chrono));
 		
-			// Format the result.
+			// Format and return the result string.
 			// ---
 			return s;
 		},
