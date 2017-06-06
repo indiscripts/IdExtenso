@@ -9,11 +9,13 @@
 		Kind:           Module.
 		API:            =lave() eval()
 		DOM-access:     ---
-		Todo:           ---
+		Todo:           Deal with IdExtenso entities...
 		Created:        170306 (YYMMDD)
-		Modified:       170501 (YYMMDD)
+		Modified:       170607 (YYMMDD)
 
 *******************************************************************************/
+
+;eval(__(MODULE, $$, 'JSON', 170607, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -44,7 +46,7 @@
 
 
 	Also, any access to app.scriptPreferences.properties causes InDesign
-	to freeze (infinite loop?) so we must prevent JSON() from browsing
+	to freeze (infinite loop?) so we must prevent JSON() from expanding
 	the specifier path "/@script-preferences".
 
 	*/
@@ -74,8 +76,6 @@
 	In most cases the regular aliases will be returned.
 
 	*/
-
-;eval(__(MODULE, $$, 'JSON', 170501, 'lave'))
 
 	[PRIVATE]
 	
@@ -473,6 +473,11 @@
 
 			// Known class, or default.
 			// ---
+			// [REM] Althoug myObj.__class__ is supposed to be "Object" (titlecase),
+			// comparing k against "object" (lowercase) is not a typo. Indeed we want to
+			// be absolutely sure that the present function won't go into infinite loop.
+			// Anyway it should never happen--in principle--that x.__class__ be "object".
+			// ---
 			( (k=x.__class__) && ('object'!=k) && this.hasOwnProperty(k='\x01'+k) ) || (k='\x01Object');
 			
 			return this[k](x);
@@ -554,7 +559,9 @@
 		//       Reduced(-1) is similar to compact, but it provides additional shortcuts
 		//       such as `!0` instead of `true`, etc. [ADD170418]
 		// `DOM_ACCESS` :: whether the result should maintain DOM accesses thru
-		//       `resolve()` and enumerations.
+		//       `resolve()`, enumeration objects, etc. Default is 0, meaning that the
+		//       output string is safe from any underlying DOM command. In particular,
+		//       references of the form `resolve(<path>)` are changed into `"<path>"`.
 		// => uneval-string
 		{
 			I = callee.µ['~'];
