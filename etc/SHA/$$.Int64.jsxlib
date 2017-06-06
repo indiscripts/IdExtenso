@@ -1,0 +1,148 @@
+/*******************************************************************************
+
+		Name:           Int64
+		Desc:           Encapsulates 64-bit integer structure for bitwise calculations in SHA.
+		Path:           /etc/SHA/$$.Int64.jsxlib
+		Require:        $$.SHA
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class (in SHA module.)
+		API:            =create()
+		    Operators:  ==  >>>  >>  <<  ~  &  |  ^
+		                [REM] `>>` and `<<` are redefined in terms of *rotation*.
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170601 (YYMMDD)
+		Modified:       170606 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.SHA ){ alert(__("%1 requires the %2 module.",'Int64','SHA')); exit(); }
+;$$.SHA.hasOwnProperty('Int64') || eval(__(CLASS, $$.SHA.toSource(), 'Int64', 170606))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+	
+	This class has been specially embedded within the SHA module to make
+	64-bit operations easier to express and implement. The class Int64
+	*does not provide* re-usability for larger purposes. This explains
+	why $$.SHA is a mandatory host module for it. Constructor is
+	therefore accessed (from the outside) using `$$.SHA.Int64(hi,lo)`.
+	
+	Note. - $$.SHA automatically includes the present file so you don't
+	have to worry about this.
+	
+	For a robust and standalone API involving arbitrary-sized integers,
+	go rather into /etc/$$.BigInt.
+	
+	*/
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_î_î_(/*int32=0*/hi,/*int32=0*/lo)
+		// ---------------------------------
+		// Constructor:
+		{
+			this.HI = 0|hi;
+			this.LO = 0|lo;
+		},
+
+		toString: function toString_S(  s)
+		// ---------------------------------
+		// => hex representation.
+		{
+			return (
+				('00000000' + (this.HI>>>0).toString(16)).substr(-8) +
+				('00000000' + (this.LO>>>0).toString(16)).substr(-8)
+				).toUpperCase();
+		},
+
+		// PUBLIC OPERATORS
+	
+		'==' : function equals(/*any*/x)
+		// ---------------------------------
+		{
+			return (!!x) && this.HI===x.HI && this.LO===x.LO;
+		},
+
+		'>>>': function rightShift(/*uint*/n,/*bool*/_)
+		// ---------------------------------
+		{
+			return 32 >= n ?
+				(new this.constructor( 
+					(this.HI >>> n),
+					( (this.LO >>> n) | (0xFFFFFFFF&(this.HI << (32-n))) )
+				)) :
+				(new this.constructor( 
+					0,
+					( this.HI >>> (n-32) )
+				));
+		},
+		
+		'>>' : function rightRotation(/*uint*/n,/*bool*/_,  p)
+		// ---------------------------------
+		// [WARN] Redefined operator that performs a *rotation*.
+		{
+			if( _ ) throw 'reversed';
+
+			return 32 >= n ?
+				(new this.constructor(
+					n ? ( (this.HI >>> n) | (0xFFFFFFFF&(this.LO << (p=32-n))) ) : this.HI,
+					n ? ( (this.LO >>> n) | (0xFFFFFFFF&(this.HI << p)) ) : this.LO
+				)) :
+				(new this.constructor(
+					( (this.LO >>> (n-=32)) | (0xFFFFFFFF&(this.HI << (p=32-n))) ),
+					( (this.HI >>> n) | (0xFFFFFFFF&(this.LO << p)) )
+				));
+		},
+		
+		'<<' : function leftRotation(/*uint*/n,/*bool*/_,  p)
+		// ---------------------------------
+		// [WARN] Redefined operator that performs a *rotation*.
+		{
+			if( _ ) throw 'reversed';
+
+			return 32 < n ?
+				(new this.constructor(
+					( (this.LO << (n-=32)) | (this.HI >>> (p=32-n)) ),
+					( (this.HI << n) | (this.LO >>> p) )
+				)) :
+				(new this.constructor(
+					n ? ( (this.HI << n) | (this.LO >>> (p=32-n)) ) : this.HI,
+					n ? ( (this.LO << n) | (this.HI >>> p) ) : this.LO
+				));
+		},
+
+		'~'  : function bitwiseNot()
+		// ---------------------------------
+		{
+			return new this.constructor( ~this.HI, ~this.LO );
+		},
+		
+		'&'  : function bitwiseAnd(/*any*/x)
+		// ---------------------------------
+		{
+			return new this.constructor( this.HI&((x||0).HI),  this.LO&((x||0).LO) );
+		},
+		
+		'|'  : function bitwiseOr(/*any*/x)
+		// ---------------------------------
+		{
+			return new this.constructor( this.HI|((x||0).HI),  this.LO|((x||0).LO) );
+		},
+		
+		'^'  : function bitwiseXor(/*any*/x)
+		// ---------------------------------
+		{
+			return new this.constructor( this.HI^((x||0).HI),  this.LO^((x||0).LO) );
+		},
+
+	})

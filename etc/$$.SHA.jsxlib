@@ -1,0 +1,1267 @@
+/*******************************************************************************
+
+		Name:           SHA
+		Desc:           Secure Hash Algorithms (incl. HMAC) family as defined in
+		                FIPS PUB 180-4, FIPS PUB 202, and FIPS PUB 198a.
+		                Implements: SHA-1, SHA-224, SHA-256, SHA-384, SHA-512,
+		                SHA-3-224, SHA-3-256, SHA-3-384, SHA-3-512, SHAKE128,
+		                and SHAKE256.
+		Path:           /etc/$$.SHA.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class.
+		API:            =create() update() getHash()
+		DOM-access:     NO
+		Todo:           Data cleaning on destruction?
+		Created:        170601 (YYMMDD)
+		Modified:       170606 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('SHA') || eval(__(CLASS, $$, 'SHA', 170606))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	The SHA (Secure Hash Algorithms) family includes:
+
+	      SHA-1. - Original hash function still used in various
+	      security applications *although its collision resistance has
+	      been seriously weakened*.
+
+	      SHA-2 set. - Offers better security. Four variants are featured:
+	      SHA-256, SHA-512 (largely identical to SHA-256 but operating on
+	      64-bit ints), SHA-224 (truncated version of SHA-256), and SHA-384
+	      (truncated version of SHA-512.)
+
+	      SHA-3 set (FIPS 202) - Winner of a NIST competition to select a
+	      new cryptographic hash algorithm. "Each of the SHA-3 functions is
+	      based on an instance of the Keccak algorithm (...) but those SHA-3
+	      functions won't produce hashes identical to Keccak." (CryptoJS
+	      Quick Start Guide.) SHA-3 supports output hash lengths among 224,
+	      256, 384, and 512 bits.
+
+	      In addition, SHAKE128 and SHAKE256 offer extendable length output,
+	      they supersede the previously defined algorithms known as eXtendable
+	      Output Functions (XOFs.) Output length can be specified to an
+	      arbitrary number of bytes. In the present implementation, the
+	      family key for any SHAKExxx function should contain the desired
+	      output length prefixed by a `_`, e.g `SHAKE256_1024` selects the
+	      SHAKE256 algorithm and outputs 1024 bits. If the output length
+	      is not specified, 512 is assumed for SHAKE256, 256 is assumed
+	      for SHAKE128.
+
+	The present implementation uses many ideas from both Brian Turek
+	(JsSHA) and Paul Johnston at <pajhome.org.uk/crypt/md5/sha1.html> --
+	who also credits Greg Holt, Andrew Kepert, Ydnar, Lostinet.
+
+	A number of optimizations are IdExtenso-specific, especially regarding
+	code refactoring and 64-bit routines. Needless 'closures' have been
+	removed too.
+	
+	The SHA module is designed as a 'class' to allow multiple instances
+	to work in parallel. This also makes possible to `update` the source
+	along sequential steps, e.g.
+
+	      var H = new $$.SHA("SHA-1");         // SHA-1 inst.; `new` is opt.
+	      H.update("a");
+	      H.update("b");
+	      H.update("c");
+	      alert( H.getHash("HEX") );            // => hash of "abc".
+
+	HMAC-SHA hashes are supported as well. Just pass the HMAC key as
+	2nd argument while creating the SHA instance:
+
+	      var H = $$.SHA("SHA3-256","MySecret"); // Set the HMAC key.
+	      H.update("abc");                       // Append some data (opt.)
+	      alert( H.getHash("HEX") );             // Resulting hash.
+
+	Note that a single method, `getHash()`, is responsible for computing the
+	hash string in either regular or HMAC context. In case a HMAC key has
+	been loaded, H.getHash() behaves as would 'get(H)MAC' in other codes.
+
+	This module allows very compact coding if all parameters are known at
+	instantiation. For example,
+	
+	      var b64 = $$.SHA("3-256",k).update(data,"UTF16LE").getHash("B64");
+
+	instantiates a HMAC-SHA3-256 object with the key k, appends the UTF16LE
+	message data, and returns the resulting MAC in Base-64 format.
+
+	Note. - "HMAC (keyed-Hash Message Authentication Code) refers to a
+	message authentication code that uses a cryptographic key in
+	conjunction with a hash function. MAC (Message Authentication Code)
+	refers to a cryptographic checksum that results from passing data
+	through a message authentication algorithm. In NIST-FIPS.198-1
+	Standard, the message authentication algorithm is called HMAC, while
+	the result of applying HMAC is called the MAC." (NIST)
+
+	References:
+	[RES] http://en.wikipedia.org/wiki/Secure_Hash_Algorithms
+	[RES] http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.198-1.pdf
+	[RES] http://en.wikipedia.org/wiki/SHA-3
+	[RES] http://code.google.com/archive/p/crypto-js/
+	[RES] http://www-cs-students.stanford.edu/%7Etjw/jsbn/sha1.js
+	[RES] http://caligatio.github.com/jsSHA/
+	[RES] http://pajhome.org.uk/crypt/md5/sha1.html
+	[RES] http://www.di-mgt.com.au/sha_testvectors.html  [test vectors]
+
+	*/
+
+	//==========================================================================
+	// SHA FAMILY.
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		DSHA : 'SHA3-256',    // Default SHA algorithm.
+		RSHA : /\W+/g,        // RegExp-SHA key cleaner.
+
+		// The complete SHA Family attributes.
+		// ---
+		SHAF :
+		{
+			'SHA1' :          // aka SHA-1
+			{
+				type: 1, intSize: 32, blockSize:  512, outSize: 160, BE_MOD:-1, delim: 0, isShake: 0,
+				init: [ 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0 ],
+				abc:  "a9993e364706816aba3e25717850c26c9cd0d89d",
+			},
+			// ---------------------------------------------------------------------------------------------
+			'SHA224' :        // aka SHA-224
+			{
+				type: 2, intSize: 32, blockSize:  512, outSize: 224, BE_MOD:-1, delim: 0, isShake: 0,
+				init: [ 0xC1059ED8, 0x367CD507, 0x3070DD17, 0xF70E5939,
+				        0xFFC00B31, 0x68581511, 0x64F98FA7, 0xBEFA4FA4 ],
+				abc:  "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7",
+			},
+			'SHA256' :        // aka SHA-256
+			{
+				type: 2, intSize: 32, blockSize:  512, outSize: 256, BE_MOD:-1, delim: 0, isShake: 0,
+				init: [ 0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
+				        0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19 ],
+				abc:  "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			},
+			'SHA384' :        // aka SHA-384
+			{
+				type: 2, intSize: 64, blockSize: 1024, outSize: 384, BE_MOD:-1, delim: 0, isShake: 0,
+				init: [ 0xCBBB9D5D,0xC1059ED8,   0x629A292A,0x367CD507,
+				        0x9159015A,0x3070DD17,   0x152FECD8,0xF70E5939,
+				        0x67332667,0xFFC00B31,   0x98EB44A87,0x68581511,
+				        0xDB0C2E0D,0x64F98FA7,   0x47B5481D,0xBEFA4FA4 ],
+				abc:  "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7",
+			},
+			'SHA512' :        // aka SHA-512
+			{
+				type: 2, intSize: 64, blockSize: 1024, outSize: 512, BE_MOD:-1, delim: 0, isShake: 0,
+				init: [ 0x6A09E667,0xF3BCC908,   0xBB67AE85,0x84CAA73B,
+				        0x3C6EF372,0xFE94F82B,   0xA54FF53A,0x5F1D36F1,
+				        0x510E527F,0xADE682D1,   0x9B05688C,0x2B3E6C1F,
+				        0x1F83D9AB,0xFB41BD6B,   0x5BE0CD19,0x137E2179 ],
+				abc:  "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+			},
+			// ---------------------------------------------------------------------------------------------
+			'SHA3224':        // aka SHA-3-224
+			{
+				type:3, intSize: 64, blockSize: 1152, outSize: 224, BE_MOD:+1, delim: 6, isShake: 0,
+				init:0, // 5x5-Int64
+				abc:  "e642824c3f8cf24ad09234ee7d3c766fc9a3a5168d0c94ad73b46fdf",
+			},
+			'SHA3256':        // aka SHA-3-256
+			{
+				type:3, intSize: 64, blockSize: 1088, outSize: 256, BE_MOD:+1, delim: 6, isShake: 0,
+				init:0, // 5x5-Int64
+				abc:  "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
+			},
+			'SHA3384':        // aka SHA-3-384
+			{
+				type:3, intSize: 64, blockSize:  832, outSize: 384, BE_MOD:+1, delim: 6, isShake: 0,
+				init:0, // 5x5-Int64
+				abc:  "ec01498288516fc926459f58e2c6ad8df9b473cb0fc08c2596da7cf0e49be4b298d88cea927ac7f539f1edf228376d25",
+			},
+			'SHA3512':        // aka SHA-3-512
+			{
+				type:3, intSize: 64, blockSize:  576, outSize: 512, BE_MOD:+1, delim: 6, isShake: 0,
+				init:0, // 5x5-Int64
+				abc:  "b751850b1a57168a5693cd924b6b096e08f621827444f70d884f5d0240d2712e10e116e9192af3c91a7ec57647e3934057340b4cf408d5a56592f8274eec53f0",
+			},
+			// ---
+			'SHAKE128':        // aka SHAKE128<_length=256>
+			{
+				type:3, intSize: 64, blockSize: 1344, outSize: 256, BE_MOD:+1, delim:31, isShake: 1,
+				init:0, // 5x5-Int64               (default outSize)
+				abc:  "5881092dd818bf5cf8a3ddb793fbcba74097d5c526a6d35f97b83351940f2cc8",
+			},
+			'SHAKE256':        // aka SHAKE256<_length=512>
+			{
+				type:3, intSize: 64, blockSize: 1088, outSize: 512, BE_MOD:+1, delim:31, isShake: 1,
+				init:0, // 5x5-Int64               (default outSize)
+				abc:  "483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739d5a15bef186a5386c75744c0527e1faa9f8726e462a12a4feb06bd8801e751e4",
+			},
+		},
+		
+		TEST : function(  $$,T,I,ctor,o,k,s)
+		// ---------------------------------
+		// (Test.) Perform an 'abc'-test throughout all SHA variants.
+		// [REM] This auto-test is called *only* when IdExtenso is not in
+		// MUTE log mode, which is the probable circumstance under which you
+		// are tweaking the present code (!) Anyway the released version of
+		// IdExtenso is safe from that standpoint--tests have been performed!
+		// => undefined [OK]  |  ERROR [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace);
+
+			I = (ctor=callee.µ)['~'];
+
+			o = I.SHAF;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				T && $$.trace(__("%1 > Applying %2 to the string 'abc'...",callee.µ,k));
+
+				s = ctor(k).update("abc").getHash('HEX');
+
+				if( s != o[k].abc )
+				{
+					$$.error(__("The variant %1 failed to hash 'abc'. Result is '%2'. Should be '%3'.", k,s,o[k].abc), callee);
+				}
+
+				T && $$.trace(__("%1 > [OK] As expected, %2('abc') is '%3'.",callee.µ,k,s));
+			}
+		},
+	})
+
+	//==========================================================================
+	// 32-BIT TOOLS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		AD32: function(a,b,c,d,e,  lo)
+		// ---------------------------------
+		// (Add-32.) Safe 32-bit adding, wrapping at 2^32.
+		// Supports 2 up to 5 arguments.
+		// [REM] 0xFFFF&undefined == undefined>>>16 == 0
+		{
+			return (0xFFFF&(lo=(0xFFFF&a)+(0xFFFF&b)+(0xFFFF&c)+(0xFFFF&d)+(0xFFFF&e))) |
+				((0xFFFF&((a>>>16)+(b>>>16)+(c>>>16)+(d>>>16)+(e>>>16)+(lo>>>16)))<<16);
+		},
+
+		PR32: function(x, y, z)
+		// ---------------------------------
+		// (Parity-32.)
+		{
+			return x ^ y ^ z;
+		},
+
+		CH32: function(x, y, z)
+		// ---------------------------------
+		// (Ch-32.)
+		{
+			return (x & y) ^ (~x & z);
+		},
+
+		MJ32: function(x, y, z)
+		// ---------------------------------
+		// (Maj-32.)
+		{
+			return (x & y) ^ (x & z) ^ (y & z);
+		},
+		
+		S032: function(x)
+		// ---------------------------------
+		// (Sigma0-32.)
+		{
+			return ((x>>>2)|(x<<30)) ^ ((x>>>13)|(x<<19)) ^ ((x>>>22)|(x<<10));
+		},
+
+		S132: function(x)
+		// ---------------------------------
+		// (Sigma1-32.)
+		{
+			return ((x>>>6)|(x<<26)) ^ ((x>>>11)|(x<<21)) ^ ((x>>>25)|(x<<7));
+		},
+
+		G032: function(x)
+		// ---------------------------------
+		// (Gamma0-32.)
+		{
+			return ((x>>>7)|(x<<25)) ^ ((x>>>18)|(x<<14)) ^ (x>>>3);
+		},
+
+		G132: function(x)
+		// ---------------------------------
+		// (Gamma1-32.)
+		{
+			return ((x>>>17)|(x<<15)) ^ ((x>>>19)|(x<<13)) ^ (x>>>10);
+		},
+
+	})
+
+	//==========================================================================
+	// 64-BIT TOOLS (expecting Int64 arguments.)
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		AD64 : function(a,b,c,d,e,  lo,hi,t)
+		// ---------------------------------
+		// (Add-64.) Add up to five Int64, wrapping at 2^64.
+		{
+			lo = (0xFFFF&((t=(0xFFFF&a.LO)+(0xFFFF&b.LO)+(0xFFFF&(c|=0).LO)+(0xFFFF&(d|=0).LO)+(0xFFFF&(e|=0).LO))))
+				|
+				((0xFFFF&(t=(a.LO>>>16)+(b.LO>>>16)+(c.LO>>>16)+(d.LO>>>16)+(e.LO>>>16)+(t>>>16)))<<16);
+		
+			hi = (0xFFFF&(t=(0xFFFF&a.HI)+(0xFFFF&b.HI)+(0xFFFF&c.HI)+(0xFFFF&d.HI)+(0xFFFF&e.HI)+(t>>>16)))
+				|
+				((0xFFFF&((a.HI>>>16)+(b.HI>>>16)+(c.HI>>>16)+(d.HI>>>16)+(e.HI>>>16)+(t>>>16)))<<16);
+		
+			return callee.µ.Int64(hi,lo);
+		},
+
+		S064 : function(/*Int64*/x)
+		// ---------------------------------
+		// (Sigma0-64.) Int64 operators used here.
+		{
+			return (x >> 28)^(x >> 34)^(x >> 39);
+		},
+
+		S164 : function(/*Int64*/x)
+		// ---------------------------------
+		// (Sigma1-64.) Int64 operators used here.
+		{
+			return (x >> 14)^(x >> 18)^(x >> 41);
+		},
+
+		G064 : function(/*Int64*/x)
+		// ---------------------------------
+		// (Gamma0-64.) Int64 operators used here.
+		{
+			return (x >>  1)^(x >>  8)^(x >>> 7);
+		},
+
+		G164 : function(/*Int64*/x)
+		// ---------------------------------
+		// (Gamma1-64.) Int64 operators used here.
+		{
+			return (x >> 19)^(x >> 61)^(x >>> 6);
+		},
+
+	})
+
+	//==========================================================================
+	// INPUT / OUTPUT CONVERTERS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		// Map formats.
+		// ---
+		MAPF :
+		{
+			HEX:     'HEX',
+			B64:     'B64',
+			BYTES:   'BYT',
+			UTF8:    'U08',
+			UTF16:   'U16',
+			UTF16BE: 'U16',
+			UTF16LE: 'U16',
+		},
+
+		UTF8: function(/*str*/s,/*uint*/i,  q,cp)
+		// ---------------------------------
+		// (Parse-UTF8-Char.) Deal with surrogate pairs.
+		{
+			(q=callee.Q||(callee.Q=[])).length = 0;
+		
+			if( 0x80 > (cp=s.charCodeAt(i)) )
+				{ return (q[0]=cp),i }
+		
+			if( 0x800 > cp )
+				{ return (q[0]=0xC0|(cp>>>6)), (q[1]=(0x80|(0x3F&cp))), i }
+		
+			if( 0xD800 > cp || 0xE000 <= cp )
+				{ return q.push( 0xE0|(cp>>>12), 0x80|(0x3F&(cp>>>6)), 0x80|(0x3F&cp) ), i }
+		
+			cp = 0x10000 + (((0x3FF&cp)<<10)|(0x3FF&s.charCodeAt(++i)));
+			q.push( 0xF0|(cp >>> 18), 0x80|(0x3F&(cp >>> 12)), 0x80|(0x3F&(cp >>> 6)), 0x80|(0x3F&cp) );
+			return i;
+		},
+		
+		FU08: function(/*str*/s,/*?byte[]&*/pack,/*uint=0*/bits,/*-1|1*/BE_MOD,  sz,z,dp,dz,n,shft,i,j,cp,a,f)
+		// ---------------------------------
+		// (From-UTF8.) Convert an UTF8 string to an array of BE words.
+		// s       :: String to be converted to binary representation.
+		// pack    :: Array of bytes to append the results to, with bitSize property maintained.
+		// bits    :: Number of bits in the incoming pack.
+		// BE_MOD  :: Modifier for whether hash function is big or small endian.
+		// ---
+		// => pack&  [array + .bitSize]
+		{
+			pack || (pack=[0]);
+			bits || (bits=0);
+			sz = bits >>> 3;
+		
+			shft = (BE_MOD == -1) ? 3 : 0;
+			for( f=callee.µ['~'].UTF8, z=0, n=s.length, i=-1 ; ++i < n ; )
+			for( i=f(s,i), a=f.Q, j=-1 ; ++j < a.length ; ++z )
+			{
+				for( dp=(dz=z+sz)>>>2 ; pack.length <= dp ; pack.push(0) );
+				pack[dp] |= a[j] << (8 * (shft + BE_MOD * (dz % 4)));
+			}
+		
+			return (pack.bitSize=8*z+bits), pack;
+		},
+		
+		FU16: function(/*str*/s,/*?byte[]&*/pack,/*uint=0*/bits,/*-1|1*/BE_MOD,/*0|1=0*/LE,  sz,z,dz,dp,n,shft,i,cp)
+		// ---------------------------------
+		// (From-UTF16) Convert an UTF16 string to an array of BE words.
+		// s       :: String to be converted to binary representation.
+		// pack    :: Array of bytes to append the results to, with bitSize property maintained.
+		// bits    :: Number of bits in the incoming pack.
+		// BE_MOD  :: Modifier for whether hash function is big or small endian.
+		// LE      :: Whether the encoding is UTF16LE (rather than UTF16BE.)
+		// ---
+		// There is a known bug with an odd number of existing bytes and using a
+		// UTF-16 encoding.  However, this function is used such that the existing
+		// bytes are always a result of a previous FU16 call and
+		// therefore there should never be an odd number of existing bytes.
+		// ---
+		// => pack&  [array + .bitSize]
+		{
+			pack || (pack=[0]);
+			bits || (bits=0);
+			sz = bits >>> 3;
+		
+			shft = -1 == BE_MOD ? 2 : 0;
+			for( z=0, n=s.length, i=-1 ; ++i < n ; z+=2 )
+			{
+				cp = s.charCodeAt(i);
+				LE && ( cp=((0xFF&cp)<<8)|(cp >>> 8) );
+				for( dp=(dz=z+sz)>>>2 ; pack.length <= dp ; pack.push(0) );
+				pack[dp] |= cp << (8 * (shft + BE_MOD * (dz % 4)));
+			}
+		
+			return (pack.bitSize=8*z+bits), pack;
+		},
+		
+		FHEX: function(/*str*/s,/*?byte[]*/pack,/*uint=0*/bits,/*-1|1*/BE_MOD,  sz,shft,n,i,x,dp,dz)
+		// ---------------------------------
+		// (From-Hex.) Convert a hex string to an array of BE words.
+		// => pack&  [array + .bitSize]
+		{
+			pack || (pack=[0]);
+			bits || (bits=0);
+			sz = bits >>> 3;
+			shft = (BE_MOD == -1) ? 3 : 0;
+		
+			n = s.length;
+			if( n % 2 ){ throw new Error("String of HEX type must be in byte increments") }
+		
+			for( i=0 ; i < n ; i += 2 )
+			{
+				if( isNaN(x=parseInt(s.substr(i,2),16)) )
+					throw new Error("String of HEX type contains invalid characters.");
+				for( dp=(dz=(i>>>1)+sz)>>>2 ; pack.length <= dp ; pack.push(0) );
+				pack[dp] |= x  << (8 * (shft + BE_MOD * (dz % 4)));
+			}
+		
+			return (pack.bitSize=4*n+bits), pack;
+		},
+		
+		FBYT: function(/*str*/s,/*?byte[]*/pack,/*uint=0*/bits,/*-1|1*/BE_MOD,  sz,shft,n,i,dp,dz)
+		// ---------------------------------
+		// (From-Bytes.) Convert a string of raw bytes to an array of BE words.
+		// => pack&  [array + .bitSize]
+		{
+			pack || (pack=[0]);
+			bits || (bits=0);
+			sz = bits >>> 3;
+			shft = (BE_MOD == -1) ? 3 : 0;
+		
+			for( n=s.length, i=-1 ; ++i < n ; )
+			{
+				dp = (dz=i+sz) >>> 2;
+				pack.length <= dp && pack.push(0);
+				pack[dp] |= s.charCodeAt(i) << (8*(shft+BE_MOD*(dz%4)));
+			}
+		
+			return (pack.bitSize=8*n+bits), pack;
+		},
+		
+		FB64: function(/*str*/s,/*?byte[]*/pack,/*uint=0*/bits,/*-1|1*/BE_MOD,  B,sz,shft,n,z,i,ss,x,j,dp,dz)
+		// ---------------------------------
+		// (From-Base-64.) Convert a base-64 string to an array of BE words.
+		// => pack&  [array + .bitSize]
+		{
+			B = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		
+			if( !(/^[a-zA-Z0-9=+\/]+$/.test(s)) ) { throw new Error("Invalid character in base-64 string") }
+			i = s.indexOf('=');
+			if( 0 <= i && i < (s=s.replace(/\=/g,'')).length ){ throw new Error("Invalid '=' found in base-64 string") }
+		
+			pack || (pack=[0]);
+			bits || (bits=0);
+			sz = bits >>> 3;
+			shft = (BE_MOD == -1) ? 3 : 0;
+		
+			for( n=s.length, z=i=0 ; i < n ; i += 4 )
+			{
+				ss = s.substr(i, 4);
+				for( x=0, j=-1 ; ++j < ss.length ; x |= B.indexOf(ss[j])<<(18-(6*j)) );
+		
+				for( j=0/*ok*/ ; ++j < ss.length ; ++z )
+				{
+					for( dp=(dz=z+sz)>>>2 ; pack.length <= dp ; pack.push(0) );
+					pack[dp] |= (0xFF&(x>>>(24-8*j))) << (8*(shft + BE_MOD * (dz % 4)));
+				}
+			}
+		
+			return (pack.bitSize=8*z+bits), pack;
+		},
+
+		THEX: function(/*int[]*/pack,/*uint*/bits,/*-1|1*/BE_MOD,  T,shft,s,z,i,x)
+		// ---------------------------------
+		// (To-Hex.) Convert an array of BE-words to a lowercase hex string.
+		// => str
+		{
+			T = "0123456789abcdef";
+		
+			shft = (BE_MOD == -1) ? 3 : 0;
+			for( s='', z=bits/8, i=-1 ; ++i < z ; )
+			{
+				x = pack[i>>>2]>>>(8*(shft+BE_MOD*(i%4)));
+				s += T.charAt(0xF&(x>>>4)) + T.charAt(0xF&x);
+			}
+		
+			return s;
+		},
+		
+		TB64: function(/*int[]*/pack,/*uint*/bits,/*-1|1*/BE_MOD,/*str=''*/pad,  B,shft,s,z,i,j,x,y,t)
+		// ---------------------------------
+		// (To-Base-64.) Convert an array of BE-words to a base-64 string.
+		// pad :: Base-64 pad string (e.g '='), default being ''.
+		// => str
+		{
+			B = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+			pad || (pad='');
+			shft = (BE_MOD == -1) ? 3 : 0;
+			for( s='', z=bits/8, i=0 ; i < z ; i+=3 )
+			{
+				x = ((1+i) < z) ? pack[(1+i)>>>2] : 0;
+				y = ((2+i) < z) ? pack[(2+i)>>>2] : 0;
+				t = ( (0xFF&(pack[i>>>2]>>>(8*(shft+BE_MOD*(i%4))))) << 16 )
+				  | ( (0xFF&(x >>>(8*(shft+BE_MOD*((1+i)%4))))) << 8 )
+				  | (  0xFF&(y >>>(8*(shft+BE_MOD*((2+i)%4)))) );
+				for( x=bits-8*i, j=-1 ; ++j < 4 ; s += 6*j <= x ? B.charAt(0x3F&(t>>>6*(3-j))) : pad );
+			}
+			return s;
+		},
+		
+		TBYT: function(/*int[]*/pack,/*uint*/bits,/*-1|1*/BE_MOD,  shft,s,z,i,x)
+		// ---------------------------------
+		// (To-Byte-String.) Convert an array of BE-words to raw bytes string.
+		// => str  [each int8 is encoded as a character using fromCharCode.]
+		{
+			for(
+				shft=(-1==BE_MOD)?3:0, s='', z=bits/8, i=-1 ;
+				++i < z ;
+				s += String.fromCharCode(0xFF&(pack[i>>>2]>>>(8*(shft+BE_MOD*(i%4)))))
+			);
+		
+			return s;
+		},
+
+	})
+
+	//==========================================================================
+	// STATE MANAGER
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		NSTA : function(/*?{}*/H,/*?[]&*/r,  t,a,z,i)
+		// ---------------------------------
+		// (New-State.) Get the init state values of the specified SHA variant.
+		// If H is falsy, or has a falsy `init`, return a SHA3 5x5 state.
+		// If r is provided, use it as target, otherwise return a new array.
+		// => int32[] | Int64[] | Int64[5][5]
+		{
+			r ? (r.length=0) : (r=[]);
+		
+			// SHA3 | SHAKE
+			// ---
+			if( (!H) || !(a=H.init) )
+			{
+				for( t=callee.µ.Int64, i=-1 ; ++i < 5 ; r[i]=[t(),t(),t(),t(),t()] );
+				return r;
+			}
+		
+			// 32 bits (SHA-1, SHA-2xx)
+			// ---
+			if( 32 == H.intSize )
+			{
+				r.push.apply(r,a);
+				return r;
+			}
+		
+			// 64 bits (SHA-384, SHA-512)
+			// ---
+			for( t=callee.µ.Int64, z=a.length, i=-1 ; ++i < z ; r.push(t(a[i],a[++i])) );
+			return r;
+		},
+
+		DUP3 : function(/*Int64[][]*/state,  r,i)
+		// ---------------------------------
+		// (Duplicate-SHA3-State.) Return a clone of the given SHA3 state.
+		// => Int64[][]
+		{
+			for( r=[], i=-1 ; ++i < 5 ; r[i] = state[i].slice() );
+			return r;
+		},
+		
+	})
+
+	//==========================================================================
+	// CORE ROUTINES (Round/EndState)
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+
+		RND1 : function(/*int[]*/block,/*int32[]&*/S,  I,q,add,T,i,k,a,b,c,d,e,k,x)
+		// ---------------------------------
+		// (Round-SHA-1.) Perform a round of SHA-1 hashing over a block.
+		// block :: Block to hash.
+		// S     :: State values from a previous round.
+		// => int32[] :: S&
+		{
+			I = callee.µ['~'];
+
+			q = callee.Q || (callee.Q = [
+					['PR32',  0xCA62C1D6],   // 0
+					['CH32',  0x5A827999],   // 1
+					['PR32',  0x6ED9EBA1],   // 2
+					['MJ32',  0x8F1BBCDC],   // 3
+					[]                       // cache
+				]);
+		
+			add = I.AD32;
+		
+			// Load the state.
+			// ---
+			a=S[0];  b=S[1];  c=S[2];  d=S[3];  e=S[4];
+		
+			for( (T=q[q.length-1]).length=0, i=-1 ; ++i < 80 ; (e=d),(d=c),(c=(b<<30)|(b>>>2)),(b=a),(a=x) )
+			{
+				T[i] = 16 > i ? block[i] : ( (k=T[-3+i]^T[-8+i]^T[-14+i]^T[-16+i]), (k<<1)|(k>>>31) );
+				k = 1*(20>i) || 2*(40>i) || 3*(60>i);
+				x = add( (a<<5)|(a>>>27), I[q[k][0]](b,c,d), e, q[k][1], T[i] );
+			}
+		
+			// Resulting state.
+			// ---
+			S[0]=add(a,S[0]);  S[1]=add(b,S[1]);
+			S[2]=add(c,S[2]);  S[3]=add(d,S[3]);
+			S[4]=add(e,S[4]);
+			return S;
+		},
+		
+		END1 : function(/*int32[]*/rm,/*uint*/rmBits,/*uint*/bits,/*int32[]&*/S,  i,p,z,fRnd)
+		// ---------------------------------
+		// (End-SHA-1.) Finalize the SHA-1 hash and return the resulting array.
+		// rm     :: Unprocessed packed ints that still need to be processed.
+		// rmBits :: Number of bits in rm.
+		// bits   :: Number of bits already processed.
+		// S      :: State values from a previous round.
+		// => int32[] :: S&
+		{
+			for( p=15+(((65+rmBits)>>>9)<<4) ; rm.length <= p ; rm.push(0) );
+		
+			rm[rmBits>>>5] |= 0x80 << (24-(rmBits%32));
+		
+			bits += rmBits;
+			rm[-1+p] = 0|(bits/4294967296);
+			rm[p] = 0xFFFFFFFF&bits;
+		
+			for( fRnd=callee.µ['~'].RND1, z=rm.length, i=0 ; i < z ; fRnd(rm.slice(i,i+=16),S) );
+			return S;
+		},
+
+		RND2 : function(/*int[]*/block,/*(int32|Int64)[]&*/S,/*{}*/H,  I,t,z,k,q,Nb,AD,G0,G1,S0,S1,a,b,c,d,e,f,g,h,W,T1,T2,n,i)
+		// ---------------------------------
+		// (Round-SHA-2.) Perform a round of SHA-2 hashing over a block.
+		// block :: Block to hash.
+		// S   :: State values from a previous round.
+		// H   :: SHA-2 variant to apply.
+		// => int32[] | Int64[]  :: S&
+		{
+			I = callee.µ['~'];
+
+			callee.Q || (callee.Q={});
+
+			// t :: 32 | 64
+			// ---
+			32 == (t=H.intSize) ?
+				( (z=64), (k=1), (Nb=$.global.Number) ) :
+				( (z=80), (k=2), (Nb=callee.µ.Int64) );
+
+			if( 32==t )
+			{
+				q = callee.Q.K32 || (callee.Q.K32=[
+				0x428A2F98, 0x71374491, 0xB5C0FBCF, 0xE9B5DBA5,
+				0x3956C25B, 0x59F111F1, 0x923F82A4, 0xAB1C5ED5,
+				0xD807AA98, 0x12835B01, 0x243185BE, 0x550C7DC3,
+				0x72BE5D74, 0x80DEB1FE, 0x9BDC06A7, 0xC19BF174,
+				0xE49B69C1, 0xEFBE4786, 0x0FC19DC6, 0x240CA1CC,
+				0x2DE92C6F, 0x4A7484AA, 0x5CB0A9DC, 0x76F988DA,
+				0x983E5152, 0xA831C66D, 0xB00327C8, 0xBF597FC7,
+				0xC6E00BF3, 0xD5A79147, 0x06CA6351, 0x14292967,
+				0x27B70A85, 0x2E1B2138, 0x4D2C6DFC, 0x53380D13,
+				0x650A7354, 0x766A0ABB, 0x81C2C92E, 0x92722C85,
+				0xA2BFE8A1, 0xA81A664B, 0xC24B8B70, 0xC76C51A3,
+				0xD192E819, 0xD6990624, 0xF40E3585, 0x106AA070,
+				0x19A4C116, 0x1E376C08, 0x2748774C, 0x34B0BCB5,
+				0x391C0CB3, 0x4ED8AA4A, 0x5B9CCA4F, 0x682E6FF3,
+				0x748F82EE, 0x78A5636F, 0x84C87814, 0x8CC70208,
+				0x90BEFFFA, 0xA4506CEB, 0xBEF9A3F7, 0xC67178F2
+				]);
+			}
+			else
+			{
+				q = callee.Q.K64 || (callee.Q.K64=[
+				Nb(0x428A2F98,0xD728AE22) , Nb(0x71374491,0x23EF65CD) ,
+				Nb(0xB5C0FBCF,0xEC4D3B2F) , Nb(0xE9B5DBA5,0x8189DBBC) ,
+				Nb(0x3956C25B,0xF348B538) , Nb(0x59F111F1,0xB605D019) ,
+				Nb(0x923F82A4,0xAF194F9B) , Nb(0xAB1C5ED5,0xDA6D8118) ,
+				Nb(0xD807AA98,0xA3030242) , Nb(0x12835B01,0x45706FBE) ,
+				Nb(0x243185BE,0x4EE4B28C) , Nb(0x550C7DC3,0xD5FFB4E2) ,
+				Nb(0x72BE5D74,0xF27B896F) , Nb(0x80DEB1FE,0x3B1696B1) ,
+				Nb(0x9BDC06A7,0x25C71235) , Nb(0xC19BF174,0xCF692694) ,
+				Nb(0xE49B69C1,0x9EF14AD2) , Nb(0xEFBE4786,0x384F25E3) ,
+				Nb(0x0FC19DC6,0x8B8CD5B5) , Nb(0x240CA1CC,0x77AC9C65) ,
+				Nb(0x2DE92C6F,0x592B0275) , Nb(0x4A7484AA,0x6EA6E483) ,
+				Nb(0x5CB0A9DC,0xBD41FBD4) , Nb(0x76F988DA,0x831153B5) ,
+				Nb(0x983E5152,0xEE66DFAB) , Nb(0xA831C66D,0x2DB43210) ,
+				Nb(0xB00327C8,0x98FB213F) , Nb(0xBF597FC7,0xBEEF0EE4) ,
+				Nb(0xC6E00BF3,0x3DA88FC2) , Nb(0xD5A79147,0x930AA725) ,
+				Nb(0x06CA6351,0xE003826F) , Nb(0x14292967,0x0A0E6E70) ,
+				Nb(0x27B70A85,0x46D22FFC) , Nb(0x2E1B2138,0x5C26C926) ,
+				Nb(0x4D2C6DFC,0x5AC42AED) , Nb(0x53380D13,0x9D95B3DF) ,
+				Nb(0x650A7354,0x8BAF63DE) , Nb(0x766A0ABB,0x3C77B2A8) ,
+				Nb(0x81C2C92E,0x47EDAEE6) , Nb(0x92722C85,0x1482353B) ,
+				Nb(0xA2BFE8A1,0x4CF10364) , Nb(0xA81A664B,0xBC423001) ,
+				Nb(0xC24B8B70,0xD0F89791) , Nb(0xC76C51A3,0x0654BE30) ,
+				Nb(0xD192E819,0xD6EF5218) , Nb(0xD6990624,0x5565A910) ,
+				Nb(0xF40E3585,0x5771202A) , Nb(0x106AA070,0x32BBD1B8) ,
+				Nb(0x19A4C116,0xB8D2D0C8) , Nb(0x1E376C08,0x5141AB53) ,
+				Nb(0x2748774C,0xDF8EEB99) , Nb(0x34B0BCB5,0xE19B48A8) ,
+				Nb(0x391C0CB3,0xC5C95A63) , Nb(0x4ED8AA4A,0xE3418ACB) ,
+				Nb(0x5B9CCA4F,0x7763E373) , Nb(0x682E6FF3,0xD6B2B8A3) ,
+				Nb(0x748F82EE,0x5DEFB2FC) , Nb(0x78A5636F,0x43172F60) ,
+				Nb(0x84C87814,0xA1F0AB72) , Nb(0x8CC70208,0x1A6439EC) ,
+				Nb(0x90BEFFFA,0x23631E28) , Nb(0xA4506CEB,0xDE82BDE9) ,
+				Nb(0xBEF9A3F7,0xB2C67915) , Nb(0xC67178F2,0xE372532B) ,
+				Nb(0xCA273ECE,0xEA26619C) , Nb(0xD186B8C7,0x21C0C207) ,
+				Nb(0xEADA7DD6,0xCDE0EB1E) , Nb(0xF57D4F7F,0xEE6ED178) ,
+				Nb(0x06F067AA,0x72176FBA) , Nb(0x0A637DC5,0xA2C898A6) ,
+				Nb(0x113F9804,0xBEF90DAE) , Nb(0x1B710B35,0x131C471B) ,
+				Nb(0x28DB77F5,0x23047D84) , Nb(0x32CAAB7B,0x40C72493) ,
+				Nb(0x3C9EBE0A,0x15C9BEBC) , Nb(0x431D67C4,0x9C100D4C) ,
+				Nb(0x4CC5D4BE,0xCB3E42B6) , Nb(0x597F299C,0xFC657E2A) ,
+				Nb(0x5FCB6FAB,0x3AD6FAEC) , Nb(0x6C44198C,0x4A475817)
+				]);
+			}
+			
+			
+			// Aliases of 32-bit or 64-bit private manipulators.
+			// ---
+			AD = I['AD'+t];  // Add function:  AD32 | AD64.
+			G0 = I['G0'+t];  // Gamma0 func.:  G032 | G064.
+			G1 = I['G1'+t];  // Gamma1 func.:  G132 | G164.
+			S0 = I['S0'+t];  // Sigma0 func.:  S032 | S064.
+			S1 = I['S1'+t];  // Sigma1 func.:  S132 | S164.
+
+			// Load the state.
+			// ---
+			a=S[0]; b=S[1]; c=S[2]; d=S[3];
+			e=S[4]; f=S[5]; g=S[6]; h=S[7];
+		
+			(W=callee.Q.W||(callee.Q.W=[])).length=0;
+			for( n=block.length, i=-1 ; ++i < z ; (h=g),(g=f),(f=e),(e=AD(d,T1)),(d=c),(c=b),(b=a),(a=AD(T1,T2)) )
+			{
+				W[i] = 16 > i ?
+					Nb( (n <= (t=i*k) ? 0 : block[t]) , (n <= ++t ? 0 : block[t]) ) :
+					AD( G1(W[-2+i]) , W[-7+i] , G0(W[-15+i]) , W[-16+i] );
+				T1 = AD(h, S1(e), (e&f)^(~e&g), q[i], W[i]);
+				T2 = AD(S0(a), (a&b)^(a&c)^(b&c));
+			}
+		
+			// Resulting state.
+			// ---
+			S[0]=AD(a,S[0]); S[1]=AD(b,S[1]); S[2]=AD(c,S[2]); S[3]=AD(d,S[3]);
+			S[4]=AD(e,S[4]); S[5]=AD(f,S[5]); S[6]=AD(g,S[6]); S[7]=AD(h,S[7]);
+
+			return (W.length=0), S;
+		},
+		
+		END2 : function(/*int[]*/rm,/*uint*/rmBits,/*uint*/bits,/*(int32|Int64)[]&*/S,/*uint*/oBits,/*{}*/H,  t,di,p,i,z,fRnd)
+		// ---------------------------------
+		// (End-SHA-2.) Finalize the SHA-2 hash and return the resulting array.
+		// rm     :: Unprocessed packed ints that still need to be processed.
+		// rmBits :: Number of bits in rm.
+		// bits   :: Number of bits already processed.
+		// S      :: State values from a previous round.
+		// oBits  :: output length.
+		// H      :: SHA-2 variant to apply.
+		// => int32[] :: S&   (32-bit coercion if needed.)
+		{
+			di = (t=H.intSize)>>>1;
+			p =  32==t ? (15+(((65+rmBits)>>>9)<<4)) : (31+(((129+rmBits)>>>10)<<5));
+		
+			while( rm.length <= p ){ rm.push(0) }
+		
+			rm[rmBits >>> 5] |= 0x80 << (24 - rmBits % 32);
+			bits += rmBits;
+			rm[-1+p] = 0|(bits/4294967296);
+			rm[p] = 0xFFFFFFFF&bits;
+		
+			for( fRnd=callee.µ['~'].RND2, z=rm.length, i=0 ; i < z ; fRnd(rm.slice(i,i+=di),S,H) );
+		
+			S.length = oBits / t;
+			if( 32==t ) return S;
+			for( i=S.length ; i-- ; (t=S[i]), (S[1+2*i]=t.LO), (S[2*i]=t.HI) );
+			return S;
+		},
+
+		RND3 : function(/*null|num[]*/block,/*Int64[][]&*/S,  I,t,i,j,z,B,C,D,X,R)
+		// ---------------------------------
+		// (Round-SHA-3.) Perform a round of SHA-3 hashing over a block.
+		// block :: Block to hash.
+		// S     :: State values from a previous round.
+		// => Int64[][] :: S&
+		{
+			I = callee.µ['~'];
+			t = callee.µ.Int64;
+
+			callee.Q||(callee.Q = {
+				X3: [
+					t(0x00000000, 0x00000001), t(0x00000000, 0x00008082),
+					t(0x80000000, 0x0000808A), t(0x80000000, 0x80008000),
+					t(0x00000000, 0x0000808B), t(0x00000000, 0x80000001),
+					t(0x80000000, 0x80008081), t(0x80000000, 0x00008009),
+					t(0x00000000, 0x0000008A), t(0x00000000, 0x00000088),
+					t(0x00000000, 0x80008009), t(0x00000000, 0x8000000A),
+					t(0x00000000, 0x8000808B), t(0x80000000, 0x0000008B),
+					t(0x80000000, 0x00008089), t(0x80000000, 0x00008003),
+					t(0x80000000, 0x00008002), t(0x80000000, 0x00000080),
+					t(0x00000000, 0x0000800A), t(0x80000000, 0x8000000A),
+					t(0x80000000, 0x80008081), t(0x80000000, 0x00008080),
+					t(0x00000000, 0x80000001), t(0x80000000, 0x80008008)
+				],
+				R3: [
+					[ 0, 36,  3, 41, 18],
+					[ 1, 44, 10, 45,  2],
+					[62,  6, 43, 15, 61],
+					[28, 55, 25, 21, 56],
+					[27, 20, 39,  8, 14]
+				],
+				qB: [],
+				qC: [],
+				qD: [],
+			});
+
+			// If block != null, init state from it.
+			// ---
+			for( (z=block?block.length:0), i=0 ; i < z ; i+=2 )
+			{
+				j = i >>> 1;
+				S[j%5][0|(j/5)] ^= t(block[1+i], block[i]);
+			}
+
+			B = callee.Q.qB;
+			(C=callee.Q.qC).length=0;
+			(D=callee.Q.qD).length=0;
+			for( X=callee.Q.X3, R=callee.Q.R3, z=-1 ; ++z < 24 ; S[0][0]^=X[z] )
+			{
+				// Default state is SHA3 (i.e 5x5-Int64()-state.)
+				// ---
+				I.NSTA('',B); // => B&
+
+				// Theta step.
+				// ---
+				for( i=-1 ; ++i < 5 ; (t=S[i]), (C[i]=t[0]^t[1]^t[2]^t[3]^t[4]) );
+				for( i=-1 ; ++i < 5 ; D[i] = C[(4+i)%5]^(C[(1+i)%5]<<1) );
+				for( i=-1 ; ++i < 5 ; )for( t=S[i], j=-1 ; ++j < 5 ; t[j]^=D[i] );
+
+				// Combined ro and pi steps.
+				// ---
+				for( i=-1 ; ++i < 5 ; )
+				for( t=S[i], j=-1 ; ++j < 5 ; B[j][(2*i+3*j)%5] = t[j] << R[i][j] );
+
+				// Chi step.
+				// ---
+				for( i=-1 ; ++i < 5 ; )
+				for( t=S[i], j=-1 ; ++j < 5 ; t[j] = B[i][j] ^ (~(B[(1+i)%5][j]) & B[(2+i)%5][j]) );
+			}
+
+			return S;
+		},
+		
+		END3 : function(/*[]*/rm,/*uint*/rmBits,/*uint*/bits,/*Int64[][]&*/S,/*uint*/oBits,/*{}*/H,  bkSz,fRnd,di,i,z,r,p,x)
+		// ---------------------------------
+		// (End-SHA-3.) Finalize the SHA-3 hash and return the resulting array.
+		// rm     :: Unprocessed packed ints that still need to be processed.
+		// rmBits :: Number of bits in rm.
+		// bits   :: Number of bits already processed (unused.) [TODO?]
+		// S      :: State values from a previous round.
+		// H      :: SHA-3 variant to apply.
+		// => int32[]  [new array, unlike other END methods.]
+		{
+			bkSz  = H.blockSize;
+			fRnd = callee.µ['~'].RND3;
+		
+			for(
+				di=bkSz>>>5, z=rmBits>>>5, i=0 ;
+				i < z && rmBits >= bkSz ;
+				(S=fRnd(rm.slice(i,i+=di),S)),(rmBits-=bkSz)
+			);
+		
+			for( rm=rm.slice(i) ; rm.length < di ; rm.push(0) );
+		
+			i = (rmBits%=bkSz) >>> 3;
+			rm[i>>2]  ^= (H.delim<<(8*(i%4)));
+			rm[-1+di] ^= 0x80000000;
+			S = fRnd(rm, S);
+		
+			for( r=[], p=0, z=0 ; oBits > 32*z ; )
+			{
+				r[z++] = (x=S[p%5][0|(p/5)]).LO;
+				if( 32*z >= oBits ) break;
+
+				r[z++] = x.HI;
+				if( (64*++p)%bkSz ) continue;
+
+				fRnd(null, S);
+			}
+		
+			return r;
+		},
+
+	})
+
+	//==========================================================================
+	// FACADE
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		UPDT : function(/*{}&*/o,/*str*/data,/*fct*/fFmt,/*0|1*/LE,  I,H,bits,t,bkSz,fRnd,n,z,di,i)
+		// ---------------------------------
+		// (Update.) Called from the public update method.
+		// => undefined
+		{
+			I = callee.µ['~'];
+			H = o.sha;
+
+			data = fFmt(data,o.remainder,o.remSz,H.BE_MOD,LE);
+			bits = data.bitSize;
+
+			t = H.type;
+			bkSz = H.blockSize;
+			for( fRnd=I['RND'+t], di=bkSz>>>5, n=bits>>>5, z=i=0 ; i < n ; i += di )
+			{
+				if( z + bkSz > bits ) continue;
+				o.state = fRnd(data.slice(i,i+di),o.state, H);
+				z += bkSz;
+			}
+	
+			o.doneSz += z;
+			o.remainder = data.slice(z >>> 5);
+			o.remSz = bits % bkSz;
+		},
+
+		SHMK : function(/*{}&*/o,/*str*/data,/*fct*/fFmt,/*0|1*/LE,  I,H,bits,t,z,i,p)
+		// ---------------------------------
+		// (Set-HMAC-Key.) Called from the ctor, if necessary.
+		// => undefined
+		{
+			I = callee.µ['~'];
+			H = o.sha;
+
+			data = fFmt(data,0,0,H.BE_MOD,LE);
+			bits = data.bitSize;
+	
+			t = H.type;
+			z = H.blockSize >>> 3;
+			p = (z / 4) - 1;
+			0 > (i=z-(bits/8)) && (data=I['END'+t](data, bits, 0, I.NSTA(H), o.outSz, H));
+			if( !i )
+			{
+				while( data.length <= p ){ data.push(0) }
+				data[p] &= 0xFFFFFF00;
+			}
+	
+			// Create ipad and opad.
+			// ---
+			for( i=-1 ; ++i <= p ; (o.ipad[i]=data[i]^0x36363636), (o.opad[i]=data[i]^0x5C5C5C5C) );
+			o.state = I['RND'+t](o.ipad, o.state, H);
+			o.doneSz = H.blockSize;
+		},
+
+	})
+
+	//==========================================================================
+	// STATIC
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+
+		onEngine: function onEngine_(  $$)
+		// ---------------------------------
+		// In either WARN or TRACE mode, performs an auto-test.
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			(+$$.Log()) && callee.µ['~'].TEST();
+		},
+
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_S_s_s_(/*str=auto*/shaVariant,/*?str*/hmacKey,/*str=UTF8*/hkFormat,  $$,I,k,t)
+		// ---------------------------------
+		// Constructor. Instantiate a SHA (or HMAC-SHA) hasher according to the
+		// specified family variant (see detail below.)
+		// Data structure:
+		//       { sha:obj, outSz:uint, state:arr, doneSz:uint, remainder:arr, remSz:uint,
+		//         hmac:0|1, ipad:0|arr, opad:0|arr }
+		// ---
+		// shaVariant  :: SHA-1 | SHA-224 | SHA-256 | SHA-384 | SHA-512 |
+		//                SHA3-224 | SHA3-256 | SHA3-384 | SHA3-512 |
+		//                SHAKE128_<outsize=256> | SHAKE256_<outsize=512>
+		//                'SHA' prefix and hyphens are optional;
+		//                final key must be registered in ~.SHAF.
+		// hmacKey     :: If provided, set a HMAC key and converts the present instance
+		//                into a HMAC-hasher. `hmacKey` is a cryptographic key used to
+		//                calculate the HMAC. It is uniquely associated with one or more
+		//                entities. The user is responsible for protecting the key from
+		//                disclosure or substitution.
+		// hkFormat    :: Input format of `hmacKey`, if supplied.
+		//                (`HEX` | `B64` | `BYTES` | `UTF8` | `UTF16LE` | `UTF16BE`)
+		// ---
+		// E.g            var H1 = new $$.SHA("SHA256");
+		//                var H2 = $$.SHA("SHAKE128_512");
+		//                var H3 = $$.SHA("3-224", "MySecretKey");
+		//                var H4 = $$.SHA("SHA-512", <Base64Key>, "B64");
+		// ---
+		// [REM] Unlike other implementations the present one requires the HMAC key (if used)
+		// to be loaded at construction time. Doing so automatically selects the relevant process
+		// in getHash(), which reinforces the consistent use of the API.
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			// Normalize shaVariant -> k
+			// (Keeps /[A-Z0-9_]/i and uppercase.)
+			// ---
+			shaVariant = String(shaVariant||I.DSHA).toUpperCase();
+			'SHA' == shaVariant.substr(0,3) || (shaVariant='SHA'+shaVariant);
+			k = shaVariant.replace(I.RSHA,'');
+
+			// Parse SHA variant and determine output length.
+			// ---
+			t = 0 <= (t=k.lastIndexOf('_')) ?
+				[ parseInt(k.substr(1+t),10), (k=k.substr(0,t)) ][0] :
+				false;
+
+			if( !I.SHAF.hasOwnProperty(k) )
+			{
+				$$.error(__("Unknown SHA variant (%1). Cannot instantiate a new SHA object.",shaVariant), callee);
+			}
+
+			this.sha = I.SHAF[k];
+
+			if( false !== t )
+			{
+				if( !this.sha.isShake )
+				{
+					$$.error(__("The SHA variant %1 does not support custom output length.",shaVariant), callee);
+				}
+				if( isNaN(t) || (t%8) )
+				{
+					$$.error(__("Invalid output length (%1) for the variant %2. Should be a multiple of 8.",t,shaVariant), callee);
+				}
+				this.outSz = t;
+			}
+			else
+			{
+				if( this.sha.isShake )
+				{
+					(+$$.trace) && $$.trace(__("%1 > Default output length (%2) selected for %3...",callee.µ,this.sha.outSize,shaVariant));
+				}
+				this.outSz = this.sha.outSize;
+			}
+
+			// Is there a HMAC Key?
+			// ---
+			if( hmacKey )
+			{
+				if( this.sha.isShake )
+				{
+					$$.error(__("SHAKE is not supported for HMAC."), callee);
+				}
+
+				if( 'string' != typeof hmacKey )
+				{
+					$$.error(__("Invalid HMAC key type (%1). Should be a string.",typeof hmacKey), callee);
+				}
+
+				if( !I.MAPF.hasOwnProperty(hkFormat||(hkFormat='UTF8')) )
+				{
+					$$.error(__("Unknown input format (%1). Should be either 'HEX', 'B64', 'BYTES', 'UTF8', 'UTF16LE', or 'UTF16BE'.", hkFormat), callee);
+				}
+
+				this.hmac = 1;
+				this.ipad = [];
+				this.opad = [];
+			}
+			else
+			{
+				this.hmac = this.ipad = this.opad = 0;
+			}
+
+			// Common setup.
+			// ---
+			this.state = I.NSTA(this.sha);
+			this.doneSz = 0;
+			this.remainder = [];
+			this.remSz = 0;
+
+			// HMAC case (set key.)
+			// ---
+			this.hmac && I.SHMK( this, hmacKey, I['F'+I.MAPF[hkFormat]], +('LE'==hkFormat.substr(-2)) );
+		},
+
+		update : function update_S_s_Õ(/*str*/data,/*str=UTF8*/inFormat,  I,H)
+		// ---------------------------------
+		// Load the source string (`data`) and update the inner attributes
+		// for either a future update or getHash call.
+		// data     :: Source string.
+		// inFormat :: Format of `data` among 'HEX', 'B64', 'BYTES', 'UTF8', 'UTF16LE', or 'UTF16BE'.
+		//             Default is UTF8.
+		// => this&
+		{
+			I = callee.µ['~'];
+			H = this.sha;
+
+			if( !I.MAPF.hasOwnProperty(inFormat||(inFormat='UTF8')) )
+			{
+				$.global[callee.µ.__root__]
+				.error(__("Unknown input format (%1). Should be either 'HEX', 'B64', 'BYTES', 'UTF8', 'UTF16LE', or 'UTF16BE'.", inFormat), callee);
+			}
+			
+			I.UPDT( this, data, I['F'+I.MAPF[inFormat]], +('LE'==inFormat.substr(-2)) );
+
+			return this;
+		},
+
+		getHash : function getHash_s_s_i_S(/*str=HEX*/outFormat,/*str='='*/b64Pad,/*uint=1*/rounds,  $$,I,tFmt,H,fEnd,S,oBits,T,i,b,x)
+		// ---------------------------------
+		// outFormat :: One of 'HEX', 'B64', or 'BYTES'. Default is HEX.
+		// -> HEX (Hex-string)    e.g "a9993e364706816aba3e25717850c26c9cd0d89d"
+		// -> B64 (Base-64)       e.g "qZk+NkcGgWq6PiVxeFDCbJzQ2J0="
+		// -> BYTES (Byte-string) e.g "\xA9\x99>6G\x06\x81j\xBA>%qxP\xC2l\x9C\xD0\xD8\x9D"
+		// b64Pad    :: Base64-Pad string (if B64 is selected.) Default is '='.
+		// rounds    :: Number of rounds (>=1) if sha is `SHAKExxx`. Ignored otherwise.
+		// [REM] The output length of SHAKE variants must be set at instantiation time.
+		// => str
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			// Validate outFormat first.
+			// ---
+			if( !I.MAPF.hasOwnProperty(outFormat||(outFormat='HEX')) )
+			{
+				$$.error(__("Unknown output format (%1). Should be either 'HEX', 'B64', or 'BYTES'.", outFormat), callee);
+			}
+			if( 'function' != typeof (tFmt=I['T'+I.MAPF[outFormat]]) )
+			{
+				$$.error(__("The format %1 is not supported for output. Use either 'HEX', 'B64', or 'BYTES'.", outFormat), callee);
+			}
+
+			// End steps.
+			// ---
+			H = this.sha;
+			oBits = this.outSz;
+			fEnd = I['END'+H.type];
+
+			S = fEnd(
+				this.remainder.slice(), this.remSz, this.doneSz,
+				( H.type < 3 ? this.state.slice() : I.DUP3(this.state) ),
+				oBits, H
+				);
+
+			while( 1 )
+			{
+				if( this.hmac )
+				{
+					T = I['RND'+H.type](this.opad, I.NSTA(H), H);
+					S = fEnd(S, oBits, H.blockSize, T, oBits, H);
+					break;
+				}
+
+				if( (!H.isShake) || 1 >= (i=(rounds>>>=0)||1) ) break;
+
+				(b=oBits%32) && (x=0xFFFFFF >>>(24-b));
+
+				while( --i )
+				{
+					b && (S[-1+S.length]&=x);
+					S = fEnd(S, oBits, 0, I.NSTA(H), oBits, H);
+				}
+				break;
+			}
+
+			// To-Format
+			// ---
+			'undefined' == typeof b64Pad && (b64Pad = '=');
+			return tFmt( S, oBits, H.BE_MOD, String(b64Pad) );
+		},
+
+	})
+
+	/*
+	
+	Makes the Int64 class available at including time.
+	
+	*/
+
+	#include 'SHA/$$.Int64.jsxlib'
