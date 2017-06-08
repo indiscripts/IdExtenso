@@ -18,17 +18,17 @@
 		                nextProbablePrime() not() or() pow() remainder()
 		                setBit() shiftLeft() shiftRight() signum() square()
 		                subtract() testBit() toByteArray() toByte()
-		                toShort() toInt() toLong() toString() xor()
+		                toShort() toInt() toLong() toSource() toString() xor()
 		    Operators:  ==  <  <=  +  -  *  /  %  <<  >>  >>>  ~  &  |  ^
 		                [REM] ++ and -- are *not* supported.
 		DOM-access:     NO
-		Todo:           prototype.toSource(), toLong()
+		Todo:           toLong()
 		Created:        170503 (YYMMDD)
-		Modified:       170527 (YYMMDD)
+		Modified:       170608 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 170527))
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 170608))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1320,6 +1320,28 @@
 	})
 
 	//==========================================================================
+	// JSON HOOK
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		
+		JSON : function(/*obj*/x)
+		// ---------------------------------
+		// (JSON-Hook.) [ADD170607] Here the `this` context is $$.JSON['~']
+		// and x is *probably* a BigInt instance (as x.constructor.name
+		// is "BigInt".) Thanks to onEngine the present function is referenced
+		// as $$.JSON['~']['\x02BigInt'] and must return a string that evaluates
+		// to x. (This is done using BigInt.prototype.toSource.)
+		{
+			if( (!x) || x.constructor !== callee.µ ) return ''; // [KO]
+			return x.toSource();
+		},
+
+	})
+
+	//==========================================================================
 	// STATIC API
 	//==========================================================================
 
@@ -1554,6 +1576,10 @@
 			callee.µ.NAN     = I.NAN =     I.FNAN(null);
 			callee.µ.POS_INF = I.POS_INF = I.FINF(null, 0);
 			callee.µ.NEG_INF = I.NEG_INF = I.FINF(null,-1);
+			
+			// [ADD170607] Load the JSON Hook.
+			// ---
+			$.global[callee.µ.__root__].JSON['~']['\x02BigInt'] = I.JSON;
 		},
 
 		probablePrime: function probablePrime(/*uint*/bits,/*Random=auto*/rng,  $$,I)
@@ -2163,10 +2189,14 @@
 		modInverse : function modInverse_$BigInt$X_$BigInt$(/*BigInt|any*/M,  mev,I,V,D)
 		// ---------------------------------
 		// => New BigInt whose value is R s.t. `this*R = 1 mod M`.
+		// ---
 		// [REM] Should throw an exception if M <= 0, or this BigInt
 		// has no multiplicative inverse mod M (that is, this BigInt
 		// is not relatively prime to M). In the present implementation,
 		// ZERO is returned on any failure.
+		// ---
+		// [RES] The modular inverse `1/T mod M` is defined as the integer X
+		// such that X*T == 1 mod M. It exists iff T and M have no common factors.
 		// ---
 		// Support of non-finite operands => I.ZERO.
 		{
@@ -2599,6 +2629,15 @@
 		// [TODO]
 		{
 			return Number.NaN;
+		},
+
+		toSource : function toSource_S()
+		// ---------------------------------
+		// [ADD170607]
+		// => String that evaluates to a BigInt equal to this.
+		// E.g `BigInt("123456789")`
+		{
+			return __('BigInt("%1")',this.toString(10));
 		},
 
 		toString : function toString_y_S(/*uint=10*/rx,  z,k)
