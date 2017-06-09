@@ -8,14 +8,14 @@
 		Core:           NO
 		Kind:           Module.
 		API:            =get() parseURI() browse()
-		DOM-access:     ---
-		Todo:           Support for https/ssl (possible?)
+		DOM-access:     YES (as far as app.doScript may be involved.)
+		Todo:           Tests, alt. method on Mac platforms.
 		Created:        170403 (YYMMDD)
-		Modified:       170428 (YYMMDD)
+		Modified:       170609 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170428, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170609, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -29,6 +29,10 @@
 	"invalid protocol" error.
 
 	*/
+
+	//==========================================================================
+	// CONSTANTS AND URI PARSING.
+	//==========================================================================
 
 	[PRIVATE]
 
@@ -114,6 +118,10 @@
 			for( n=(a=this.ELMS).length, i=-1 ; ++i < n ; r[a[i]]=m[i]||'' );
 		},
 	})
+
+	//==========================================================================
+	// SOCKET-BASED PROCESS (HTTP 1.x)
+	//==========================================================================
 
 	[PRIVATE]
 
@@ -219,9 +227,21 @@
 			return 0 <= q.pending ? q.buff.length : -1;
 		},
 
+		DOUT : function(/*obj&*/R)
+		//----------------------------------
+		// (Default-Output.) [ADD170609] Helper function.
+		// => R&
+		{
+			R.status = '';
+			R.statusCode = 0;
+			R.headers ? $.global[callee.µ.__root__].kill(R.headers) : (R.headers={});
+			R.data = '';
+			delete R.error;
+		},
+
 		HGET : function(/*obj&*/R,/*obj*/uri,/*bool*/isBin,/*uint*/tmo,  q,cs,cc,nl,okLine,line,wip,z,x)
 		//----------------------------------
-		// Get the uri thru HTTP 1.0.
+		// Get the uri contents thru HTTP 1.0.
 		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
 		// `uri` must provide { host, port, location }
 		// ---
@@ -252,11 +272,7 @@
 
 			// Default output.
 			// ---
-			R.status = '';
-			R.statusCode = 0;
-			R.headers ? $.global[callee.µ.__root__].kill(R.headers) : (R.headers={});
-			R.data = '';
-			delete R.error;
+			callee.µ['~'].DOUT(R);
 
 			// Init the cache.
 			// ---
@@ -411,6 +427,141 @@
 	})
 
 	//==========================================================================
+	// ALTERNATE METHODS (HTTPS)
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		ALTG : $$.inMac ?
+		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo)
+		// -------------------------------------
+		// Not implemented yet.
+		// => -2 [any-error]
+		{
+			// Default output.
+			// ---
+			callee.µ['~'].DOUT(R);
+			R.error = "Not implemented yet.";
+			return -2;
+		}
+		:
+		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  $$,q,resType,vbs,k,s,a,args)
+		// -------------------------------------
+		// [ADD170609] Alternate HTTP(S) getter *for Win platforms*.
+		// Try to get `uri` contents using VBS' MSXML2.XMLHTTP object,
+		// which should support https.
+		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
+		// `uri` must provide a `source` property.
+		// ---
+		// [WARN] As this routine requires app.doScript() it can't work
+		// in a modal context (and has to hit the DOM.) The caller is
+		// responsible for checking that modalState is 0.
+		// ---
+		// If isBin is OFF, use `responseText` and return a plaintext.
+		// If isBin is ON,  use `responseBody` and return a byte sequence
+		// as a JS String, e.g "\u1234\u9abc" means 0x12,0x34,0x9a,0xbc.
+		// (Big vs. Little Endian has to be checked though.)
+		// => -2 [any-error] | +1 [OK]
+		{
+			// Default output.
+			// ---
+			callee.µ['~'].DOUT(R);
+
+			// Aliases.
+			// ---
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			q = callee.Q||(callee.Q={
+				status     : 'ALTG_status',
+				statusCode : 'ALTG_statusCode',
+				data       : 'ALTG_data',
+				headers    : 'ALTG_headers',
+				});
+
+			resType = isBin ? 'responseBody' : 'responseText';
+
+			// VBScript.
+			// ---
+			// [RES] A client computer can use the XMLHTTP object (MSXML2.XMLHTTP)
+			// to send an arbitrary HTTP request, receive the response, and have
+			// the XML Document Object Model parse that response.
+			// This object is integrated with XML Core Services (MSXML) to support
+			// sending the request body directly from, and parsing the response
+			// directly into, the MSXML DOM objects. When combined with the support
+			// for Extensible Stylesheet Language (XSL), XMLHTTP provides an easy
+			// way to send structured queries to HTTP servers and display results
+			// with a variety of presentations. Usual sequence is to call the open
+			// method, set any custom header information through the setRequestHeader
+			// method followed by the send method, and then to check one of the four
+			// different response properties.
+			// Requires: msxml3.dll (MSXML 3.0), or msxml6.dll (MSXML 6.0).
+			// https://msdn.microsoft.com/en-us/library/ms760305(v=vs.85).aspx
+			// ---
+
+			vbs = __(
+			"""
+				Dim wsh, args, http, sc
+				'---
+				Set wsh =  CreateObject("WScript.Shell")
+				Set args = CreateObject("InDesign.Application").ScriptArgs
+				Set http = CreateObject("MSXML2.XMLHTTP")
+				'---
+				If Not IsEmpty( http ) Then
+					http.Open "GET", "%1", False
+					http.Send
+					sc = http.Status
+					args.SetValue "%3", CStr(http.StatusText)
+					args.SetValue "%4", CStr(sc)
+					If sc = 200 Then
+						args.SetValue "%5", CStr(http.%2)
+					End If
+					args.SetValue "%6", CStr(http.getAllResponseHeaders())
+				End If
+				'---
+				Set http = Nothing
+				Set wsh = Nothing
+			"""
+			, /*1*/uri.source,/*2*/resType
+			, /*3*/q.status,  /*4*/q.statusCode
+			, /*5*/q.data,    /*6*/q.headers
+			);
+
+			// Run script.
+			// ---
+			app.doScript(vbs, ScriptLanguage.VISUAL_BASIC);
+
+			// Retrieve and parse script args.
+			// ---
+			args = app.scriptArgs;
+			for( k in q )
+			{
+				if( !q.hasOwnProperty(k) ) continue;
+				s = args.getValue(q[k]);
+				args.setValue(q[k],'');
+				switch(k)
+				{
+					case 'statusCode':
+						R[k] = parseInt(s,10)||0;
+						break;
+					case 'headers':
+						a = s.trim().split(RegExp.LINEs);
+						while( s=a.shift() )
+						{
+							k = (s=s.split(':')).shift().trim();
+							R.headers[k] = (s=s.join(":").trim());
+							(+$$.trace) && $$.trace(__("%1 > HTTP Header %2: %3.",callee.µ,k,s.toSource()));
+						}
+						break;
+					default:
+						R[k] = s;
+				}
+			}
+			
+			return R.statusCode ? 1 : ((R.error="No result from XMLHTTP."),-2);
+		},
+	})
+
+	//==========================================================================
 	// API
 	//==========================================================================
 
@@ -439,7 +590,9 @@
 			if( o.host )
 			{
 				p = parseInt(o.port, 10) || 0;
-				( 0 >= p || 0xFFFF < p ) && (p=80);
+				
+				( 0 >= p || 0xFFFF < p ) && (p=80); // [TODO] https case
+				
 				o.port = p;
 				o.authority = __("%1%2%3", o.userInfo, (o.userInfo?'@':''), o.host+':'+o.port );
 			}
@@ -456,7 +609,7 @@
 			return o;
 		},
 		
-		get : function get_S_b_y_b_y_Õ(/*str*/uri,/*0|1=0*/isText,/*uint=120*/timeOut,/*0|1=0*/VOLATILE,/*?uint*/R301,  $$,r)
+		get : function get_S_b_y_b_y_Õ(/*str*/uri,/*0|1=0*/isText,/*uint=120*/timeOut,/*0|1=0*/VOLATILE,/*?uint*/R301,  $$,r,kGet)
 		//----------------------------------
 		// Download a resource thru an HTTP/1.0 GET request and return the result
 		// in the form {status:str, statusCode:uint, headers:{}, data:str}.
@@ -514,9 +667,19 @@
 
 			uri = callee.µ.parseURI(uri,1);
 
-			if( 'http' != uri.protocol )
+			// [CHG170609] Added https case.
+			// ---
+			switch( uri.protocol )
 			{
-				$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
+				case 'http':
+					kGet = 'HGET';
+					break;
+				case 'https':
+					$$.trace(__("%1 > https required for uri %2.",callee.µ,uri.source.toSource()));
+					kGet = app.modalState ? 'HGET' : 'ALTG';
+					break;
+				default:
+					$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
 			}
 
 			if( !uri.host )
@@ -531,14 +694,24 @@
 
 			r = VOLATILE ? (callee.Q||(callee.Q={})) : {};
 			
-			switch( callee.µ['~'].HGET(r,uri,!isText,timeOut) )
+			switch( callee.µ['~'][kGet](r,uri,!isText,timeOut) )
 			{
+				case -2 :
+					// Alternate error.
+					// ---
+					$$.warn( __("%1 > %2",callee.µ,r.error) );
+					break;
+
 				case -1 :
+					// Socket error.
+					// ---
 					r.error = __("Cannot open the HTTP socket.");
 					$$.warn( __("%1 > %2",callee.µ,r.error) );
 					break;
 
 				case 0 :
+					// Any http error incl. timeout.
+					// ---
 					r.error = __("HTTP error or timeout.");
 					$$.warn( __("%1 > %2",callee.µ,r.error) );
 					break;
@@ -555,7 +728,7 @@
 						uri = r.headers.Location;
 						$$.warn( __("%1 > HTTP 301 Redirection to %2.",callee.µ, uri) );
 						VOLATILE || $$.kill(r);
-						r = callee(uri,!isText,timeOut,VOLATILE,R301);
+						r = callee(uri,isText,timeOut,VOLATILE,R301); // [FIX170609]
 					}
 			}
 
