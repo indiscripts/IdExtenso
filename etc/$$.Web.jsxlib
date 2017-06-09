@@ -24,10 +24,12 @@
 	/*
 
 	The current version of get() sends `HTTP/1.0 GET` requests but should deal
-	with any 1.x answer. However, since https is not supported (yet), if the
-	server emits a 301 redirection to 'https' the function will throw an
-	"invalid protocol" error.
-
+	with any 1.x answer.
+	
+	[CHG170609] The protocol https is now supported on Win platforms (so far.)
+	If the server emits a 301 redirection to 'https' the function will try to
+	get contents using `~.ALTG`.
+	
 	*/
 
 	//==========================================================================
