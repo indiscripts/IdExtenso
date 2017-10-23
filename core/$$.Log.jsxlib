@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           WINDOW device.
 		Created:        150502 (YYMMDD)
-		Modified:       170329 (YYMMDD)
+		Modified:       171024 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,8 +32,7 @@
 	// WARN mode can only warn.
 	// ---
 
-
-;eval(__(MODULE, $$, 'Log', 170329, 'log'))
+;eval(__(MODULE, $$, 'Log', 171024, 'log'))
 
 	[PRIVATE]
 	
@@ -212,6 +211,8 @@
 		init: function init_ts_(/*-1|0|1|'TRACE'|'MUTE'|'WARN'=0*/logLevel,  I)
 		//----------------------------------
 		// Initialize the Log (i.e, invalidate the file & set the level.)
+		// [FIX171024] Added an explicit `typeof logLevel` test, since
+		// ExtendScript wrongly regards (undefined < 0) as true!
 		// ---
 		// [REM] The reason why we don't use a regular `onLoad` handler is
 		// that $$.load() needs to call Log.init() *before* processing
@@ -228,6 +229,8 @@
 			// Invalidate the Log file.
 			// ---
 			delete callee.µ['~'].FPSH.Q;
+
+			logLevel||(logLevel=0);
 
 			'string' == typeof logLevel &&
 				(logLevel=logLevel.charAt(0).toUpperCase()) &&
