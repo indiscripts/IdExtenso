@@ -16,7 +16,7 @@
 $$.load('TRACE');
 
 // =============================================================================
-// GetWebImage [170408]
+// GetWebImage [171024]
 // Download a remote PNG (through http) and load it in a ScriptUI dialog.
 // ---
 // Demonstrates:
@@ -25,9 +25,10 @@ $$.load('TRACE');
 // - Tracing script steps thru `$$.trace()`
 // - Details on log levels and associated behaviors
 // =============================================================================
+
 try
 {
-	const url = 'http://pbs.twimg.com/profile_images/1480257582/indiscripts_bigger.png';
+	const url = "http://indiscripts.com/blog/public/IndiscriptsLogo.png";
 	
 	// GET url (via HTTP/1.0 transaction.)
 	// ---
@@ -38,7 +39,7 @@ try
 		$$.error(img.error);
 	}
 	
-	// Show what the stringified PNG looks like (-> log trace.)
+	// Show how the stringified PNG looks like (-> log trace.)
 	// ---
 	// [REM] String.prototype.toSource is improved by IdExtenso :-)
 	// ---
@@ -56,7 +57,7 @@ try
 	// ---
 	var dlg = new Window('dialog');
 	dlg.add('panel')
-		.add('statictext', void 0, "Here is my Twitter logo:").parent
+		.add('statictext', void 0, "Here is my Great logo:").parent
 		.add('image', void 0, img.data).parent
 		.add('button',void 0, "OK", {name:'OK'});
 	dlg.show();
