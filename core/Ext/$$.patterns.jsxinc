@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       171024 (YYMMDD)
 
 *******************************************************************************/
 
@@ -126,7 +126,7 @@
 
 	*/
 
-	// <BK> U+005C `\` Bakslash
+	// <BK> U+005C `\` Backslash
 	// -------------------------------------------------------------------------
 	String.BK   = '\u005C';
 	RegExp.BK   = /\u005C/g;                                    // /BK/
@@ -158,13 +158,13 @@
 	// <DQ> U+0022 `"` Double Quote
 	// <SQ> U+0027 `'` Single Quote
 	// -------------------------------------------------------------------------
-	String.DQ   = '\u0022'
+	String.DQ   = '\u0022';
 	RegExp.DQ   = /\u0022/g;                                    // /DQ/
 	String._DQ  = String.BKDQ = String.BK + String.DQ;          // Regular esc `\"`
 	RegExp.BKDQ = /\u005C\u0022/g;                              // /BKDQ/ only
 	RegExp._DQ  = /\u005C(?:\u0022|u0022|[xX]22)/g;             // /any-esc/
 	// ---
-	String.SQ   = '\u0027'
+	String.SQ   = '\u0027';
 	RegExp.SQ   = /\u0027/g;                                    // /SQ/
 	String._SQ  = String.BKSQ = String.BK + String.SQ;          // Regular esc `\"`
 	RegExp.BKSQ = /\u005C\u0027/g;                              // /BKSQ/ only
