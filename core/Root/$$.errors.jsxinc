@@ -9,9 +9,9 @@
 		Kind:           Part of the Root module.
 		API:            beep() logErrors error() receiveError()
 		DOM-access:     ---
-		Todo:           refine error and receiveError
+		Todo:           Refine receiveError ; more tests!
 		Created:        150502 (YYMMDD)
-		Modified:       170417 (YYMMDD)
+		Modified:       171024 (YYMMDD)
 
 *******************************************************************************/
 
@@ -30,17 +30,16 @@
 	----------------------------------------------------------------------------
 	message       STR    YES    1st argument of the constructor.
 	name          STR    YES    The 'type' of the error, that is, the constructor
-	                            name. In ExtendScript, however, myErr.name will
-	                            return "Error" (unless rewritten) for any custom
-	                            error.
+	                            name. In ExtendScript, however, `myErr.name` will
+	                            return "Error" unless rewritten.
 	description   STR    NO     Alias of message. Any change in description is
 	                            reflected in message, and vice versa.
 	fileName      STR    NO     2nd argument of the constructor.
 	line          NUM    NO     3rd argument of the constructor.
-	number        NUM    NO     A conventional error-related number, default is 1
-	                            for custom errors.
+	number        NUM    NO     A conventional error-related number; custom errors
+	                            are conventionally numbered 1.
 	source        STR    NO     By default, the complete source file, or any other
-	                            custom string. Unavailable in jsxbin.
+	                            custom string. (Unavailable in jsxbin.)
 	start         NUM    NO     (No description available.)
 	end           NUM    NO     (No description available.)
 	----------------------------------------------------------------------------
@@ -71,9 +70,8 @@
 	----------------------------------------------------------------------------
 	* Stijn (Extendables) notes, with some versions of ExtendScript "all error
 	types (are) considered the base class Error. This problem makes it impossible
-	to do simple comparisons on errors." Indeed, myErr instanceOf <anyErrorType>
-	returns true, and myErr.constructor as well as myErr.__class__ are not
-	reliable.
+	to do simple comparisons on errors." Indeed, `myErr instanceOf <anyErrorType>`
+	is TRUE, and `myErr.constructor` (as `myErr.__class__`) is not reliable.
 
 	ExtendScript's tools related to error management.
 	----------------------------------------------------------------------------
@@ -83,11 +81,14 @@
 	                    error text to this property generates a run-time error;
 	                    however, the preferred way to generate a run-time error
 	                    is to throw an Error object.
-	$.fileName    STR   The script file being executed. This property is more
-	                    reliable than myError.fileName in that it still reveals
-	                    the script file name in a jsxbin context.
-	$.stack       STR   NL-separated list of called programs and functions.
-	                    E.g.  "[myscript.bin.jsx]<NL>[210]<NL>testFunc()\n"
+	$.fileName    STR   Full path, URI-encoded, of the script file being
+	                    executed. This property is more reliable than
+	                    `myError.fileName` as it still reveals the script file
+	                    name in jsxbin env.
+	                    E.g "~/Documents/Adobe%20Scripts/My%20Script.jsx"
+	$.stack       STR   NL-separated list of stacked programs and functions.
+	                    E.g.  "[My Script.bin.jsx]\n[210]\nMyTestFunc()\n"
+	                    Note that file names *are not* URI-encoded.
 	$.engineName  STR   The current engine name, as specified by #targetengine.
 	                    Default is "main".
 	myFile.error  STR   "A string containing a message describing the most
@@ -103,9 +104,8 @@
 
 	Additional Notes.
 
-	Finally Issue. - The following code won't alert any error in ExtendScript
-	in spite of the fact the thrown error has no catch counterpart:
-	
+	Issue with `finally`. - The following code *will not alert* any error in
+	ExtendScript in spite of the fact the thrown error has no `catch` counterpart:
 	      function f()
 	      {
 	          try{ throw "MyError"; }
@@ -113,8 +113,7 @@
 	      }
 	      
 	      f();
-
-	This is due to the presence of `return` in the finally block.
+	This is due to the presence of `return` in the finally-block.
 
 
 	<err>.name, <err>.number, etc., are only relevant for parse-time or runtime
@@ -270,91 +269,207 @@
 		// ---
 		logErrors : 1,
 
-		error: function error_S_r_(/*str*/msg,/*?ref*/src,  $$,a,i,t,ff,b,e)
+		error: function error_S_r_(/*str*/msg,/*?ref|str*/src,  $$,a,i,s,p,fn,fx,jb,e)
 		//----------------------------------
 		// Throw a managed exception with additional information.
-		// msg :: nude error message (might be localized.)
-		// src :: if supplied, module, function or file from which
-		//        the error occured.
-		// [TODO] Improve src.exists test with respect to the current folder (?)
+		// [CHG171024] Improved stack parsing and file resolver.
+		// ---
+		// msg :: Nude error message (might be localized.)
+		// src :: (opt.) Module, function or file where the error occured.
+		//        [ADD171023] If `src` is a string, use it as source identifier.
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 
-			// $.stack is in the form
-			// [<file>]\n ([<number>]\n)? (<func>(<args>?)\n)+ sendError_S_r_(<args>)\n
+			// Parsing the stack.
+			// ---
+			// [REM] $.stack has the form:
+			// [<file>]\n ([<number>]\n)? (<func>(<args>?)\n)+ error_S_r_(<args>)\n
 			// The presence of [<number>] indicates a jsxbin in the stack.
+			// E.g "[My Script.bin.jsx]\n[210]\nMyTestFunc()\n"
+			// Note that <file> part(s) are not URI-encoded here.
+			// ---
+			// => fn :: deepest function name -- if `myFunc(...)` is found.
+			//    fx :: top file name         -- if `[<fileName>]` is found.
+			//    jb :: jsxbin flag numeral   -- if `[<number>]` is found.
 			// ---
 			a = $.stack.split(RegExp.LINEs); // => [<file>, s1, s2, ..., sN, <here>, '']
 			while( a.length && !a.pop() );   // => [<file>, s1, s2, ..., sN]
-
-			// Format the source as a string.
-			// => src :: `[<file>]` | `<moduleName>` | `<moduleName>.<funcName>` | `<funcName>` | ''
-			// ---
-			src || (src='');
-			while( src )
+			for( fn=fx=jb='', i=a.length ; i-- ; )
 			{
-				if( b=('function' == typeof src) )
-				{
-					t = src.name;
-					if( src.hasOwnProperty('µ') )
-					{
-						0 < (i=t.indexOf('_')) && (t=t.substr(0,i));
-						t = String(src.µ) + '.' + t;
-					}
-					src = t;
-					break;
-				}
-
-				if( src && (src instanceof File) )
-				{
-					ff = src.exists ? src : false;
-					src = '[' + src.displayName + ']';
-					break;
-				}
-
-				// Fallback.
-				// ---
-				src = src.name || String(src);
-				break;
+				if( !(s=a[i]) ){ a.split(i,1); continue; }
+				if( -1 == (p='])'.indexOf(s.substr(-1))) ) continue;
+				if( p ){ fn||(fn=s.substr(0,s.indexOf('('))); continue; }
+				s = s.substr(1,s.length-2);
+				('-'+s===''+-s) ? (jb||(jb=s)) : (i||(fx=s));
 			}
 
-			// Try to extract a source file if not yet found.
+			// Attempt to retrieve a full, valid & readable pathname.
+			// By default, use $$.Env.runningScript as a hint.
+			// [REM] Usually, $.fileName is not reliable at this point, as
+			// it stupidly returns the *present* file `.../$$.errors.jsxinc`
+			// Anyway it can still be helpful in a JSXBIN stream.
+			// => fx  ::  str [OK]  |  "" [KO]
 			// ---
-			while( (!ff) && a.length && '['==a[0].charAt(0) )
-			{
-				t = a.shift();
-				t = t.substr(1,t.length-2);
-				ff = File(t);
-				if( !ff.exists ){ ff=false; break; }
-				if( !src.length ){ src='[' + ff.displayName + ']'; }
-				break;
-			}
 
-			// Try to extract a function if not yet found.
-			// ---
-			while( !b && (i=a.length) )
+			while( (!fx) || (!File(fx).exists) )
 			{
-				if( !(t=a[i-1]) ){ a.pop(); break; }
-				if( ')' != t.substr(-1) || -1==(i=t.indexOf('(')) ) break;
-
-				// function name
+				// It is almost certain that we reach this block,
+				// since `fx` is ordinarily a simple *file name*
+				// with no parent path.
 				// ---
-				t = t.substr(0,i);
+
+				s = 'function' == typeof $$.Env ? $$.Env.runningScript : $.fileName;
+				if( !s ){ fx=''; break; }
+
+				// It is likely the case that `fx` is the name part of the
+				// running script pathname. [REM] `fx` is not URI-encoded.
+				// ---
+				if( (!fx) || fx===File(s).displayName )
+				{
+					fx = File(s).fullName;
+					break;
+				}
 				
-				0 < (i=t.indexOf('_')) && (t=t.substr(0,i));
-				src += ((src?'.':'') + t);
+				// Last chance: test whether `fx` refers to a file
+				// present in the parent folder of the running script...
+				// ---
+				if( (s=File(s).parent).exists && File(s=s.fullName+'/'+fx).exists )
+				{
+					fx = s;
+					break;
+				}
+				
+				// Fallback: keep fx unchanged.
+				// ---
 				break;
 			}
+			
+			// Initialize the Error object.
+			// [REM] `new` is not required according to ECMA.
+			// ---
+			e = Error(/*message*/msg,/*fileName*/fx,/*line*/0);
+			// ---
+			e.name    = 'ManagedError';     // Custom type.
+			e.managed = 1;                  // IdEx special flag.
+			e.number  = 1;                  // Error number.
+			// ---
+			e.engine  = $.engineName;       // Current engine.
+			e.jsxbin  = jb;                 // JsxBin ID (str.)
+			e.stack   = a.join(' :: ');     // Parsed stack.
+			// ---
+			e.where   = '';                 // Pending.
+			e.logged  = 0;                  // Pending.
 
-			// If Log is available and set to non-MUTE, warn the error.
+			// Parse and format the source. (At this step, `fn`
+			// and `fx` can be used as guess or fallback.) The
+			// final `src` param MUST have one the following forms:
+			// ---
+			// "<moduleName>"               Name of the erroring module.
+			// "<funcName>"                 Name of the erroring function.
+			// "<moduleName>.<funcName>"    Function name prefixed by module name.
+			// "[<file>]"                   File name.
+			// <any-string>                 Custom src string supplied.
+			// ""                           Empty (unknown source.)
+			// ---
+			switch( typeof (src||(src=0)) )
+			{
+				case 'string':
+					// Non empty string => keep it as supplied.
+					// ---
+					break;
+			
+				case 'function':
+					// Some function has been passed in. It might be either
+					// (a) a module, (b) a module func, (c) any func.
+					// In case (a) we use `fn` as a guess.
+					// ---
+					// [REM] What makes the algorithm a bit obscure here
+					// is the attempt to provide the most informative
+					// result, viz. `<module>.<key>` whenever possible.
+					// So, when the link is missing, we try to restore
+					// data using both the stack and the `__path__` prop.
+					// (This only regards IdExtenso's functions.)
+					// ---
+					if( !src.hasOwnProperty('__path__') )
+					{
+						// Default mechanism for simple (external) functions.
+						// ---
+						src = fn = src.name;
+						break;
+					}
+
+					$$.isModule(p=src.__path__) || ( (fn=src.name),(src=src.µ||'') );
+					
+					// ---
+					// src :: module | ''  ;  fn :: funcName | ''
+					// ---
+
+					// Express `fn` as <mod>.<fKey> (if possible.)
+					// ---
+					while( src && (s=fn) )
+					{
+						// Simple case:
+						// src[funcKey] === funcKey_signature(){}
+						// ---
+						0 < (i=fn.indexOf('_')) && (s=fn.substr(0,i));
+						if( fn===(src[s]||0).name ){ s='.'+s; break; }
+
+						// Hard case (parsing `__path__`)
+						//            .../<src>/            [KO]
+						//            .../<src>/funcKey     [Try]
+						//            .../<src>/~/funcKey   [Try]
+						// ---
+						s = '/' + src + '/';
+						i = p.indexOf(s);
+						if( -1===i || s===p.substr(i) ){ s=''; break; }
+						s = p.substr(i+s.length);
+						(i = '~/' == s.substr(0,2) ? '.~' : '') && (s=s.substr(2));
+						if( fn===((i?src['~']:src)[s]||0).name ){ s=i+'.'+s; break; }
+						s = ''; break;
+					}
+
+					src += s;
+					break;
+			
+				case 'object':
+					// Some object has been passed in. It MUST
+					// be an existing File to be taken seriously!
+					// ---
+					if( src instanceof File && src.exists )
+					{
+						src = '[' + src.displayName + ']';
+						break;
+					}
+
+					// ---
+					// no-break
+					// ---
+			
+				default:
+					// Fallback algorithm.
+					// (1) If `src` has a non-empty `name`, take it.
+					// (2) If `fn` is non empty, take it.
+					// (3) If `fx` is non empty, take its displayName.
+					// (4) If `jb` is non empty, take it.
+					// ---
+					src  = src.name
+						|| fn
+						|| (fx && File(fx).displayName)
+						|| (jb ? ('<'+jb+'>') : '');
+			}
+
+			// Despite all our effort, `src` may be still empty (!)
+			// ---
+			e.where = src;
+
+			// If Log is available and non-MUTE, warn the error.
 			// If logErrors is ON, force the logger to wake up.
 			// ---
 			// [REM] Being a core module, Log is available as soon as
 			// it is included, that is, almost instantly. However, we
 			// want to make `error()` very secure and always callable.
-			// So we still check whether $$.Log is there.
+			// So we check whether $$.Log is already there.
 			// ---
-			b = 0;
 			if( 'function' == typeof $$.Log && ($$.Log() || ($$.logErrors && $$.Log.warn(true)))  )
 			{
 				// Do not take the risk of over-erroring.
@@ -362,50 +477,34 @@
 				try
 				{
 					$$.Log.warn(__("%1 > %2%3%4Stack: %5",
-						src||ff||'Error',
-						msg,
+						'ERROR',
+						e.message,
 						$$.newLine,
 						$$.Log.spaces,
-						a.join('::')||'<empty>'
+						e.stack || '<empty>'
 						));
-					b=1;
+					e.logged=1;
 				}
 				catch(_){}
 			}
-	
-			// [REM] new is not required (according to ECMA.)
-			// ---
-			e = Error(/*message*/msg, /*fileName*/String(ff||$.fileName), /*line*/0);
-	
-			e.name = 'ManagedError';
-			e.managed = 1;
-			e.number = 1;                  // custom error
-
-			e.where = src;                 // might be empty
-			e.engine = $.engineName;
-			e.stack = a.join(' :: ');
-
-			e.logged = b||0;
 	
 			throw e;
 		},
 	
 		receiveError: function receiveError_$Error$_(/*Error*/e)
 		//----------------------------------
-		// [TODO]
+		// [CHG171024] Prompt any error.
 		{
-			//alert( {}.toSource.call(e) );
-
 			if( e.managed )
 			{
 				alert([
 					e.message,
 					'________________________________________\r',
-					__("Engine: %1", e.engine),
-					__("Where:  %1", e.where ? e.where : '<unknown>'),
-					__("Stack:  %1", e.stack),
-					__("Logged: %1", e.logged),
-					__("File:   %1", File(e.fileName).displayName)
+					__("Engine:\t%1", e.engine + (e.jsxbin && (' JSXBIN: <'+e.jsxbin+'>')) ),
+					__("Where:\t%1", e.where ? e.where : '<unknown>'),
+					__("Stack:\t%1", e.stack),
+					__("Logged:\t%1", e.logged),
+					__("File:\t%1", e.fileName || '<unknown>')
 				].join('\r'));
 			}
 			else
@@ -413,8 +512,8 @@
 				alert([
 					e.message,
 					'________________________________________\r',
-					__("File: %1", File(e.fileName).displayName),
-					__("Line: %1", e.line)
+					__("File:\t%1", File(e.fileName).displayName),
+					__("Line:\t%1", e.line)
 				].join('\r'));
 			}
 		},
