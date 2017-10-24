@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =get() parseURI() browse()
 		DOM-access:     YES (as far as app.doScript may be involved.)
-		Todo:           Tests, alt. method on Mac platforms.
+		Todo:           Tests!
 		Created:        170403 (YYMMDD)
-		Modified:       170609 (YYMMDD)
+		Modified:       171024 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 170609, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 171024, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -26,10 +26,11 @@
 	The current version of get() sends `HTTP/1.0 GET` requests but should deal
 	with any 1.x answer.
 	
-	[CHG170609] The protocol https is now supported on Win platforms (so far.)
+	[CHG170609] The protocol https is now supported on Win platforms.
+	[CHG170611] The protocol https is now supported on Mac platforms.
 	If the server emits a 301 redirection to 'https' the function will try to
 	get contents using `~.ALTG`.
-	
+
 	*/
 
 	//==========================================================================
@@ -435,17 +436,47 @@
 	[PRIVATE]
 	
 	({
+		// [WARN] As this routine requires app.doScript() it can't work
+		// in a modal context (and has to hit the DOM.) The caller is
+		// responsible for checking that modalState is 0.
+		// ---
 		ALTG : $$.inMac ?
-		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo)
+		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  aps)
 		// -------------------------------------
-		// Not implemented yet.
-		// => -2 [any-error]
+		// [ADD170611] Alternate HTTP(S) getter *for Mac platforms* (experimental.)
+		// Try to get `uri` contents using AppleScript curl method, and
+		// feed `R` :: { data:str }  -- headers and status are not supported :-/
+		// `uri` must provide a `source` property.
+		// [RES] http://www.macinchem.org/applescript/curl_script.php
+		// [RES] https://curl.haxx.se/docs/manpage.html
+		// => -2 [any-error] | +1 [OK]
 		{
 			// Default output.
 			// ---
 			callee.µ['~'].DOUT(R);
-			R.error = "Not implemented yet.";
-			return -2;
+			
+			// Used Options:
+			// -s, --silent.
+			//     Silent or quiet mode. Don't show progress meter or error messages.
+			// -L, --location
+			//     If the server reports the requested page has moved to a different
+			//     location, this option makes curl redo the request on the new place.
+			// --raw
+			//     Disables all internal HTTP decoding of content or transfer encodings
+			//     and instead makes them passed on unaltered, raw. (Added in 7.16.2.)
+			// --connect-timeout <seconds>
+			// ---
+			aps = __('do shell script "curl -s -L %1--connect-timeout %2 %3"'
+			, (isBin ? '--raw ' : '')
+			, tmo
+			, uri.source
+			);
+
+			R.data = app.doScript(aps, ScriptLanguage.applescriptLanguage);
+
+			return R.data.length ?
+				( 1 ) :
+				( (R.error="No result from curl."),-2 );
 		}
 		:
 		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  $$,q,resType,vbs,k,s,a,args)
@@ -455,10 +486,6 @@
 		// which should support https.
 		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
 		// `uri` must provide a `source` property.
-		// ---
-		// [WARN] As this routine requires app.doScript() it can't work
-		// in a modal context (and has to hit the DOM.) The caller is
-		// responsible for checking that modalState is 0.
 		// ---
 		// If isBin is OFF, use `responseText` and return a plaintext.
 		// If isBin is ON,  use `responseBody` and return a byte sequence
@@ -593,7 +620,13 @@
 			{
 				p = parseInt(o.port, 10) || 0;
 				
-				( 0 >= p || 0xFFFF < p ) && (p=80); // [TODO] https case
+				// [ADD170611] Default port per protocol.
+				// ---
+				if( 0 >= p || 0xFFFF < p )
+				{
+					p = o.protocol;
+					p = (443*('https'==p)) || (21*('ftp'==p)) || 80;
+				}
 				
 				o.port = p;
 				o.authority = __("%1%2%3", o.userInfo, (o.userInfo?'@':''), o.host+':'+o.port );
@@ -617,9 +650,11 @@
 		// in the form {status:str, statusCode:uint, headers:{}, data:str}.
 		// If something goes wrong an `error` key is added to the result
 		// and describes the issue, e.g "HTTP error or timeout."
+		// [CHG170611] In case an alternate get method is used (see ~.ALTG),
+		// only the data and the error properties are reliable on Mac platforms.
 		// ---
 		// E.g :
-		// $$.Web('indiscripts.com/blog/public/Wordalizer-1508-Teaser.jpg')
+		// $$.Web('indiscripts.com/blog/public/IndiscriptsLogo.png')
 		// => {
 		//    status: "HTTP/1.0 200 OK",
 		//    statusCode : 200,
@@ -670,6 +705,7 @@
 			uri = callee.µ.parseURI(uri,1);
 
 			// [CHG170609] Added https case.
+			// |CHG170611] Force ~.ALTG under https (make sure modal state if off.)
 			// ---
 			switch( uri.protocol )
 			{
@@ -678,7 +714,9 @@
 					break;
 				case 'https':
 					$$.trace(__("%1 > https required for uri %2.",callee.µ,uri.source.toSource()));
-					kGet = app.modalState ? 'HGET' : 'ALTG';
+					if( app.modalState )
+						$$.error(__("Cannot run alternate https get method in a modal state."),callee);
+					kGet = 'ALTG';
 					break;
 				default:
 					$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
@@ -732,6 +770,14 @@
 						VOLATILE || $$.kill(r);
 						r = callee(uri,isText,timeOut,VOLATILE,R301); // [FIX170609]
 					}
+			}
+
+			// [ADD171024] Better is to consider empty data an error!
+			// ---
+			if( (!r.error) && !r.data )
+			{
+				r.error = __("No data available.");
+				$$.warn( __("%1 > %2",callee.µ,r.error) );
 			}
 
 			return r;
