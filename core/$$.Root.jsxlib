@@ -8,16 +8,17 @@
 		Core:           YES
 		Kind:           Module.
 		API:            =load() unload() getLoadStamp()
-		                resolve() isLoaded() kill() clone()
+		                resolve() isLoaded() isBooting() isModule()
+		                kill() clone()
 		                uid() beep() error() receiveError() success()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       171103 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 171024, 'load'))
+;eval(__(MODULE, '$.global', $$, 171103, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -67,7 +68,7 @@
 		
 		KILL : function(/*ref&*/o,  k,rx,t)
 		//----------------------------------
-		// (Kill.) Object killer.
+		// (Kill.) Object killer, based on Reflection interface.
 		// => undefined
 		{
 			if( o instanceof Array && (k=o.length) )
@@ -237,8 +238,6 @@
 			delete G.UndoModes;
 			delete G.UserInteractionLevels;
 			delete G.MeasurementUnits;
-
-			'$$'==callee.µ.name || (delete G['$$']);
 		},
 		
 		CSTG:
@@ -311,9 +310,11 @@
 			// ---
 			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is loading in engine '%2'...", callee.µ,$$.Env.idEngine())));
 
-			// Engine state.
+			// Include stage cleaner on first load.
+			// [CHG171103] The Engine state is now updated upstream.
 			// ---
-			I.LDMD.__first__ ? I.ISCL() : ($$.Env['~'].ENST=0);
+			//I.LDMD.__first__ ? I.ISCL() : ($$.Env['~'].ENST=0);
+			I.LDMD.__first__ && I.ISCL();
 
 			// Load modules (dynamic data.)
 			// ---
@@ -327,6 +328,14 @@
 			// Trace loading time.
 			// ---
 			(+$$.trace) && $$.trace(__( "%1 > IdExtenso is now loaded. (Loading time: %2ms.)", callee.µ, Date.now() - ts));
+
+			// [ADD171103] In case IdExtenso's name is not '$$',
+			// remove the key '$$' from [[global]].
+			// [REM] This cleanup step was previously done from
+			// ~.ISCL(), but it is better to keep `$$` available
+			// up to this point.
+			// ---
+			'$$'==callee.µ.name || (delete $.global['$$']);
 
 			// Set and return the __load__ flag.
 			// ---
@@ -390,9 +399,9 @@
 		//----------------------------------
 		// Resolve a path--either absolute or relative to $$--into
 		// *whatever* it is referring to.
-		// Eg $$.resolve("/$$/Env/")   => the Env module
-		//    $$.resolve("Env/~/OSYS") => the OSYS private key in Log
-		//    $$.resolve("/test")      => $.global.test, or undefined
+		// E.g $$.resolve("/$$/Env/")    => the Env module
+		//     $$.resolve("Env/~/OSYS")  => the OSYS private key in Log
+		//     $$.resolve("/test")       => $.global.test, or undefined
 		// => module | method | any | undefined
 		{
 			('string' == typeof path) || path='';
@@ -415,7 +424,58 @@
 		//    $$.isLoaded()             => is $$ loaded?
 		// => 0 | 1
 		{
-			return (m=callee.µ.resolve(path)) && m.__load__ ? 1 : 0;
+			return ( (m=callee.µ.resolve(path)) && m.__load__ ) ? 1 : 0;
+		},
+
+		isBooting: function isBooting_B()
+		//----------------------------------
+		// Tells whether IdExtenso is now in 'booting mode', that is, in
+		// a context where its payloads still have to be loaded in memory.
+		// This condition is rawly equivalent to `!!$$.Env.engineState`
+		// ---
+		// [REM] From any point of your project, and typically from the
+		// global scope of an `etc/` module block, you may want to know
+		// whether IdExtenso actually needs to run a particular piece
+		// of code supposed to be executed once. This is always the case
+		// in a non-persistent engine, but a persistent engine may have
+		// already executed your code (depending on its `first-call`
+		// flag.) An indirect way to check such condition is
+		// `$$.hasOwnProperty('ModuleName')` used at the beginning of
+		// many modules. The purpose of `$$.isBooting()` is to provide
+		// a reliable, direct check, based on the engine state.
+		// [REM] Usually, the `onEngine` handler is the place to run
+		// any code that initializes (once) the state of a module. But
+		// when persistent functions have to be declared and attached
+		// to external structures (ScriptUI, Math...) you may prefer
+		// working in the global scope to avoid the creation of local
+		// [workspace] objects. Example:
+		//   ;if( $$.isBooting() ){ Math.myFunc=function(){...}; }
+		// Note that there is no point in using the above pattern from
+		// within the Core including block, since by nature it only
+		// runs in 'booting mode.' Hence, the main usage of
+		// `$$.isBooting()` is in the block of an '/etc' module.
+		// [REM] Do not confuse `$$.isBooting()` with `!$$.isLoaded()`.
+		// The booting state is independent from the loaded state.
+		// 1. You may still have $$.isBooting()
+		//    while $$ is already loaded.
+		// 2. You may no longer have $$.isBooting()
+		//    while $$ is not loaded yet.
+		// ---
+		// => 0 | 1
+		{
+			return 0===callee.µ.Env.engineState(0) ? 0 : 1;
+		},
+
+		isModule: function isModule_sf_B(/*?str|fct*/path,  m)
+		//----------------------------------
+		// [ADD171024] Tells whether a path, or a function, refers
+		// to a module.
+		// => 0 | 1
+		{
+			( 'function'==typeof path ) &&
+				(path = path.hasOwnProperty('__path__') && path.__path__);
+
+			return ( path && callee.µ['~'].__mods__.hasOwnProperty(path) ) ? 1 : 0;
 		},
 		
 		kill: function kill_x_(/*any&*/x)
