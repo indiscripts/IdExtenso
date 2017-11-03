@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       171103 (YYMMDD)
 
 *******************************************************************************/
 
@@ -243,4 +243,23 @@
 		// garbage-collection would consider next includes too. (?)
 		// ---
 		$.gc();$.gc();
+	}
+	else
+	//----------------------------------
+	// (Already-Processed-Engine-State.)
+	// [ADD171103] The below block is processed only if $.global['$$']
+	// already refers to IdExtenso (which indicates an 'already-processed
+	// persistent' engine.) The purpose of this block is to make some
+	// facts *globally* known while /etc modules are included.
+	{
+		'function' == typeof $.global['\x24\x24']
+		// [WARN] If Extenso's global name is not '$$', you MUST replace
+		// `= $.global['$$']` by `= $.global['<ActualName>']` below.
+		// ---
+		|| ($.global['\x24\x24'] = $.global['$$']);
+
+		// Update the engine state now, so we don't need
+		// to wait for $$.load().
+		// ---
+		$$.Env['~'].ENST = 0;
 	}
