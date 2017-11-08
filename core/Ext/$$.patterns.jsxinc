@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       171108 (YYMMDD)
 
 *******************************************************************************/
 
@@ -110,19 +110,66 @@
 	\u000F   Locking-Shift Zero        <XF>
 	-----------------------------------------------------
 	
-	[REM] \0 is a valid escape sequence for <X0> only *if the next
-	character is not a decimal digit*. Also, ExtendScript CS4/CS5/CS6 does
-	not properly manage split() and/or replace() when the pattern involves
+	[REM] In ExtendScript the esc "\X99" is parsed as "\x99", while
+	"\U9999" is not "\u9999". That is, only \x is case insensitive.
+
+	NOTES ON U+0000 aka <X0>
+
+	`\0` is a valid escape sequence for <X0> only *if the next character
+	is not a decimal digit*. Also, ExtendScript CS4/CS5/CS6 does not
+	properly manage split() and/or replace() when the pattern involves
 	<X0>. For these reasons we do not declare <X0> among the escapable
 	characters. Instead, reduction routines manage <X0> through indexOf().
 
-	[REM] In ExtendScript the esc "\X99" is parsed as "\x99", while
-	"\U9999" is not "\u9999". That is, only \x is case insensitive.
+	The native result of `"\x00".toSource()` is `String("\x00")`, noting
+	that `"\x00".length == 1`. However, `"\x00"[0]` is considered empty
+	since `"\x00".charAt(0) === ""`  and  `"\x00".charAt(0).length == 0`.
+	As a consequence, `"\x00"[0][0]` is undefined!
+
+
+	NOTES ON TRIPLE-QUOTED LITERALS
 	
-	[REM] ExtendScript triple quote syntax for literal strings supports
+	1. ExtendScript triple-quoted syntax for literal strings supports
 	all JS escape sequences: \" \' \\ \n \r \b \t \v \f \xHH \uHHHH.
 	Thus, when such an escape sequence occurs literally inside the triple
 	quote scope, *the associated characters are generated*.
+
+	2. Characters that do not reevaluate thru triple quotes. Let
+	`evalTriple(S)` refer to `eval('"""' + S + '"""')`. It is usually
+	true that `evalTriple(S)===S`, but there are a critical exceptions.
+
+	(a) Out-of-memory error for S==<BK> -- i.e. evalTriple(<BK>) crashes.
+
+	(b) evalTriple(<X0>) is " " (space) while obviously """\x00"""
+	    and """\u0000""" result in <X0>.
+	
+	(c) evalTriple(<CR>) is either <CR> or <LF> depending on the OS.
+	    evalTriple(<LF>) is either <LF> or <CR> depending on the OS.
+	    Win returns <NL> while Mac likely returns <CR>.
+	    Of course we still have:
+	      """\x0D"""===<CR>    and   """\x0A"""===<LF>
+
+	(d) <LS> and <PS> are evalTripled as <CR> (Win) or <NL> (Mac),
+	    that is, they're interpreted either <NL> (Win) or <CR> (Mac).
+	    Course """\u2028""" and """\u2029""" still work as expected.
+
+	(e) The below 'dangerous' characters lead to the empty string:
+
+	     U+0600 U+0601 U+0602 U+0603 U+06DD U+070F U+17B4 U+17B5
+	     U+200C U+200D U+200E U+200F U+2028 U+2029 U+202A U+202B
+	     U+202C U+202D U+202E U+2060 U+2061 U+2062 U+2063 U+206A
+	     U+206B U+206C U+206D U+206E U+206F
+	     U+FEFF U+FFF9 U+FFFA U+FFFB
+
+	3. Escape sequences that do not reevaluate thru triple quotes.
+	Let X be a character and compare the string `<BK>X`
+	with `<BK> + evalTriple(<BK>X)`.
+	
+	(a) Results are different if X is one of the characters:
+	    <X0>, <CR>, 0, 1, 2, 3, 4, 5, 6, 7, b, f, n, r, t, v
+	
+	(b) Out-of-memory error if X is one of the 'dangerous'
+	    characters above -- cf. 2.(e)
 
 	*/
 
