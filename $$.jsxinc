@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       171103 (YYMMDD)
+		Modified:       171109 (YYMMDD)
 
 *******************************************************************************/
 
@@ -64,6 +64,7 @@
 	Every module has the following properties:
 
 	      __load__ :: 0|1  (Loading state.)
+	      __core__ :: 0|1  (Is part of the core?)
 	      __modf__ :: uint (Revision date in yymmdd form.)
 	      __auto__ :: str  (Name of the automatic method,
 	                        only supported in MODULE case.)
@@ -182,12 +183,14 @@
 		$.global.PROTO  =  "PROTO";  // [ADD170527] Used in classes.
 	
 		// Macro `MODULE`. (See implementation notes.)
+		// [ADD171109] __core__ property.
 		// ---
 		$.global.MODULE = """
 		(
 			($.global.µ=(%1['%2']=(function %2(x,y,z,t){return callee[callee.__auto__].call(callee,x,y,z,t)}))).setup
 				({
 					__root__: $$.name||(($.global.$$=$.global.µ).name),
+					__core__: 1,
 					__load__: 0,
 					__modf__: +%3,
 					__auto__: ''!='%4' && 'undefined'!='%4' ? '%4' : 'toString',
@@ -204,6 +207,7 @@
 		""";
 
 		// [ADD170527] Macro `CLASS`. (See implementation notes.)
+		// [ADD171109] __core__ property.
 		// ---
 		$.global.CLASS = """
 		(
@@ -214,6 +218,7 @@
 				}))).setup
 				({
 					__root__: $$.name,
+					__core__: 1,
 					__load__: 0,
 					__modf__: +%3,
 					__path__: (%1.__path__||'/') + '%2/',
@@ -238,6 +243,12 @@
 		#include 'core/$$.File.jsxlib'
 		#include 'core/$$.Log.jsxlib'
 		#include 'core/$$.Dom.jsxlib'
+		;
+
+		// [ADD171109]
+		// ---
+		MODULE = MODULE.replace(/__core__\s*:\s*1/, "__core__: 0");
+		CLASS  =  CLASS.replace(/__core__\s*:\s*1/, "__core__: 0");
 		
 		// May be performed in $$.load() instead--so that
 		// garbage-collection would consider next includes too. (?)
