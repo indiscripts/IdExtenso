@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       171109 (YYMMDD)
+		Modified:       171110 (YYMMDD)
 
 *******************************************************************************/
 
@@ -245,10 +245,11 @@
 		#include 'core/$$.Dom.jsxlib'
 		;
 
-		// [ADD171109]
+		// [ADD171109] Reset `__core__` to 0 from now.
+		// [CHG171110] `$.global[key]` is safer.
 		// ---
-		MODULE = MODULE.replace(/__core__\s*:\s*1/, "__core__: 0");
-		CLASS  =  CLASS.replace(/__core__\s*:\s*1/, "__core__: 0");
+		$.global.MODULE =  $.global.MODULE.replace(/__core__\s*:\s*1/, "__core__: 0");
+		$.global.CLASS  =  $.global.CLASS.replace (/__core__\s*:\s*1/, "__core__: 0");
 		
 		// May be performed in $$.load() instead--so that
 		// garbage-collection would consider next includes too. (?)
