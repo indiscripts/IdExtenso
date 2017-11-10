@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       171108 (YYMMDD)
+		Modified:       171110 (YYMMDD)
 
 *******************************************************************************/
 
@@ -323,3 +323,5 @@
 	RegExp.ADBE = /^(?:3[0-9]|[46][1-9A-F]|[57][0-9A]){3}(?:3[0-9]|[46][1-9A-F]|[57][0-9A]|20)$/g;
 	// --- /over-0x7F/
 	RegExp.OV7F = /[\x80-\uFFFF]/g;
+	// --- /extendscript-overloadable-operator/
+	RegExp.EXOP = /^(?:[\+\-\*\/\|\^\~<%&]|<<|>>>?|===?|<=)$/g;
