@@ -12,7 +12,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       170527 (YYMMDD)
+		Modified:       171110 (YYMMDD)
 
 *******************************************************************************/
 
@@ -35,6 +35,8 @@
 	// If newPath is empty, then '/' ie [global] is considered the target loc.
 	// [REM] Resolving the path is deferred to Function.prototype[PUBLIC].
 	// [REM] Autodeleted once the framework has been loaded.
+	// [REM] This method does not deal with copying <this> into the
+	//       `/prototype` area of a CLASS.
 	// => this
 	{
 		newPath || (newPath='/');
@@ -96,94 +98,128 @@
 		return this;
 	};
 
-	Function.prototype[PUBLIC] = function F(/*obj*/o,/*bool=0*/inProto,  path,target,mods,k,s,t,p,oo)
+	Function.prototype[PUBLIC] = function F(/*obj*/o,/*bool=0*/inProto,  path,target,mods,ptp,k,s,t,p,oo)
 	//----------------------------------
 	// <this> :: current module or class.
 	// Alias: [STATIC]
-	// [CHG170503] Added the `isProto` param. This method is used by [PROTO].
-	// ---
 	// Temporarily provide a generic [PUBLIC] (i.e [STATIC] ) utility
 	// to any module or class, for registering public members in this.
 	// [REM] Autodeleted once the framework has been loaded.
+	// ---
+	// [FIX171110] Changed the way inProto functions register their path.
+	// We no longer set the key `<modPath>/prototype/` in __mods__. Instead,
+	// __mods__[modPath] both supports `funcKey` and `prototype/funcKey`.
+	// [CHG170503] Added the `inProto` param. This method is used by [PROTO].
+	// ---
 	// => this
 	{
-		path = this.__path__;   // eg '/$$/Env/'
-
-		// [ADD170503] E.g '/$$/BigInt/prototype/'
+		// [171110] Here `path` will always refer to
+		// the current module.
+		// E.g '/$$/Env/' ; '/$$/BigInt/'
 		// ---
-		inProto && (path += 'prototype/');
-		target = inProto ? this.prototype : this;
+		path = this.__path__;
 
 		// Make sure this module path is registered
-		// in $$'s private __mods__.
+		// in IdExtenso's private __mods__.
 		// ---
 		mods = $.global[this.__root__]['~'].__mods__;
 		mods.hasOwnProperty(path) || (mods[path]={});
 
+		// [FIX171110] ptp :: '' | 'prototype/'
+		// ---
+		target = inProto ? this.prototype : this;
+		ptp = inProto ? 'prototype/' : '';
+
 		for( k in o )
 		{
 			if( !o.hasOwnProperty(k) ) continue;
-			if( 'function' == typeof o[k] )
-			{
-				o[k].setup
-				({
-					__path__: path + k,    // eg '/$$/Env/idVersion'
-					µ: this,               // every public method can use callee.µ
-				});
-				
-				// Eg:  mods['/$$/Env/']['idVersion'] = 'idVersion_ns_b_SB'
-				// ---
-				mods[path][k] = o[k].name;
-				
-				if( o[k].hasOwnProperty('__copy__') )
-				{
-					p = o[k].__copy__;
-					
-					if( '/'==p.substr(-1) )
-					{
-						// If p ends with a slash, the path is fine and s==k,
-						// that is, alias-key == original-key (eg 'idVersion'.)
-						// ---
-						s = k;
-					}
-					else
-					{
-						// Otherwise, extract the key from the copy path `p`.
-						// => s :: alias-key
-						// => p :: remaining path xxx/.../OtherModule/
-						// ---
-						t = p.lastIndexOf('/');
-						s = p.substr(1+t);
-						p = p.substr(0,1+t);
-					}
-
-					// Resolve path.toPath(p)
-					// ---
-					if( (p=path.toPath(p)) && (oo=mods[p]) && !oo.hasOwnProperty(s) )
-					{
-						// p :: '/$$/.../OtherModule/' ;  s :: 'doActionAlias'
-						// => $.global['$$'][...]['OtherModule']['doActionAlias'] = o[k]
-						// ---
-						t = $.global[this.__root__].resolve(p);
-						t[s] = o[k];
-
-						// => mods['/$$/.../OtherModule/']['doActionAlias']='/$$/.../CurModule/doAction'
-						// ---
-						oo[s] = path + k;
-						
-						// Rewrite the resolved __copy__ path.
-						// ---
-						o[k].__copy__ = p + s;
-					}
-					else
-					{
-						throw Error(__("\rThe path %1 is invalid in %2%3. Make sure your argument is correct while calling copy(newPath) and that the specified location is a valid module. Also, make sure the alias is not already used in that destination module.", (p+s).toSource(), path, k));
-					}
-				}
-			}
 
 			target[k] = o[k];
+
+			if( 'function' != typeof o[k] ) continue;
+			
+			// ---
+			// o[k] is a function.
+			// ---
+			
+			o[k].setup
+			({
+				// E.g '/$$/Env/idVersion'
+				//     '/$$/BigInt/prototype/create'
+				__path__: path + ptp + k,
+
+				// Every public method (incl. prototyped) can use callee.µ
+				µ: this,
+			});
+			
+			// [FIX171110] The set `mods[modPath]` now supports keys having
+			// either the form `funcKey` OR `prototype/funcKey`.
+			// ---
+			// MODULE: mods['/$$/Env/']['idVersion'] = 'idVersion_ns_b_SB'
+			// CLASS:  mods['/$$/BigInt/']['prototype/create'] = 'create_X_iô_ô_'
+			// ---
+			mods[path][ptp+k] = o[k].name;
+			
+			// Copy manager.
+			// ---
+			if( !o[k].hasOwnProperty('__copy__') ) continue;
+			
+			p = o[k].__copy__;
+			
+			if( '/'==p.substr(-1) )
+			{
+				// If p ends with a slash, the path is fine and s==k,
+				// that is, alias-key == original-key (eg 'idVersion'.)
+				// ---
+				s = k;
+			}
+			else
+			{
+				// Otherwise, extract the key from the copy path `p`.
+				// => s :: alias-key
+				// => p :: remaining path xxx/.../OtherModule/
+				// ---
+				t = p.lastIndexOf('/');
+				s = p.substr(1+t);
+				p = p.substr(0,1+t);
+			}
+
+			// Resolve p from the current location.
+			// ---
+			// If `inProto`, we allow the client to specify the path
+			// either relative to the module or to its inner proto.
+			// In either case the dest location must be a module.
+			// ---
+			p = (inProto && (path+ptp).toPath(p)) || path.toPath(p);
+
+			if( (!p) || !(oo=mods[p]) || oo.hasOwnProperty(s) )
+			{
+				t = __("\rThe path %1 is invalid from %2.",(p+s).toSource(), o[k].__path__);
+				t+= __(" Make sure your argument is correct while calling copy(%1).", o[k].__copy__.toSource());
+				t+= oo ?
+					__(" The alias %1 should be free in %2.", s.toSource(), p) :
+					__(" The path should refer to a valid module.");
+				throw Error(t);
+			}
+			
+			// p :: '/$$/.../OtherModule/'
+			// s :: 'doActionAlias'
+			// => $.global['$$'][...]['OtherModule']['doActionAlias'] = o[k]
+			// ---
+			t = $.global[this.__root__].resolve(p);
+			t[s] = o[k];
+
+			// => mods['/$$/.../OtherModule/']['doActionAlias']='/$$/.../CurModule/doAction'
+			// [REM] Any `mods[modPath][name]` that starts with '/' indicates an alias and
+			// refers to its destination path (which might address a /prototype area.)
+			// ---
+			oo[s] = path + ptp + k;
+			
+			// Rewrite the resolved __copy__ path.
+			// ---
+			o[k].__copy__ = p + s;
 		}
+
 		return this;
 	};
 
