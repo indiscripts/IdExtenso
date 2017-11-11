@@ -28,7 +28,7 @@ For example, here is a typical template for your project if you need localizatio
 
 ### List of Testable Scripts
 
-##### `AppToJson.jsx`
+##### [`AppToJson.jsx`](AppToJson.jsx)
 
 Stringify the entire contents of `app.properties`.   
 _Demonstrates:_
@@ -37,7 +37,7 @@ _Demonstrates:_
 * Some nice options behind it (verbose vs. compact format…)
 * `$$.File.temp()` to output the result in a temp file (and open it.)
 
-##### `EnvSummary.jsx` vs. `EnvSummary.bin.jsx`
+##### [`EnvSummary.jsx`](EnvSummary.jsx) vs. [`EnvSummary.bin.jsx`](EnvSummary.bin.jsx)
 
 Report scripting context from the Env module.   
 _Demonstrates:_
@@ -47,16 +47,16 @@ _Demonstrates:_
 * Main script and Running code status (JSX vs. JSXBIN), see `EnvSummary.bin.jsx` for additional information.
 * Log in TRACE mode.
 
-##### `GetWebImage.jsx`
+##### [`GetWebImage.jsx`](GetWebImage.jsx)
 
-Download a PNG through `http` and load it in a ScriptUI dialog.   
+Download a PNG through `http` and load it in a ScriptUI dialog (see [animation](GetWebImage.gif)).   
 _Demonstrates:_
    
 * `$$.Web(url)`, shortcut of `$$.Web.get(url)`.
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
 
-##### `PlayWithBigInt.jsx`
+##### [`PlayWithBigInt.jsx`](PlayWithBigInt.jsx)
 
 Computing arbitrary-precision big integers using **BigInt** module.   
 _Demonstrates:_
@@ -67,7 +67,14 @@ _Demonstrates:_
 * Divide-and-Remainder method, primality.
 * Finding a huge prime number.
 
-##### `YaltIsGreat.jsx`
+##### [`ShowHelp.jsx`](ShowHelp.jsx)
+
+Get help on core and included modules.   
+_Demonstrates:_
+   
+* `$$.help()`; this method scans all present modules and displays the resulting API in a modal dialog (see [screenshot](ShowHelp.png)).
+
+##### [`YaltIsGreat.jsx`](YaltIsGreat.jsx)
 
 Basic features of the localization module (**Yalt**.)   
 _Demonstrates:_
