@@ -1,0 +1,389 @@
+/*******************************************************************************
+
+		Name:           Help
+		Desc:           Help utility.
+		Path:           /core/Root/$$.help.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Root module.
+		API:            help()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        171108 (YYMMDD)
+		Modified:       171111 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// USER INTERFACE
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		
+		PNGS: {
+			CORE: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xCEIDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\x1B\xA9\x06\xAA\xFA\xE7N\0\xE2\xA7T\xC0\x13`\x06\x82\x05\x1A&\xCC\x7F\n\x14\0c\x10\xFB\xDB\xF7\x1F`v\xFF\x9C\x95`y\x18\x1FD\xCF]\xB1\xF9i~\xD3d\xB8\xFAU\x9B\xF7\x82\xD5\xA0\x18\bS\xE8\x9AT\xFD\xF4\xD1\xD3\x17`6\xC80\x908T1\xD8\"\x98\xC50\x1A\xD9\x95p\x03c\x8A;\xC0\x92 \xC3`\x9AA.\x80\xB1a\xF2 C`\x96\xE05\x10]\x12\xA6\x19\x99\r\xF3\x1E\xCC0d1X\xB0\x10t!\x88\x8F\xECBPP\x80\f\x04\x89\xE3u!,\fA\x81\v\xD2\f\xD2\bb\xA3\x87!\x88\xFF\xE6\xDD\x87\xA7\xDB\xF7\x1D#l r\xCC\xE2\xF0\x0E\xD8\xD509\xE4X\x06Y\x80a 50m\x12\xF6\xE0\xCF\xCB#\xCF@\0\xB5\x82Os.Q\xF7\xFA\0\0\0\0IEND\xAEB`\x82",
+			XTRA: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xD8IDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\x1B\xA9\x06\xCE\x95\x9A4\x01\x88\x9FR\x01O\x80\x19\xF8\xF4\xDD\xA3\xB7O\x1F\x9Dy\xF0tw\xED\x96\xA7@A8\r\xC3k#\x96<\xFD\xF9\xED'\x98}~\xE5i\xB0\x01\xD7\xB6^\x02\xF3\x91\r\x85\x1Bx\xA8w\x0FX\xC3\x9D\x837\xC1\x18$\x063\x14\x99\x8D,\x06r\x04L\f\xC3@\x10\x86\xB9`K\xCE\x1A\xBC\x06\x82\xD4A5\x83\xD9 \x97b5\xF0\xC5\xF5g(^\xC0f \xCCP\x18\x1F\xE4\x1B\x90>\f\x03\x97:\xCC\x86k\0y\x1F\x9F\x81 \x1F\x80\xC2\x11\xE4\xE5\x93\xB3\x8F\xA08\x02n L\x01\xB2\x8D\xD8\f\x04\xC9\x83\"\x0F\xE6\x1BdW\xA3\x18\b\n\v\x90\xA10\x8D\xA0X\x05\xB9\x04f \x8C\r\xA3\x91}\x02\xD3\x8B\x11\x86\xD4\xC0\xB4I\xD8\x83?/\x8F<\x03\x01\x9E\r\x85\x05\xCE\x87\b\xBF\0\0\0\0IEND\xAEB`\x82",
+			// ---
+			AUTO: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xB9IDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\xA3\xAF\x81\xAF?\xBF\xE5\0b\x83K\x0F\xAF\x06\x1C\xB8r$\x01\xC4\x06\x89\x91l H\xD3\x91k\xC73\xCA\x97\xD4_p\xEB\f\xFEa\xDD\xEA\xF5\x1F\x84Al\x90\x18H\x8E$\x03\x0F]=6\x1D\xD9 t\f\x92\x03\xA9\xC1\xE5Z\x14\x0E\xC8v|\x86!\x1B\x8A\xCB\xA5(^\x05y\t\xA6\xA9tQ\xED\xFF\x96U](\x18$\x06\x93\x07\xA9\xC5\xE6Jd\x03\r\x90]w\xF7\xD9\xBD\xFF\xE8\0$\x86\xECJ\x90\x1E|\x06:\x10\xF2*:\x06\xE9\xA1\xAB\x81T\xF72u#\x85\xEA\xC9\x06\xE6Jb\x136Iy\x99\xAAY\x0F\xBDp\0\xC5$\x14\x93W8\f\x9D\xF2\x90\\\f\0\x1E\tW\x195\x9C\0\x13\0\0\0\0IEND\xAEB`\x82",
+			EVNT: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xDFIDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\xA3\xAF\x81?\x9E\xBF\xE2\0b\x03 v\x80b\x10\x9B\x83d\x03\xA1\x06y\\\xED\x9A\xB4\xE3XX\xF2\x93\xDD\xDC\x06\xFFA\x18\xC4\x06\x89\x81\xE4H2\xF0\xE3\xD5\x9B\x15\x87=\xC2_\x83\f9\x12\x10\xF7\xFF\xF6\xC2e`\fb\x83\xC4@r 5\xB8\\\x8B\xEE:\x0F\x98a\x8Fw\xEE\xFD\x0F\x02\xEFo\xDE\xFE\x0F\x03 1\x98\xA1\xB8\\\x8A\xE2U\x90\x97\x90\r\x03\x01\x10\x1F\x9B\xA1P\xEFs\xE03\xD0\0\x14N \xAF!\x03t\x03A\0\xA4\x06\xA4\x16\xA4\x07\x9F\x81\x0E \xCD\xA0\xF0B7\x10\xE4*\x90\xA10\x83Aj@\xE2 =d\x19\x88\x8CA\x86\x12k V/c\x03\xC4z\x19k\xA4\xA0\x03\xA2#\x05W\xB2\xC1f\x18Q\xC9\x06\xE6Jb\x136Iy\x99\xAAY\x8F\xEA\x85\x03\xA5x\xF0\x1B\b\0\x87\xFD\xAB\xD4\xCDc\xF3\xD3\0\0\0\0IEND\xAEB`\x82",
+			FUNC: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0vIDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\x1Bf\x06\xDE\xBAu\xCB\x05\x887\x02\xF1\x19 ^L\x91\x81@\x03\xCC\xA0\x06\xE5R\xC5\x85@\x83\xA6A\r4\xA3\xD8@\xA0!\xFB\xA0\x86\xC1\xB0\v\xA5\x06\x9A\x11\n7R\r\x8C\x87\x1AXE-\x03\xAB\xA0\x06\x06Q\xCB\xC0\x8D\xC4F\bA\x03\x81\x86HC\r\xDBH\x95\x84\x8D\x14~\xF1\x14\x19\x88\x94\xEE\xF6\x11\x1Bv\x03\x9F\x97G\r\xC4\x89\x01\xDC\xA7\xB0|;p\xB0\x10\0\0\0\0IEND\xAEB`\x82",
+			// ---
+			PCRE: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xE7IDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\xA3\xAF\x81/\xDF~\xE0\0b\x03 v\x80b\x10\x9B\x83d\x03A\x9A\x0E\x9C8\x9F\x91\xD74\xE5\x82Ix\xF1\x0FU\xFF\xDC\xFF \fb\x83\xC4@r$\x19\xB8\xEF\xD8\xB9\xE9\xC8\x06E\x15\xB6\x811\xB2\xC1 5\xB8\\\x8B\xC2\x01\xD9\x8El\x98Kb\xD5\xFF\xA7\xCF_\x811\x88\x8Dl(.\x97\xA2x\x15\xE4%t\xC3`\0\xDDP\x90Zl\xAED6\xD0\0\xE6:t\xC3\xB0\x19\nR\v\xD2\x83\xD3\xC0=G\xCE$\xC0l\xBFx\xED\xF6\x7F\\\0$\x07S\x07\x8A}\x9C\x06\x9E\xBFz;\0\xA6\x10\x19\xDF\xBE\xFF\b\x8C\xB1\xC9\xE15\x10\xD9\xCB\xC4\x18H\xD0\xCB\xE8\x91B\xC8@\x82\x91\x82-\xD9\xE02\x90\xA8d\x03s%z\xC2\x9E\xB1d\x03\x18\xA3'l\x92\xF22U\xB3\x1Ez\xE1\0\x8A}\x10&\xBBp\x18:\xE5!\xB9\x18\0\x15J_\x93\x9F\x91O\xB5\0\0\0\0IEND\xAEB`\x82",
+			PMTH: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xC7IDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\xA3\xAF\x81/\xDF~\xE0\0b\x83\xF3Wo\x07\xEC9r&\x01\xC4\x06\x89\x91l H\xD3\x81\x13\xE73\xF2\x9A\xA6\\0\t/\xFE\xA1\xEA\x9F\xFB\x1F\x84Al\x90\x18H\x8E$\x03\xF7\x1D;7\x1D\xD9 t\f\x92\x03\xA9\xC1\xE5Z\x14\x0E\xC8vl\x86]\xBCv\xFB\xBFKb\x15\x8A\xA1\xB8\\\x8A\xE2U\x90\x97\xB0\xB9\n\x04\x9E>\x7F\x85b(H-6W\"\x1Bh\x80\xCB\xAB0\x80l(H-H\x0F>\x03\x1D@\ng,\xD9\xF0\xFF\xF6\xFDG(\x18\x19\x80\f\x8D*l\x03\x1B\n\xD2CW\x03\xA9\xEEe\xEAF\n\xD5\x93\r\xCC\x95\xC4&l\x92\xF22U\xB3\x1Ez\xE1\0\x8AI(&\xAFp\x18:\xE5!\xB9\x18\0\xCEc`\x01\xFE\xD5g\f\0\0\0\0IEND\xAEB`\x82",
+			POPR: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\0\xECIDAT8\xCBc\xF8\xFF\xFF?\x0351U\r\xA3\xAF\x81/\xDF~\xE0\0b\x83\xF3Wo\x07\xEC9r&\x01\xC4\x06\x89\x91l H\xD3\x81\x13\xE73\xF2\x9A\xA6\\0\t/\xFE\xA1\xEA\x9F\xFB\x1F\x84Al\x90\x18H\x8E$\x03\xF7\x1D;7\x1D\xD9 t\f\x92\x03\xA9\xC1\xE5Z\x14\x0E\xC8v\x98a9\xF5\x13\xFF\xDF\xBE\xFF\xE8\x7FTa\x1B\x18\x83\xD8 1\x98\xA1\xB8\\\x8A\xE2U\x90\x97`.Y\xBA~\xE7\x7F\x10\xD8s\xF8\x14\x18\x83\0H\f&\x0FR\x8B\xCD\x95\xC8\x06\x1A\xA0{\xF5\xE9\xF3W\xFF\xDF\xBD\xFF\b\xC6 6\xBA\xD7Az\xF0\x19\xE8\0R\xE8\x92X\x057\xE0\xE2\xB5\xDB\xFFa\0\xC4\x86Y\0R\x03R\v\xD2C\xB4\x81 \f\n7\x18\0\xB1a\xE2\xC4\x1AHu/S7R\xA8\x9El`\xAE$6a\x93\x94\x97\xA9\x9A\xF5\xD0\v\x07PLB1y\x85\xC3\xD0)\x0F\xC9\xC5\0\xC3!rg\xEB\x01\xD9o\0\0\0\0IEND\xAEB`\x82",
+			// ---
+			RDIR: "\x89PNG\r\n\x1A\n\0\0\0\rIHDR\0\0\0\x14\0\0\0\x14\b\x06\0\0\0\x8D\x89\x1D\r\0\0\0\tpHYs\0\0\v\x12\0\0\v\x12\x01\xD2\xDD~\xFC\0\0\x01GIDAT8\xCB\xD5\x941\x0E\x82@\x10E-=\x8E\xBD\x16V\xDA\x1A\xBD\x80\r\x89\x17\xD0h\xCF\x05\xB4\xB1\xE3\0\xF4\xD4D\x03\x85V&\xD0\xD2\xD2\x11J\xECF\xDF\xC61jD\xC5\x10\x13I&\xBB,3\x7F\xDF\xEC\f\xDB\x10\x91F\x9DV\xAB\xD8o\x05\xB3,k\x9E\xAD\x15\xC7\xF1`\xBB\xDD\x8C\x99\xB3VY\x90\xA00\f'\x8B\xC5\xFC\xD0\xEF\xF7\x8E\x9DN[0\xE6\xAC\xF1\xAD\x92`\x10\x04k\x15\x9A\xCD\xA6\xE2y\x9EDQ$\xBE\xEF\x8B\xE38F\x18\x9F2\xDA\xBB\x17v'`4\x1A\x1A\x91<\xCFe\xB5Z\x1Aa\xDB\xB6\xCD\x1A\x86O\x19\xE9]\xAA\xA4\x04\x19AI\x92\x98T\x11\x84\xD2u\xDD+-\xA4\xF8>\xA3\xBC\x15l\xB134<\x96e\xC9~\xBF\x93\xA2(\x8C\x10\x0Fb\xBA\x01\xBE\xC4\x94\nRI\x88pN\xD3TT\x182\x88x\x181\xD6\xF0=\vvK\x05i\x0F\x15$]\xA5\xD2\xB3\x83\x94\xEFPC\xFFVPS\x86\x80`%\x84\x96w\n\xC4FT[\xDB\xE8e\xCAZ\x14vG\x80\xB4\x98CH\xD5u\xD4\xBE|[\x94\xDB\xB6!\x18Qh\x98#L1 d\xFC\xA8m\x94R\x1B\x1B\x1A(\x11\xE5\f9S\x84\xB5\xB1+\xFD\xCB\xB5\xFEz\x8F\x97\x03\x95\xBC\xD8w\x97\xC3\xFF\xDC\x87\xDF\xDA\tK\x04\x80d:\xC0D\x05\0\0\0\0IEND\xAEB`\x82",
+		},
+
+		USHW: function ON_SHOW()
+		//----------------------------------
+		// (UI-OnShow.)
+		// <this> :: Window/dialog
+		{
+			this.modList.selection = 0;
+			this.modList.notify();
+		},
+
+		UMCH: function ON_MODULE_CHANGE(  w,s,k)
+		//----------------------------------
+		// (UI-ModuleList-OnChange.)
+		// <this> :: ListBox
+		{
+			w = this.window;
+
+			(s=this.selection||'') && (s=w.data['_'+(k=s.text)]||'');
+			callee.µ['~'].ULST(w.fctList,s.split(RegExp.X1));
+
+			w.fctHead.text =  (k && w.data['#'+k])||'';
+			w.modInfo.text =  (k && w.data['§'+k])||'';
+		},
+
+		ULST: function(/*ListBox*/lb,/*str[]*/a,  q,n,i,t,s,p,o,j,z)
+		//----------------------------------
+		// (ListBox-Generic-Loader.)
+		{
+			q = this.PNGS;
+
+			lb.hide();
+			lb.items.length && lb.removeAll();
+			for( n=a.length, i=-1 ; ++i < n ; )
+			{
+				t = a[i].split(RegExp.X2);
+
+				s = t.shift();
+				p = '{'==s[0] ? s.indexOf('}') : -1;
+				o = lb.add('item',s.substr(1+p));
+				0 < p && (s=q[s.substring(1,p)]) && (o.image=s);
+				
+				for( o=o.subItems, z=o.length, j=-1 ; ++j < z ; )
+				{
+					s = t[j]||'';
+					p = '{'==s[0] ? s.indexOf('}') : -1;
+					o[j].text = s.substr(1+p);
+					0 < p && (s=q[s.substring(1,p)]) && (o[j].image=s);
+				}
+				t.length = 0;
+			}
+			
+			// Refresh. (Needed in CC.)
+			// ---
+			lb.show();
+			if( !(t=lb.size) ) return;
+			lb.size = [t[0],1+t[1]];
+			lb.size = [t[0],t[1]];
+		},
+
+		UHLP: function(/*str[]*/a,  $$,s)
+		//----------------------------------
+		// (Help-UI.)
+		{
+			$$ = callee.µ;
+
+			// UI resource.
+			// ---
+			s = """dialog
+			{
+				orientation:              'column',
+				alignChildren:            ['center','top'],
+				margins:                  15,
+				spacing:                  15,
+				properties:               { borderless: false },
+				text:                     "\xA0IdExtenso's API",
+				_:Panel
+				{
+					orientation:          'row',
+					alignChildren:        ['left','bottom'],
+					margins:              15,
+					spacing:              15,
+					properties:           { name:'P0' },
+					_:Group
+					{
+						orientation:      'column',
+						alignChildren:    ['left','top'],
+						spacing:          15,
+						properties:       { name:'G0' },
+						_:ListBox
+						{
+							preferredSize:[220,330],
+							properties:   { name:'L0', numberOfColumns:2, columnWidths:[130,80], showHeaders:false, columnTitles:['Name','Version'] },
+							active:       true,
+						},
+						_:StaticText
+						{
+							alignment:    ['fill','bottom'],
+							minimumSize:  [10,100],
+							properties:   { name:'S0', multiline:true },
+							text:         "",
+						}
+					}
+					_:Group
+					{
+						orientation:      'column',
+						alignment:        ['left','fill'],
+						alignChildren:    ['left','top'],
+						spacing:          15,
+						properties:       { name:'G1' },
+						_:StaticText
+						{
+							alignment:    ['left','top'],
+							indent:       10,
+							properties:   { name:'S1' },
+							characters:   30,
+						},
+						_:ListBox
+						{
+							alignment:    ['left','fill'],
+							minimumSize:  [420,300],
+							properties:   { name:'L1', numberOfColumns:2, columnWidths:[280,130], showHeaders:false, columnTitles:['Signature','RetVal'] },
+						},
+					},
+				},
+				_:Button
+				{
+					properties:           { name:'OK' },
+					text:                 "Close",
+				},
+			}""";
+
+			// Dialog.
+			// ---
+			w = new Window(s);
+			w.data = a;
+			
+			w.modList = w.P0.G0.L0;
+			w.modInfo = w.P0.G0.S0;
+			w.fctHead = w.P0.G1.S1;
+			w.fctList = w.P0.G1.L1;
+
+			this.ULST(w.modList,a);
+
+			w.modList.onChange = this.UMCH;
+			w.onShow = this.USHW;
+			w.show();
+		},
+	})
+
+	//==========================================================================
+	// PROCESSING
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		FSIG: function F(/*str*/s,/*'code'|'name'*/k,/*?str*/rt,  q,o,p,t,tt,z,i,c)
+		//----------------------------------
+		// (Function-Signature-Formatter.) Given a signature
+		// `<arg1Cast>_<arg2Cast>_<retCast>`, return the string
+		// `(arg1Types, arg2Types . . .)<X2>retTypes`
+		// where `iTypes` are based on Casting data (codes or names.)
+		// ---
+		// If `rt` is non-empty, force the retTypes field.
+		// => str
+		{
+			const QMARK = '\u02C0';
+
+			q = callee.Q||(callee.Q=[]);
+			o = this.CSTG; // { <LETTER> => { code, name, desc } }
+
+			s += '_';
+			while( 0 <= (p=s.indexOf('_')) )
+			{
+				t = s.substr(0,p); // <argCast> :: (<letter>|($xyz$))+
+				s = s.substr(1+p);
+
+				if( !p ){ q.push('<undefined>'); continue; }
+
+				for( tt='', z=p, i=-1 ; ++i < z ; tt += '|' )
+				{
+					if( '$' == (c=t[i]) )
+					{
+						(~(i=t.indexOf('$',p=1+i))) || (i=z);
+						tt += t.substring(p,i) || '<?>';
+						continue;
+					}
+					
+					c = (p='') || o[c] || ((p=QMARK) && o[c.toUpperCase()]);
+					tt += ( c ? (p+c[k]) : '<?>' );
+				}
+				q.push(tt.substr(0,tt.length-1));
+			}
+
+			s = q.pop();
+			rt && (s=rt);
+			if( !q.length ) return '( )\x02' + s;
+			s = '( ' + q.join(', ') + ' )\x02' + s;
+			return (q.length=0), s;
+		},
+
+		HFCT: function(/*str*/fKey,/*str*/fName,/*ref*/mod,  q,p,s,k,ctor,r)
+		//----------------------------------
+		// (Help-on-Function.) Return detail on a function.
+		// [REM] fKey  :: `<funcKey>`  | `prototype/<funcKey>`
+		//       Noting that <funcKey> might be an operator
+		//       (see RegExp.EXOP) in either case!
+		// [REM] fName :: `<name>`     | `/path/to/func`
+		// => str
+		{
+			if( '/' == fName[0] )
+			{
+				return "{RDIR}" + fKey + '\x02' + fName;
+			}
+
+			q = callee.Q||(callee.Q={
+				'onLoad'    : "{EVNT}",
+				'onUnload'  : "{EVNT}",
+				'onEngine'  : "{EVNT}",
+				});
+			
+			p = fName.indexOf('_');
+			s = -1==p ? fName : fName.substr(0,p);
+
+			if( 0===fKey.indexOf('prototype/') )
+			{
+				k = fKey.substr(10);
+				r = RegExp.EXOP.test(k) ?
+					( ( s && k+=__("  [%1] ",s)), "{POPR}" ) :
+					( (ctor='create'==k) ? "{PCRE}" : "{PMTH}" );
+			}
+			else
+			{
+				k = fKey;
+				r = fKey===mod.__auto__ ? "{AUTO}" : (q[k]||"{FUNC}");
+			}
+
+			return r + k +
+				( 0 <= p ?
+				this.FSIG(fName.substr(1+p),'name',ctor?'<constructor>':'') :
+				'\x02<undocumented>'
+				);
+		},
+
+		MAPI: function(/*{fKey=>fName|fPath}*/o,/*ref*/mod,  q,z,fk,s,p)
+		//----------------------------------
+		// (Module-API-Summarizer.) Return a string in the
+		// form <f1Data><X01><f2Data><X01> . . . <fNData>
+		// where <fiData> sums up function detail.
+		// [REM] fKey :: `<funcKey>` | `prototype/<funcKey>`
+		// => str
+		{
+			q = callee.Q || (callee.Q=[]);
+			z = 0;
+
+			for( fk in o )
+			{
+				if( !o.hasOwnProperty(fk) ) continue;
+				q[z] = s = this.HFCT(fk,o[fk],mod);
+				++z;
+			}
+
+			q.sort();
+			s = q.join('\x01');
+
+			return (q.length=0), s;
+		},
+
+		HELP: function(  q,o,z,p,k,m,n,isClass)
+		//----------------------------------
+		// (Help-Main-Loop.) Return a volatile rich array
+		// that sends each index to a module path and
+		// each module path to API data.
+		// [i] => (str)modPath  ;  [modPath] => (str)apiData
+		// [REM] For apiData format, see ~.MAPI.
+		{
+			q = callee.Q || (callee.Q=[]);
+			o = this.__mods__;
+			z = 0;
+
+			for( p in o )
+			{
+				if( '/'==p || !o.hasOwnProperty(p) ) continue;
+
+				// Module.
+				// ---
+				m = this.RSLV(p);
+				
+				// p is a module path, e.g '/$$/Env/'
+				// k :: {CORE|XTRA}<name><X2><version>
+				// ---
+				k = __("{%1}%2\x02%3",
+					m.__core__ ? 'CORE' : 'XTRA',
+					m.name,
+					m.__modf__/1e5
+					);
+				q[z] = k;
+				
+				// Module header info.
+				// ---
+				q['#'+m.name] = (m.__path__||'').substr(1).replace(RegExp.SL,' \u2022 ');
+
+				// Module full info.
+				// ---
+				n = m.__auto__ ? 0 : m.prototype.__count__;
+				q['§'+m.name] = __(
+					"%1%2  [%3]\rPath:\t%4\r \r%5:\t%6 methods\r%7Private:\t%8 keys",
+					m.name==callee.µ.name ? 'IdExtenso: ' : (n ? 'Class:\t' : 'Module:\t'),
+					m.name,
+					m.__load__ ? 'loaded' : 'unloaded',
+					m.__path__,
+					n ? 'Static' : 'Public',
+					o[p].__count__ - n,
+					n ? __("Proto:\t%1 methods\r",n) : '',
+					m['~'].__count__||0
+					);
+
+				// Summarize module API (funcs) into a string.
+				// ---
+				q['_'+m.name] = this.MAPI(o[p],m);
+				++z;
+			}
+
+			q.sort();
+			return (q.length=z), q;
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+	
+		help: function help_(  I,a)
+		//----------------------------------
+		// Display all API infos available from the included modules.
+		// If SHORT==0, show type codes;
+		// if SHORT==1, show type names.
+		// => undefined
+		{
+			I = callee.µ['~'];
+
+			a = I.HELP();
+			I.UHLP(a);
+		},
+	})
