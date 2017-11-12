@@ -7,12 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            copy() self()
+		API:            copy() self() send()
 		                [PRIVATE]() [PUBLIC]() [PARENT]() [PROTO]()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       171110 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
@@ -61,6 +61,24 @@
 	// => this
 	{
 		this.call(context,x,y);
+		return this;
+	};
+
+	//==========================================================================
+	// Function.prototype.send()
+	// [REM] Autodeleted once the framework has been loaded.
+	//==========================================================================
+
+	Function.prototype.send = function(/*obj*/context,/*str*/meth,/*any*/x,/*any*/y)
+	//----------------------------------
+	// <this> :: method of the current module or class.
+	// ---
+	// [ADD171112] Temporarily provide a .send utility to any public or private
+	// method so that it invokes context[meth](this,x,y), and returns itself.
+	// [REM] Autodeleted once the framework has been loaded.
+	// => this
+	{
+		context[meth](this,x,y);
 		return this;
 	};
 
