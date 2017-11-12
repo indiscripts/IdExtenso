@@ -13,12 +13,12 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170601 (YYMMDD)
-		Modified:       170606 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.SHA ){ alert(__("%1 requires the %2 module.",'Int64','SHA')); exit(); }
-;$$.SHA.hasOwnProperty('Int64') || eval(__(CLASS, $$.SHA.toSource(), 'Int64', 170606))
+;$$.SHA.hasOwnProperty('Int64') || eval(__(CLASS, $$.SHA.toSource(), 'Int64', 171112))
 
 	//==========================================================================
 	// NOTICE
@@ -55,7 +55,7 @@
 			this.LO = 0|lo;
 		},
 
-		toString: function toString_S(  s)
+		toString: function toString_H(  s)
 		// ---------------------------------
 		// => hex representation.
 		{
@@ -65,15 +65,17 @@
 				).toUpperCase();
 		},
 
+		// ---
 		// PUBLIC OPERATORS
+		// ---
 	
-		'==' : function equals(/*any*/x)
+		'==' : function equals_X_$Boolean$(/*any*/x)
 		// ---------------------------------
 		{
 			return (!!x) && this.HI===x.HI && this.LO===x.LO;
 		},
 
-		'>>>': function rightShift(/*uint*/n,/*bool*/_)
+		'>>>': function rightShift_Y_$Int64$(/*uint16*/n,/*bool*/_)
 		// ---------------------------------
 		{
 			return 32 >= n ?
@@ -87,7 +89,7 @@
 				));
 		},
 		
-		'>>' : function rightRotation(/*uint*/n,/*bool*/_,  p)
+		'>>' : function rightRotation_Y_$Int64$(/*uint16*/n,/*bool*/_,  p)
 		// ---------------------------------
 		// [WARN] Redefined operator that performs a *rotation*.
 		{
@@ -104,7 +106,7 @@
 				));
 		},
 		
-		'<<' : function leftRotation(/*uint*/n,/*bool*/_,  p)
+		'<<' : function leftRotation_Y_$Int64$(/*uint16*/n,/*bool*/_,  p)
 		// ---------------------------------
 		// [WARN] Redefined operator that performs a *rotation*.
 		{
@@ -121,25 +123,25 @@
 				));
 		},
 
-		'~'  : function bitwiseNot()
+		'~'  : function bitwiseNot_$Int64$()
 		// ---------------------------------
 		{
 			return new this.constructor( ~this.HI, ~this.LO );
 		},
 		
-		'&'  : function bitwiseAnd(/*any*/x)
+		'&'  : function bitwiseAnd_X_$Int64$(/*any*/x)
 		// ---------------------------------
 		{
 			return new this.constructor( this.HI&((x||0).HI),  this.LO&((x||0).LO) );
 		},
 		
-		'|'  : function bitwiseOr(/*any*/x)
+		'|'  : function bitwiseOr_X_$Int64$(/*any*/x)
 		// ---------------------------------
 		{
 			return new this.constructor( this.HI|((x||0).HI),  this.LO|((x||0).LO) );
 		},
 		
-		'^'  : function bitwiseXor(/*any*/x)
+		'^'  : function bitwiseXor_X_$Int64$(/*any*/x)
 		// ---------------------------------
 		{
 			return new this.constructor( this.HI^((x||0).HI),  this.LO^((x||0).LO) );
