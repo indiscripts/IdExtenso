@@ -12,12 +12,12 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170523 (YYMMDD)
-		Modified:       170527 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'MultiRec','Random')); exit(); }
-;$$.Random.hasOwnProperty('MultiRecursive') || eval(__(MODULE, $$.Random.toSource(), 'MultiRec', 170527, 'next'))
+;$$.Random.hasOwnProperty('MultiRecursive') || eval(__(MODULE, $$.Random.toSource(), 'MultiRec', 171112, 'next'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -75,7 +75,7 @@
 		// ---
 		seedSize: 2,
 
-		stateType: function stateType_A()
+		stateType: function stateType_Ä()
 		// ---------------------------------
 		// Create a new state structure (192 bits.)
 		// => state& :: uint32[6]
@@ -91,7 +91,7 @@
 			return 0;
 		},
 
-		seed: function seed_A_A_(/*uint32[]*/x,/*uint32[6]&*/state,  i,v,t,j,h)
+		seed: function seed_Ä_Ä_(/*uint32[]*/x,/*uint32[6]&*/state,  i,v,t,j,h)
 		// ---------------------------------
 		// 64-bit seeding, given the seed x and the state state&.
 		// [REM] The state must be seeded with a non-empty array.
@@ -136,7 +136,7 @@
 			}
 		},
 
-		next: function next_A_I(/*uint32[6]&*/state)
+		next: function next_Ä_I(/*uint32[6]&*/state)
 		// ---------------------------------
 		// Return the next output from the state state&.
 		// => out :: uint32
