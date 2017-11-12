@@ -13,11 +13,11 @@
 		DOM-access:     app.performanceMetric [only if available]
 		Todo:           Decide whether $$.Random should be global-ized.
 		Created:        170511 (YYMMDD)
-		Modified:       170601 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Random') || eval(__(CLASS, $$, 'Random', 170601))
+;$$.hasOwnProperty('Random') || eval(__(CLASS, $$, 'Random', 171112))
 
 	//==========================================================================
 	// BACKGROUND
@@ -228,7 +228,7 @@
 			I.POOL();
 		},
 		
-		generateSeed: function generateSeed_i_b_A(/*uint=2*/count,/*bool=0*/VOLATILE,  I,a,r,n,i)
+		generateSeed: function generateSeed_i_b_Ä(/*uint=2*/count,/*bool=0*/VOLATILE,  I,a,r,n,i)
 		// ---------------------------------
 		// Generate and return a new array formed of `count` random integers.
 		// In this implementation, a seed refers to an array of uint32. If
@@ -263,7 +263,7 @@
 			return (r.length=count), r;
 		},
 		
-		normalizeSeed: function normalizeSeed_X_i_b_A(/*any*/x,/*uint=2*/count,/*bool=0*/VOLATILE,  r,i)
+		normalizeSeed: function normalizeSeed_X_i_b_Ä(/*any*/x,/*uint=2*/count,/*bool=0*/VOLATILE,  r,i)
 		// ---------------------------------
 		// Given any data x, return a normalized array of uint32 of the
 		// size `count`, with no random noise added. This routine is used
@@ -487,7 +487,7 @@
 				( ($.global[callee.µ.__root__].BigInt(this.rng.uint32(this.out))<<32)|this.next() );
 		},
 
-		nextFloat: function nextFloat_()
+		nextFloat: function nextFloat_N()
 		// ---------------------------------
 		// Generate the next pseusorandom float53, that is,
 		// this.next53() / 2^53.
@@ -505,7 +505,7 @@
 			return this.next53() / 0x20000000000000;
 		},
 
-		nextBytes: function nextBytes_(/*uint*/count,/*bool=0*/VOLATILE,  r,i,t,z)
+		nextBytes: function nextBytes_I_b_Ä(/*uint*/count,/*bool=0*/VOLATILE,  r,i,t,z)
 		// ---------------------------------
 		// Generate `count` random bytes and place them into an array.
 		// If VOLATILE is on, return a temporary cached array.
