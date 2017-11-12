@@ -13,12 +13,12 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170522 (YYMMDD)
-		Modified:       170526 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'XoroShiro','Random')); exit(); }
-;$$.Random.hasOwnProperty('XoroShiro') || eval(__(MODULE, $$.Random.toSource(), 'XoroShiro', 170526, 'next'))
+;$$.Random.hasOwnProperty('XoroShiro') || eval(__(MODULE, $$.Random.toSource(), 'XoroShiro', 171112, 'next'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -104,7 +104,7 @@
 		// ---
 		seedSize: 2,
 
-		stateType: function stateType_A()
+		stateType: function stateType_Ä()
 		// ---------------------------------
 		// Create a new state structure (128 bits.)
 		// => state& :: uint32[4]
@@ -112,7 +112,7 @@
 			return [0,0,0,0];
 		},
 
-		outType: function outType_A()
+		outType: function outType_Ä()
 		// ---------------------------------
 		// Create a new output structure (64 bits.)
 		// => out& :: uint32[2]
@@ -120,7 +120,7 @@
 			return [0,0];
 		},
 
-		seed: function seed_A_A_(/*uint32[2]*/x,/*uint32[4]&*/state)
+		seed: function seed_Ä_Ä_(/*uint32[2]*/x,/*uint32[4]&*/state)
 		// ---------------------------------
 		// 64-bit seeding, given the seed x and the state state&.
 		// [REM] The state must be seeded so that it is not everywhere zero.
@@ -138,7 +138,7 @@
 			}
 		},
 
-		next: function next_A_A_A(/*uint32[4]&*/state,/*uint32[2]&*/out)
+		next: function next_Ä_Ä_Ä(/*uint32[4]&*/state,/*uint32[2]&*/out)
 		// ---------------------------------
 		// Return the next output (out&) from the state state&.
 		// => out&
@@ -146,7 +146,7 @@
 			return callee.µ['~'].NEXT(state, out);
 		},
 
-		uint32: function uint32_A_I(/*uint32[2]*/out)
+		uint32: function uint32_Ä_I(/*uint32[2]*/out)
 		// ---------------------------------
 		// Given the current output (out), return an uint32.
 		// [REM] By convention, take the lowest bits, i.e out[1].
@@ -165,7 +165,7 @@
 	
 	({
 
-		uint53: function uint53_A_Z(/*int32[2]*/out)
+		uint53: function uint53_Ä_Z(/*int32[2]*/out)
 		// ---------------------------------
 		// Given the current output (out), return an uint53.
 		// => uint53
@@ -173,7 +173,7 @@
 			return out[1] + (out[0]&0x1FFFFF)*0x100000000;
 		},
 
-		ubig64: function ubig64_A_$BigInt$(/*int32[2]*/out)
+		ubig64: function ubig64_Ä_$BigInt$(/*int32[2]*/out)
 		// ---------------------------------
 		// Given the current output (out), return a BigInt64.
 		// [REM] This method blindly assumes $$.BigInt's availability.
