@@ -24,11 +24,11 @@
 		DOM-access:     NO
 		Todo:           toLong()
 		Created:        170503 (YYMMDD)
-		Modified:       170608 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 170608))
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 171112))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1582,7 +1582,7 @@
 			$.global[callee.µ.__root__].JSON['~']['\x02BigInt'] = I.JSON;
 		},
 
-		probablePrime: function probablePrime(/*uint*/bits,/*Random=auto*/rng,  $$,I)
+		probablePrime: function probablePrime_I_$Random$_$BigInt$(/*uint*/bits,/*Random=auto*/rng,  $$,I)
 		// ---------------------------------
 		// Return a positive BigInt that is probably prime, with the
 		// specified bit length `bits`. Optionally a new Random instance
@@ -2348,7 +2348,7 @@
 				( this.spe ? I.FSPE(null,-Number[this.spe]) : I.SUB2(I.ZERO,this,null) );
 		},
 	
-		nextProbablePrime : function nextProbablePrime_$BigInt$(/*uint=auto*/certainty,  I,R)
+		nextProbablePrime : function nextProbablePrime_i_$BigInt$(/*uint=auto*/certainty,  I,R)
 		// ---------------------------------
 		// => First BigInt greater than this one that
 		// is probably prime. The probability that the number returned
@@ -2710,31 +2710,31 @@
 	[PROTO]
 	
 	({
-		'==' : function equals(/*any*/x)
+		'==' : function equals_X_$Boolean$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.equals(x)
 		},
 
-		'<'  : function lessThan(/*any*/x)
+		'<'  : function lessThan_X_$Boolean$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.compareTo(x) < 0
 		},
 
-		'<=' : function lessThanOrEquals(/*any*/x)
+		'<=' : function lessThanOrEquals_X_$Boolean$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.compareTo(x) <= 0
 		},
 
-		'+'  : function unaryPlusOrAdd(/*?any*/x)
+		'+'  : function unaryPlusOrAdd_x_$BigInt$(/*?any*/x)
 		// ---------------------------------
 		{
 			return 'undefined' == typeof x ? this : this.add(x)
 		},
 
-		'-'  : function unaryMinusOrSub(/*?any*/x,/*bool*/rv)
+		'-'  : function unaryMinusOrSub_x_$BigInt$(/*?any*/x,/*bool*/rv)
 		// ---------------------------------
 		{
 			return 'undefined' == typeof x ?
@@ -2742,37 +2742,37 @@
 				(rv?new callee.µ(x):this).subtract(rv?this:x);
 		},
 
-		'*'  : function multiply(/*any*/x)
+		'*'  : function multiply_X_$BigInt$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.multiply(x);
 		},
 
-		'/'  : function divide(/*?any*/x,/*bool*/rv)
+		'/'  : function divide_X_$BigInt$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
 		{
 			return (rv?new callee.µ(x):this).divide(rv?this:x);
 		},
 
-		'%'  : function modulus(/*?any*/x,/*bool*/rv)
+		'%'  : function modulus_X_$BigInt$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
 		{
 			return (rv?new callee.µ(x):this).mod(rv?this:x);
 		},
 
-		'<<' : function leftShift(/*?any*/x,/*bool*/rv)
+		'<<' : function leftShift_Ï_$BigInt$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
 		{
 			return (rv?new callee.µ(x):this).shiftLeft(rv?this.toInt():x);
 		},
 
-		'>>' : function rightShift(/*?any*/x,/*bool*/rv)
+		'>>' : function rightShift_Ï_$BigInt$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
 		{
 			return (rv?new callee.µ(x):this).shiftRight(rv?this.toInt():x);
 		},
 
-		'>>>': function unsignedRightShift(/*?any*/x,/*bool*/rv,  t)
+		'>>>': function unsignedRightShift_Ï_$BigInt$(/*any*/x,/*bool*/rv,  t)
 		// ---------------------------------
 		// This operator is not standard and, in principle, irrelevant.
 		// "The unsigned right shift operator (>>>) is omitted, as
@@ -2796,25 +2796,25 @@
 			return (t.signum() >= 0 ? t : t.negate()).shiftRight(x);
 		},
 
-		'~'  : function bitwiseNot()
+		'~'  : function bitwiseNot_$BigInt$()
 		// ---------------------------------
 		{
 			return this.not();
 		},
 
-		'&'  : function bitwiseAnd(/*any*/x)
+		'&'  : function bitwiseAnd_X_$BigInt$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.and(x);
 		},
 
-		'|'  : function bitwiseOr(/*any*/x)
+		'|'  : function bitwiseOr_X_$BigInt$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.or(x);
 		},
 
-		'^'  : function bitwiseXor(/*any*/x)
+		'^'  : function bitwiseXor_X_$BigInt$(/*any*/x)
 		// ---------------------------------
 		{
 			return this.xor(x);
