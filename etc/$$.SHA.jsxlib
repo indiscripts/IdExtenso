@@ -15,11 +15,11 @@
 		DOM-access:     NO
 		Todo:           Data cleaning on destruction?
 		Created:        170601 (YYMMDD)
-		Modified:       170606 (YYMMDD)
+		Modified:       171112 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('SHA') || eval(__(CLASS, $$, 'SHA', 170606))
+;$$.hasOwnProperty('SHA') || eval(__(CLASS, $$, 'SHA', 171112))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1169,7 +1169,7 @@
 			this.hmac && I.SHMK( this, hmacKey, I['F'+I.MAPF[hkFormat]], +('LE'==hkFormat.substr(-2)) );
 		},
 
-		update : function update_S_s_Õ(/*str*/data,/*str=UTF8*/inFormat,  I,H)
+		update : function update_S_s_$this$(/*str*/data,/*str=UTF8*/inFormat,  I,H)
 		// ---------------------------------
 		// Load the source string (`data`) and update the inner attributes
 		// for either a future update or getHash call.
@@ -1192,7 +1192,7 @@
 			return this;
 		},
 
-		getHash : function getHash_s_s_i_S(/*str=HEX*/outFormat,/*str='='*/b64Pad,/*uint=1*/rounds,  $$,I,tFmt,H,fEnd,S,oBits,T,i,b,x)
+		getHash : function getHash_s_s_i_HS(/*str=HEX*/outFormat,/*str='='*/b64Pad,/*uint=1*/rounds,  $$,I,tFmt,H,fEnd,S,oBits,T,i,b,x)
 		// ---------------------------------
 		// outFormat :: One of 'HEX', 'B64', or 'BYTES'. Default is HEX.
 		// -> HEX (Hex-string)    e.g "a9993e364706816aba3e25717850c26c9cd0d89d"
