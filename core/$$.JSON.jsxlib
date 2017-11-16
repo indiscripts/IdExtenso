@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       170608 (YYMMDD)
+		Modified:       171116 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 170608, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 171116, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -575,8 +575,9 @@
 	[PUBLIC]
 
 	({
-		lave : function lave_x_t_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*0|1=0*/DOM_ACCESS,  I,t,ns,nt)
+		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,t,ns,nt)
 		//----------------------------------
+		// [ADD171116] Added FORCE_OBJ param.
 		// [CHG170418] Properly uneval (almost) anything in ExSc/SUI/InDesign context.
 		// [REM] Prevents Array/Object cycles;
 		//       Supports RegExp, File/Folder, UnitValue, XML/XMLList/QName/Namespace
@@ -596,6 +597,10 @@
 		//       `resolve()`, enumeration objects, etc. Default is 0, meaning that the
 		//       output string is safe from any underlying DOM command. In particular,
 		//       references of the form `resolve(<path>)` are changed into `"<path>"`.
+		// `FORCE_OBJ` :: whether `x` must be browsed as an object (if possible.)
+		//       This flag allows to input special objects s.t. $.global, ScriptUI,
+		//       BridgeTalk which would normally return themselves stringified.
+		//       Use with caution.
 		// => uneval-string
 		{
 			I = callee.µ['~'];
@@ -650,9 +655,15 @@
 
 			I.KDOM = DOM_ACCESS ? 1 : 0;
 			I.ODEL(I.DOMS.Q)['/'] = DOM_ACCESS ? ('resolve(' + '/'.toSource() + ')') : '"/"';
+
 			// ---
-			x = I.LAVE(x);
+			// [ADD171116] Support FORCE_OBJ.
+			k = (k = FORCE_OBJ && x && (typeof x)) && ('object'==k || 'function'==k) ?
+				'\x01Object' :
+				'LAVE';
+			x = I[k](x);
 			// ---
+
 			I.REFS.Q.length = 0;
 			I.ODEL(I.DOMS.Q);
 
