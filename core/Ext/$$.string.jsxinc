@@ -13,7 +13,7 @@
 		DOM-access:     ---
 		Todo:           Performance testing; String.lorem()
 		Created:        150510 (YYMMDD)
-		Modified:       170320 (YYMMDD)
+		Modified:       171122 (YYMMDD)
 
 *******************************************************************************/
 
@@ -432,7 +432,7 @@
 	// String.prototype.charSet()
 	//==========================================================================
 
-	String.prototype.charSet = function(/*0|1=0*/KEEP_ORDER,  o,u,r,z,n,i,k)
+	String.prototype.charSet = function charSet(/*0|1=0*/KEEP_ORDER,  o,u,r,z,n,i,k)
 	//----------------------------------
 	// Return, as a string, the set of characters which belong to
 	// this string (UTF16 re-ordered unless KEEP_ORDER==1)
