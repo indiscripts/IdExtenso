@@ -459,7 +459,7 @@
 
 	*/
 
-	RegExp.prototype['=='] = function(/*RegExp*/re)
+	RegExp.prototype['=='] = function equals(/*RegExp*/re)
 	//----------------------------------
 	// Tell whether two regexes are based on the same pattern.
 	// => true | false
