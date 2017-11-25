@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       170429 (YYMMDD)
+		Modified:       171125 (YYMMDD)
 
 *******************************************************************************/
 
@@ -55,6 +55,48 @@
 	
 	      function isNegativeZero(x) { return 0===x && (1/x < 0) }
 
+	`Number.MAX_VALUE` refers to the LARGEST POSITIVE FINITE value of
+	the Number type, which is approximately 1.7976931348623157 × 10^308.
+	ExtendScript returns `1.7976931348623157e+308`.
+	
+	`Number.MIN_VALUE` refers to the SMALLEST POSITIVE VALUE of the
+	Number type, which is approximately 5 × 10^-324 in ECMA.
+	ExtendScript returns `2.2250738585072e-308`.
+	
+	The value of `Number.NaN` is NaN. This property has the attributes
+	{ [[Writable]]:false, [[Enumerable]]:false, [[Configurable]]:false },
+	while [[global]].NaN is writable. Hence, the safest way to access
+	to NaN is to use `Number.NaN` rather than `NaN`. Alternately, one
+	can produce NaN using `+{}`. Keep in mind that
+	
+	      typeof NaN == 'number'  // NaN *is* a number!
+	      FALSE == (NaN===NaN)    // Use isNaN(x) instead!
+	      FALSE == (NaN==NaN)     // Use isNaN(x) instead!
+
+	The value of `Number.NEGATIVE_INFINITY` is −∞. This property has
+	the attributes { [[Writable]]: false, [[Enumerable]]: false,
+	[[Configurable]]: false }.
+
+	The value of `Number.POSITIVE_INFINITY` is +∞. This property has
+	the attributes { [[Writable]]: false, [[Enumerable]]: false,
+	[[Configurable]]: false }.
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	While extending `Number.prototype`, never forget that `this` refers to
+	a Number object, not to a scalar number. That is,
+	
+	      typeof this == 'object'   // not 'number'
+
+	So, tests like `this===this>>>0` will obviously fail. Use `this.valueOf()`
+	to handle a scalar number.
+
 	*/
 
 	//==========================================================================
@@ -76,6 +118,7 @@
 	Number.prototype.toHexa = function toHexa(/*str='0x'*/prefix,/*uint=0*/zeroPad,  s)
 	//----------------------------------
 	// Return the "0xHHHH" representation of this number. (Uppercase hexa digits.)
+	// [FIX171125] isFinite test is better.
 	// [ADD170423] `prefix`   If provided (string), reset the prefix (default is "0x").
 	// [ADD170423] `zeroPad`  If > 0, minimum length of the hexa representation.
 	// ---
@@ -83,8 +126,9 @@
 	// E.g  toHexa(123456, "U+")    => "U+1E240"
 	// E.g  toHexa(123, "")         => "7B"
 	// E.g  toHexa(123, "", 4)      => "007B"
+	// => str
 	{
-		if( isNaN(this) ) return 'NaN';
+		if( !isFinite(this) ) return String(this);
 
 		( 'string' == typeof prefix ) || (prefix='0x');
 		( 'number' == typeof zeroPad && 0 < (zeroPad >>>= 0) ) || (zeroPad=0);
@@ -96,27 +140,30 @@
 			s;
 	};
 
-	Number.prototype.toAdbe = function toAdbe()
+	Number.prototype.toAdbe = function toAdbe(  x)
 	//----------------------------------
 	// Return the Adobe's 4-char string this number encodes.
-	// [REM] Only makes sense if `this` is U32.
+	// If `this` is not finite, return String(this).
+	// [REM] If `this` is not an actual Adobe number (cf. isAdbe)
+	// the function still consider it as if, working on this>>>0.
 	// E.g  0x414F5069 => "AOPi" ; 0x74787466 => "txtf"
+	// => str
 	{
-		return isNaN(this) ?
-			'NaN' :
-			String.fromCharCode( 0xFF&(this>>>24), 0xFF&(this>>>16), 0xFF&(this>>>8), 0xFF&(this>>>0) );
+		return isFinite(x=this.valueOf()) ?
+			String.fromCharCode( 0xFF&(x>>>24), 0xFF&(x>>>16), 0xFF&(x>>>8), 0xFF&(x>>>0) ) :
+			String(this);
 	};
 
-	Number.prototype.isAdbe = function isAdbe(  s)
+	Number.prototype.isAdbe = function isAdbe(  x)
 	//----------------------------------
 	// Whether this Number looks like an Adobe 4-char tag.
-	// [REM] Only makes sense if `this` is U32.
+	// [FIX171125] Added uint32 test.
 	// E.g  1114394470 => 1    ;    12345 => 0
 	//  ie  0x426C4F66 [OK]        0x3039 [KO]
 	{
-
 		return +(
-			8==(s=this.toString(16).toUpperCase()).length &&
-			RegExp.ADBE.test(s)
+			(x=this.valueOf())===x>>>0 &&
+			8==(x=this.toString(16).toUpperCase()).length &&
+			RegExp.ADBE.test(x)
 			);
 	};
