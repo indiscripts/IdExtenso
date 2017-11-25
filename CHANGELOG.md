@@ -1,3 +1,39 @@
+##### [171125]
+  - Various unnotified changes in **JSON**. The `lave` function now supports a third param `FORCE_OBJ` that allows to browse special objects (such that `ScriptUI`, `BridgeTalk`…) which otherwise wouldn't expand. Also, the `DOM_ACCESS` param can be set to `-1`.
+  - `Ext/number`: Implementation notes and small fixes.
+
+##### [171122]
+  - `Ext/enum`: the `revSource` method had no name. Fixed.
+  - `Ext/regexp`: the `==` operator had no name. Fixed.
+  - `Ext/string`: the `charSet` method had no name. Fixed.
+
+## 1.71112
+  - Added the `$$.help()` utility. See `core/Root/$$.help.jsxinc`. Display all API infos available from the included modules.
+  - Added the `Function.prototype.send` utility, available at including stage. Provides to any public or private method being declared the ability to invoke `<context>[<meth>](this,x,y)` then return itself.
+  - Enhancement of function signatures (_casting_) in various `etc/` modules (**Random**, **SHA**, **BigInt**).
+
+##### [171110]
+  - `Ext/patterns`: Added a regex for capturing ExtendScript operators (`RegExp.EXOP`).
+
+##### [171109]
+  - Added the `__core__` property in `MODULE` and `CLASS` macros (`$$.jsxinc`).
+
+##### [171105]
+  - Added the `/tools` subdir (intended for extra dev tools.) Not part of the framework.
+
+##### [171103]
+  - The entry point (`$$.jsxinc`) now calculates the engine state before `$$.load()`.
+  - Typo fixed in `$$.Env.engineState`.
+  - `$$.load` updated (**Root**). In case IdExtenso's name is not `"$$"`, remove the key `$$` from `[[global]]`. This cleanup step was previously done from `~.ISCL()`, but it is better to keep `$$` available up to this point. 
+
+## 1.71024
+  - **Env** now exposes the `runningScript` property (URI pathname to the running script file.)
+  - **Log**: Added an explicit `typeof logLevel` test, since ExtendScript wrongly regards `undefined < 0` as true!
+  - Added `$$.isModule()` in **Root**. Tells whether a path, or a function, refers to a module.
+  - `$$.error()` entirely rewritten.
+  - **Web module**: Added an error case in `get()`.
+  - Various unnotified changes.
+
 ##### [170609]
   - `Web.get()` now supports https on Win platforms (through VBS, non-modal state assumed.) See `~.ALTG` in `/etc/$$.Web.jsxlib`.
 
