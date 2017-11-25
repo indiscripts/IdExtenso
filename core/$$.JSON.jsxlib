@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       171116 (YYMMDD)
+		Modified:       171125 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 171116, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 171125, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -185,20 +185,37 @@
 
 		DOMS : function(/*dom*/o,  q,k,s,t)
 		//----------------------------------
-		// DOM Spec Cache Manager (prevent cycles), init. in lave()
-		// => 1 (already-in-stack) | 0 (just-added) | -1 (dont-browse)
+		// DOM Spec Cache Manager (prevent cycles), init. in lave().
+		// [CHG171125] Entirely rewritten to take care of KDOM < 0.
+		// => <nonEmptyString> [done]  |  <emptyString> [pending]
 		{
 			if( (q=callee.Q).hasOwnProperty(k=o.toSpecifier()) ) return q[k];
 			
-			s = this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
+			// The json `resolve("<spec>")` is allowed only if KDOM > 0.
+			// Otherwise we take "<spec>" alone--which evals to a string.
+			// ---
+			s = 0 < this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
 			
-			t = ( this.BRKN(k) && '/*broken*/ ' )
+			// `t` indicates whether we have to prevent the caller
+			// from browsing this obj, and the reason why.
+			// [REM] The tag `ignored` appears if both KDOM<0 and INLP==1,
+			// which allows a root DOM object to explore its own properties.
+			// => 'ignored' | 'broken' | 'no-prop' | FALSE
+			// ---
+			t = ( 0 > this.KDOM && this.INLP && 'ignored')
 				||
-				( (!o.hasOwnProperty('properties')) && '/*no-prop*/' );
-			
-			q[k] = ( this.SPCE && this.KDOM ? (t||'/*cycle*/ ') : '' ) + s;
+				( this.BRKN(k) && 'broken' )
+				||
+				( this.NASO(o,'properties') && 'no-prop' );
 
-			return t ? q[k] : '';
+			// q[k] is the json to use, now or later, depending on t.
+			// The reason `(t||'cycle')` is added as inline comment
+			// only if verbosity is expected  AND  KDOM > 0.
+			// ---
+			this.SPCE && 0 < this.KDOM && ( s = '/*' + (t||'cycle') + '*/ ' + s );
+			q[k] = s;
+
+			return t ? s : '';
 
 		}.setup({ Q:{} }),
 
@@ -286,6 +303,8 @@
 		KREG : µ['~'].OTOS(/z/),                     // "[object RegExp]"
 
 		ADBE : function(/*u32*/n)
+		//----------------------------------
+		// [REM] This function is called only when `n.isAdbe()` is true.
 		{
 			return n.toHexa() + (
 				this.RDCD ?
@@ -302,11 +321,15 @@
 		// ---
 		'\x01boolean':    function(x){ return this.RDCD?((x.valueOf()?'!0':'!1')):this.GSTR(x) },
 		'\x01Boolean':    function(x){ return this['\x01boolean'](x) },
-		// --- [FIX170418] Alternate functions were swapped!
-		// --- [CHG170501] Improving NaN output => this.SNAN ('Number.NaN').
+		// --- [FIX171125] Clarifying the CS4 vs. CS5/CS6/CC issue.
+		// --- [CHG170501] Improved NaN output => this.SNAN ('Number.NaN').
 		'\x01number':     $$.idVersion(7) ?
-			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this[x.isAdbe()?'ADBE':'GSTR'](x) } :
-			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this.GSTR(x) },
+			// In CS5/CS6/CC, if `x` is parsed as a number, then it is unlikely the value
+			// of an Enumerator, so calling isAdbe() would be uselessly time consuming.
+			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this.GSTR(x) } :
+			// In CS4, since there is no Enumerator object (`NothingEnum.NOTHING` is a number),
+			// it's worth testing whether `x.isAdbe()` and then prefer the hex format `0xHHHH`.
+			function(x){ return this.GLOB.isNaN(x) ? this.SNAN : this[x.isAdbe()?'ADBE':'GSTR'](x) },
 		'\x01Number':     function(x){ return this['\x01number'](x) },
 		// --- Thanks to Ext/string
 		'\x01string':     function(x){ return x.toSource() },
@@ -360,7 +383,7 @@
 		//----------------------------------
 
 		'\x01Enumeration':function(x){ return this.INLP ? x.toSource(this.SPCE?1:0) : this['\x01Object'](x) },
-		'\x01Enumerator': function(x){ return this.KDOM ? x.toSource(this.SPCE?1:0) : this.ADBE(this.GNUM(x)) },
+		'\x01Enumerator': function(x){ return 0 < this.KDOM ? x.toSource(this.SPCE?1:0) : this.ADBE(this.GNUM(x)) },
 
 		//----------------------------------
 		// InDesign DOM objects (detected thru `toSpecifier`.)
@@ -481,13 +504,16 @@
 		// JSON hook mechanism only works in COMPACT or REDUCED mode.
 		{
 			// Array.
-			// [REM] Additional properties won't be stringified (!)
+			// [REM] Extra properties won't be stringified (!)
 			// ---
 			if( this.KARR==this.OTOS(x) ) return this['\x01Array'](x);
 
 			// Special DOM object case.
 			// ---
-			if( x.hasOwnProperty('toSpecifier') ){ return this['\x01DomObj'](x) }
+			if( x.hasOwnProperty('toSpecifier') )
+			{
+				return this['\x01DomObj'](x)
+			}
 			
 			// [ADD170608] Special IdExtenso-based object hook.
 			// If the SPACED mode is off, look whether x's constructor name matches
@@ -575,8 +601,9 @@
 	[PUBLIC]
 
 	({
-		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,t,ns,nt)
+		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,t,ns,nt)
 		//----------------------------------
+		// [ADD171125] Allows DOM_ACCESS == -1 (i.e, do not even browse DOM object properties.)
 		// [ADD171116] Added FORCE_OBJ param.
 		// [CHG170418] Properly uneval (almost) anything in ExSc/SUI/InDesign context.
 		// [REM] Prevents Array/Object cycles;
@@ -597,6 +624,10 @@
 		//       `resolve()`, enumeration objects, etc. Default is 0, meaning that the
 		//       output string is safe from any underlying DOM command. In particular,
 		//       references of the form `resolve(<path>)` are changed into `"<path>"`.
+		//       While removing DOM access impacts the output string, this does not
+		//       prevent `lave()` from browsing DOM object properties.
+		//     - Use -1 to prevent DOM objects from being very browsed. [ADD171125]
+		//       In such case any DOM ref is substitued to its path.
 		// `FORCE_OBJ` :: whether `x` must be browsed as an object (if possible.)
 		//       This flag allows to input special objects s.t. $.global, ScriptUI,
 		//       BridgeTalk which would normally return themselves stringified.
@@ -653,11 +684,13 @@
 
 			I.REFS.Q.length = 0;
 
-			I.KDOM = DOM_ACCESS ? 1 : 0;
-			I.ODEL(I.DOMS.Q)['/'] = DOM_ACCESS ? ('resolve(' + '/'.toSource() + ')') : '"/"';
-
+			// [CHG171125] Supports DOM_ACCESS == -1.
 			// ---
+			I.KDOM =  (DOM_ACCESS|=0) && (0 > DOM_ACCESS ? -1 : 1);
+			I.ODEL(I.DOMS.Q)['/'] = 0 < I.KDOM ? ('resolve(' + '/'.toSource() + ')') : '"/"';
+
 			// [ADD171116] Support FORCE_OBJ.
+			// ---
 			k = (k = FORCE_OBJ && x && (typeof x)) && ('object'==k || 'function'==k) ?
 				'\x01Object' :
 				'LAVE';
