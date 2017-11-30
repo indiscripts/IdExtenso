@@ -1,0 +1,466 @@
+/*******************************************************************************
+
+		Name:           Markov
+		Desc:           Implements a simple Markov Chain.
+		Path:           /etc/$$.Markov.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =init() onEngine() run() getStructure() getData()
+		DOM-access:     NO
+		Todo:           Demo ; find a way to compact IKEY sets?
+		Created:        171119 (YYMMDD)
+		Modified:       171130 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Markov') || eval(__(MODULE, $$, 'Markov', 171130, 'init'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	
+	Seen as a data structure a Markov chain is great at capturing the
+	probabilistic behavior of a sequence. Given an input stream (string,
+	array) formed of ordered elements ('tokens'), the Markov chain keeps
+	track of how elements tend to succeed one another. It basically
+	answers the question: given a token T preceded by the tokens
+	T0,T1...Ti, what are the preferred tokens to come next. The sequence
+	(T0,T1...Ti,T) is treated as the 'state' of the Markov chain at that
+	particular instant. The size (or depth) of the Markov chain defines
+	how many Ti have to be registered in each state.
+	
+	A common usage of Markov chains is the generation of random samples
+	sounding 'similar' to the original stream. For example, consider a
+	source text S whose individual characters form the set of tokens. The
+	Markov process will generate a puzzled variant of S in which character
+	sequences still undergo, on average, the same ordering rules.
+	
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	The present implementation assumes the following:
+	
+	- Each element of the input stream can be coerced into a string--
+	  using `toString()` if needed--and every element has a unique
+	  representation as a string. This representation is called a
+	  'token.'
+
+    - The input stream contains at most 65,635 *distinct* tokens.
+      (This is very likely the case, for example, if your tokens are
+      the distinct characters, or the distinct words, of a text.)
+
+	From then, we create a 1-to-1 map that assigns to each token a single
+	UTF16 character (`IDKEY`), so the Markov chain consists in a 'flat
+	object' that links any state (string of IDKEYs) to another string of
+	IDKEYs (available successors.)
+
+          {
+          . . .
+          <state> : <successors>,
+          . . .
+          }
+
+	This way we avoid the use of a tree structure that would involve inner
+	objects up to the desired depth. The depth of the Markov chain is
+	simply reflected by the length of the state string. The string
+	
+	      <state>.substr(1) + <anySuccessor>
+	
+	provides the next state, and so on.
+
+	*/
+
+	//==========================================================================
+	// SETTINGS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		// Minimal length for triggering on-load trace.
+		// Cf ~.LOAD
+		// ---
+		TMIN: 1e3,
+		
+		// Null-key. (Must be a single char.)
+		// ---
+		NULK: '\x01',
+
+		// Current state as a string. (As long as STAT is empty,
+		// the Markov Chain is not ready to work.)
+		// ---
+		STAT: '',
+
+		// Markov-Chain. (Depth == STAT.length.)
+		// { ANY_STATE => IKEYS }
+		// ---
+		MRKV: {},
+
+		RNXT : function(/*uint32*/n)
+		//----------------------------------
+		// (Random-Next-Int) Default `Random.nextInt` method.
+		// See `onSession` for details.
+		{
+			return Math.floor(n*Math.random());
+		},
+
+		// Random object instance (to be initialized.)
+		// See `onSession` for details.
+		// ---
+		RAND : 0,
+
+		SRUN: function(/*str*/token,/*uint*/count)
+		//----------------------------------
+		// (String-Run-Func.) Default callback of `µ.run` in Single-Char-Token case.
+		// ---
+		// => true [CONTINUE]  |  false [STOP]
+		{
+			return (false!==token && (callee.Q+=token)), (count < callee.SZ);
+		}
+		.setup({ Q:'', SZ: 0 }),
+
+		ARUN: function(/*str*/token,/*uint*/count)
+		//----------------------------------
+		// (Array-Run-Func.) Default callback of `µ.run` in MultiChar-Token case.
+		// ---
+		// => true [CONTINUE]  |  false [STOP]
+		{
+			return (false!==token && (callee.Q.push(token))), (count < callee.SZ);
+		}
+		.setup({ Q:[], SZ: 0 }),
+		
+		// Identity function.
+		// ---
+		IDTY: function(x) { return x },
+		
+		// Single-Character-Token.
+		// 0 :: NO  ;  1 :: YES
+		SGTK: 0,
+	})
+
+	//==========================================================================
+	// PROCESS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		KMAP: function(/*str*/s,  q,r)
+		//----------------------------------
+		// (Key-mapping.) Must be initialized to { NULK => NULK }
+		// ---
+		// #TOKEN  => IKEY      -- where IKEY=='\u<XTRA>'
+		// IKEY    => #TOKEN
+		// ---
+		// [REM] `XTRA` (cached) can range from 1 to 0xFFFF.
+		//        It represents the max ID used so far.
+		// => IKEY
+		{
+			return (q=callee.Q).hasOwnProperty(s='#'+s) ? q[s] :
+			( (q[q[s]=r=String.fromCharCode(++callee.XTRA)]=s), r );
+		}
+		.setup({ Q:{}, XTRA:1 }),
+
+		TOKN: function(/*char*/iKey,/*0|1=0*/KEEP_PREFIX)
+		//----------------------------------
+		// (Get-Token.) Given an iKey (char), return the
+		// corresponding token from KMAP.
+		// => str
+		{
+			return this.KMAP.Q[iKey].substr(KEEP_PREFIX ? 0 : 1);
+		},
+
+		KS2S: function(/*str*/sik,/*0|1*/KEEP_PREFIX, n,s,i,c)
+		//----------------------------------
+		// (IKEYs-To-String.) Given a sequence of IKEYs, join
+		// the underlying tokens (with or w/o prefix) into a string.
+		// => str
+		{
+			if( !(n=sik.length) ) return '';
+			for( s='', i=-1 ; ++i < n ; s+=this.TOKN(sik.charAt(i),KEEP_PREFIX) );
+			return KEEP_PREFIX ? s.substr(1) : s;
+		},
+
+		ADDS: function(/*str*/s)
+		//----------------------------------
+		// (Add-String.) Register the token `s` in KMAP,
+		// push the resulting IKEY, and slice the state.
+		{
+			this.NEXT(this.PUSH(this.KMAP(s)));
+		},
+
+		ADDX: function(/*any*/x)
+		//----------------------------------
+		// (Add-Anything.) As ~.ADDS, but coercing x into a String.
+		// [REM] Empty string is supported.
+		{
+			this.NEXT(this.PUSH(this.KMAP(String(x||''))));
+		},
+
+		RSET: function(/*?uint*/sz)
+		// ---------------------------------
+		// (Reset-State.) Reset the state to
+		// <NULK><NULK>...<NULK> ; sz times
+		// => sz [OK] | 0 [KO]
+		{
+			sz || (sz=this.STAT.length);
+			this.STAT = Array(1+sz).join(this.NULK);
+			return sz;
+		},
+
+		LOAD: function(/*uint*/sz,/*arr|str|obj*/x,  $$,TR,o,k,n,i)
+		// ---------------------------------
+		// => 1 [OK]  |  0 [Out-Of-Range]
+		{
+			// Cleanup and init.
+			// ---
+			o=this.MRKV; for( k in o ) delete o[k];
+			
+			o=this.KMAP.Q; for( k in o ) delete o[k];
+			o[this.NULK] = this.NULK;
+			this.KMAP.XTRA = 1;
+
+			// ~.STAT :: <NULK><NULK>...<NULK>
+			// ---
+			this.RSET(sz);
+			
+			// Add tokens and update the state window.
+			// ---
+			callee.SIZE = n = x.length || x.__count__;
+			TR = n > this.TMIN && (+($$=$.global[callee.µ.__root__]).trace);
+			TR && $$.Log.chrono().trace(__( "%1 > Depth: %2. %3 size: %4. Scanning...", callee.µ, sz, x.__class__, n ));
+
+			// By default, tokens are assumed multi-characters.
+			// ---
+			this.SGTK = 0;
+
+			switch( x.__class__ )
+			{
+				case 'String':
+					this.SGTK = 1; // single char storage
+					for( i=-1 ; ++i < n ; this.ADDS(x.charAt(i)) );
+					break;
+				
+				case 'Array':
+					for( i=-1 ; ++i < n ; x[i] && this.ADDX(x[i]) );
+					break;
+				
+				default:
+					// [TODO] Any 'iterable' stream?
+					// Fallback: consider x as a set.
+					for each( k in x ) k && this.ADDX(k);
+			}
+			
+			// Make sure the input does not overflow.
+			// ---
+			if( this.KMAP.XTRA > 0xFFFF )
+			{
+				TR && $$.Log.trace(__( "%1 > Failed in %2 ms. (Too many tokens.)", callee.µ, +$$.Log.chrono ));
+				// [REM] A warn message comes next.
+				return 0;
+			}
+
+			this.PUSH(this.NULK);
+
+			TR && $$.Log.trace(__( "%1 > Succeeded in %2 ms ; %3 tokens found.", callee.µ, +$$.Log.chrono, this.KMAP.XTRA ));
+			return 1;
+		},
+
+		PUSH: function(/*char*/iKey,  o,k)
+		//----------------------------------
+		// (Push-Key.) Develop the current state and add
+		// `iKey` into the chain. (Note that iKey can be NULK.)
+		// ---
+		// => IKEY
+		{
+			return (o=this.MRKV).hasOwnProperty(k=this.STAT) ?
+				( (o[k]+=iKey),iKey ) :
+				( o[k]=iKey );
+		},
+
+		NEXT: function(/*char*/iKey,  t,a,z,i)
+		//----------------------------------
+		// (Next-State.) Slice the state-window 1 character right.
+		// ---
+		// => undefined
+		{
+			this.STAT = this.STAT.substr(1) + iKey;
+		},
+
+		PICK: function(  s)
+		//----------------------------------
+		// (Random-Pick.) Browse w/ respect to the current
+		// state and pick a random IKEY from the node.
+		// ---
+		// => IKEY
+		{
+			s = this.MRKV[this.STAT];
+			return s.charAt( this.RAND.nextInt(s.length) );
+		},
+
+	})
+
+	//==========================================================================
+	// PUBLIC API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		onEngine: function onEngine_(  $$,I)
+		//----------------------------------
+		// Activate a better random algorithm if `$$.Random` is available.
+		// (The client has to include the Random module before this one.)
+		// ---
+		// [REM] ~.RAND is expected as an object exposing a `nextInt` method.
+		// Better is to make it able to persist over the engine. If the
+		// `$$.Random` class is in the place, we just have to instanciate a
+		// PRNG now. Otherwise, we create a raw object and link the default
+		// `~.RNXT` routine (based on Math.random) as a fallback.
+		// [REM] Note that the condition `$$.isLoaded("Random/")` is stronger
+		// than just checking `$$.Random`. It guarantees that $$.Random is
+		// already *loaded* (i.e, before the present module) and can properly
+		// operate in the context of this onEngine handler.
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			if( $$.isLoaded('Random/') )
+			{
+				I.RAND = $$.Random();
+				(+$$.trace) && $$.trace(__( "%1 > Random processes will depend on %2.", callee.µ, I.RAND.rng.__path__ ));
+			}
+			else
+			{
+				I.RAND = { nextInt: I.RNXT };
+				(+$$.trace) && $$.trace(__( "%1 > Random processes will depend on basic Math.random. (Could be improved by including %2's Random module before %1.)", callee.µ, $$ ));
+			}
+		},
+
+		init: function init_X_i_B(/*any*/data,/*uint=auto*/depth,  t,$$,sz)
+		//----------------------------------
+		// Load sample data in the Markov chain. Supported types are string,
+		// array and object. Strings are interpreted as character-based tokens.
+		// Arrays and objects are interpreted as element-based tokens, each
+		// element being coerced into a string.
+		// `depth` (1..10) indicates the state size. It highly impacts the
+		// behavior of the Markov chain and should be choosen with caution,
+		// depending on both the data size and the kind of tokens.
+		// => 1 [OK] | 0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			null===data && (data=void 0);
+			sz = 'object' == typeof data ?
+				data[ 'Array'==data.__class__ ? 'length' : '__count__' ] :
+				(data=String(data||'')).length;
+
+			if( 10 > sz )
+			{
+				$$.warn(__("%1 > Not enough data (%2) to initialize the chain. Size must be >= 10.",callee.µ,sz));
+				return 0;
+			}
+
+			// Max depth==10 ; Auto-depth according to sz.
+			// ---
+			depth = Math.min(10,depth>>>0) || 1*(sz<100) || ( 3-(sz>5e3)-(sz>5e4) );
+
+			if( !callee.µ['~'].LOAD(depth,data) )
+			{
+				$$.warn(__("%1 > Chain initialization failed: the input has more than 65,535 distinct tokens.",callee.µ));
+				return 0;
+			}
+
+			return 1;
+		},
+
+		run: function run_f_sa(/*fct=auto*/f,  I,cx,NK,i,c)
+		//----------------------------------
+		// The callback function `f` supports two arguments,
+		//    arg1 (str)  :: New picked token, or FALSE if nulk reached.
+		//    arg2 (uint) :: Incremental number of picks (nulk being ignored.)
+		// From then, `f` must return a truthy value to continue.
+		// Example: function callback(token,nb)
+		//          {
+		//             if( false===token || nb > 1e3 ) return; // stop
+		//             myOutput.insert(token);
+		//             return true; // continue
+		//          }
+		// If `f` is not supplied, either ~.SRUN or ~.ARUN is defaultly used
+		// (depending on ~.SGTK), and results are loaded in a fresh string,
+		// or array, til it contains as many items as the original source.
+		// That string (or array) is then returned. Otherwise, this function
+		// returns undefined.
+		// ---
+		// => undefined  |  str  |  str[]
+		{
+			I = callee.µ['~'];
+
+			if( !I.RSET() )
+			{
+				$.global[callee.µ.__root__].error(__("The chain is not initialized."), callee);
+			}
+
+			switch( t=typeof f )
+			{
+				case 'undefined' :
+					I.SGTK ? ((f=I.SRUN).Q = '') : ((f=I.ARUN).Q.length=0);
+					f.SZ = I.LOAD.SIZE;
+					cx = I;
+					break;
+
+				case 'function' :
+					cx = null;
+					break;
+
+				default:
+					$.global[callee.µ.__root__].error(__("Invalid argument (%1). Must be a callback function.",t), callee);
+			}
+
+			for(
+				NK=I.NULK, i=0 ;
+				NK != (c=I.PICK()) ? f.call(cx,I.TOKN(c),++i) : (f.call(cx,false,i)&&I.RSET()) ;
+				I.NEXT(c)
+			);
+			
+			return cx ? f.Q : (void 0);
+		},
+
+		getStructure: function getStructure_Õ(  q,k,o)
+		//----------------------------------
+		// Return a volatile copy of the markov structure (internal keys.)
+		{
+			q = callee.Q||(callee.Q={});
+			for( k in q ) delete q[k];
+
+			o = callee.µ['~'].MRKV;
+			for( k in o ) o.hasOwnProperty(k) && (q[k]=o[k]);
+
+			return q;
+		},
+
+		getData: function getData_Õ(  q,k,I,o,pfx)
+		//----------------------------------
+		// Return a volatile object reflecting the tokens.
+		{
+			q = callee.Q||(callee.Q={});
+			for( k in q ) delete q[k];
+
+			I = callee.µ['~'];
+			o = I.MRKV;
+			pfx = I.SGTK ? 0 : 1;
+			for( k in o ) o.hasOwnProperty(k) && (q[I.KS2S(k,pfx)]=I.KS2S(o[k],pfx));
+
+			return q;
+		},
+
+	})
