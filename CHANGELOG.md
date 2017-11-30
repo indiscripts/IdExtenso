@@ -1,3 +1,6 @@
+##### [171130]
+  - Added the **Markov** module (`/etc`), a simple (and fast) implementation of Markov chain.
+
 ##### [171125]
   - Various unnotified changes in **JSON**. The `lave` function now supports a third param `FORCE_OBJ` that allows to browse special objects (such that `ScriptUI`, `BridgeTalk`…) which otherwise wouldn't expand. Also, the `DOM_ACCESS` param can be set to `-1`.
   - `Ext/number`: Implementation notes and small fixes.
