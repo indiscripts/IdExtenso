@@ -1,4 +1,5 @@
 ##### [171203]
+  - `Ext/file` added, intended to extend `File.prototype`. So far it only introduces the method `nudeName()` which just returns the file name without its extension. (REM: Do not confuse `Ext/file` with the **File** module.)
   - Exposed the `stamp()` utility in the API of the **File** module. It basically invokes the private `~.STMP` function, which builds a unique name for temporary files. Call `$$.File.stamp()` to use this feature from anywhere.
 
 ##### [171202]
