@@ -1,3 +1,6 @@
+##### [171202]
+  - Updated the **File** module to keep it in sync with local changes, but still working on making it cleaner...
+
 ##### [171130]
   - Added the **Markov** module (`/etc`), a simple (and fast) implementation of Markov chain.
 
