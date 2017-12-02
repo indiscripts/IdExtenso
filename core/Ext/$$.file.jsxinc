@@ -1,0 +1,128 @@
+/*******************************************************************************
+
+		Name:           file
+		Desc:           Extends File.prototype
+		Path:           /core/Ext/$$.file.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            nudeName()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        171202 (YYMMDD)
+		Modified:       171203 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	Path and names. - There are various ways to refer to path/names
+	of File and Folder objects. ExtendScript's documentation is pretty
+	unclear about the "URI notation" (RFC2396); this term may refer
+	to either:
+
+	(a) OS-Independent Paths (disregarding the issue of UTF8 escaping.)
+	    E.g.  "~/My Dir/My File.abc"
+
+	(b) Encoded URI (as produced by the global function `encodeURI`.)
+	    E.g.  "~/My%20Dir/My%20File.abc"
+
+	The property that returns paths in the particular file system syntax
+	is `fsName`. What makes it problematic is the coexistence of non
+	uniform separators, typically `\` in Win vs. `/` in Mac. In fact
+	Windows allows both the slash and the backslash as separators,
+	while Mac allows both the slash and the colon `:`. If a path starts
+	with two slashes (or backslashes in Win), the first element refers
+	to a remote server (e.g //myhost/mydir/...)
+	
+	(a) OS-Independent Paths (OSIP) offer a uniform scheme for specifying
+	*path separators* while keeping the string readable. The properties
+	`fullName` and `displayName` returns OSIP. They are not URI-encoded.
+	
+	(b) By contrast, the properties `absoluteURI`, `relativeURI`, `name`
+	and `path` contain fully URI-encoded strings based on UTF8 escaping.
+	
+	URI encoding. - `File.encode` is a clone of `[[global]].encodeURI`.
+	It converts characters into UTF8 percent escape sequences (%xx),
+	except *alphanumeric characters* and the following ones:
+
+	      / - _ . ! ~ * ' ( ) ; ? : @ & = + $ , #
+
+	Note. The global function `encodeURIComponent` is similar, but
+	it only keeps *alphanumeric characters* and the following ones:
+	
+	      / - _ . ! ~ * ' ( )
+	
+	[REM] The `<File|Folder>.toString()` method returns the
+	`absoluteURI` property, which is URI encoded.
+
+	Properties of File and Folder Instances.
+	
+	// PROPERTY      FILE                            FOLDER           NOTE
+	// ===================================================================
+	// fsName        U:\User\My Dir\My File.xy       U:\User\My Dir   Win
+	//               /Users/My Dir/My file.xy        /Users/My Dir    Mac
+	// ===================================================================
+	// fullName      /u/User/My Dir/My File.xy       /u/User/My Dir
+	//               ~/My Dir/My File.xy             ~/My Dir         (1)
+	// -------------------------------------------------------------------
+	// displayName   My File.xyz                     My Dir
+	// ===================================================================
+	// absoluteURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
+	// -------------------------------------------------------------------
+	// relativeURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
+	//               ../../My%20Dir/My%20File.xy     ../../My%20Dir   (2)
+	// -------------------------------------------------------------------
+	// path          /u/User/My%20Dir                /u/User
+	//               ~/My Dir                        ~                (1)
+	// -------------------------------------------------------------------
+	// name          My%20File.xyz                   My%20Dir
+	// ===================================================================
+	// parent        Folder("~/My Dir")              Folder("~")
+	// ===================================================================
+	// alias         true|false                      true|false
+	// exists        true|false                      true|false
+	// ===================================================================
+	// created       Date|null                       Date|null
+	// modified      Date|null                       Date|null
+	// ===================================================================
+	// error         String (def: "")                String (def: "")
+	// ===================================================================
+	// type          String (Win: "????")            N/A
+	// creator       String (Win: "????")            N/A
+	// ===================================================================
+	// hidden        true|false                      N/A
+	// readonly      true|false                      N/A
+	// eof           true|false                      N/A
+	// ===================================================================
+	// lineFeed      "windows" | "macintosh"         N/A              (3)
+	// encoding      String (default: "")            N/A
+	// length        uint | -1                       N/A              (4)
+	// ===================================================================
+	// Notes:
+	// (1) Short notation may be returned (`~` refers to the current user.)
+	// (2) The result depends on the current folder -- cf. Folder.current.
+	// (3) It is not clear whether this string is lowercase or titlecase (?)
+	// (4) myFile.length == -1 if the file does not exist.
+
+	*/
+
+	//==========================================================================
+	// File.prototype.nudeName()
+	//==========================================================================
+
+	File.prototype.nudeName = function nudeName(/*bool=0*/uriEsc,  s,p)
+	//----------------------------------
+	// Return the name of this file without its extension.
+	// `uriEsc` (default:0) :: preserve UTF8 escape sequences.
+	// => str   -- e.g  File("path/to/foo.bar") => "foo"
+	{
+		s = this[uriEsc?'displayName':'name'];
+		return -1 == (p=s.lastIndexOf('.')) ? s : s.substr(0,p);
+	};
+
