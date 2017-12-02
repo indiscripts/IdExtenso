@@ -1,5 +1,5 @@
 ##### [171203]
-  - Exposed the `stamp()` utility in the API of the **File** module. It basically invokes the private `~.STMP` function, which builds a unique name for temporary files. Use `$$.File.stamp()` to use this feature from anywhere.
+  - Exposed the `stamp()` utility in the API of the **File** module. It basically invokes the private `~.STMP` function, which builds a unique name for temporary files. Call `$$.File.stamp()` to use this feature from anywhere.
 
 ##### [171202]
   - Updated the **File** module to keep it in sync with local changes, but still working on making it cleaner...
