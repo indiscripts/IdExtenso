@@ -14,13 +14,13 @@
 		                macLineFeed() winLineFeed() unixLineFeed()
 		                temp()
 		DOM-access:     NO
-		Todo:           test.jsx.
+		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       170512 (YYMMDD)
+		Modified:       171202 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 170512, 'toFile'))
+;eval(__(MODULE, $$, 'File', 171202, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -28,12 +28,103 @@
 
 	/*
 
+	Path and names. - There are various ways to refer to path/names
+	of File and Folder objects. ExtendScript's documentation is pretty
+	unclear about the "URI notation" (RFC2396); this term may refer
+	to either:
+
+	(a) OS-Independent Paths (disregarding the issue of UTF8 escaping.)
+	    E.g.  "~/My Dir/My File.abc"
+
+	(b) Encoded URI (as produced by the global function `encodeURI`.)
+	    E.g.  "~/My%20Dir/My%20File.abc"
+
+	The property that returns paths in the particular file system syntax
+	is `fsName`. What makes it problematic is the coexistence of non
+	uniform separators, typically `\` in Win vs. `/` in Mac. In fact
+	Windows allows both the slash and the backslash as separators,
+	while Mac allows both the slash and the colon `:`. If a path starts
+	with two slashes (or backslashes in Win), the first element refers
+	to a remote server (e.g //myhost/mydir/...)
+	
+	(a) OS-Independent Paths (OSIP) offer a uniform scheme for specifying
+	*path separators* while keeping the string readable. The properties
+	`fullName` and `displayName` returns OSIP. They are not URI-encoded.
+	
+	(b) By contrast, the properties `absoluteURI`, `relativeURI`, `name`
+	and `path` contain fully URI-encoded strings based on UTF8 escaping.
+	
+	URI encoding. - `File.encode` is a clone of `[[global]].encodeURI`.
+	It converts characters into UTF8 percent escape sequences (%xx),
+	except *alphanumeric characters* and the following ones:
+
+	      / - _ . ! ~ * ' ( ) ; ? : @ & = + $ , #
+
+	Note. The global function `encodeURIComponent` is similar, but
+	it only keeps *alphanumeric characters* and the following ones:
+	
+	      / - _ . ! ~ * ' ( )
+	
+	[REM] The `<File|Folder>.toString()` method returns the
+	`absoluteURI` property, which is URI encoded.
+
+	Properties of File and Folder Instances.
+	
+	// PROPERTY      FILE                            FOLDER           NOTE
+	// ===================================================================
+	// fsName        U:\User\My Dir\My File.xy       U:\User\My Dir   Win
+	//               /Users/My Dir/My file.xy        /Users/My Dir    Mac
+	// ===================================================================
+	// fullName      /u/User/My Dir/My File.xy       /u/User/My Dir
+	//               ~/My Dir/My File.xy             ~/My Dir         (1)
+	// -------------------------------------------------------------------
+	// displayName   My File.xyz                     My Dir
+	// ===================================================================
+	// absoluteURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
+	// -------------------------------------------------------------------
+	// relativeURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
+	//               ../../My%20Dir/My%20File.xy     ../../My%20Dir   (2)
+	// -------------------------------------------------------------------
+	// path          /u/User/My%20Dir                /u/User
+	//               ~/My Dir                        ~                (1)
+	// -------------------------------------------------------------------
+	// name          My%20File.xyz                   My%20Dir
+	// ===================================================================
+	// parent        Folder("~/My Dir")              Folder("~")
+	// ===================================================================
+	// alias         true|false                      true|false
+	// exists        true|false                      true|false
+	// ===================================================================
+	// created       Date|null                       Date|null
+	// modified      Date|null                       Date|null
+	// ===================================================================
+	// error         String (def: "")                String (def: "")
+	// ===================================================================
+	// type          String (Win: "????")            N/A
+	// creator       String (Win: "????")            N/A
+	// ===================================================================
+	// hidden        true|false                      N/A
+	// readonly      true|false                      N/A
+	// eof           true|false                      N/A
+	// ===================================================================
+	// lineFeed      "windows" | "macintosh"         N/A              (3)
+	// encoding      String (default: "")            N/A
+	// length        uint | -1                       N/A              (4)
+	// ===================================================================
+	// Notes:
+	// (1) Short notation may be returned (`~` refers to the current user.)
+	// (2) The result depends on the current folder -- cf. Folder.current.
+	// (3) It is not clear whether this string is lowercase or titlecase (?)
+	// (4) myFile.length == -1 if the file does not exist.
+
+
 	Binary encoding. - A special encoder, BINARY, is provided for binary
 	I/O. This encoder simply extends every 8-bit character it finds to a
 	Unicode character between 0 and 255. When using this encoder to write
 	binary files, the encoder writes the lower 8 bits of the Unicode
 	character. For example, to write the Unicode character 1000, which is
 	0x3E8, the encoder actually writes the character 232 (0xE8).
+
 
 	BOM. - The data of some of the common file formats (UCS2, UCS4, UTF8,
 	UTF16) starts with a special byte order mark (BOM) character (U+FEFF).
@@ -79,9 +170,9 @@
 	for reading and writing binary data.
 	
 	
-	File and Folder .execute() method. - Should be considered equivalent
+	File and Folder `execute` method. - Should be considered equivalent
 	to Right-Click + Open from the user perspective. In particular,
-	File.execute() is not deterministic since we don't know what
+	`File.execute()` is not deterministic since we don't know which
 	application might be associated to the file suffix. On Mac OS .log
 	files are usually associated to the console. In both systems .txt
 	files are usually associated to any text editor available. JS and
@@ -95,8 +186,8 @@
 	the system default, and the encoding is preset to the default system
 	encoding.
 	
-	      File(path);      // can return a Folder object!
-	      new File(path);  // always returns a File object
+	      File(path);      // May return a Folder object   (!)
+	      new File(path);  // Always returns a File object
 
 	If the path refers to an existing folder: the File method returns a
 	Folder object instead of a File object; the new operator returns a
@@ -115,7 +206,7 @@
 
 
 	File errors. - The following messages can be returned in the `error`
-	property:
+	property (which by the way is writable):
 	--------------------------------------------------------------------
 	File or folder does not exist      The file or folder does not exist,
 	                                   but the parent folder exists.
@@ -175,6 +266,7 @@
 
 		EXST: function(/*File*/ff)
 		//----------------------------------
+		// (File-Exist.)
 		// Whether `ff` actually exists as a File *and* can be read.
 		// => ff [OK] | FERR [KO]
 		{
@@ -183,6 +275,7 @@
 		
 		TOFL: function(/*File|str*/fx,/*0|1*/CHK)
 		//----------------------------------
+		// (To-File.)
 		// Inner alias of toFile.
 		{
 			return ( (fx instanceof File) ? fx : (fx=new File(String(fx))) ) ? 
@@ -191,37 +284,48 @@
 		
 		OPEN: function(/*File|str*/fx,/*w|e|r*/mde,/*BINARY|UTF8|UCS2*/enc,  ff,b,w)
 		//----------------------------------
+		// (Multi-Purpose-Open-Routine.)
 		// [CHG170427] Added lineFeed support.
 		{
+			// Get a valid File object.
+			// ---
 			if( !(ff=this.TOFL(fx,+('w'!=mde))) )
 			{
 				if( 'e' != mde ) return this.FERR;
+				
+				// Append mode (`e`). If the file doesn't already
+				// exist, attempt to create it in `w` mode first.
+				// ---
 				ff = callee.call(this,fx,'w',enc);
 				if( !ff ) return this.FERR;
 				ff.close();
 			}
 
-			ff.encoding = 'BINARY';
-			
-			// [ADD170512] Allow up to 100ms for opening.
+			// Check for opening (binary encoding first.)
 			// ---
-			for( w=10 ; !(b=ff.open(mde)) && w-- ; $.sleep(10) );
-			
+			ff.encoding = 'BINARY';
+			for( w=10 ; !(b=ff.open(mde)) && w-- ; $.sleep(10) ); // [ADD170512] Allow 100ms delay.
 			if( !b )
 			{
 				$.global[callee.µ.__root__].warn(__("%1 > Cannot open the file %2 in '%3' mode.", callee.µ, String(ff.fullName).toSource(), mde));
 				return this.FERR;
 			}
+
+			// Set the encoding.
+			// ---
 			('BINARY' != enc) && (ff.encoding = enc);
 			
-			// Linefeed?
+			// Set the linefeed (write mode only.)
 			// ---
 			if( 'w'==mde ) ff.lineFeed = this.LNFD;
 
-			// Unicode U+FEFF (UTF16) converts into UTF8 `EF BB BF`
+			// BOM? -- Unicode U+FEFF (UTF16) converts into UTF8 `EF BB BF`
+			// [DEL170717] Need more tests!
 			// ---
-			if( 'w'==mde && 'U'==enc[0] ) ff.write('\uFEFF');
+			// if( 'w'==mde && 'U'==enc[0] && callee.µ['~'].UBOM ) ff.write('\uFEFF');
 
+			// Set the file pointer (append mode only.)
+			// ---
 			if( 'e'==mde ) ff.seek(0,/*EOF*/2);
 
 			return ff;
@@ -324,7 +428,7 @@
 		//----------------------------------
 		// Read a file in UTF8 mode and return the resulting string.
 		// [REM] No conversion is performed here, meaning that the
-		// output is regarded as UTF8 (loaded in a JS-UTF16 string.)
+		// output is regarded as UTF8 loaded in a JS-UTF16 string.
 		// => str | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'r','UTF8')) &&
@@ -335,7 +439,7 @@
 		//----------------------------------
 		// Write the input string in a File in UTF8 mode.
 		// [REM] No conversion is performed here, meaning that the
-		// input is regarded as UTF8 (loaded in a JS-UTF16 string.)
+		// input is regarded as UTF8 loaded in a JS-UTF16 string.
 		// => File | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'w','UTF8')) &&
@@ -346,7 +450,7 @@
 		//----------------------------------
 		// Append the input string into a File in UTF8 mode.
 		// [REM] No conversion is performed here, meaning that the
-		// input is regarded as UTF8 (loaded in a JS-UTF16 string.)
+		// input is regarded as UTF8 loaded in a JS-UTF16 string.
 		// => File | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'e','UTF8')) &&
@@ -403,9 +507,11 @@
 		// this method to create files that require some persistence!
 		// => File | FERR
 		{
+			I = callee.µ['~'];
+			
 			// Clear it first.
 			// ---
-			(I = callee.µ['~']).TRMV();
+			I.TRMV();
 			if( 'undefined' == typeof s ) return I.FERR;
 
 			// Normalize the suffix and build the whole path.
