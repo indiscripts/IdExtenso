@@ -13,7 +13,7 @@
 		DOM-access:     ---
 		Todo:           Performance testing; String.lorem()
 		Created:        150510 (YYMMDD)
-		Modified:       171122 (YYMMDD)
+		Modified:       171205 (YYMMDD)
 
 *******************************************************************************/
 
@@ -47,10 +47,15 @@
 	'function' == typeof String.__toSource__ ||
 	(String.__toSource__ = String.prototype.toSource);
 
-	String.prototype.toSource = function toSource(/*<DQ>|<SQ>=<DQ>*/quote,/*bool=0*/allowUTF16,  q,o,altQuote,r,i,s,k)
+	String.prototype.toSource = function toSource(/*<DQ>|<SQ>|false=<DQ>*/quote,/*bool=0*/allowUTF16,  q,o,NOQ,altQuote,r,i,s,k)
 	//----------------------------------
 	// Return a quote-nested string so that eval(this.toSource())===this. This function
-	// overrides the original toSource method in order to get shorter outputs. Examples:
+	// overrides the original toSource method in order to get shorter outputs.
+	// ---
+	// [CHG171205] Added the option `quote===false`. In that case, inner quotes are not
+	// escaped (<SQ> remains <SQ>, <DQ> remains <DQ>) and the result is not nested in quotes.
+	// ---
+	// Examples:
 	//
 	//   INPUT STRING (JS)  |  OUTPUT CHARS (NATIVE METHOD)          |  OUTPUT CHARS (NEW VERSION)
 	//   -------------------------------------------------------------------------------------------
@@ -63,7 +68,8 @@
 	// [REM] Tested on a jpeg file owning 23,052 bytes, the new method returns 60,433 characters
 	// while the native method outputs 89,653 characters. Result is 67% lighter.
 	//
-	// `quote`      : Either <DQ> (default) or <SQ>. Use myStr.toSource("'") to get single quot nesting.
+	// `quote`      : Either <DQ> (default), <SQ>, or false. Use myStr.toSource("'") to get single
+	//                quote nesting. Use false to prevent quote escapes and discard quote nesting.
 	// `allowUTF16` : Reserved. (For the time being, output is always a full ASCII string.)
 	{
 		// Aliases.
@@ -73,16 +79,25 @@
 
 		// Defaut quote is <DQ>, unless <SQ> is supplied.
 		// altQuote :: quote==<DQ> ? <SQ> : <DQ>
+		// [ADD171205] Supports `quote===false` -> NOQ.
 		// ---
-		(String.SQ==quote) || (quote=String.DQ);
-		altQuote = String[ String.SQ==quote ? 'DQ' : 'SQ' ];
+		if( NOQ=+(false===quote) )
+		{
+			quote = String.DQ;
+			altQuote = String.SQ;
+		}
+		else
+		{
+			(String.SQ==quote) || (quote=String.DQ);
+			altQuote = String[ String.SQ==quote ? 'DQ' : 'SQ' ];
+		}
 
 		// Take advantage of native toSource() performance.
 		// ---
 		i = (r=String.__toSource__.call(this)).length;
 
 		// ---
-		// [REM] `s` cannot contain non-ASCII char at this stage
+		// [REM] `r` cannot contain non-ASCII char at this stage
 		// so we can temporarily replace any escaped <BK> by <X1>,
 		// then safely work on instances of other escaped chars.
 		// ---
@@ -119,6 +134,10 @@
 		{
 			q.unsafeQuote || ( r=r.replace(RegExp['_'+o[altQuote]], altQuote) );
 		}
+		
+		// [ADD171205] If NOQ, unescape <BK><DQ>.
+		// ---
+		NOQ && ( r=r.replace(RegExp['_'+o[quote]], quote) );
 
 		// Special treatment for escaped NUL char. (Tricky!)
 		// `\x00` --> `\0`  (lookahead != decimalDigit)
@@ -131,7 +150,7 @@
 
 		// Final result.
 		// ---
-		return quote + r.replace(RegExp.X1, String._BK) + quote;
+		return (NOQ&&(quote='')), quote + r.replace(RegExp.X1, String._BK) + quote;
 	};
 
 	String.prototype.toSource.Q = (function(/*obj&*/R,  err,o,t,s,i,n,a)
