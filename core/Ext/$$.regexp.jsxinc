@@ -7,7 +7,8 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            flags() toSource() ==()
+		API:    STATIC  escape()
+		         PROTO  flags() toSource() ==()
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
@@ -481,7 +482,7 @@
 	};
 
 	//==========================================================================
-	// RegExp.prototype.escape()
+	// RegExp.escape()  [static]
 	//==========================================================================
 
 	/*
