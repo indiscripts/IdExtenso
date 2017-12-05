@@ -3,15 +3,15 @@
 		Name:           regexp
 		Desc:           Improves RegExp class and prototype.
 		Path:           /core/Ext/$$.regexp.jsxinc
-		Require:        $$/Ext/patterns
+		Require:        Ext/patterns ; Ext/string
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
 		API:            flags() toSource() ==()
 		DOM-access:     ---
-		Todo:           Check toSource in clinical cases ; perf tests.
+		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       170322 (YYMMDD)
+		Modified:       171205 (YYMMDD)
 
 *******************************************************************************/
 
@@ -358,6 +358,7 @@
 	// Return a valid, ASCII-safe, uneval-string S for this
 	// regex such as `this` is equivalent to eval(S).
 	// [TODO] Normalize the result to improve ==() reliability.
+	// [171204] Rephrased comments.
 	// ---
 	// [REM] `S` has the form 'RegExp("str","flg")' where
 	//       "str" comes from String.prototype.toSource(),
@@ -366,26 +367,35 @@
 	// [REM] RegExp.prototype['=='] is implemented using
 	//       the present method, so we have this==eval(S).
 	{
+		// PROBLEM.
+		//   (a) RegExp("x/y")
+		//   (b) RegExp("x\\/y")
+		//   (c) /x\/y/
+		// all describe the *same* regex, that is, the one
+		// that matches "x/y". The native `source` property
+		// provides the following results:
+		//   (a).source == "x/y"
+		//   (b).source == (c).source == "x\\/y"
+		// We'd want `toSource()` to consistently return
+		// `RegExp("x\\/y")` in all three cases (in order
+		// to improve regex comparison.)
+		// [REM] Technically we return the literal string
+		//   `"x<BK><BK>x2Fy"` (which evals to "x<BK>x2Fy")
+		// instead of
+		//   `"x<BK><BK>/y"`   (which evals to "x<BK>/y")
+		// This way <SL> is removed from the literal,
+		// which may be safer in exotic contexts.
 		// ALGORITHM IN USE.
 		// ---
-		// Problem. - `this` is a valid RegExp, but we don't
-		// know whether it has been created thru a string,
-		// RegExp("xyz"), or from a literal /xyz/. In either
-		// cases this.source matches `xyz` but:
-		//   (a)  "xyz"  MAY   contain '/' unescaped,
-		//   (b)  /xyz/ CANNOT contain '/' unescaped,
-		// Therefore the `source` is not consistent if
-		// the declaration involved the '/' character.
-		// For example, say source == `a\/b`
-		// in case (a) the pattern is /a\\\/b/, matching `a\/b`
-		// in case (b) the pattern is /a\/b/  , matching `a/b`
-		// (a) RegExp("a\\/b","g")
-		// ---
-		// Solution:
-		// 1. Replace /BKBK/ by `\x5C`   { `\\` } => `\x5C`
+		// 0. Consider this.source.
+		// 1. Replace /BKBK/ by "\\x5C"  { `\\` } => `\x5C`
+		//    (so there is no longer `\\` in the string.)
 		// 2. Replace /BKSL/ by <SL>     { `\/` } => `/`
-		// 3. Replace /SL/  by `\x2F`    { `/`  } => `\x2F`
-	
+		//    (since every `\/` is equivalent to `/`.)
+		// 3. Replace /SL/   by "\\x2F"  { `/`  } => `\x2F`
+		//    (force Unicode escaping of <SL>, U+002F)
+		// 4. Call String.toSource() and format the result.
+		// ---
 		return $.global.localize(
 			'RegExp(%1,"%2")',
 			(this.source || '(?:)')             // As [ECMA] suggests for ''.
@@ -468,4 +478,145 @@
 		// it avoids to invoke toSource where not required.
 		// ---
 		return this.source == re.source || this.toSource() == re.toSource();
+	};
+
+	//==========================================================================
+	// RegExp.prototype.escape()
+	//==========================================================================
+
+	/*
+
+	[RES] <github.com/benjamingr/RegExp.escape>
+	"It is often the case when we want to build a regular expression out
+	of a string without treating special characters from the string as
+	special regular expression tokens."
+
+	Here are the rules that involve lexical tokens in RegExp [ECMA]:
+	
+	========================================================
+	Disjunction :=
+	      <Alternative> | <Alternative> `|` <Disjunction>
+	      => ESC: `|` and {<Alternative>}
+	--------------------------------------------------------
+	Alternative :=
+	      <empty> | <Alternative> <Term>
+	      => ESC: {<Term>}
+	--------------------------------------------------------
+	<Term> :=
+	      <Assertion> | <Atom> | <Atom> <Quantifier>
+	      => ESC: {<Assertion>,<Atom>,<Quantifier>}
+	--------------------------------------------------------
+	<Assertion> :=
+	      `^` | `$` | `\b` | `\B` |
+	      `(?=` <Disjunction> `)` | `(?!` <Disjunction> `)`
+	      => ESC: `^` `$` `\` `(`
+	--------------------------------------------------------
+	<Atom> :=
+	      <PatternCharacter> | `.` | `\` <AtomEscape> |
+	      <CharacterClass> | `(` <Disjunction> `)` |
+	      `(?:` <Disjunction> `)`
+	      => ESC: `.` `\` `(` and {<PatternCharacter>,<CharacterClass>}
+	--------------------------------------------------------
+	<PatternCharacter> :=
+	      <SourceCharacter> - { `^$\.*+?()[]{}|` }
+	      => ESC: N/A (all characters are OK.)
+	--------------------------------------------------------
+	<CharacterClass> :=
+	      `[` <lookahead_not_^> <ClassRanges> `]` |
+	      `[^` <ClassRanges> `]`
+	      => ESC: `[`
+	--------------------------------------------------------
+	<Quantifier> :=
+	      <QuantifierPrefix> | <QuantifierPrefix> `?`
+	      => ESC: {<QuantifierPrefix>} -- see below
+	--------------------------------------------------------
+	<QuantifierPrefix> :=
+	      `*` | `+` | `?` |
+	      `{` <DecimalDigits> `}` | `{` DecimalDigits `,}` |
+	      `{` <DecimalDigits> `,` <DecimalDigits> `}`
+	      => ESC: `*` `+` `?` `{`
+	========================================================
+
+	Hence, given a string S to be used in the RegExp constructor with no
+	regex edge effect, using e.g `RegExp( S + ... )` or `RegExp( "(?" + S
+	+ ")" )`, it is sufficient to escape in S the following characters:
+
+	      `|` `^` `$` `\` `(` `.` `[` `*` `+` `?` `{`
+	
+	that is,
+
+	      [\|\^$(.)\[\]{*+?}\\]
+
+	after adding the closing counterparts of `(`, `{`, and `[`.
+	This is the Canonical RegExp-Escaping Class, as defined as
+	`RegExp.RESC` in Ext/patterns.
+
+	*/
+
+	RegExp.escape = function escape(/*str*/s,/*-1|0|1=0*/intent,  k)
+	//----------------------------------
+	// [171205] Static RegExp.escape() routine, as suggested
+	// by B. Gruenbaum at <github.com/benjamingr/RegExp.escape>.
+	// Given the input string `s`, return a string `r` such
+	// that `RegExp('^' + r + '$').test(s) === true`. In other
+	// words, `r` fully describes `s` with no regex effect.
+	// This is the 'primary contract' of this function.
+	// ---
+	// E.g    escape("abc")       => "abc"
+	//        escape("a.b?")      => "a\\.b\\?"
+	//        escape("^[a-b](c)") => "\\^\\[a-b\\]\\(c\\)"
+	// ---
+	// `intent`  0   Default. The output is not intended to interact
+	//               with a dangerous prefix string so it only requires
+	//               escaping the canonical symbols `|^$(.)[]{*+?}\`
+	//               -------------------------------------------------
+	// `intent` +1   Safer. The output may be merged with an arbitrary
+	//               prefix string so it requires more precaution.
+	//               Hyphens `-` and leading digits are treated too,
+	//               to avoid undesired collisions w/ dangerous chars.
+	//               -------------------------------------------------
+	// `intent` -1   Literal. The output is intended to take place in a
+	//               literal regex, e.g `/<output>/`. For that reason,
+	//               the regular str.toSource() routine has to be invoked
+	//               before processing to avoid syntactic problems.
+	//               By contrast with the previous cases, our
+	//               requirement is now:
+	//                 eval('/^' + output + '$/').test(input) === true;
+	//               Keep in mind that this 'literal' mode is a special
+	//               feature which does not, in general, satisfy the
+	//               primary contract.
+	// => str
+	{
+		if( !(intent|=0) )
+			return s.replace(RegExp.RESC, '\\$&');
+		
+		if( 0 < intent )
+		{
+			// Safer intent.
+			// ---
+			k = 'RSAF';
+		}
+		else
+		{
+			// Literal intent.
+			// ---
+			s = s.toSource(false); // false means 'no quotes'.
+			k = 'RLIT';
+		}
+
+		s = s.replace(RegExp[k], '\\$&');
+		
+		// Escape any *leading* hex digit [a-fA-F0-9] using `\xHH`
+		// ---
+		// [REM] In this context, that would be a terrible mistake
+		// to simply prepend <BK>, since any construction among
+		// <BK>[0-9bBcdDlLsSuUvwWx] has a special regex effect!
+		// ---
+		if( 0 <= 'abcdefABCDEF0123456789'.indexOf(k=s.charAt(0)) )
+		{
+			k = "\\x" + k.charCodeAt(0).toString(16).toUpperCase();
+			s = k + s.substr(1);
+		}
+		
+		return s;
 	};
