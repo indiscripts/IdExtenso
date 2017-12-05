@@ -1,3 +1,6 @@
+#### [171205]
+  - `Ext/strings`: our great `String.prototype.toSource` method now allows the `quotes` param to be `false` (strictly), so the result is not nested within quotes and does not apply escaping to inner quotes. Useful in some cases, like playing with literal regexes, etc.
+
 ##### [171203]
   - `Ext/file` added, intended to extend `File.prototype`. So far it only introduces the method `nudeName()` which just returns the file name without its extension. (REM: Do not confuse `Ext/file` with the **File** module.)
   - Exposed the `stamp()` utility in the API of the **File** module. It basically invokes the private `~.STMP` function, which builds a unique name for temporary files. Call `$$.File.stamp()` to use this feature from anywhere.
