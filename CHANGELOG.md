@@ -1,4 +1,4 @@
-#### [171205]
+##### [171205]
   - `Ext/strings`: our great `String.prototype.toSource` method now allows the `quotes` param to be `false` (strictly), so that the result is not nested within quotes and does not *backslash* inner quotes. Handy in special cases (playing with literal regexes, etc.)
 
 ##### [171203]
