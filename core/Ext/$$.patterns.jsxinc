@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       171110 (YYMMDD)
+		Modified:       171205 (YYMMDD)
 
 *******************************************************************************/
 
@@ -323,5 +323,43 @@
 	RegExp.ADBE = /^(?:3[0-9]|[46][1-9A-F]|[57][0-9A]){3}(?:3[0-9]|[46][1-9A-F]|[57][0-9A]|20)$/g;
 	// --- /over-0x7F/
 	RegExp.OV7F = /[\x80-\uFFFF]/g;
-	// --- /extendscript-overloadable-operator/
-	RegExp.EXOP = /^(?:[\+\-\*\/\|\^\~<%&]|<<|>>>?|===?|<=)$/g;
+	// --- /extendscript-overloadable-operator/ [CHG171204]
+	RegExp.EXOP = /^(?:[*+~%&\/\-\|\^]|<[=<]?|>>>?|===?)$/g;
+
+	// Escaping and parsing RegExps. [ADD171205]
+	// [REM] CS5 requires escaping `|` in regex classes too.
+	// -------------------------------------------------------------------------
+
+	// (RegExp-Operators.)
+	// Purpose: Detect the presence of typical regex symbols.
+	// ---
+	RegExp.REOP = /[\|\^$(.)\[\]{*+?}]/g;                       // `|^$(.)[]{*+?}`
+
+	// (Canonical-Escaping-Class, including <BK>.)
+	// Purpose: Detect symbols that need to be escaped in a string
+	// so it can go into `RegExp(...)` with no regex edge effect.
+	// See RegExp.escape(str, 0).
+	// ---
+	RegExp.RESC = /[\|\^$(.)\[\]{*+?}\\]/g;                     // `|^$(.)[]{*+?}\`
+
+	// (Safe-Escaping-Pattern, including <BK>, adding `-`)
+	// Purpose: Detect symbols that need to be escaped in a
+	// string so it can be combined with others and go into
+	// `RegExp(...)` with no regex effect. Stronger security.
+	// Note: Leading hex digits are to be treated separately.
+	// See RegExp.escape(str, 1).
+	// ---
+	RegExp.RSAF = /[\|\^$(.)\[\]{*+?}\-\\]/g;                   // `|^$(.)[]{*+?}\-`
+
+	// (Literal-Escaping-Pattern, excluding <BK>, adding <SL>.)
+	// Purpose: Detect symbols that need to be escaped in a string
+	// so it can be combined with others and go into
+	// `eval('/' + ... + '/')` with no regex edge effect.
+	// [WARNING] This pattern does not capture <BK>, white spaces or
+	// other 'dangerous' characters, because `input.toSource()` MUST
+	// anyway be applied upstream to take care of them. Interestingly,
+	// none of the characters below undergo escaping from toSource().
+	// Also, leading hex digits are to be treated separately.
+	// See RegExp.escape(str, -1).
+	// ---
+	RegExp.RLIT = /[\|\^$(.)\[\]{*+?}\-\/]/g;                   // `|^$(.)[]{*+?}/-`
