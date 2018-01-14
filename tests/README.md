@@ -56,6 +56,14 @@ _Demonstrates:_
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
 
+##### [`MarkovShuffle.jsx`](MarkovShuffle.jsx)
+
+Text scrambler based on Markov chains.   
+_Demonstrates:_
+   
+* Using the **Markov** module for the purpose of scrambling texts in InDesign.
+* Including the **Random** module (to improve random functions.)
+
 ##### [`PlayWithBigInt.jsx`](PlayWithBigInt.jsx)
 
 Computing arbitrary-precision big integers using **BigInt** module.   
