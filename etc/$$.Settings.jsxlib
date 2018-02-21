@@ -10,13 +10,13 @@
 		API:            =access() declare() canDeclare() activate() reset() backup()
 		                addLive() objKeyCount() appKeyCount()
 		DOM-access:     extractLabel() insertLabel()
-		Todo:           session-persistent keys ; documentation.
+		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       170407 (YYMMDD)
+		Modified:       180221 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 170407, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180221, 'access'))
 
 	//==========================================================================
 	// NOTICE
@@ -24,32 +24,33 @@
 
 	/*
 
-	Key scopes.
+	KEY SCOPES (SUMMARY)
+	
 	============================================================================
 	BRANCH   TYPE     DECL  ACTIVATE   RESET       BCKP   DESCRIPTION
 	============================================================================
-	const    CNST= 1  VAL   NOOP       NOOP        NOOP   Read-only.
+	CONST    CNST= 1  VAL   NOOP       NOOP        NOOP   Read-only.
 	----------------------------------------------------------------------------
-	live     LIVE= 2  VAL   NOOP       NOOP        NOOP   Volatile (no default.)
+	LIVE     LIVE= 2  VAL   NOOP       NOOP        NOOP   Volatile (no default.)
 	----------------------------------------------------------------------------
-	reset    RSET= 4  DEF   DEF        DEF         NOOP   Restorable but non-persistent.
+	RESET    RSET= 4  DEF   DEF        DEF         NOOP   Restorable but non-persistent.
 	----------------------------------------------------------------------------
-	[engine] ENGI= 8  DEF   ?VAL:DEF   DEF         NOOP   Engine-persistent (if present.)
+	[ENGINE] ENGI= 8  DEF   ?VAL:DEF   DEF         NOOP   Engine-persistent (if present.)
 	                                                      This is the default scope.
 	----------------------------------------------------------------------------
-	session  SESS=16  DEF   VAL        DEF         NOOP   Session-persistent
+	SESSION  SESS=16  DEF   VAL        DEF         NOOP   Session-persistent
 	                                                      (even in main engine.)
 	----------------------------------------------------------------------------
-	obj      DOBJ=32  DEF   ?OBJ:      null?DEF:   null?  DOM-Object-persistent.
+	OBJ      DOBJ=32  DEF   ?OBJ:      null?DEF:   null?  DOM-Object-persistent.
 	                        ?VAL:DEF   ?OBJ:DEF    NOOP:
 	                                               ?OBJ:
 	                                               NOOP
 	----------------------------------------------------------------------------
-	app      INDD=64  DEF   ?APP:      null?DEF:   null?  App-persistent.
+	APP      INDD=64  DEF   ?APP:      null?DEF:   null?  App-persistent.
 	                        ?VAL:DEF   ?APP:DEF    NOOP:
 	                                               APP
 	----------------------------------------------------------------------------
-	hyb      HYBR=96  DEF   ?OBJ:      null?DEF:   null?  Hybrid.
+	HYB      HYBR=96  DEF   ?OBJ:      null?DEF:   null?  Hybrid.
 	                        ?APP:      ?OBJ:       NOOP:
 	                        ?VAL:DEF   ?APP:DEF    ?OBJ:
 	                                               APP
@@ -73,7 +74,7 @@
 		
 		BRCH : function(/*key*/s)
 		//----------------------------------
-		// Map a user-friendly branch name to a scope.
+		// (Branch-Map.) Map a user-friendly branch name to a scope.
 		// => 0 [KO]  |  1|2|4|8|... [OK]
 		{
 			return (s=callee.Q[s]) ? this[s] : 0;
@@ -92,8 +93,9 @@
 
 		FDEL : function(/*obj&*/o,/*key*/k)
 		//----------------------------------
-		// Kill and delete `o[k]`.
+		// (Deleter.) Kill and delete `o[k]`.
 		// this :: ~
+		// => o
 		{
 			$.global[callee.µ.__root__].kill(o[k]);
 			delete o[k];
@@ -102,8 +104,9 @@
 
 		FSET : function(/*obj&*/o,/*key*/k,/*any*/v)
 		//----------------------------------
-		// Kill `o[k]` first, then clone `v` in it.
+		// (Setter.) Kill `o[k]` first, then clone `v` in it.
 		// this :: ~
+		// => o[k]
 		{
 			this.FDEL(o,k);
 			return (o[k]=$.global[callee.µ.__root__].clone(v));
@@ -114,14 +117,19 @@
 	[PRIVATE]
 	
 	({
+		// Settings-Unique-ID.
+		// ---
 		SUID : '',
+
 		KEYS : {/*key => fct*/},
 		
+		// Resettable mask. (Any scope that &-matches RSBL supports the reset feature.)
+		// ---
 		RSBL : (µ['~'].RSET)|(µ['~'].ENGI)|(µ['~'].SESS)|(µ['~'].DOBJ)|(µ['~'].INDD)|(µ['~'].HYBR),
 
 		KSCO : function(/*key*/k)
 		//----------------------------------
-		// this :: ~
+		// (Key-Scope.) this :: ~
 		// => 0 [KO]  |  1|2|4|8|... [OK]
 		{
 			return callee.Q[k] || 0;
@@ -129,7 +137,7 @@
 
 		KDEF : function(/*key*/k)
 		//----------------------------------
-		// this :: ~
+		// (Key-Default.) this :: ~
 		// => undefined [KO]  |  <any> [OK]
 		{
 			return callee.Q.hasOwnProperty(k) ? callee.Q[k] : (void 0);
@@ -137,7 +145,7 @@
 
 		WTCH : function(/*key*/k,/*?any*/ov,/*?any|NULL*/nv,  I)
 		//----------------------------------
-		// Key watcher. Use null to default.
+		// (Key-Watcher.) Use null to default.
 		// this :: ~.KEYS
 		{
 			return (I=callee.µ['~']),
@@ -158,30 +166,51 @@
 	({
 		GOBJ : function(/*dom*/osp,/*any*/defRet)
 		//----------------------------------
-		// Get (extract) keys from osp SUID label.
+		// (Get-From-Obj.) Get (extract) keys from osp's SUID label.
+		// => new set [OK] | undefined [KO]
 		{
 			return $.global[callee.µ.__root__].Dom.fromLabel(osp, this.SUID, defRet);
 		},
 
 		SOBJ : function(/*dom*/osp,/*any{}*/o)
 		//----------------------------------
-		// Set (insert) o keys into osp SUID label.
+		// (Set-to-Obj.) Set (insert) o keys into osp's SUID label.
+		// => str (json)
 		{
 			return $.global[callee.µ.__root__].Dom.toLabel(osp, this.SUID, o);
 		},
 
 		GAPP : function(/*any*/defRet)
 		//----------------------------------
-		// Get keys from app SUID label.
+		// (Get-From-App.) Get keys from app's SUID label.
+		// => new set [OK] | undefined [KO]
 		{
 			return this.GOBJ(app,defRet);
 		},
 
 		SAPP : function(/*any{}*/o)
 		//----------------------------------
-		// Set o keys into app SUID label.
+		// (Set-to-App.) Set o keys into app SUID label.
+		// => str (json)
 		{
 			return this.SOBJ(app,o);
+		},
+
+		GENV : function(/*str*/k,  s)
+		//----------------------------------
+		// (Get-From-Env.) Get (extract) this key from the env-var `SUID_<k>`.
+		// => any value [OK] | null [KO]
+		{
+			return (s=$.getenv(this.SUID+'_'+k)) ? $.global[callee.µ.__root__].JSON.eval(s) : null;
+		},
+
+		SENV : function(/*str*/k,/*any*/x,  s)
+		//----------------------------------
+		// (Set-To-Env.) Set this key in the env-var `SUID_<k>`.
+		// => str (json)
+		{
+			$.setenv(this.SUID+'_'+k, s=$.global[callee.µ.__root__].JSON.lave(x));
+			return s;
 		},
 
 	})
@@ -194,7 +223,7 @@
 
 		DELK : function(  o,k)
 		//----------------------------------
-		// Delete Keys.
+		// (Delete-Keys.) Unwatch and remove all existing keys.
 		{
 			o = this.KEYS;
 			for( k in o )
@@ -209,7 +238,7 @@
 
 		ADDK : function(/*key*/k,/*uint*/scope,/*any*/data)
 		//----------------------------------
-		// Add a Key. Throws an error if it already exists.
+		// (Add-Key.) Throws an error if it already exists.
 		{
 			if( this.KEYS.hasOwnProperty(k) )
 			{
@@ -220,21 +249,21 @@
 			
 			if( scope == this.LIVE || scope == this.CNST )
 			{
-				this.FSET(this.KEYS,k,data);
+				this.FSET(this.KEYS, k, data);
 			}
 			else
 			{
-				this.FSET(this.KDEF.Q,k,data);
-				this.KEYS[k] = void 0; // must be activated!
+				this.FSET(this.KDEF.Q, k, data);
+				this.KEYS[k] = void 0; // undefined -> must be activated!
 			}
 		},
 
 		DECL : function(/*str*/suid,/*{...,LIVE:{},RESET:{},OBJ:{},APP:{},HYB:{}}*/o,  k,z,oo)
 		//----------------------------------
-		// Declare settings.
+		// (Declare-All-Settings.)
 		// [REM] Branch names are case-sensitive.
 		{
-			// Kills existing keys.
+			// Kills existing keys (if any.)
 			// ---
 			this.SUID && this.DELK();
 
@@ -270,17 +299,18 @@
 				
 				for( k in oo )
 				{
-					oo.hasOwnProperty(k) && this.ADDK(k,z,oo[k]);
+					oo.hasOwnProperty(k) && this.ADDK(k, z, oo[k]);
 				}
 			}
 		},
 
-		ACRS : function(/*?dom|null*/host,/*bool*/DO_RESET,  o,k,z,v,vKill,indd,dobj)
+		ACRS : function(/*?dom|null*/host,/*bool*/DO_RESET,  o,k,z,v,indd,dobj,zo,za)
 		//----------------------------------
-		// Activate or Reset declared keys.
+		// (Activate-Or-Reset.) Activate or Reset declared keys.
 		{
 			o = this.KEYS;
 			indd = dobj = false;
+			za = zo = 0;
 	
 			for( k in o )
 			{
@@ -288,13 +318,19 @@
 
 				z = this.KSCO(k);
 				v = null;
-				vKill = 0;
 
-				// Determine the activation value v (excl. CNST and LIVE.)
+				// If the key is resettable, determine its activation value.
+				// [REM] LIVE and CNST keys are excluded from this block.
 				// ---
 				while( z&this.RSBL )
 				{
+					// [ADD180221] Manage session key thru $.getenv(<SUID>_<KEY>)
+					// SESS
+					// ---
+					if( (z&this.SESS) && null!==(v=this.GENV(k)) ) break;
+
 					// DOBJ | INDD | HYBR
+					// If DO_RESET && host===null, take the default and break.
 					// ---
 					if( (z&this.HYBR) && DO_RESET && null===host ){ v=this.KDEF(k); break; }
 					
@@ -302,19 +338,32 @@
 					// ---
 					if( (z&this.DOBJ) )
 					{
-						host && (false===dobj) && (dobj=this.GOBJ(host));
-						if( dobj && dobj.hasOwnProperty(k) ){ vKill=1; v=dobj[k]; break; }
+						// If not already done, unserialize data from the host object.
+						// ---
+						host && (false===dobj) && (dobj=this.GOBJ(host, void 0));
+						
+						// Look for the key.
+						// [REM] If not found in a hybrid key, do not break!
+						// ---
+						if( dobj && dobj.hasOwnProperty(k) ){ ++zo; v=dobj[k]; break; }
 					}
 
 					// INDD | HYBR
 					// ---
 					if( (z&this.INDD) )
 					{
-						(false===indd) && (indd=this.GAPP());
-						if( indd && indd.hasOwnProperty(k) ){ vKill=1; v=indd[k]; break; }
+						// If not already done, unserialize data from the app.
+						// ---
+						(false===indd) && (indd=this.GAPP(void 0));
+						
+						// Look for the key.
+						// ---
+						if( indd && indd.hasOwnProperty(k) ){ ++za; v=indd[k]; break; }
 					}
 
 					// RESET
+					// Take the default value in any of the following cases:
+					// (a) key undefined ; (b) RSET key ; (c) forced reset.
 					// ---
 					if( DO_RESET || (z&this.RSET) || ('undefined'==typeof this.KEYS[k]) )
 					{
@@ -323,56 +372,71 @@
 					break;
 				}
 
-				// Change existing key into activation value.
+				// Set or change the existing key into its activation value.
 				// ---
 				o.unwatch(k);
 				null===v || (this.FSET(o,k,v))
 				o.watch(k,this.WTCH);
 			}
 			
-			// Indicate whether OBJ and/or APP labels have
-			// been found during activation.
+			// Indicate whether OBJ and/or APP labels have been found during activation,
+			// and how many properties have been restored from each.
 			// ---
-			(this.ONUM=dobj?dobj.__count__:0) && $.global[callee.µ.__root__].kill(dobj);
-			(this.ANUM=indd?indd.__count__:0) && $.global[callee.µ.__root__].kill(indd);
+			this.ONUM = zo;
+			dobj && $.global[callee.µ.__root__].kill(dobj);
+
+			this.ANUM = za;
+			indd && $.global[callee.µ.__root__].kill(indd);
 		},
 
-		BCKP : function(/*?dom|null*/host,  indd,dobj,SKIP_HYB,zObj,zApp,o,k,z)
+		BCKP : function(/*?dom|null*/host,  indd,dobj,SKIP_HYB,zo,za,o,k,z)
 		//----------------------------------
-		// Backup settings.
+		// (Backup.)
 		{
-			indd = this.GAPP({});                // Get the existing keys, or {}
-			dobj = host && this.GOBJ(host,{}),   // Get the existing keys, or {}
+			indd = this.GAPP({});                // Get the existing app keys, or {}, in a new obj
+			dobj = host && this.GOBJ(host,{}),   // Get the existing obj keys, or {}, in a new obj
 	
 			SKIP_HYB = +(null===host);
-			zObj = zApp = 0;
+
+			zo = za = 0;
 	
 			o = this.KEYS;
 			for( k in o )
 			{
 				if( !o.hasOwnProperty(k) ) continue;
+				
+				z = this.KSCO(k);
 	
-				z = o[K_LEVEL];
+				// SESS
+				// ---
+				if( z&this.SESS )
+				{
+					this.SENV(k,o[k]);
+					continue;
+				}
 	
 				// OBJ | HYB
 				// ---
 				if( z&this.DOBJ )
 				{
 					if( SKIP_HYB ) continue;
-					if( host ){ ++zObj; this.FSET(dobj,k,o[k]); continue; }
+					if( host ){ ++zo; dobj[k]=o[k]; continue; }
 				}
 	
 				// APP | HYB
 				// ---
 				if( z&this.INDD )
 				{
-					++zApp;
-					this.FSET(indd,k,o[k]);
+					++za;
+					indd[k]=o[k];
 				}
 			}
 	
-			zObj && this.SOBJ(host,dobj) && $.global[callee.µ.__root__].kill(dobj);
-			zApp && this.SAPP(indd) && $.global[callee.µ.__root__].kill(indd);
+			zo && this.SOBJ(host,dobj);
+			$.global[callee.µ.__root__].kill(dobj);
+			
+			za && this.SAPP(indd);
+			$.global[callee.µ.__root__].kill(indd);
 		},
 	})
 
@@ -383,14 +447,53 @@
 	[PUBLIC]
 	
 	({
-		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},OBJ:{},APP:{},HYB:{}}*/oInput,  I)
+		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},SESSION:{},OBJ:{},APP:{},HYB:{}}*/oInput,  I)
 		//----------------------------------
-		// Create the keys 'from scratch' and set their default values.
-		// [REM] Activation is required after a declaration (even app keys
-		// are not restored through `declare`). This function must be called first
-		// above all, and must be called *once* per engine scope.
-		// Recommended syntax:
-		//      $$.Settings.canDeclare() && $$.Settings.declare(...);
+		// Create a set of keys from scratch and register their default values. This function must be
+		// called *once* per engine, and before `activate()`. It does not restore nor enable any key.
+		// Recommended usage:  $$.Settings.canDeclare() && $$.Settings.declare(...);
+		// ---
+		// suid   :: Settings unique ID (string.)
+		// oInput :: Set of keys with their default values, e.g { myString:"foobar", myNumber:123, ... }
+		//           By default, keys are ENGINE-scoped, meaning they keep their latest value as long as
+		//           the engine is active. Keys declared with underscore prefix (`_`) are made constant,
+		//           so they cannot be changed even using `ss.MYKEY = newValue`. (Note: the `_` prefix
+		//           is automatically removed from the key name.) To declare additional scopes, use any
+		//           of the following branch: LIVE, RESET, SESSION, OBJ, APP, HYB. For example,
+		//           { mySimpleKey:"foobar", _MYCONST:3.14, SESSION: { mySessionKey:321 } }
+		// ---
+		// [REM] You can explicitly use the branches CONST and ENGINE.
+		// [REM] An error is thrown if a key name is re-used or anything else
+		// goes wrong during the declaration.
+		// ---
+		// Full oInput example:
+		//    {
+		//    _PROGNAME: "MyProgram",            // Contant key named PROGNAME; its value cannot be changed.
+		//    indexMode: "auto",                 // Engine-persistent. The latest value remains as long as
+		//                                       // this engine is alive--assuming you don't call reset().
+		//                                       // REM: Will work as RESET if no persistent engine is active.
+		//    LIVE:      { tempValue: "test" },  // Non-persistent and no reset. Can be changed at wish; useful
+		//                                       // to pass dynamic data among the settings while perfoming a task.
+		//    RESET:     { jobDone: false },     // Non-persistent with auto-reset. This key automatically recovers
+		//                                       // its init value *each time you activate* the settings (including
+		//                                       // in the context of a persistent engine.)
+		//    SESSION:   { runCount: 0 },        // Session-persistent (whatever the engine in use.) Useful to keep
+		//                                       // data across multiple runs in basic scripts avoiding #targetengine.
+		//                                       // REM: Will work as ENGINE if a persistent engine is active.
+		//    OBJ:       { modified: 180221 },   // Stored in a DOM-Object (Document, PageItem, etc.). This key can
+		//                                       // be stored in (and restored from) a DOM object, if supplied.
+		//                                       // (See activate, backup and reset for more detail.)
+		//    APP:       { version: 2.321 },     // Application-persistent. This key is stored/restored at the
+		//                                       // application level, which makes it persistent as long as the
+		//                                       // user do not trash InDesign preferences.
+		//                                       // (See activate, backup and reset for more detail.)
+		//    HYB:       { prefSize: [15,10] },  // Object or Application-persistent. This (hybrid) key is stored
+		//                                       // and restored either at object or application level, depending
+		//                                       // on which argument is supplied to the API. If a DOM object is
+		//                                       // provided, it works as OBJ; otherwise it works as APP. Useful
+		//                                       // to manage preferences that can be superseded by some object.
+		//                                       // (See activate, backup and reset for more detail.)
+		//    }
 		// ---
 		// => undefined
 		{
@@ -409,7 +512,8 @@
 				$.global[callee.µ.__root__].error( __("Invalid object in settings declaration."), callee )
 			}
 
-			$.global[callee.µ.__root__].trace(__("%1 > Declare settings for uid: %2.",callee.µ,suid));
+			$.global[callee.µ.__root__].trace(__("%1 > Declaring settings for uid: %2.",callee.µ,suid.toSource()));
+
 			I.DECL(String(suid), oInput);
 		},
 		
@@ -421,7 +525,7 @@
 			return (I=callee.µ['~']).SUID ? 0 : 1;
 		},
 
-		activate : function activate_d_Õ(/*?dom*/host,  I)
+		activate : function activate_d_Õ(/*?dom*/host,  I,s)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
 		// If host is a DOM object, use it as a source for any OBJ or HYB key.
@@ -429,10 +533,12 @@
 		// scope and HYB keys will behave at APP scope.
 		// => keys-accessor
 		{
-			if( !(I=callee.µ['~']).SUID )
+			if( !(s=(I=callee.µ['~']).SUID) )
 			{
 				$.global[callee.µ.__root__].error( __("Settings must be declared before activation."), callee )
 			}
+
+			$.global[callee.µ.__root__].trace(__("%1 > Activating settings for uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
 
 			I.ACRS(host, false);
 			return I.KEYS;
