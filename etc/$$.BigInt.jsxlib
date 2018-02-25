@@ -24,11 +24,11 @@
 		DOM-access:     NO
 		Todo:           toLong()
 		Created:        170503 (YYMMDD)
-		Modified:       171112 (YYMMDD)
+		Modified:       180225 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 171112))
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 180225))
 
 	//==========================================================================
 	// BACKGROUND
@@ -2705,6 +2705,7 @@
 	// [WARN] `--` and `++` cannot be overloaded, and they *are not equivalent*
 	//        to `X=X[op](1)`. In ExtendScript X++ and X-- coerces X into a
 	//        Number, so the BigInt is lost! Use X+=1 (resp. X-=1) instead.
+	// [FIX180225] Serious bug fixed regarding *reversed* < and <= operators.
 	//==========================================================================
 
 	[PROTO]
@@ -2713,25 +2714,35 @@
 		'==' : function equals_X_$Boolean$(/*any*/x)
 		// ---------------------------------
 		{
-			return this.equals(x)
+			return this.equals(x);
 		},
 
-		'<'  : function lessThan_X_$Boolean$(/*any*/x)
+		'<'  : function lessThan_X_$Boolean$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
+		// [FIX180225] Fixed a serious bug! The `rv` argument wasn't listened to, so
+		// the scheme `<number> < this` was improperly parsed as this['<'](<number>),
+		// leading to issues like ( Number(999) < BigInt(1000) ) === true (!!!)
+		// ---
+		// [REM] When external type are involved, always check the *reversed* flag
+		// on assymmetric operators! ALWAYS!
+		// ---
+		// We now have:   999 < BigInt(1000)   &&   BigInt(1000) > 999
+		// as well as:    BigInt(999) < 1000   &&   1000 > BigInt(999)
 		{
-			return this.compareTo(x) < 0
+			return rv ? ( 0 < this.compareTo(x) ) : ( this.compareTo(x) < 0 );
 		},
 
-		'<=' : function lessThanOrEquals_X_$Boolean$(/*any*/x)
+		'<=' : function lessThanOrEquals_X_$Boolean$(/*any*/x,/*bool*/rv)
 		// ---------------------------------
+		// [FIX180225] Fixed the 'reversed cast' bug. (See above.)
 		{
-			return this.compareTo(x) <= 0
+			return rv ? ( 0 <= this.compareTo(x) ) : ( this.compareTo(x) <= 0 );
 		},
 
 		'+'  : function unaryPlusOrAdd_x_$BigInt$(/*?any*/x)
 		// ---------------------------------
 		{
-			return 'undefined' == typeof x ? this : this.add(x)
+			return 'undefined' == typeof x ? this : this.add(x);
 		},
 
 		'-'  : function unaryMinusOrSub_x_$BigInt$(/*?any*/x,/*bool*/rv)
