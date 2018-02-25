@@ -63,6 +63,7 @@ _Demonstrates:_
    
 * Using the **Markov** module for the purpose of scrambling texts in InDesign.
 * Including the **Random** module (to improve random functions.)
+Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuffle-characters-the-right-way)
 
 ##### [`PlayWithBigInt.jsx`](PlayWithBigInt.jsx)
 
