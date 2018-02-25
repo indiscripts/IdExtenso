@@ -2721,7 +2721,7 @@
 		// ---------------------------------
 		// [FIX180225] Fixed a serious bug! The `rv` argument wasn't listened to, so
 		// the scheme `<number> < this` was improperly parsed as this['<'](<number>),
-		// leading to issues like ( Number(999) < BigInt(1000) ) === true (!!!)
+		// leading to issues like ( Number(999) < BigInt(1000) ) === false (!!!)
 		// ---
 		// [REM] When external type are involved, always check the *reversed* flag
 		// on assymmetric operators! ALWAYS!
