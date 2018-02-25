@@ -1,17 +1,19 @@
 /*******************************************************************************
 
 		Name:           number
-		Desc:           Extends Number.prototype
+		Desc:           Extends Number and Number.prototype
 		Path:           /core/Ext/$$.number.jsxinc
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
 		API:            toSource() toHexa() toAdbe() isAdbe()
+		        static: EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
+		                isInteger() isSafeInteger()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       171125 (YYMMDD)
+		Modified:       180225 (YYMMDD)
 
 *******************************************************************************/
 
@@ -80,6 +82,25 @@
 	The value of `Number.POSITIVE_INFINITY` is +∞. This property has
 	the attributes { [[Writable]]: false, [[Enumerable]]: false,
 	[[Configurable]]: false }.
+	
+	[180225] ECMAScript 2015 (6th Edition, ECMA-262) introduced a few
+	static properties which ExtendScript does not provide. Here is a
+	summary:
+
+	      STATIC PROPERTY    EXTENDSCRIPT  VALUE
+	      ------------------------------------------------------------
+	      EPSILON                 KO       Math.pow(2,-52)   // 2^-52
+	      MAX_SAFE_INTEGER        KO       9007199254740991  // 2^53-1
+	      MAX_VALUE               OK       1.7976931348623158e+308
+	      MIN_SAFE_INTEGER        KO      -9007199254740991  // 2^53-1
+	      MIN_VALUE               OK       2.2250738585072014e-308
+	      NEGATIVE_INFINITY       OK      -Infinity
+	      NaN                     OK       NaN
+	      POSITIVE_INFINITY       OK      +Infinity
+	
+	IdExtenso offers a polyfill to get the missing properties available.
+	Also added for convenience are the static methods `Number.isInteger()`
+	and `Number.isSafeInteger()`.
 
 	*/
 
@@ -90,14 +111,79 @@
 	/*
 
 	While extending `Number.prototype`, never forget that `this` refers to
-	a Number object, not to a scalar number. That is,
+	a Number object, not to a primitive (scalar) number. That is,
 	
 	      typeof this == 'object'   // not 'number'
 
 	So, tests like `this===this>>>0` will obviously fail. Use `this.valueOf()`
-	to handle a scalar number.
+	in case you need to handle a primitive number.
 
 	*/
+
+	//==========================================================================
+	// [180225] Number.EPSILON ; Number.MAX_SAFE_INTEGER ; Number.MIN_SAFE_INTEGER
+	//          as specified in ECMAScript 2015 (6th Edition, ECMA-262)
+	//==========================================================================
+
+	'number' == typeof Number.EPSILON || (Number.EPSILON = Math.pow(2, -52));                     // 2^-52
+	'number' == typeof Number.MAX_SAFE_INTEGER || (Number.MAX_SAFE_INTEGER = 9007199254740991);   // 2^53-1
+	'number' == typeof Number.MIN_SAFE_INTEGER || (Number.MIN_SAFE_INTEGER = -9007199254740991);  // -(2^53-1)
+
+	//==========================================================================
+	// [180225] Number.isInteger() --cf ECMAScript 2015 (6th Edition, ECMA-262.)
+	//==========================================================================
+
+	'function' == typeof Number.isInteger || (Number.isInteger = function isInteger(/*any*/x)
+	//----------------------------------
+	// Tell whether the passed value is an integer, that is, a finite Number being
+	// strictly equal to its rounded value. (The fastest known implementation is
+	// based on x%1===0.)
+	// ---
+	// Examples:
+	//  (123)                     => true           (.123)      => false
+	//  (0)                       => true           ("123")     => false
+	//  (-1e5)                    => true           (Math.PI)   => false
+	//  (99999999999999999999999) => true           (NaN)       => false
+	//  (1.0)                     => true           (Infinity)  => false
+	// ---                                          ([123])     => false
+	// => bool
+	{
+		// [REM] The official implementation is: typeof x === 'number'
+		// && isFinite(x) && Math.floor(x) === x
+		// We make it a bit faster by avoiding extra function calls.
+		// ---
+		return 'number' == typeof x && 0===(x%1);
+	});
+
+	//==========================================================================
+	// [180225] Number.isSafeInteger() --cf ECMAScript 2015 (6th Edition, ECMA-262.)
+	//==========================================================================
+
+	'function' == typeof Number.isSafeInteger || (Number.isSafeInteger = function isSafeInteger(/*any*/x)
+	//----------------------------------
+	// Tell whether the passed value is a 'safe integer,' that is,
+	// an integer that satisfies the two following conditions:
+	// (1) it can be exactly represented as an IEEE-754 double precision Number;
+	// (2) its IEEE-754 representation cannot be the result of rounding any other Number.
+	// [REM] For handling integers whose absolute value can be greater than
+	// Number.MAX_SAFE_INTEGER, use the BigInt module featured in the /etc branch.
+	// ---
+	// Examples:
+	//  (0)                       => true        (Math.pow(2,53))   => false
+	//  (123)                     => true        (NaN)              => false
+	//  (Math.pow(2,53)-1)        => true        (Infinity)         => false
+	//  (3.0)                     => true        ('123')            => false
+	//  (-99999)                  => true        (.123)             => false
+	//  (Number.MAX_SAFE_INTEGER) => true        (9999999999999999) => false
+	// ---
+	// => bool
+	{
+		 // [REM] The official implementation is:
+		 // Number.isInteger(x) && Math.abs(x) <= Number.MAX_SAFE_INTEGER
+		 // We make it a bit faster by avoiding extra function calls.
+		 // ---
+		 return 'number' == typeof x && 0===(x%1) && 2 == (1+x)-(-1+x);
+	});
 
 	//==========================================================================
 	// Number.prototype.toSource()
@@ -117,7 +203,7 @@
 
 	Number.prototype.toHexa = function toHexa(/*str='0x'*/prefix,/*uint=0*/zeroPad,  s)
 	//----------------------------------
-	// Return the "0xHHHH" representation of this number. (Uppercase hexa digits.)
+	// Return the hexadecimal representation of this number. (Uppercase hexa digits.)
 	// [FIX171125] isFinite test is better.
 	// [ADD170423] `prefix`   If provided (string), reset the prefix (default is "0x").
 	// [ADD170423] `zeroPad`  If > 0, minimum length of the hexa representation.
@@ -142,11 +228,16 @@
 
 	Number.prototype.toAdbe = function toAdbe(  x)
 	//----------------------------------
-	// Return the Adobe's 4-char string this number encodes.
+	// Return the Adobe Tag (string) that this number encodes.
 	// If `this` is not finite, return String(this).
-	// [REM] If `this` is not an actual Adobe number (cf. isAdbe)
-	// the function still consider it as if, working on this>>>0.
-	// E.g  0x414F5069 => "AOPi" ; 0x74787466 => "txtf"
+	// [REM] If `this` is not an actual Adobe Tag ID (cf. isAdbe)
+	// the function still considers it as so and takes this>>>0.
+	// So the caller is responsible for checking `x.isAdbe()` if
+	// necessary.
+	// ---
+	// E.g  0x414F5069 => "AOPi" ; 0x74787466 => "txtf" ;
+	//      123 => "\0\0\0{" -- since 123==0x7B and "\x7B"=="}"
+	// ---
 	// => str
 	{
 		return isFinite(x=this.valueOf()) ?
@@ -156,10 +247,18 @@
 
 	Number.prototype.isAdbe = function isAdbe(  x)
 	//----------------------------------
-	// Whether this Number looks like an Adobe 4-char tag.
+	// Whether this Number is an Adobe Tag ID, that is,
+	// an uint32 whose hex string has exactly 8 digits.
+	// (More accurately, 0xWWXXYYZZ is an Adobe Tag ID if the
+	// string WWXXYYZZ matches /[ a-zA-Z0-9]{4}/, but the present
+	// implementation does not perform a so restrictive test.)
+	// ---
 	// [FIX171125] Added uint32 test.
+	// ---
 	// E.g  1114394470 => 1    ;    12345 => 0
 	//  ie  0x426C4F66 [OK]        0x3039 [KO]
+	// ---
+	// => 0 | 1
 	{
 		return +(
 			(x=this.valueOf())===x>>>0 &&
