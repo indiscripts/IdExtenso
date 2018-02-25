@@ -1,6 +1,6 @@
 ## 1.80225
   - `Ext/number` now performs a polyfill for `Number`'s static members specified in ECMAScript 2015. Namely: `EPSILON`, `MAX_SAFE_INTEGER`, `MIN_SAFE_INTEGER`; and the methods `isInteger()` and `isSafeInteger()`. From now you can use code like `if(Number.isInteger(x)){...}` in your project.
-  - Important fix in the **BigInt** module. In `prototype['<']` and `prototype['<=']` the _reversed_ argument wasn't listened to, so the scheme `number < this` was improperly parsed as `this['<'](number)`, leading to serious problems! For example, `999 < BigInt(1000)` was said false. [Detail](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.BigInt.jsxlib#L2720)
+  - Important fix in the **BigInt** module. In `prototype['<']` and `prototype['<=']` the _reversed_ argument wasn't listened to, so the scheme `number < this` was improperly parsed as `this['<'](number)`, leading to serious problems! For example, `999 < BigInt(1000)` was said false. ([Detail](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.BigInt.jsxlib#L2720).)
 
 ##### [180221]
   - `Settings` updated. Various bugs fixed. Now supports session-persistent keys :-)
