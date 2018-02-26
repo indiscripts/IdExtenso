@@ -24,11 +24,11 @@
 		DOM-access:     NO
 		Todo:           toLong()
 		Created:        170503 (YYMMDD)
-		Modified:       180225 (YYMMDD)
+		Modified:       180226 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 180225))
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 180226))
 
 	//==========================================================================
 	// BACKGROUND
@@ -2723,8 +2723,8 @@
 		// the scheme `<number> < this` was improperly parsed as this['<'](<number>),
 		// leading to issues like ( Number(999) < BigInt(1000) ) === false (!!!)
 		// ---
-		// [REM] When external type are involved, always check the *reversed* flag
-		// on assymmetric operators! ALWAYS!
+		// [REM] When external types are involved, always check the *reversed* flag
+		// on asymmetric operators! ALWAYS!
 		// ---
 		// We now have:   999 < BigInt(1000)   &&   BigInt(1000) > 999
 		// as well as:    BigInt(999) < 1000   &&   1000 > BigInt(999)
@@ -2739,10 +2739,20 @@
 			return rv ? ( 0 <= this.compareTo(x) ) : ( this.compareTo(x) <= 0 );
 		},
 
-		'+'  : function unaryPlusOrAdd_x_$BigInt$(/*?any*/x)
+		'+'  : function unaryPlusOrAdd_xs_$BigInt$S(/*?any*/x,/*bool*/rv,  t)
 		// ---------------------------------
+		// [FIX180226] Special case if x is a string  =>  concat using `this.toString()`
+		// So, for example:
+		//   `alert( "Result: " + BigInt(1000) )`          => "Result: 1000"
+		//   `X=BigInt(1000); alert( X + " is great." );`   => "1000 is great"
 		{
-			return 'undefined' == typeof x ? this : this.add(x);
+			// Previous code:
+			// return 'undefined' == typeof x ? this : this.add(x);
+
+			// Fix:
+			// ---
+			return 'undefined' == (t=typeof x) ? this :
+				( 'string'!=t ? this.add(x) : (t=this.toString(),(rv?(x+t):(t+x))) );
 		},
 
 		'-'  : function unaryMinusOrSub_x_$BigInt$(/*?any*/x,/*bool*/rv)
