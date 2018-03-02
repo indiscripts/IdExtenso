@@ -1,0 +1,990 @@
+/*******************************************************************************
+
+		Name:           Complex
+		Desc:           Class for Complex numbers managed as {x,y} pairs.
+		Path:           /etc/$$.Complex.jsxlib
+		Require:        __()
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class.
+		API:            =create() onEngine() --> $$.Complex is made [global]
+		    Prototype:  create() x y equals() abs() arg() deg() rotBy()
+		                add() subtract() multiply() divide() negate() conjugate()
+		                toSource() toPolar() toString()
+		                square() log() exp() pow() sqrt() sin() cos() tan()
+		                sinh() cosh() tanh() mod()
+		    Operators:  ==  <  <=  +  -  *  /  ~  %  ^  <<  >>  >>>  &  |
+		    Static:     ZERO ONE I
+		DOM-access:     NO
+		Todo:           More tests w/ advanced functions (pow...) & EPSILON ;
+		                pow() might be enhanced in case argument is a real.
+		Created:        180117 (YYMMDD)
+		Modified:       180302 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Complex') || eval(__(CLASS, $$, 'Complex', 180302))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	As discussed in an old blog post dedicated to "Operator Overloading" --
+	indiscripts.com/post/2010/05/operator-overloading-with-extendscript#hd0sb3
+	-- it is convenient to make ExtendScript supporting Complex numbers
+	with natural operators `+`, `-`, `*`, `/` etc.
+	
+	"Geometrical scripts use and re-use point transformations (translation,
+	rotation, scaling...) that generally can be described as operations in a two-
+	dimensional real vector space. Rather than prototyping Array operators, a
+	possible way to handle [x,y] points in your process is to create a Complex
+	class. Each complex number z = x + iy represents a point in the coordinate
+	system (complex plane)."
+	
+	The present implementation differs from the original one--and from other
+	libraries--in that it defines complex number components simply `x` and `y`
+	(rather than `re` and `im`.) So, given a complex number `z=Complex(...)`,
+	you can access its real and imaginary parts thru `z.x` and `z.y`.
+	
+	Also, any `{x:num,y:num}` object can be passed in the constructor, which
+	makes the present class more compatible with basic coordinate structures
+	in 2D space.
+	
+	The constructor supports various ways of introducing a Complex number
+	(the `new` operator is never required and produces the same result.)
+
+	      var z = Complex();           // => 0 (as a complex)
+	      var z = Complex(123);        // => 123 (as a complex)
+	      var z = Complex(2,3);        // => 2+3i
+	      var z = Complex({x:2,y:3});  // => 2+3i
+	      var z = Complex([2,3]);      // => 2+3i
+	      var z = Complex("2 + 3i");   // => 2+3i
+
+	Having two Complex instances z1 and z2, you can now simply compute and use
+	`z1 + z2`, `z1 * z2`, and so on, including combined expressions that
+	involve regular numbers or even strings:
+	
+	      var z = ( (5*Complex(2,3))^"1-i" ) / 2; // (5*(2+3i)^(1-i))/2
+	      // ---
+	      // Implicit call to `z.toString()`
+	      // ---
+	      alert( z ); // => -7.99369587373753-22.7190035840259i
+	
+	In addition, Complex has a static EPSILON property (as the Number
+	object) that helps in rounding and comparing numbers. Of course you
+	have `(Complex("i")^2) == -1`, but you can also check that
+	
+	      -1 == .25*(Complex("1+i")^4); // true
+	
+	[REM] If you set Complex.EPSILON to 0 (zero) rounding errors are
+	not addressed, so for example `.25*(Complex("1+i")^4)` will
+	display -1+1.22464679914735e-16i.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	OPERATOR      MEANING                  RETURN         NOTES
+	----------------------------------------------------------------------------
+	Z1 == Z2      Equals                   Boolean        EPSILON-aware
+	Z1 < Z2       MagnitudeLessThan        Boolean        EPSILON-aware
+	Z1 <= Z2      MagnitudeLessThanOrEqu.  Boolean        EPSILON-aware
+	----------------------------------------------------------------------------
+	+Z1           Magnitude                Number         == Z1.abs()
+	Z1 + Z2       AddOrConcat              Complex|Str    Special case for string
+	-Z1           Negate                   Complex        == Z1.negate()
+	Z1 - Z2       Subtract                 Complex        == Z1.subtract(Z2)
+	Z1 * Z2       Multiply                 Complex        == Z1.multiply(Z2)
+	Z1 / Z2       Divide                   Complex        == Z1.divide(Z2)
+	----------------------------------------------------------------------------
+	~Z1           Conjugate                Complex        == Z1.conjugate()
+	Z1 ^ Z2       Pow                      Complex        == Z1.pow(Z2)
+	Z1 % Z2       Modulus                  Complex        == Z1.mod(Z2); see code
+	----------------------------------------------------------------------------
+	Z1 <<  Num|Z2 CounterClockwiseRot      Complex        Support either Complex
+	Z1 >>  Num|Z2 ClockwiseRot             Complex           or Number (radians)
+	Z1 >>> Num    ClockwiseDegRot          Complex        Number in degree
+	----------------------------------------------------------------------------
+	Z1 & Z2       CrossProductCoord        Number         See detail in comments
+	Z1 | Z2       DotProduct               Number
+
+
+	ADDITIONAL
+	METHODS       MEANING                  RETURN         NOTES
+	----------------------------------------------------------------------------
+	Z1.arg()      Phase (in radians.)      Number
+	Z1.deg()      Phase (in degrees.)      Number
+	----------------------------------------------------------------------------
+	Z1.toSource() Uneval.                  String         Used in JSON hook.
+	Z1.toPolar()  Polar representation.    Object         { r:magnitude, phi:phase }
+	Z1.toString() String representation    String         E.g "-2+3i"
+	----------------------------------------------------------------------------
+	Z1.square()   Z1*Z1 (i.e Z1^2)         Complex        == Z1.mult(Z1)
+	Z1.sqrt()     Square root.             Complex        == Z1.pow(0.5)
+	Z1.log()      Logarithm (normalized)   Complex        See details in code
+	Z1.exp()      Exponential (e^Z1)       Complex        See details in code
+	----------------------------------------------------------------------------
+	Z1.sin()      Complex sine             Complex
+	Z1.cos()      Complex cosine           Complex
+	Z1.tan()      Complex tangent          Complex
+	Z1.sinh()     Hyperbolic sine          Complex
+	Z1.cosh()     Hyperbolic cosine        Complex
+	Z1.tanh()     Hyperbolic tangent       Complex
+
+	*/
+
+	// =====================================================
+	// PRIVATE
+	// =====================================================
+
+	[PRIVATE]
+	
+	({
+		CNEW : function(/*?Complex*/src)
+		// ---------------------------------
+		// Agnostically construct a new Complex. If `src` (Complex) is provided,
+		// apply it as a model thru FCPX and return the resulting clone.
+		// (1) CNEW()   =>  New zero Complex.
+		// (2) CNEW(Z)  =>  Clone of Z.
+		// => Complex.
+		{
+			return src ? this.FCPX(new callee.µ, src) : (new callee.µ);
+		},
+
+		FCPX: function(/*Complex&*/Z,/*Complex|{x:num,y:num}*/o)
+		// ---------------------------------
+		// (From-Complex.)
+		// => Z&
+		{
+			return (Z.x=o.x), (Z.y=o.y), Z;
+		},
+
+		FPNT: function(/*Complex&*/Z,/*Point*/xy)
+		// ---------------------------------
+		// (From-Point.)
+		// [REM] A Point is an array of two numbers --cf $$.casting.
+		// => Z&
+		{
+			return (Z.x=xy[0]), (Z.y=xy[1]), Z;
+		},
+
+		FSTR: function(/*Complex&*/Z,/*str*/s,  q,m,p,i,t)
+		// ---------------------------------
+		// (From-String.) The string `s` must have the form
+		// SIGN? DIGS (SIGN IMAG)?  |  SIGN? IMAG (SIGN DIGS)?
+		// ----
+		// => Z&
+		{
+			q = callee.Q||(callee.Q=/^(?:([+-]) ?)?(\u221Ei|i|\u221E|(?:(?:\.\d+|\d+(?:\.\d*)?)(?:[Ee][+-]?\d+)?(?: ?i)?))/);
+
+			if( !(s=s.trim()).length ){ Z.x = Z.y = 0; return Z; }
+			if( !(m=s.match(q)) ){ Z.x = Z.y = NaN; return Z; }
+
+			p = m[0].length;              // Entire length of the match.
+			i = +('i'==s.charAt(-1+p));   // 1:imaginary-part  ;  0:real-part
+			t = (m[1]?m[1].charAt(0):''); // '-' | '+' | ''
+			Z[i?'y':'x'] = 0 <= m[2].indexOf('\u221E') ?
+				Number( t + 'Infinity' ) :
+				parseFloat( t + (i&&'i'==m[2]?'1':m[2]) );
+
+			if( !(s=s.substr(p).trim()).length ){ Z[i?'x':'y']=0; return Z; }
+			if( !(m=s.match(q)) || i == +('i'==s.charAt(-1+m[0].length)) ){ Z.x = Z.y = NaN; return Z; }
+
+			i = 1-i;
+			t = (m[1]?m[1].charAt(0):''); // '-' | '+' | ''
+			Z[i?'y':'x'] = 0 <= m[2].indexOf('\u221E') ?
+				Number( t + 'Infinity' ) :
+				parseFloat( t + (i&&'i'==m[2]?'1':m[2]) );
+
+			return Z;
+		},
+
+		ADD2 : function(/*Complex*/T,/*Complex*/Z,/*(Complex=T)&*/R)
+		// ---------------------------------
+		// (Add-To.) Put `T + Z` in R and return R.
+		// (a) If R is NULL, create a new Complex for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// => (Complex R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T );
+			return (R.x=T.x+Z.x), (R.y=T.y+Z.y), R;
+		},
+
+		SUB2 : function(/*Complex*/T,/*Complex*/Z,/*(Complex=T)&*/R)
+		// ---------------------------------
+		// (Add-To.) Put `T - Z` in R and return R.
+		// (a) If R is NULL, create a new Complex for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// => (Complex R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T );
+			return (R.x=T.x-Z.x), (R.y=T.y-Z.y), R;
+		},
+
+		MUL2 : function(/*Complex*/T,/*Complex*/Z,/*(Complex=T)&*/R,  a,b,t)
+		// ---------------------------------
+		// (Mult-To.) Put `T * Z` in R and return R.
+		// (a) If R is NULL, create a new Complex for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// => (Complex R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T );
+
+			a = Z.x;
+			if( b = Z.y )
+			{
+				// Temp required because we may have T===R (!)
+				// ---
+				t =   a * T.x - b * T.y;
+				R.y = a * T.y + b * T.x;
+				R.x = t;
+			}
+			else
+			{
+				R.x = a * T.x;
+				R.y = a * T.y;
+			}
+			return R;
+		},
+
+		DIV2 : function(/*Complex*/T,/*Complex*/Z,/*(Complex=T)&*/R,  a,b,d,t)
+		// ---------------------------------
+		// (Divide-To.) Put `T / Z` in R and return R.
+		// (a) If R is NULL, create a new Complex for storing the result R.
+		// (b) If R is undefined, use T as the target and return it (R=T.)
+		// => (Complex R)&
+		{
+			R || ( R = null===R ? this.CNEW() : T);
+			
+			a = Z.x;
+			if( b=Z.y )
+			{
+				d = a*a + b*b;
+				// Temp required because we may have T===R (!)
+				// ---
+				t = ( a*T.x + b*T.y ) / d;
+				R.y = ( a*T.y - b*T.x ) / d;
+				R.x = t;
+			}
+			else
+			{
+				R.x = T.x / a;
+				R.y = T.y / a;
+			}
+			
+			return R;
+		},
+
+		HYPR : function(/*num*/x,  t,q)
+		// ---------------------------------
+		// (Hyperbolic-functions.)
+		// => { sinh, cosh } (volatile obj.)
+		{
+			q = callee.Q||(callee.Q={sinh:0,cosh:0});
+			
+			t = Math.exp(-x);
+			x = Math.exp(x);
+
+			return (q.sinh=(x-t)/2), (q.cosh=(x+t)/2), q;
+		},
+		
+		EQUL : function(/*num*/a,/*num*/b,/*>=0*/e)
+		// ---------------------------------
+		// (Equality-Test.) `e` is a machine epsilon.
+		// => bool
+		{
+			return (!isNaN(a)) && (!isNaN(b)) && ( a===b || (e ? e > (0 > (b-=a) ? -b : b) : false) );
+		},
+
+	})
+
+	//==========================================================================
+	// JSON HOOK
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		
+		JSON : function(/*obj*/x)
+		// ---------------------------------
+		// (JSON-Hook.) Here the `this` context is $$.JSON['~']
+		// and x is *probably* a Complex instance (as x.constructor.name
+		// is "Complex".) Thanks to onEngine the present function is referenced
+		// as $$.JSON['~']['\x02Complex'] and must return a string that evaluates
+		// to x. (This is done using Complex.prototype.toSource.)
+		{
+			if( (!x) || x.constructor !== callee.µ ) return ''; // [KO]
+			return x.toSource();
+		},
+
+	})
+
+	//==========================================================================
+	// STATIC API
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+
+		// Machine epsilon for Complex numbers.
+		// Default is 2*Number.EPSILON (~5e-16), but the client code can change
+		// it to a custom value, including zero, which will impact `equals()`,
+		// `compareAbsTo()` and `toString()`.
+		// ---
+		// [REM] Resetting Complex.EPSILON to 0 is generally a bad idea.
+		// This results in such effects:
+		//   alert( Complex.I^3 )  // => -1.83697019872103e-16-i
+		// instead of `-i`
+		// ---
+		EPSILON : 2*Number.EPSILON,
+
+		onEngine: function onEngine_(  I)
+		// ---------------------------------
+		{
+			$.global.Complex = callee.µ; // globalize me!
+			
+			I = callee.µ['~'];
+			callee.µ.ZERO    = I.CNEW();
+			callee.µ.ONE     = I.FCPX(I.CNEW(),{x:1,y:0});
+			callee.µ.I       = I.FCPX(I.CNEW(),{x:0,y:1});
+			
+			// Load the JSON Hook.
+			// ---
+			$.global[callee.µ.__root__].JSON['~']['\x02Complex'] = I.JSON;
+		},
+
+	})
+
+	//==========================================================================
+	// PROTO API (BASIC)
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+
+		create: function create_ÑSP$Complex$_ñ_(/*var*/src,/*?num*/b)
+		// ---------------------------------
+		// Constructor:
+		//   ()                    ::  Create a zero Complex.
+		//   (src:Number)          ::  Create a Complex from a real Number.
+		//   (src:String)          ::  Create a Complex from a String representation. (See below.)
+		//   (src:Complex)         ::  Clone the supplied Complex.
+		//   (src:Point)           ::  Create the Complex src[0] + i*src[1]
+		//   (src:{x:Numb,y:Numb}) ::  Create the Complex src.x + i*src.y
+		//   (src:Number,b:Number) ::  Create the Complex src + i*b
+		// ---
+		// The String representation must have the form
+		//          SIGN? DIGS (SIGN IMAG)?  |  SIGN? IMAG (SIGN DIGS)?
+		//    where:
+		//          SIGN  ::  `+`  |  `-`
+		//          DIGS  ::  ( ( \d+ (`.` \d*)?  |  `.` \d+ ) EXPO? ) | `∞`
+		//          IMAG  ::  DIGS? `i`
+		//          EXPO  ::  (`e`|`E`) SIGN? \d+
+		// E.g  "0" ; "-2" ; "-2 + 3i" ; "i" ; "+.5i" ; "0 - 2 i"
+		//      "0i" ; ".5e2 - 12.3e5i" ; "+5e-3 i - 0"
+		// [REM] A space character is allowed before and/or after [i+-],
+		//       except in the EXPO element. The empty string is interpreted "0".
+		//       The '∞' character (U+221E) is allowed to get from-string Complex
+		//       numbers consistent with the toString() method when Infinity is
+		//       involved. E.g  Complex("-\u222Ei").toString() => "-∞i".
+		//       Warning: U+221E is encoded `\xE2 \x88 \x9E` in UTF8 but
+		//       JS strings still expect UTF16 units.
+		// ---
+		// Resulting structure is { x:Number , y:Number }.
+		{
+			this.x = this.y = 0;
+			if( (!src) && !b ) return;
+
+			switch( typeof src )
+			{
+				case 'string' :
+					callee.µ['~'].FSTR(this,src); break;
+				
+				case 'object' :
+					if( callee.µ===src.constructor )
+						{ callee.µ['~'].FCPX(this,src); break }
+	
+					if( src instanceof Array && 'number'==typeof src[0] && 'number'==typeof src[1] )
+						{ callee.µ['~'].FPNT(this,src); break }
+
+					if( 'number'==typeof src.x && 'number'==typeof src.y )
+						{ callee.µ['~'].FCPX(this,src); break }
+
+					// no break . . .
+	
+				default :
+					this.x = Number(src)||0;
+					this.y = Number(b)||0;
+			}
+		},
+
+		equals : function equals_$Complex$X_$Boolean$(/*Complex|any*/Z,  e,f)
+		// ---------------------------------
+		// Compares this Complex with the specified argument for equality,
+		// with respect to Complex.EPSILON. TRUE iff Z is numerically equal to this.
+		// => true [OK]  |  false [KO]
+		{
+			e = callee.µ.EPSILON;
+			f = callee.µ['~'].EQUL;
+			return (Z && Z instanceof callee.µ) ? ( f(Z.x,this.x,e) && f(Z.y,this.y,e) ) :
+				( 'number'==typeof Z ? ( f(Z,this.x,e) && f(this.y,0,e) ) : callee.call(this,new callee.µ(Z)) );
+		},
+
+		compareAbsTo : function compareAbsTo_$Complex$X_$Boolean$(/*Complex|any*/Z,  v)
+		// ---------------------------------
+		// Compares the *magnitude* of this Complex with the *magnitude* of the specified argument, with
+		// respect to Complex.EPSILON. If Z is a number, consider Math.abs(Z), otherwise Complex(Z).abs().
+		// => < 0  |  0  |  > 0
+		{
+			v = this.abs() - ( (Z && Z instanceof callee.µ) ? Z.abs() : ( ('number'==typeof Z) ? Math.abs(Z) : (new callee.µ(Z)).abs() ) );
+			return v && ( callee.µ['~'].EQUL(v,0,callee.µ.EPSILON) ? 0 : v );
+		},
+
+		abs : function abs_Ñ(  a,b)
+		// ---------------------------------
+		// Magnitude of this.
+		// => num (>=0)
+		{
+			return (a=this.x), (b=this.y), Math.sqrt(a*a + b*b);
+		},
+
+		arg: function arg_Ñ()
+		// ---------------------------------
+		// Argument (phase) of this, in radians.
+		// By convention Complex.ZERO.arg() is 0.
+		// => num in ]-pi, pi]
+		{
+			return Math.atan2(this.y,this.x);
+		},
+
+		deg: function deg_Ñ()
+		// ---------------------------------
+		// Argument of this (in degrees), e.g Complex.I.deg() => 90
+		// By convention Complex.ZERO.deg() is 0.
+		// => num in ]-180, 180]
+		{
+			return (180*this.arg())/Math.PI;
+		},
+
+		rotBy : function rotBy_N_$Complex$(/*num*/phi)
+		// ---------------------------------
+		// => New Complex whose value is `this` rotated by phi
+		// in trigonometric sense (for phi>0,) i.e this*e^(i*phi)
+		{
+			return phi ? this.multiply(callee.µ(Math.cos(phi),Math.sin(phi))) : callee.µ['~'].CNEW(this);
+		},
+
+		add : function add_$Complex$X_$Complex$(/*Complex|any*/Z)
+		// ---------------------------------
+		// => New Complex whose value is `this+Z`.
+		{
+			return (Z && Z instanceof callee.µ) ? callee.µ['~'].ADD2(this, Z, null) :
+				( 'number'==typeof Z ? new callee.µ(Z+this.x,this.y) : callee.µ['~'].ADD2(new callee.µ(Z),this) );
+		},
+
+		subtract : function subtract_$Complex$X_$Complex$(/*Complex|any*/Z)
+		// ---------------------------------
+		// => New Complex whose value is `this-Z`.
+		{
+			return (Z && Z instanceof callee.µ) ? callee.µ['~'].SUB2(this, Z, null) :
+				( 'number'==typeof Z ? new callee.µ(-Z+this.x,this.y) : callee.call(this,new callee.µ(Z)) );
+		},
+
+		multiply : function multiply_$Complex$X_$Complex$(/*Complex|any*/Z)
+		// ---------------------------------
+		// => New Complex whose value is `this*Z`.
+		{
+			return (Z && Z instanceof callee.µ) ? callee.µ['~'].MUL2(this, Z, null) :
+				( 'number'==typeof Z ? new callee.µ(Z*this.x,Z*this.y) : callee.µ['~'].MUL2(new callee.µ(Z),this) );
+		},
+
+		divide : function divide_$Complex$X_$Complex$(/*Complex|any*/Z)
+		// ---------------------------------
+		// => New Complex whose value is `this/Z`.
+		{
+			return (Z && Z instanceof callee.µ) ? callee.µ['~'].DIV2(this, Z, null) :
+				( 'number'==typeof Z ? new callee.µ(this.x/Z,this.y/Z) : callee.call(this,new callee.µ(Z)) );
+		},
+
+		negate : function negate_$Complex$()
+		// ---------------------------------
+		// => New Complex whose value is `-this`
+		{
+			return callee.µ(-this.x,-this.y);
+		},
+
+		conjugate : function conjugate_$Complex$()
+		// ---------------------------------
+		// => New Complex whose value is `~this` (i.e x-iy.)
+		{
+			return callee.µ(this.x, -this.y);
+		},
+
+		toSource : function toSource_S()
+		// ---------------------------------
+		// => String that evaluates to a Complex equal to this.
+		// E.g `Complex(123,456)`
+		{
+			return __('Complex(%1,%2)',this.x,this.y);
+		},
+
+		toPolar : function toPolar_b_O(/*bool=0*/VOLATILE,  R)
+		// ---------------------------------
+		// Object {r:this.abs(),phi:this.arg()} representing this Complex
+		// number in polar notation; phi in the interval [-pi, pi] (radians.)
+		// If VOLATILE is on, return a volatile object for instant use.
+		// => { r: number>=0, phi: number }
+		{
+			R = VOLATILE ? (callee.Q||(callee.Q={})) : {};
+			return (R.r=this.abs()), (R.phi=this.arg()), R;
+		},
+
+		toString : function toString_S(  a,b,e,pa,pb)
+		// ---------------------------------
+		// String representation of this Complex, with
+		// respect to Complex.EPSILON.
+		// Format: (<SIGN>?<NUMB>)?(<SIGN><NUMB>`i`)?
+		// e.g     "0" ; "-i" ; "5.25+1.333i"
+		// [REM] Return 'NaN' if any of the component is NaN.
+		// [REM] Infinity: <NUMB> is replaced by U+221E ; in such
+		// case finite values vanish unless Complex.EPSILON==0.
+		// => str  
+		{
+			a = this.x;
+			b = this.y;
+			
+			// NaN case.
+			// ---
+			if( isNaN(a) || isNaN(b) ) return String(a); // 'NaN'
+			
+			// Rounding.
+			// ---
+			if( (a||b) && (e=Complex.EPSILON) )
+			{
+				e > (pa = 0 <= a ? a : -a) && (a=0);
+				e > (pb = 0 <= b ? b : -b) && (b=0);
+				a && b && pa != pb &&
+					( pa < pb ? ( e > pa/pb && (a=0) ) : ( e > pb/pa && (b=0) ) );
+			}
+
+			// Formatting.
+			// ---
+			a = isFinite(a) ? (a ? String(a) : '') : (0 > a ? '-\u221E' : '\u221E');
+			if( b )
+			{
+				0 > b ? (a+='-',b=-b) : (a && a+='+');
+				1 != b && a += (isFinite(b) ? String(b) : '\u221E');
+				a += 'i';
+			}
+			return a || '0';
+		},
+	
+	})
+
+	//==========================================================================
+	// PROTO API (ADVANCED)
+	//==========================================================================
+
+	[PROTO]
+
+	({
+
+		square : function square_$Complex$()
+		// ---------------------------------
+		// => New Complex whose value is `this^2`.
+		{
+			return this.multiply(this);
+		},
+
+		sqrt: function sqrt_$Complex$(  r)
+		// ---------------------------------
+		// => New Complex whose value is `this^½` -- i.e, [(r+x)/2]^½ + i*sgn(y)*[(r-x)/2]^½
+		{
+			r = this.abs();
+			return new callee.µ( Math.sqrt((r+this.x)/2) , (0 > this.y ? -1 : 1)*Math.sqrt((r-this.x)/2) );
+		},
+
+		log : function log_$Complex$()
+		// ---------------------------------
+		// => New Complex whose value is `log(this)` -- defined as log(r) + i*arg.
+		// [REM] As a logarithm function is formally defined as an inverse of an
+		// exponential function, and since the complex exponential is not injective,
+		// there are in fact infinitely many logarithms (modulo 2πi) for every
+		// nonzero complex number. In the present implementation, the *principal
+		// value* is returned, that is, log(z.abs()) + i*z.arg().
+		// 
+		// E.g. Complex("3+4i").log() => ~ 1.6+0.9i
+		{
+			return new callee.µ( Math.log(this.abs()) , this.arg() );
+		},
+
+		exp: function exp_$Complex$(  r,b)
+		// ---------------------------------
+		// => New Complex whose value is `e^this` -- defined as (e^x)(cos(y)+i*sin(y))
+		// [REM] As the complex exponential is a 'multivalued function,' the present
+		// code conventionally uses the definition e^(x+iy) = e^x(cos(y)+isin(y)).
+		{
+			r = Math.exp(this.x);
+			b = this.y;
+			return new callee.µ( r*Math.cos(b) , r*Math.sin(b) );
+		},
+
+		pow : function pow_$Complex$X_$Complex$(/*Complex|any*/Z)
+		// ---------------------------------
+		// => New Complex whose value is `this^Z` -- defined as e^(log(this)*Z)
+		// [REM] See `log` and `exp` about our design choice.
+		{
+			return 2==Z ? this.multiply(this) : this.log().multiply(Z).exp();
+		},
+
+		sin: function sin_$Complex$(  a,t)
+		// ---------------------------------
+		// => New Complex whose value is `sin(this)`.
+		{
+			a = this.x;
+			t = callee.µ['~'].HYPR(this.y);
+			return new callee.µ( Math.sin(a)*t.cosh, Math.cos(a)*t.sinh );
+		},
+
+		cos: function cos_$Complex$(  a,t)
+		// ---------------------------------
+		// => New Complex whose value is `cos(this)`.
+		{
+			a = this.x;
+			t = callee.µ['~'].HYPR(this.y);
+			return new callee.µ( Math.cos(a)*t.cosh, -Math.sin(a)*t.sinh );
+		},
+
+		tan: function tan_$Complex$(  a,t,d)
+		// ---------------------------------
+		// => New Complex whose value is `tan(this)`.
+		{
+			a = 2*this.x;
+			t = callee.µ['~'].HYPR(2*this.y);
+			d = Math.cos(a) + t.cosh;
+			return new callee.µ( Math.sin(a)/d, t.sinh/d );
+		},
+
+		sinh: function sinh_$Complex$(  t,b)
+		// ---------------------------------
+		// => New Complex whose value is `sinh(this)`.
+		{
+			t = callee.µ['~'].HYPR(this.x);
+			b = this.y;
+			return new callee.µ( Math.cos(b)*t.sinh, Math.sin(b)*t.cosh );
+		},
+
+		cosh: function cosh_$Complex$(  t,b)
+		// ---------------------------------
+		// => New Complex whose value is `cosh(this)`.
+		{
+			t = callee.µ['~'].HYPR(this.x);
+			b = this.y;
+			return new callee.µ( Math.cos(b)*t.cosh, Math.sin(b)*t.sinh );
+		},
+
+		tanh: function tanh_$Complex$(  t,b,d)
+		// ---------------------------------
+		// => New Complex whose value is `tanh(this)`.
+		{
+			t = callee.µ['~'].HYPR(2*this.x);
+			b = 2*this.y;
+			d = Math.cos(b) + t.cosh;
+			return new callee.µ( t.sinh/d, Math.sin(b)/d );
+		},
+
+		mod : function mod_$Complex$X_$Complex$(/*Complex|any*/Z,  D)
+		// ---------------------------------
+		// => New Complex whose value is `this%Z` -- defined as Z*floor(this/Z)
+		// where floor(a+ib) is floor(a)+i*floor(b).
+		{
+			D = this.divide(Z);
+			D.x = Math.floor(D.x);
+			D.y = Math.floor(D.y);
+			return this.subtract(D.multiply(Z));
+		},
+
+	})
+
+	//==========================================================================
+	// PUBLIC OPERATORS
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		'==' : function equals_X_$Boolean$(/*any*/x)
+		// ---------------------------------
+		// Supports: `Z==x` (resp `x==Z`)
+		// Meaning:  equality according to Complex.EPSILON, x being coerced into Complex.
+		// ---
+		// Examples:
+		//   -1 == (Complex.I^2)
+		//   Complex(-1).sqrt() == "i"
+		// ---
+		{
+			return this.equals(x)
+		},
+
+		'<'  : function magnitudeLessThan_X_$Boolean$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `Z < x` (resp `x < Z`)
+		// Meaning:  |Z|<|x| (resp |x|<|Z|), according to Complex.EPSILON.
+		// (x is coerced into a Complex unless it's a number.)
+		// ---
+		// Examples:
+		//   .5 < Complex.I
+		//   Complex.ONE < "-2"
+		// ---
+		{
+			return rv ? ( 0 < this.compareAbsTo(x) ) : ( this.compareAbsTo(x) < 0 )
+		},
+
+		'<=' : function magnitudeLessThanOrEquals_X_$Boolean$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `Z <= x` (resp `x <= Z`)
+		// Meaning:  |Z|<=|x| (resp |x|<=|Z|), according to Complex.EPSILON.
+		// (x is coerced into a Complex unless it's a number.)
+		// ---
+		// Examples:
+		//   .5 <= Complex.I
+		//   Complex.ONE <= "-2"
+		//   Complex.I <= Complex.I
+		// ---
+		{
+			return rv ? ( 0 <= this.compareAbsTo(x) ) : ( this.compareAbsTo(x) <= 0 )
+		},
+
+		'+'  : function unaryMagnitudeOrAdd_sx_N$Complex$S(/*?any*/x,/*bool*/rv,  t)
+		// ---------------------------------
+		// Supports: `+Z`     ; `Z + x` (resp `x + Z`)
+		// Meaning:   Z.abs() ; Z.add(Complex(x))                if x is not a string
+		//                      String(Z)+x [ resp x+String(Z) ] if x is a string
+		// [REM] Special string case needed to allow natural concat.
+		// [REM] Note that `+Z` (unary plus) is a shortcut of Z.abs().
+		// ---
+		// Examples:
+		//   +Complex.I            =>  1 (number)
+		//   +Complex(1,1)         =>  1.4142135623731 (number)
+		//   1 + Complex.I         =>  1+i
+		//   Complex.I + .5        => .5+i
+		//   "z = " + Complex(1,2) => "z = 1+2i" (string)
+		// ---
+		{
+			return 'undefined' == (t=typeof x) ? this.abs() : ( 'string'!=t ? this.add(x) : (t=this.toString(),(rv?(x+t):(t+x))) );
+		},
+
+		'-'  : function unaryMinusOrSub_x_$Complex$(/*?any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `-Z`  ;  `Z - x`       (resp `x - Z`)
+		// Meaning:   -Z   ;  Z-Complex(x)  [ resp Complex(x)-Z ]
+		// ---
+		// Examples:
+		//   -(Complex.I^2)        =>  1
+		//   1 - Complex.I         =>  1-i
+		//   Complex.I - "2i"      => -i
+		// ---
+		{
+			return 'undefined' == typeof x ?
+				this.negate() :
+				(rv?new callee.µ(x):this).subtract(rv?this:x);
+		},
+
+		'*'  : function multiply_X_$Complex$(/*any*/x)
+		// ---------------------------------
+		// Supports: `Z * x`      (resp `x * Z`)
+		// Meaning:  Z*Complex(x) [ resp Complex(x)*Z ]
+		// ---
+		// Examples:
+		//   Complex.I * 2         =>  2i
+		//   "i" * Complex.I       => -1
+		// ---
+		{
+			return this.multiply(x);
+		},
+
+		'/'  : function divide_X_$Complex$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `Z / x`      (resp `x / Z`)
+		// Meaning:  Z/Complex(x) [ resp Complex(x)/Z ]
+		// ---
+		// Examples:
+		//   Complex.I / 2         => .5i
+		//   "-1" / Complex.I      =>  i   ( since -1/i == i²/i == i )
+		// ---
+		{
+			return (rv?new callee.µ(x):this).divide(rv?this:x);
+		},
+
+		'~'  : function conjugate_$Complex$()
+		// ---------------------------------
+		// Supports: `~Z`
+		// Meaning:  conjugate of Z (i.e x-iy)
+		// ---
+		// Examples:
+		//   ~Complex.I             => -i
+		//   ~Complex.ONE           =>  1
+		// ---
+		{
+			return this.conjugate();
+		},
+
+		'^'  : function pow_X_$Complex$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `Z ^ x`           (resp `x ^ Z`)
+		// Meaning:  Z.pow(Complex(x)) [ resp Complex(x).pow(Z) ]
+		// [REM] Keep care of `^` precedence in JS. It is lower than
+		// many other operators like `==` or `+`, so `z^a==b` means
+		// `z^(a==b)` and `z^a+b` means `z^(a+b)`. To avoid mistakes,
+		// use `...(z^e)...` in parentheses.
+		// ---
+		// Examples:
+		//   Complex.I^2            => -1
+		//   1 ^ Complex.I          =>  1
+		//   "i" ^ Complex.I        => ~ 0.20787957635076  that is, e^(-pi/2)
+		// ---
+		{
+			return (rv?new callee.µ(x):this).pow(rv?this:x);
+		},
+
+		'%'  : function modulus_X_$Complex$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `Z % x`           (resp `x % Z`)
+		// Meaning:  Z.mod(Complex(x)) [ resp Complex(x).mod(Z) ]
+		// ---
+		// [REM] Modulus is rarely used in Complex area, but
+		// it can be defined by: z1 % z2  =  z1 - z2*floor(z1/z2)
+		// where floor(x+iy) = floor(x) + i*floor(y)
+		{
+			return (rv?new callee.µ(x):this).mod(rv?this:x);
+		},
+
+		'<<' : function counterClockwiseRotation_NX_$Complex$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// CounterClockwise rotation (in radians.)
+		// [REM] CCW rotation uses the natural (trigonometric) sense.
+		// Supports: `Z << x` ( resp `x << Z` )
+		// Meaning:  Z.rotBy(x)                if x is a number
+		//           Z.rotBy(Complex(x).arg()) if x is not a number
+		//           [ resp Complex(x).rotBy(Complex(x).arg()) ]
+		// ---
+		// Examples:
+		//   Complex.I << Math.PI   => -i
+		//   Complex.I << "i"       => -1
+		//   2 << Complex.I         =>  2i
+		// ---
+		{
+			// If rv is ON, `this['<<'](x,true)` comes from the syntax `x << this`
+			//               which always means Complex(x).rotBy(this.arg()).
+			// Otherwise,    `this << x` means either this.rotBy(x) if x is a number,
+			//               or this.rotBy(Complex(x).arg()) if x isn't a number.
+			// ---
+			return rv ? callee.µ(x).rotBy(this.arg()) : this.rotBy('number'==typeof x ? x : callee.µ(x).arg());
+		},
+
+		'>>' : function clockwiseRotation_NX_$Complex$(/*any*/x,/*bool*/rv)
+		// ---------------------------------
+		// Clockwise rotation (in radians.)
+		// [REM] CW rotation uses the anti-trigonometric sense.
+		// Supports: `Z >> x` ( resp `x >> Z` )
+		// Meaning:  Z.rotBy(-x)                if x is a number
+		//           Z.rotBy(-Complex(x).arg()) if x is not a number
+		//           [ resp Complex(x).rotBy(-Complex(x).arg()) ]
+		// ---
+		// [REM] Technically `A >> B` is equivalent to:
+		// `A << -B`  if B is a Number
+		// `A << ~B`  if B is a Complex  ; for arg(~z) == -arg(z)
+		// ---
+		// Examples:
+		//   Complex.I >> Math.PI   => -i
+		//   Complex.I >> "i"       =>  1
+		//   2 >> Complex.I         => -2i
+		// ---
+		{
+			// If rv is ON, `this['>>'](x,true)` comes from the syntax `x >> this`
+			//               which always means Complex(x).rotBy(-this.arg()).
+			// Otherwise,    `this >> x` means either this.rotBy(-x) if x is a number,
+			//               or this.rotBy(-Complex(x).arg()) if x isn't a number.
+			// ---
+			return rv ? callee.µ(x).rotBy(-this.arg()) : this.rotBy('number'==typeof x ? -x : -callee.µ(x).arg());
+		},
+
+		'>>>': function clockwiseDegRotation_N_$Complex$(/*number*/x,/*bool*/rv)
+		// ---------------------------------
+		// Clockwise rotation in degrees.
+		// Supports: `Z >> x`
+		// Meaning:  Z.rotBy(-x*pi/180)
+		// ---
+		// Examples:
+		//   Complex.I >>> 180      => -i
+		//   Complex.I >>> "i"      =>  ERROR
+		//   2 >>> Complex.I        =>  ERROR
+		// ---
+		{
+			if( rv || 'number'!= typeof x )
+			{
+				$.global[callee.µ.__root__].error("Type error. The >>> operator requires a number on the right hand side.", callee.µ);
+			}
+
+			return this.rotBy(-(x*Math.PI)/180);
+		},
+
+		'&'  : function crossProductCoordinate_$Complex$X_N(/*any*/t,/*bool*/rv,  e)
+		// ---------------------------------
+		// Z-coordinate of the cross product (this.x,this.y,0) × (t.x,t.y,0),
+		// that is, this.x*t.y - this.y*t.x.
+		// ---
+		// Supports: `Z & t` (resp t & Z)
+		// If t is not a Complex, it is coerced into a Complex.
+		// [REM] There is no actual cross product for 2D vectors, so we consider the
+		// complex numbers as representing 3D vectors with z coordinate equal to 0.
+		// An interesting property of (z1&z2) is that its absolute value can be
+		// interpreted as the area of the parallelogram having z1 and z2 as sides.
+		// ---
+		// Examples:
+		//   Complex.I & Complex.ONE   => -1
+		//   Complex.I & "2i"          => 0
+		//   "3-2i" & Complex(-1,2)    => 4
+		// ---
+		// => num (result is EPSILON-aware.)
+		{
+			(t && t instanceof callee.µ) || (t=callee.µ(t));
+			t = rv ? (t.x*this.y-t.y*this.x) : (this.x*t.y-this.y*t.x);
+
+			(e=callee.µ.EPSILON) && callee.µ['~'].EQUL(t,0,e) && (t=0);
+			return t;
+		},
+
+		'|'  : function dotProduct_$Complex$X_N(/*any*/t,  e)
+		// ---------------------------------
+		// Dot product (this.x,this.y)•(t.x,t.y),
+		// that is, this.x*t.x + this.y*t.y.
+		// ---
+		// Supports: `Z | t` (resp t | Z)
+		// If t is not a Complex, it is coerced into a Complex.
+		// [REM] z1 and z2 are perpendicular iff (z1|z2)==0.
+		// ---
+		// Examples:
+		//   Complex.I | Complex.ONE   => 0
+		//   Complex.I | "2i"          => 2
+		//   "2+i" | Complex(1,3)      => 5
+		// ---
+		// => num (result is EPSILON-aware.)
+		{
+			(t && t instanceof callee.µ) || (t=callee.µ(t));
+			t = this.x*t.x + this.y*t.y;
+
+			(e=callee.µ.EPSILON) && callee.µ['~'].EQUL(t,0,e) && (t=0);
+			return t;
+		},
+
+	})
