@@ -1,3 +1,6 @@
+##### [180307]
+  - **File** module. Changed the default temp file suffix into `txt` (since `tmp` may cause the OS to simply ignore the `execute` method.) Also, `File.temp()` now provides a fallback mechanism in case `execute()` returns `false`.
+
 ##### [180302]
   - Added the **Complex** class for making easy to deal with complex numbers. Many operators and methods are available.
 
