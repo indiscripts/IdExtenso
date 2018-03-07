@@ -12,12 +12,12 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170523 (YYMMDD)
-		Modified:       171112 (YYMMDD)
+		Modified:       180307 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Random ){ alert(__("%1 requires the %2 module.",'MultiRec','Random')); exit(); }
-;$$.Random.hasOwnProperty('MultiRecursive') || eval(__(MODULE, $$.Random.toSource(), 'MultiRec', 171112, 'next'))
+;$$.Random.hasOwnProperty('MultiRec') || eval(__(MODULE, $$.Random.toSource(), 'MultiRec', 180307, 'next'))
 
 	//==========================================================================
 	// BACKGROUND
