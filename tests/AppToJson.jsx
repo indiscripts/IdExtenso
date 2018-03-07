@@ -11,7 +11,7 @@
 $$.load(0);
 
 // =============================================================================
-// AppToJson [170408]
+// AppToJson [170408][CHG180307]
 // Stringify the entire contents of app.properties.
 // ---
 // Demonstrates:
@@ -67,7 +67,7 @@ try
 			"---------------------------------------------------------"
 			].join($$.newLine)+$$.newLine;
 
-		$$.File.temp(prolog+jsonLarge,/*suffix*/'tmp',/*show=*/1);
+		$$.File.temp(prolog+jsonLarge,/*suffix*/'txt',/*show=*/1);
 	}
 }
 catch(e)
