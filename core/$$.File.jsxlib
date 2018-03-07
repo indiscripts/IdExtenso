@@ -16,11 +16,11 @@
 		DOM-access:     NO
 		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       171203 (YYMMDD)
+		Modified:       180307 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 171203, 'toFile'))
+;eval(__(MODULE, $$, 'File', 180307, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -87,8 +87,14 @@
 	files are usually associated to the console. In both systems .txt
 	files are usually associated to any text editor available. JS and
 	ExtendScript files (.js, .jsx) might be opened by any Adobe app,
-	or custom EDI...
-
+	or custom EDI.
+	
+	When `myFile.execute()` doesn't work, it *should* return false but
+	this is not the case on all platforms. For example, Windows10 opens
+	a window that allows the user to select an application and then
+	ExtendScript pretends `execute()` to be true. However, it is still
+	recommended to detect any `false` return and provide our own
+	fallback mechanism -- e.g `myFile.parent.execute()`.
 
 	File Creation. - To create a File object, use the File method or the
 	new operator. The constructor accepts full or partial path names, and
@@ -264,8 +270,11 @@
 	[PRIVATE]
 	
 	({
+		// [CHG180307] Changed temp file suffix from `tmp` to `txt`
+		// to make tempFile.execute() more OS-friendly.
+		// ---
 		TPFX: 'idex_',                                      // Temporary file prefix.
-		TSFX: 'tmp',                                        // Temporary file suffix.
+		TSFX: 'txt',                                        // Temporary file suffix
 		TFIL: µ['~'].FERR,                                  // Temporary file.
 		
 		TRMV: function()
@@ -400,7 +409,7 @@
 				(fx[NEW_LINE?'writeln':'write'](s), fx.close(), fx);
 		},
 
-		temp: function temp_s_s_b_b_$File$$false$(/*?str*/s,/*str='tmp'*/t,/*bool=0*/SHOW_FILE,/*str|bool=0*/enc,  I)
+		temp: function temp_s_s_b_b_$File$$false$(/*?str*/s,/*str='tmp'*/t,/*bool=0*/SHOW_FILE,/*str|bool=0*/enc,  I,b)
 		//----------------------------------
 		// Create a temporary file having the suffix `t` (default .tmp)
 		// and write the string s. If SHOW_FILE is true call execute()
@@ -440,8 +449,13 @@
 			I.TFIL = t = callee.µ[enc](t,s);
 
 			// Special case for SHOW_FILE==1.
+			// [CHG180307] Added folder execute fallback.
 			// ---
-			SHOW_FILE && t && ((I.TFIL=I.FERR),t.execute());
+			if( SHOW_FILE && t )
+			{
+				I.TFIL=I.FERR;
+				t.execute() || t.parent.execute();
+			}
 
 			return t;
 		},
