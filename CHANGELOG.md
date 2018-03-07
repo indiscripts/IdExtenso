@@ -5,7 +5,7 @@
   - Added the **Complex** class for making easy to deal with complex numbers. Many operators and methods are available.
 
 ##### [180226]
-  - **BigInt**. Better implementation of the `+` operator when a `BigInt` is mixed with a string. Now interpreted a `concat` operation. So `"Result: " + BigInt(1000)` will prompt `Result: 1000` as (likely) expected. Idem with `BigInt + str`.
+  - **BigInt**. Better implementation of the `+` operator when a `BigInt` is mixed with a string. Now interpreted as a `concat` operation. So `"Result: " + BigInt(1000)` will prompt `Result: 1000` as (likely) expected. Idem with `BigInt + str`.
 
 ## 1.80225
   - `Ext/number` now performs a polyfill for `Number`'s static members specified in ECMAScript 2015. Namely: `EPSILON`, `MAX_SAFE_INTEGER`, `MIN_SAFE_INTEGER`; and the methods `isInteger()` and `isSafeInteger()`. From now you can use code like `if(Number.isInteger(x)){...}` in your project.
