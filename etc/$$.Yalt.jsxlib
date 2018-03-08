@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       170424 (YYMMDD)
+		Modified:       180309 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 170424, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 180309, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -95,26 +95,26 @@
 	[PRIVATE]
 
 	({
-		DEFZ : +(Locale.ENGLISH_LOCALE),            // Default Yalt-Locale ID (1st column.)
-		KPFX : '_',                                 // Key prefix.
+		DEFZ : +(Locale.INTERNATIONAL_ENGLISH_LOCALE), // Default Yalt-Locale ID (1st column.)
+		KPFX : '_',                                    // Key prefix.
 
-		YBEG : '<YALT>',                            // Opening tag.
-		YEND : '</YALT>',                           // Closing tag.
-		YSEP : ' # ',                               // Separator string.
-		YTMP : '\x01',                              // Temporary char, CANNOT appear in the stream.
-		YCOM : '//',                                // Comment starter (single line.)
-		YDCR : '/*',                                // Decorator marker.
-		YESC : { '#': /##/g },                      // Esc. sequences (each regex produces the associated key.)
+		YBEG : '<YALT>',                               // Opening tag.
+		YEND : '</YALT>',                              // Closing tag.
+		YSEP : ' # ',                                  // Separator string.
+		//YTMP : '\x01',                               // Temporary char. [DEL180308] No longer used.
+		YCOM : '//',                                   // Comment starter (single line.)
+		YDCR : '/*',                                   // Decorator marker.
+		YESC : { '#': /##/g },                         // Esc. sequences (each regex produces the associated key.)
 	})
 
 	[PRIVATE]
 
 	({
-		CURZ : µ['~'].DEFZ,                         // Current Yalt-Locale ID.
+		CURZ : µ['~'].DEFZ,                            // Current Yalt-Locale ID.
 		
-		TRNS : {},                                  // All translation keys.
+		TRNS : {},                                     // All translation keys.
 		
-		L10N : {},                                  // Current mapping (with respect to CURZ.)
+		L10N : {},                                     // Current mapping (with respect to CURZ.)
 
 		PRSE : function(/*str*/s,  a,r,i,n,b,t,j,k,o,x)
 		//----------------------------------
@@ -125,7 +125,7 @@
 			const BEG = this.YBEG,
 				  END = this.YEND,
 				  SEP = this.YSEP,
-				  TMP = this.YTMP,
+				  //TMP = this.YTMP, [DEL180308]
 				  COM = this.YCOM,
 				  DCR = this.YDCR,
 				  ESC = this.YESC,
@@ -139,8 +139,11 @@
 			COL.length = 1;
 			
 			// Parse the input string
-			// ---
-			a = s.trim().replace(RegExp.LINEs,TMP).split(TMP);
+			// [REM] Why did I need to replace LINES by TMP (\x01),
+			// then split along TMP? Cannot remember...
+			// [CHG180308] Old code:
+			// a = s.trim().replace(RegExp.LINEs,TMP).split(TMP);
+			a = s.trim().split(RegExp.LINEs);
 			
 			for( r=0, n=a.length, b=0, i=-1 ; ++i < n ; )
 			{
@@ -208,15 +211,16 @@
 			this.CURZ = zloc;
 	
 			// Cleanup the cache
+			// [FIX180308] Stupid typo `oCache.k` fixed (!)
 			// ---
 			oCache = this.L10N;
-			for( k in oCache ) delete oCache.k;
-	
-			// The default locale does not invoke the cache at all
+			for( k in oCache ) delete oCache[k];
+
+			// The default locale does not involve the cache at all.
 			// ---
 			if( zloc==this.DEFZ ) return;
 	
-			// Cache the {key=>string} data for the current locale
+			// Cache the { key=>string } data for the current locale
 			// ---
 			oTrans = this.TRNS;
 			for( k in oTrans )
@@ -230,12 +234,13 @@
 
 		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  o,k)
 		//----------------------------------
-		// Localization routine. On include stage a reference
-		// to this function is assigned to $.global.__
-		// [CHG170316] No longer use `arguments` to avoid [workspace] ref.
+		// (Localization routine.) A reference to this function is assigned
+		// to `$.global.__` at including stage (as shown above) so the localization
+		// tool is already 'connected'--although not yet 'active.'
+		// [CHG170316] No longer use `arguments` to avoid [workspace] pollution.
 		// ---
-		// [REM] Although declared 'private' this function can't rely on `this` for
-		// referencing the private module zone, as it is invoked from outside context.
+		// [REM] Although declared 'private' this function cannot rely on `this` for
+		// referencing the private module zone, as it is invoked from the outside.
 		{
 			return $.global.localize.apply(null,
 				[(s && (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) ? o[k] : s), x1,x2,x3,x4,x5,x6,x7,x8,x9]
@@ -263,61 +268,81 @@
 		// stage so packages already added from within the framework are ready
 		// after $$.load(). But in case the client code has to load additional
 		// Yalt package(s) one can set autoActivate=0 before $$.load(), so
-		// activate() can be invoked later, which reduces processing time.
+		// activate() can be explicitly invoked later, which reduces processing.
 		// [REM] As long as Yalt is not activated, the global __() function
-		// simply works as a basic pattern formatter.
+		// simply works as a basic formatter.
+		// [CHG180308] The below code now reflects the recommended pattern:
 		// E.g.
 		//      #include '$$.jsxinc'
 		//      #include 'etc/$$.Yalt.jsxlib'
 		//      $$.Yalt.autoActivate = 0;
 		//  ...
 		//      $$.load();
-		//      $$.isLoaded('Yalt') // => 0
+		//      $$.Yalt.isActive() // => 0
 		//  ...
 		//      $$.Yalt(...)
-		//      $$.Yalt.load(Locale.germanLocale);
-		//      $$.isLoaded('Yalt') // => 1
+		//      $$.Yalt.activate(Locale.germanLocale);
+		//      $$.Yalt.isActive() // => 1
 		// ---
 		autoActivate : 1,
 
-		onLoad : function onLoad_i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale)
+		onLoad : function onLoad_i$locale$_b(/*?uint|LocaleID*/iLocale,  $$,I)
 		//----------------------------------
 		// [FIX170424] Fixed function cast name.
+		// [CHG180308] Enhanced onLoad logics. - It is no longer recommended to call
+		// `$$.Yalt.load()` manually, since this has no effect when the module already
+		// has its __load__ flag on. Use `$$.Yalt.activate()` instead.
+		// ---
+		// => undefined [DONE]
 		{
-			if( callee.µ.autoActivate || $.global[callee.µ.__root__].isLoaded() )
-			{
-				callee.µ.activate(iLocale);
-			}
-			else
-			{
-				// Invalidate this.load() from $$.load().
-				// ---
-				return false;
-			}
+			callee.µ.autoActivate && callee.µ.activate(iLocale);
 		},
 
-		activate : function activate_i$locale$_(/*uint|LocaleID=curAppLocaleID*/iLocale,  $$)
+		activate : function activate_i$locale$_(/*uint|LocaleID=auto*/iLocale,  $$,I)
 		//----------------------------------
 		// Activate or re-activate Yalt using iLocale (default is Env.appLocaleId.)
 		// Eg: $$.Yalt.activate(Locale.GERMAN_LOCALE)
+		// ---
+		// [ADD180308] This routine now has an internal PENDING flag. Yalt is active
+		// iff not PENDING. (addPackage interacts with this flag too.)
+		// ---
+		// [CHG180308] If iLocale is not provided:
+		// (a) If Yalt's __load__ flag is already on       -> select curAppLocaleID
+		// (b) If ~.CURZ == ~.DEFZ                         -> select curAppLocaleID
+		// (c) If ~.CURZ != ~.DEFZ                         -> select ~.CURZ
+		// ---
 		// => undefined
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
 
-			iLocale = +(iLocale||$$.Env.appLocaleId);
+			// [CHG180308]
+			// ---
+			iLocale = +( iLocale || ( callee.µ.__load__ || I.CURZ==I.DEFZ ? $$.Env.appLocaleId : I.CURZ ) );
 	
 			$$.Env.isValidLocaleId(iLocale) || $$.error( __("Invalid locale identifier [%1].",iLocale), callee.µ );
 
-			(+$$.trace) && $$.trace(__("%1 > Activating %2.",callee.µ,$$.Env.localeIdToString(iLocale)));
+			// Do we really need to (re)activate?
+			// ---
+			if( (I.CURZ!=iLocale) || callee.PENDING )
+			{
+				(+$$.trace) && $$.trace(__("%1 > Activating %2.",callee.µ,$$.Env.localeIdToString(iLocale)));
+				I.ACTV(iLocale);
+				delete callee.PENDING;
+			}
+			else
+			{
+				(+$$.trace) && $$.trace(__("%1 > Has already activated %2 with the same data.",callee.µ,$$.Env.localeIdToString(iLocale)));
+			}
 
-			callee.µ['~'].ACTV(iLocale);
-		},
+		}.setup({ PENDING:1 }),
 
 		addPackage : function addPackage_S_I(/*str*/data,  $$,I,r)
 		//----------------------------------
 		// Add a new YALT package -- This routine can be incrementally called
 		// from different modules during framework's loading stage--and even after.
 		// When possible, the client should add all packages *before* activation.
+		// [ADD180308] Deals with activate.PENDING.
 		// => number of actually added strings.
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -337,11 +362,10 @@
 
 			(+$$.trace) && $$.trace(__("%1.addPackage > %2 strings successfully added.",callee.µ,r));
 
-			// In case the cache is *already* activated, we have
-			// to call ACTV again to reflect the changes.
+			// *Already* activated -> need to call ACTV again to reflect the changes.
 			// ---
-			I.L10N.__count__ && I.ACTV(I.CURZ);
-	
+			callee.µ.activate.PENDING || (I.ACTV(I.CURZ),(delete callee.µ.activate.PENDING));
+
 			return r;
 		},
 
@@ -355,9 +379,10 @@
 		isActive : function isActive_B()
 		//----------------------------------
 		// Tell whether Yalt is currently activated.
+		// [CHG180308] Use the PENDING flag instead.
 		// => 0 | 1
 		{
-			return +(0 < callee.µ['~'].L10N.__count__);
+			return callee.µ.activate.PENDING ? 0 : 1;
 		},
 		
 		hasKey : function hasKey_S_B(/*str*/keyString)
