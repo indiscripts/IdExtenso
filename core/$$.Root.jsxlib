@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       180225 (YYMMDD)
+		Modified:       180308 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 180225, 'load'))
+;eval(__(MODULE, '$.global', $$, 180308, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -174,7 +174,9 @@
 			if( mod.hasOwnProperty('onLoad') )
 			{
 				callee.µ.trace(__("%1 > %2 [%3] Calling onLoad().", callee.µ, mod, mod.__modf__||'unknown'));
-				return false===mod.onLoad(x,y) ? 0 : (mod.__load__=1);
+				return false===mod.onLoad(x,y) ?
+					(callee.µ.warn(__("%1 > %2 [%3] -> onLoad failure.", callee.µ, mod, mod.__modf__||'unknown')), 0) :
+					(mod.__load__=1);
 			}
 
 			mod.__load__ = 1;
