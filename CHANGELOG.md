@@ -1,3 +1,6 @@
+##### [180309]
+  - **Yalt** module. Various fixes and improvements.
+
 ##### [180307]
   - **File** module. Changed the default temp file suffix into `txt` (since `tmp` may cause the OS to simply ignore the `execute` method.) Also, `File.temp()` now provides a fallback mechanism in case `execute()` returns `false`.
 
