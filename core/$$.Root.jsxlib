@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       180308 (YYMMDD)
+		Modified:       180309 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 180308, 'load'))
+;eval(__(MODULE, '$.global', $$, 180309, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -161,6 +161,7 @@
 		LDMD: function(/*obj&*/mod,/*?any*/x,/*?any*/y)
 		//----------------------------------
 		// (Load-Module.) Load the given module.
+		// [CHG180309] Added warn if onLoad has been blocked (false returned.)
 		// => 0:noop | 1:processed
 		{
 			if( mod.__load__ ) return 0;
@@ -175,7 +176,7 @@
 			{
 				callee.µ.trace(__("%1 > %2 [%3] Calling onLoad().", callee.µ, mod, mod.__modf__||'unknown'));
 				return false===mod.onLoad(x,y) ?
-					(callee.µ.warn(__("%1 > %2 [%3] -> onLoad failure.", callee.µ, mod, mod.__modf__||'unknown')), 0) :
+					( callee.µ.warn(__("%1 > %2 -> onLoad blocked.", callee.µ, mod, mod.__modf__||'unknown')), 0 ) :
 					(mod.__load__=1);
 			}
 
@@ -187,14 +188,17 @@
 		ULMD: function(/*obj&*/mod)
 		//----------------------------------
 		// (Unload-Module.) Unload mod.
+		// [CHG180309] Added warn if onUnload has been blocked (false returned.)
 		// => 0:noop | 1:processed
 		{
 			if( !mod.__load__ ) return 0;
 
 			if( mod.hasOwnProperty('onUnload') )
 			{
-				callee.µ.trace(__("%1 > Calling %2.onUnload().", callee.µ, mod));
-				return false===mod.onUnload() ? 0 : ((mod.__load__=0),1);
+				callee.µ.trace(__("%1 > %2 Calling onUnload().", callee.µ, mod));
+				return false===mod.onUnload() ?
+					( callee.µ.warn(__("%1 > %2 -> onUnload blocked.", callee.µ, mod)), 0 ) :
+					((mod.__load__=0),1);
 			}
 			
 			mod.__load__ = 0;
