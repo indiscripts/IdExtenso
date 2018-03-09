@@ -7,16 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =access() declare() canDeclare() activate() reset() backup()
+		API:            =access() declare() hasScope() canDeclare()
+		                activate() reset() backup()
 		                addLive() objKeyCount() appKeyCount()
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       180221 (YYMMDD)
+		Modified:       180309 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180221, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180309, 'access'))
 
 	//==========================================================================
 	// NOTICE
@@ -35,24 +36,24 @@
 	----------------------------------------------------------------------------
 	RESET    RSET= 4  DEF   DEF        DEF         NOOP   Restorable but non-persistent.
 	----------------------------------------------------------------------------
-	[ENGINE] ENGI= 8  DEF   ?VAL:DEF   DEF         NOOP   Engine-persistent (if present.)
+	[ENGINE] ENGI= 8  DEF   VAL?:DEF   DEF         NOOP   Engine-persistent (if present.)
 	                                                      This is the default scope.
 	----------------------------------------------------------------------------
 	SESSION  SESS=16  DEF   VAL        DEF         NOOP   Session-persistent
 	                                                      (even in main engine.)
 	----------------------------------------------------------------------------
-	OBJ      DOBJ=32  DEF   ?OBJ:      null?DEF:   null?  DOM-Object-persistent.
-	                        ?VAL:DEF   ?OBJ:DEF    NOOP:
-	                                               ?OBJ:
+	OBJ      DOBJ=32  DEF   OBJ?:      null?DEF:   null?  DOM-Object-persistent.
+	                        VAL?:DEF   OBJ?:DEF    NOOP:
+	                                               OBJ?:
 	                                               NOOP
 	----------------------------------------------------------------------------
-	APP      INDD=64  DEF   ?APP:      null?DEF:   null?  App-persistent.
-	                        ?VAL:DEF   ?APP:DEF    NOOP:
+	APP      INDD=64  DEF   APP?:      null?DEF:   null?  App-persistent.
+	                        VAL?:DEF   APP?:DEF    NOOP:
 	                                               APP
 	----------------------------------------------------------------------------
-	HYB      HYBR=96  DEF   ?OBJ:      null?DEF:   null?  Hybrid.
-	                        ?APP:      ?OBJ:       NOOP:
-	                        ?VAL:DEF   ?APP:DEF    ?OBJ:
+	HYB      HYBR=96  DEF   OBJ?:      null?DEF:   null?  Hybrid.
+	                        APP?:      OBJ?:       NOOP:
+	                        VAL?:DEF   APP?:DEF    OBJ?:
 	                                               APP
 	----------------------------------------------------------------------------
 
@@ -88,7 +89,10 @@
 			'OBJ':     'DOBJ',
 			'APP':     'INDD',
 			'HYB':     'HYBR',
-			}
+			},
+			// [180308] Added for extra parsing.
+			// ---
+			RE: /^CNST|LIVE|RSET|ENGI|SESS|DOBJ|INDD|HYBR$/,
 		}),
 
 		FDEL : function(/*obj&*/o,/*key*/k)
@@ -220,6 +224,7 @@
 	({
 		ONUM : 0,
 		ANUM : 0,
+		MASK : 0, // Mask of all added scopes. [ADD180308]
 
 		DELK : function(  o,k)
 		//----------------------------------
@@ -256,6 +261,8 @@
 				this.FSET(this.KDEF.Q, k, data);
 				this.KEYS[k] = void 0; // undefined -> must be activated!
 			}
+			
+			this.MASK |= scope; // [ADD180308]
 		},
 
 		DECL : function(/*str*/suid,/*{...,LIVE:{},RESET:{},OBJ:{},APP:{},HYB:{}}*/o,  k,z,oo)
@@ -270,6 +277,10 @@
 			// Set the 'Settings Unique ID.'
 			// ---
 			this.SUID = suid;
+			
+			// Reset the scope mask to zero.
+			// ---
+			this.MASK = 0;
 			
 			// Parse input and create keys from scratch.
 			// ---
@@ -363,7 +374,7 @@
 
 					// RESET
 					// Take the default value in any of the following cases:
-					// (a) key undefined ; (b) RSET key ; (c) forced reset.
+					// (a) forced reset ; (b) RSET key ; (c) key undefined.
 					// ---
 					if( DO_RESET || (z&this.RSET) || ('undefined'==typeof this.KEYS[k]) )
 					{
@@ -524,18 +535,46 @@
 		{
 			return (I=callee.µ['~']).SUID ? 0 : 1;
 		},
+		
+		hasScope : function hasScope_IS_I(/*uint|str*/scope,  I,t)
+		//----------------------------------
+		// [ADD180309] Whether the declared settings contain a param
+		// having the supplied scope(s).
+		// CNST: 1 ; LIVE: 2 ; RSET: 4 ; ENGI: 8 ; SESS:16
+		// DOBJ:32 ; INDD:64 ; HYBR:96
+		// `scope` may be any combination of single scope values.
+		// => >0 [OK]  |  0 [KO]
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling hasScope."), callee );
+			}
+
+			if( 'number' != typeof (t=scope) )
+			{
+				scope = String(scope).toUpperCase();
+				t = I.BRCH(scope) || (I.hasOwnProperty(scope) && I.BRCH.RE.test(scope) && I[scope]);
+			}
+			
+			if( !t )
+			{
+				$.global[callee.µ.__root__].error( __("The scope %1 is not recognized.",scope), callee );
+			}
+
+			return t&I.MASK;
+		},
 
 		activate : function activate_d_Õ(/*?dom*/host,  I,s)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
 		// If host is a DOM object, use it as a source for any OBJ or HYB key.
-		// If host is not provided or 'falsy,' OBJ keys will behave at SESSION
+		// If host is not provided or 'falsy,' OBJ keys will behave at default
 		// scope and HYB keys will behave at APP scope.
 		// => keys-accessor
 		{
 			if( !(s=(I=callee.µ['~']).SUID) )
 			{
-				$.global[callee.µ.__root__].error( __("Settings must be declared before activation."), callee )
+				$.global[callee.µ.__root__].error( __("Settings must be declared before activation."), callee );
 			}
 
 			$.global[callee.µ.__root__].trace(__("%1 > Activating settings for uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
@@ -619,8 +658,9 @@
 			return callee.µ['~'].ANUM;
 		},
 
-		access : function access_Õ(  I)
+		access : function access_k_ÕX(/*str*/k,  I)
 		//----------------------------------
+		// [ADD180309] `k` argument added: direct key access.
 		// => keys-accessor
 		{
 			if( !(I=callee.µ['~']).SUID )
@@ -633,6 +673,6 @@
 				$.global[callee.µ.__root__].warn( __("%1 > No key available yet in the accessor.",callee.µ) );
 			}
 			
-			return I.KEYS;
+			return 'undefined'==typeof k ? I.KEYS : I.KEYS[k];
 		},
 	})
