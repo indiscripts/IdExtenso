@@ -1,5 +1,6 @@
 ##### [180309]
   - **Yalt** module. Various fixes and improvements.
+  - **Settings** module. Added the `hasScope` method to quickly answers questions like, _is there a SESSION-scoped parameter among my settings?_, etc.
 
 ##### [180307]
   - **File** module. Changed the default temp file suffix into `txt` (since `tmp` may cause the OS to simply ignore the `execute` method.) Also, `File.temp()` now provides a fallback mechanism in case `execute()` returns `false`.
