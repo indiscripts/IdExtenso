@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150525 (YYMMDD)
-		Modified:       170603 (YYMMDD)
+		Modified:       180309 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('MD5') || eval(__(MODULE, $$, 'MD5', 170603, 'hash'))
+;$$.hasOwnProperty('MD5') || eval(__(MODULE, $$, 'MD5', 180309, 'hash'))
 
 	//==========================================================================
 	// BACKGROUND & NOTICE
@@ -230,6 +230,7 @@
 		// E.g
 		// hash('IdExtenso') => `7127bf261e23104d72f6ea2b33f0d7c1`
 		// hash('InExtenso') => `06b02fd291587d4397fb0a62eaba9068`
+		// [CHG180309] Made trace more verbose.
 		// => str  [32 hex characters]
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -248,7 +249,7 @@
 
 			// Get the hash data (=> q.)
 			// ---
-			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Hashing a %2-length string...",callee.µ,s.length));
+			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Hashing a %2-length string%3",callee.µ, s.length, s.length<50?(' ('+s.toSource()+')'):'...'));
 
 			I.DGST(s,q);
 			s = I.DWHX(q[0]) + I.DWHX(q[1]) + I.DWHX(q[2]) + I.DWHX(q[3]);
