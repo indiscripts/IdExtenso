@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Dom
-		Desc:           DOM-related routines.
+		Desc:           Core DOM-related routines.
 		Path:           /core/$$.Dom.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
@@ -12,11 +12,57 @@
 		DOM-access:     YES [INDD]
 		Todo:           test.jsx.
 		Created:        150705 (YYMMDD)
-		Modified:       170324 (YYMMDD)
+		Modified:       180311 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Dom', 170324, ''))
+;eval(__(MODULE, $$, 'Dom', 180311, ''))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	The purpose of the present module is to provide a set of high-level (InDesign)
+	DOM commands that are so important in most scripts that we want them to be
+	available in every script. For example, accessing a component label --
+	`Dom.fromLabel(domObj)` -- or managing InDesign locale key strings. The `Dom`
+	API encapsulates such features in a way that make them easier and safer to
+	invoke (hiding the underlying check points and commands). It may also provide
+	compatibility fixes, improve the consistency of your code across various
+	InDesign versions, and speed up processes using cache mechanisms.
+
+	[REM] It must be remembered that DOM commands always represent the most critical
+	part of a project in terms of performance. The best a script optimizes DOM
+	calls, the fastest it runs.
+
+	The present module purposefully focuses on *vital* features and shouldn't be
+	arbitrarily burdened. It follows the same logics than any other IdExtenso's core
+	module, but its API is built up on distinct `jsxinc` files that allow to
+	identify the topic or the main DOM class of interest (e.g `app`, `label`,
+	`document`, `preference`, etc.) Each of these subparts then addresses a limited
+	area of the DOM, preventing chaotic interactions!
+
+	`Dom` by nature requires DOM-access, in either GET/READ mode (e.g getting the
+	`properties` object from a specifier) or SET/WRITE mode (e.g inserting a label,
+	calling `move` onto a `PageItem` specifier, etc.) IdExtenso makes the DOM-access
+	condition as visible as possible. In such context, indeed, InDesign requires a
+	non-modal state (see `app.modalState`.) In particular, a script cannot send DOM
+	commands from within a ScriptUI dialog.
+
+	[REM] Most public methods -- hence of the form `$$.Dom.xyz()` -- are made
+	available as `$$.xyz()` too, subject no collision occurs with the existing
+	stuff.
+
+	Extra DOM-related modules are to be added into the `Dom` namespace from the /etc
+	branch. For example, a module dealing with fonts could be named
+	`/etc/$$.Dom.Font.jsxlib` (note the `Dom.` prefix) and then loaded as an
+	optional submodule of `Dom`. It is highly recommended to maintain this rule along
+	the whole development of the framework, as it makes easier to identify every piece
+	of a project that involves DOM commands.
+
+	*/
 
 	// fromLocaleStr ; toLocaleStr
 	// ---
