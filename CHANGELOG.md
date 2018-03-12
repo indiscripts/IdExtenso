@@ -1,3 +1,6 @@
+##### [180312]
+  - Added the **Dom/Dialog** module in the `etc/` branch. Provides a simple API for creating and managing DOM dialogs using XML descriptors.
+
 ##### [180309]
   - **Yalt** module. Various fixes and improvements.
   - **Settings** module. Added the `hasScope` method to quickly answers questions like, _is there a SESSION-scoped parameter among my settings?_, etc.
