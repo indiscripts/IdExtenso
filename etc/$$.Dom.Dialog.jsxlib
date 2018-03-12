@@ -1,0 +1,471 @@
+/*******************************************************************************
+
+		Name:           Dialog
+		Desc:           Encapsulates an InDesign DOM dialog and its widgets.
+		Path:           /etc/$$.Dom.Dialog.jsxlib
+		Require:        $$/Dom
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.Dom.)
+		API:            =fromXML()
+		DOM-access:     YES
+		Todo:           Cache mechanism for dialog in non-persistent engine (?)
+		Created:        180311 (YYMMDD)
+		Modified:       180312 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180312, 'fromXML'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+	
+	/*
+
+	A DOM `Dialog` instance is created by calling `app.dialogs.add(...)`
+	and then becomes an element of a Dialogs collection. Dialogs are session-
+	persistent (unless manually destroyed.)
+	
+	In UI terms, a Dialog entirely consists of a collection of columns
+	(`.dialogColumns`) which contain subwidgets (containers or controls) in
+	a recursive fashion. Dialog's relevant scalar properties and methods are:
+
+		  id        (uint)   Unique ID.
+		  ----------------------------------------------------------------------
+		  label     (str)    Arbitrary label string.
+		  ----------------------------------------------------------------------
+		  name      (str)    Name of the dialog.
+		  ----------------------------------------------------------------------
+		  canCancel (bool)   Creates a Cancel button that allows users to close
+		                     the box w/o saving selections. If false, the dialog
+		                     contains an OK button but no Cancel button.
+		  ======================================================================
+		  show()    =>bool   Displays the dialog.
+		  ----------------------------------------------------------------------
+		  destroy() =>undef  Destroys the object. Dialog objects remain in memory
+		                     until you destroy them or quit the program.
+
+	A `DialogColumn` (DCOL) instance is created through DialogColumns.add(...) and
+	can instantiate any needed control ('widget') through dedicated collections:
+		
+	// CONTAINERS
+	dialogRows             (DialogRows)            => (DROW) DialogRow
+	borderPanels           (BorderPanels)          => (BPNL) BorderPanel
+	enablingGroups         (EnablingGroups)        => (EGRP) EnablingGroup
+
+	// RADIOS
+	radiobuttonGroups      (RadiobuttonGroups)     => (RGRP) RadiobuttonGroup
+	                                               -> (RBTN) RadioButtonControl+
+	
+	// MISC
+	staticTexts            (StaticTexts)           => (STAT) StaticText
+	checkboxControls       (CheckboxControls)      => (CBOX) CheckboxControl
+	dropdowns              (Dropdowns)             => (DROP) Dropdown
+
+	// EDITBOX WIDGETS
+	textEditboxes          (TextEditboxes)         => (TEBX) TextEditbox
+	angleEditboxes         (AngleEditboxes)        => (AEBX) AngleEditbox
+	integerEditboxes       (IntegerEditboxes)      => (IEBX) IntegerEditbox
+	measurementEditboxes   (MeasurementEditboxes)  => (MEBX) MeasurementEditbox
+	percentEditboxes       (PercentEditboxes)      => (PEBX) PercentEditbox
+	realEditboxes          (RealEditboxes)         => (REBX) RealEditbox
+
+	// COMBOBOX COUNTERPARTS
+	angleComboboxes        (AngleComboboxes)       => (ACBX) AngleCombobox
+	integerComboboxes      (IntegerComboboxes)     => (ICBX) IntegerCombobox
+	measurementComboboxes  (MeasurementComboboxes) => (MCBX) MeasurementCombobox
+	percentComboboxes      (PercentComboboxes)     => (PCBX) PercentCombobox
+	realComboboxes         (RealComboboxes)        => (RCBX) RealCombobox
+
+	The hierarchical structure can then be described as follows:
+
+		     Dialog  ->  DCOL+
+		       DCOL  ->  ( DROW | BPNL | EGRP | RGRP | <Control> )+
+		       DROW  ->  ( DCOL | BPNL | EGRP | RGRP | <Control> )+
+		       BPNL  ->  ( DCOL | BPNL | EGRP | RGRP | <Control> )+
+		       EGRP  ->  ( DCOL | BPNL | EGRP | RGRP | <Control> )+
+		       RGRP  ->  RBTN+
+		with:
+		  <Control>  ==  STAT | CBOX | DROP | <Editbox> | <Combobox>
+		  <Editbox>  ==  TEBX | AEBX | IEBX | MEBX | PEBX | REBX
+		  <Combobox> ==         ACBX | ICBX | MCBX | PCBX | RCBX
+	
+	Any component of a Dialog belongs to the abstract class `Widget` which
+	provides a minimal API common to all objects:
+	
+	      id ; index ; isValid ; minWidth ; parent ; properties
+	
+	Here is the specific API of the widgets, excluding the specific collections
+	shown above:
+	
+	      DialogColumn      (DCOL) .widgets                        // no minWidth
+	      DialogRow         (DROW) .widgets                        // no minWidth
+	      ----------------------------------------------------------------------
+	      BorderPanel       (BPNL) .widgets
+	      EnablingGroup     (EGRP) .widgets .checkedState  .staticLabel
+	      ----------------------------------------------------------------------
+	      RadiobuttonGroup  (RGRP)          .selectedButton               // uint
+	      RadiobuttonControl(RBTN)          .checkedState  .staticLabel
+	      ----------------------------------------------------------------------
+	      StaticText        (STAT)                         .staticLabel
+	      CheckboxControl   (CBOX)          .checkedState  .staticLabel
+	      Dropdown          (DROP)          .selectedIndex .stringList
+	      ----------------------------------------------------------------------
+	      TextEditbox        (TEBX)         .editContents
+	      AngleEditbox       (AEBX)         .editContents .editValue            (+)
+	      IntegerEditbox     (IEBX)         .editContents .editValue            (+)
+	      MeasurementEditbox (MEBX)         .editContents .editValue .editUnits (+)
+	      PercentEditbox     (PEBX)         .editContents .editValue            (+)
+	      RealEditbox        (REBX)         .editContents .editValue            (+)
+	      // ---
+	      (+) Numeric editboxes also provide the properties:
+	                                       .minimumValue .maximumValue
+	                                       .smallNudge .largeNudge
+	      ----------------------------------------------------------------------
+	      AngleCombobox       (ACBX)          
+	      IntegerCombobox     (ICBX)          The combobox counterpart of a
+	      MeasurementCombobox (MCBX)          numeric editbox has the same api,
+	      PercentCombobox     (PCBX)          it just exposes the `stringList`
+	      RealCombobox        (RCBX)          property in addition.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+/*
+
+	The present module provides a lightweight API for creating and managing DOM
+	dialogs using XML descriptors. The automatic method `fromXML(xml)` instantly
+	creates a fully customized dialog with all its children, as specified in the XML
+	structure. For example:
+
+	      var myDlg = $$.Dom.Dialog(
+	         <Dialog name="My Dialog>
+	           <DialogColumn>
+	             <TextEditbox editContents="Type your text here" />
+	             <Checkbox checkedState="false" />
+	           </DialogColumn>
+	         </Dialog>
+	      );
+
+	In addition, Dom.Dialog offers shortcuts and special attributes for making the
+	XML descriptor shorter and more uniform.
+
+	The following attributes are available:
+	      ------------------------------
+	      checked:  alias of 'checkedState'
+	      caption:  alias of 'staticLabel' ; adds a label component if needed.
+	      edit:     alias of 'editContents'
+	      value:    alias of 'editValue'
+	      list:     alias of 'stringList'
+	      ------------------------------
+	      min:      alias of 'minimumValue'
+	      max:      alias of 'maximumValue'
+	      small:    alias of 'smallNudge'
+	      large:    alias of 'largeNudge'
+	      ------------------------------
+	      key:      special widget identifier
+
+	No matter how deep a widget is in the dialog structure, you can assign to it a
+	`key` attribute that allows to easily set or get its value using the prototyped
+	methods `getValueKey(key)` and `setValueKey(key,value)` added in Dialog.prototype.
+
+	This way you no longer have to browse the Dialog structure to handle the
+	controls. `Dom.Dialog` hides the internal complexity of DOM collections and
+	related instances. For example, assuming a key `myCheck` is defined for a
+	Checkbox, use `myDlg.getValueKey('myCheck')` to get the checked state of that
+	specific control.
+
+*/
+
+	[PRIVATE]
+	
+	({
+		GETW : function(/*Dialog*/dlg,/*str*/k,  s,t)
+		//----------------------------------
+		// (Get-Widget-by-Key.)
+		// => undefined [KO]  |  Widget [OK]
+		{
+			dlg = dlg.getElements()[0]; // Force singular specifier
+
+			if( !(s=dlg.properties.label) ) return;
+
+			k = '\x02' + k + '\x01';
+			if( -1 == (t=s.indexOf(k)) ) return;
+
+			t = parseInt(s.substr(t+k.length));
+			if( !(t=dlg.dialogColumns.everyItem().widgets.itemByID(t)).isValid ) return;
+			
+			return t.getElements()[0];
+		},
+
+		GTVK : function getValueKey(/*str*/k,  o)
+		//----------------------------------
+		// (Get-Value-by-Key.) This methods is automatically added
+		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// => undefined [KO]  |  bool|num|str [OK]
+		{
+			if( !(o=callee.µ['~'].GETW(this,k)) ) return;
+			
+			(o=o.properties).hasOwnProperty(k='checkedState')
+			|| o.hasOwnProperty(k='editValue')
+			|| o.hasOwnProperty(k='editContents')
+			|| o.hasOwnProperty(k='selectedIndex')
+			|| o.hasOwnProperty(k='selectedButton')
+			|| o.hasOwnProperty(k='staticLabel');
+
+			return o[k];
+		},
+
+		STVK : function setValueKey(/*str*/k,/*str|num|bool*/v,  t,o,a,i)
+		//----------------------------------
+		// (Set-Value-for-Key.) This methods is automatically added
+		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// => undefined [KO]  |  v [OK]
+		{
+			if( !(t=callee.µ['~'].GETW(this,k)) ) return;
+			
+			o = t.properties;
+			switch( typeof v )
+			{
+				case 'bool' :
+					o.hasOwnProperty(k='checkedState') || (k=void 0);
+					break;
+				case 'number' :
+					if( o.hasOwnProperty(k='editValue') ) break;
+					if( v===(0|v) && (o.hasOwnProperty(k='selectedIndex') || o.hasOwnProperty(k='selectedButton')) ) break;
+					v = String(v);
+					// no break;
+				case 'string' :
+					if( o.hasOwnProperty(k='editContents') || o.hasOwnProperty(k='staticLabel') ) break;
+					if( o.hasOwnProperty('stringList') && o.hasOwnProperty(k='selectedIndex') )
+					{
+						for( i=(a=o.stringList).length ; i-- && (v != a[i]) ; );
+						if( 0 <= i ){ v=i; break; }
+					}
+					// no break;
+				default:
+					k = void 0;
+			}
+
+			return k && (t[k]=v);
+		},
+		
+	})
+
+	[PRIVATE]
+
+	({
+
+		CAPW : 100,
+
+		XPPS : function(/*XMLList*/xAtts,  q,TP,x,k,t,v,i)
+		//----------------------------------
+		// (Property-Parser.) Given a list of XML attributes, return
+		// a volatile set of validated properties in their final form.
+		// E.g => { staticLabel:"My Label", checkedState:false }
+		// ---
+		// => {...}&
+		{
+			q = callee.Q;
+			for( k in q ) delete q[k];
+
+			TP = callee.TYPE;
+			for each( x in xAtts )
+			{
+				if( !TP.hasOwnProperty(k=x.name()) ) continue;
+				
+				v = x.toString();
+
+				// Alias?
+				// ---
+				'@' == (t=TP[k]).charAt(0) && (t=TP[k=t.substr(1)]);
+
+				switch( t )
+				{
+					case 'Y' : v = __(v); break;
+					case 'B' : v = eval('Boolean('+v+')'); break;
+					case 'N' : v = parseFloat(v); break;
+					case 'I' : v = parseInt(v,10); break;
+					case 'L' : for( i=(v=v.split('|')).length ; i-- ; v[i]=__(v[i]) ); break;
+					default: ;
+				}
+				
+				q[k] = v;
+			}
+			
+			return q;
+
+		}.setup({ Q:{}, TYPE:
+			{
+			checked:        '@checkedState',
+			checkedState:   'B',
+			caption:        '@staticLabel',
+			staticLabel:    'Y', // Yalt
+			edit:           '@editContents',
+			editContents:   'S',
+			value:          '@editValue',
+			editValue:      'N',
+			list:           '@stringList',
+			stringList:     'L',
+			min:            '@minimumValue',
+			minimumValue:   'N',
+			max:            '@maximumValue',
+			maximumValue:   'N',
+			small:          '@smallNudge',
+			smallNudge:     'N',
+			large:          '@largeNudge',
+			largeNudge:     'N',
+			// ---
+			minWidth:       'I',
+			selectedButton: 'I',
+			selectedIndex:  'I',
+			},
+		}),
+
+		WDGS : {
+			DCOL: '@DialogColumn',       DialogColumn:'dialogColumns',             // hosts:'Dialog|DROW|BPNL|EGRP'
+			DROW: '@DialogRow',          DialogRow:'dialogRows',                   // hosts:'DCOL'
+			BPNL: '@BorderPanel',        BorderPanel:'borderPanels',               // hosts:'DCOL|DROW|BPNL|EGRP'
+			EGRP: '@EnablingGroup',      EnablingGroup:'enablingGroups',           // hosts:'DCOL|DROW|BPNL|EGRP',  props:'checked'
+			// ---
+			RGRP: '@RadiobuttonGroup',   RadiobuttonGroup:'radiobuttonGroups',     // hosts:'DCOL|DROW|BPNL|EGRP',  props:'selectedButton'
+			RBTN: '@RadiobuttonControl', RadiobuttonControl:'radiobuttonControls', // hosts:'RGRP',                 props:'checked|caption'
+			// ---
+			STAT: '@StaticText',         StaticText:'staticTexts',                 // hosts:'DCOL|DROW|BPNL|EGRP',  props:'caption'
+			CBOX: '@CheckboxControl',    CheckboxControl:'checkboxControls',       // hosts:'DCOL|DROW|BPNL|EGRP',  props:'checked|caption'
+			DROP: '@Dropdown',           Dropdown:'dropdowns',                     // hosts:'DCOL|DROW|BPNL|EGRP',  props:'selectedIndex|list'
+			// ---
+			TEBX: '@TextEditbox',        TextEditbox:'textEditboxes',              // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit'
+			AEBX: '@AngleEditbox',       AngleEditbox:'angleEditboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
+			IEBX: '@IntegerEditbox',     IntegerEditbox:'integerEditboxes',        // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
+			MEBX: '@MeasurementEditbox', MeasurementEditbox:'measurementEditboxes',// hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
+			PEBX: '@PercentEditbox',     PercentEditbox:'percentEditboxes',        // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large',
+			REBX: '@RealEditbox',        RealEditbox:'realEditboxes',              // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large',
+			// ---
+			ACBX: '@AngleCombobox',      AngleCombobox:'angleComboboxes',          // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
+			ICBX: '@IntegerCombobox',    IntegerCombobox:'integerComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
+			MCBX: '@MeasurementCombobox',MeasurementCombobox:'measurementComboboxes',// hosts:'DCOL|DROW|BPNL|EGRP', props:'edit|value|list|min|max|small|large'
+			PCBX: '@PercentCombobox',    PercentCombobox:'percentComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
+			RCBX: '@RealCombobox',       RealCombobox:'realComboboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
+		},
+
+		XDLG: function(/*XML*/x,/*Dom&*/host,  I,W,RE,wx,wk,k,skey,s,h,pp,t)
+		//----------------------------------
+		// (XML-Dialog.) Create a DOM dialog from a XML description
+		// based on WDGS shortcuts and property aliases.
+		// ---
+		// => undefined [OK]  |  Error [KO]
+		{
+			I = callee.µ['~'];
+			W = I.WDGS;
+			RE = callee.RE;
+			
+			for each( wx in x )
+			{
+				if( !W.hasOwnProperty(wk=wx.name()) ) continue;
+				
+				// Alias?
+				// ---
+				'@' == (k=W[wk]).charAt(0) && (k=W[wk=k.substr(1)]);
+
+				// `key` property (if provided.)
+				// ---
+				skey = wx.attribute('key').toString() || false;
+				
+				// Embed caption?
+				// ---
+				h = host;
+				if( s=RE.test(wk)&&wx.attribute('caption') )
+				{
+					s = __( "%1:" , __(s.toString()) );
+					h.hasOwnProperty('dialogRows') || (h=h.dialogColumns.add());
+					(h=h.dialogRows.add()).staticTexts.add({ staticLabel:s, minWidth:I.CAPW });
+				}
+				
+				// Other properties.
+				// ---
+				pp = (t=wx.attributes()).length() ? I.XPPS(t) : void 0;
+
+				// Create the DOM widget.
+				// ---
+				if( !h.hasOwnProperty(k) )
+				{
+					$.global[callee.µ.__root__].error(__("%1 > %2 doesn't support the property '%3'.",callee.µ,h.constructor.name, k),callee);
+				}
+				else
+				{
+					t = h[k].add(pp);
+					skey && (callee.LABEL += '\x02'+skey+'\x01'+t.id);
+				}
+				
+				wx.hasComplexContent() && callee(wx.children(),t);
+			}
+		}
+		.setup({ LABEL:'', RE:/Dropdown|box$/ }),
+
+	})
+
+	[PUBLIC]
+
+	({
+
+		onEngine: function onEngine_(  I)
+		//----------------------------------
+		// Augment Dialog.prototype to support the methods
+		// getValueKey(str) and setValueKey(str,any).
+		{
+			I = callee.µ['~'];
+			
+			Dialog.prototype.getValueKey = I.GTVK;
+			Dialog.prototype.setValueKey = I.STVK;
+		},
+
+		fromXML: function fromXML_$XML$S_$Dialog$(/*xml|str*/x,  $$,I,dlg,s)
+		//----------------------------------
+		// Create a new Dialog object based on XML descriptor.
+		// The root element should be <Dialog> and supports `name` and `canCancel` attributes.
+		// Children must be either regular DOM widget class names -- e.g <DialogColumn>,
+		// <BorderPanel>, <Dropdown>, <TextEditbox> etc -- or aliases defined in ~.WDGS
+		// like <DCOL>, <BPNL>, <DROP>, <TEBX> etc. Use attributes to specify properties.
+		// (Allowed attributes and aliases are defined in ~.XPPS.TYPES.)
+		// Containers can have XML children, e.g `<DCOL><CBOX /><TCBX /></DCOL>`.
+		// You can use a special attribute, `key`, to access widget values from the
+		// Dialog instance through getValueKey(k) and setValueKey(k,v).
+		// ---
+		// Full example:
+		// <Dialog name="My Dialog Title canCancel="true">
+		//   <DCOL>
+		//     <TEBX key="txInput" edit="Type your text here" />
+		//     <EGRP key="allowFeatures" checked='true'>
+		//       <CBOX key="feat1" checked='false' caption='My Feature1' />
+		//     </EGRP>
+		//   </DCOL>
+		// </Dialog>
+		// ---
+		// => new Dialog
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			'string' == typeof x && (x=XML(x));
+
+			if( 'xml' != typeof x ) $$.error(__("Invalid argument (%1). Should be XML.",typeof x),callee);
+			
+			+$$.trace && $$.trace(__("%1 > Creating a new Dialog from XML description %2.",callee.µ,$$.JSON(x)));
+			
+			dlg = app.dialogs.add({
+				canCancel: 'false' != x.attribute('canCancel').toString(),
+				name: x.attribute('name').toString(),
+				});
+
+			(I=callee.µ['~']).XDLG.LABEL='';
+			I.XDLG(x,dlg);
+			(s=I.XDLG.LABEL) && (dlg.label=s);
+			
+			return dlg;
+		},
+
+	})
