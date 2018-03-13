@@ -56,6 +56,16 @@ _Demonstrates:_
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
 
+##### [`InstantDialog.jsx`](InstantDialog.jsx)
+
+InDesign DOM dialog fast, easy, and with automatic localization (see [screenshot](InstantDialog.png)).   
+_Demonstrates:_
+   
+* Usage of `$$.Dom.Dialog.fromXML()`.
+* Displaying the dialog and having strings localized through **Yalt**.
+* Access to UI values using `Dialog.setValueKey()` and `Dialog.getValueKey()` (augmented prototype.)
+* Using `$$.isBooting()` to prepend persistent data (makes sense when a `#targetengine` directive is in use.)
+
 ##### [`MarkovShuffle.jsx`](MarkovShuffle.jsx)
 
 Text scrambler based on Markov chains.   
