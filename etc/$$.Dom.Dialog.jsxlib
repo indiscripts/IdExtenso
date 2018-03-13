@@ -3,19 +3,19 @@
 		Name:           Dialog
 		Desc:           Encapsulates an InDesign DOM dialog and its widgets.
 		Path:           /etc/$$.Dom.Dialog.jsxlib
-		Require:        $$/Dom
+		Require:        $$.Dom
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module (within $$.Dom.)
 		API:            =fromXML()
 		DOM-access:     YES
-		Todo:           Cache mechanism for dialog in non-persistent engine (?)
+		Todo:           Caching dialog instance(s) in non-persistent engine (?)
 		Created:        180311 (YYMMDD)
-		Modified:       180312 (YYMMDD)
+		Modified:       180313 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180312, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180313, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -135,7 +135,7 @@
 	// NOTICE
 	//==========================================================================
 
-/*
+	/*
 
 	The present module provides a lightweight API for creating and managing DOM
 	dialogs using XML descriptors. The automatic method `fromXML(xml)` instantly
@@ -178,8 +178,23 @@
 	related instances. For example, assuming a key `myCheck` is defined for a
 	Checkbox, use `myDlg.getValueKey('myCheck')` to get the checked state of that
 	specific control.
+	
+	Finally, widget class names can be abbreviated (in the XML descriptor) using
+	the following 4-character aliases:
 
-*/
+	      DCOL = DialogColumn                  TEBX = TextEditbox         
+	      DROW = DialogRow                     AEBX = AngleEditbox        
+	      BPNL = BorderPanel                   IEBX = IntegerEditbox      
+	      EGRP = EnablingGroup                 MEBX = MeasurementEditbox  
+	      -------------------------            PEBX = PercentEditbox      
+	      RGRP = RadiobuttonGroup              REBX = RealEditbox         
+	      RBTN = RadiobuttonControl            -------------------------  
+	      -------------------------            ACBX = AngleCombobox       
+	      STAT = StaticText                    ICBX = IntegerCombobox     
+	      CBOX = CheckboxControl               MCBX = MeasurementCombobox 
+	      DROP = Dropdown                      PCBX = PercentCombobox     
+                                               RCBX = RealCombobox        
+	*/
 
 	[PRIVATE]
 	
@@ -224,6 +239,8 @@
 		//----------------------------------
 		// (Set-Value-for-Key.) This methods is automatically added
 		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// [FIX180313] Typo!
+		// ---
 		// => undefined [KO]  |  v [OK]
 		{
 			if( !(t=callee.µ['~'].GETW(this,k)) ) return;
@@ -231,7 +248,7 @@
 			o = t.properties;
 			switch( typeof v )
 			{
-				case 'bool' :
+				case 'boolean' :
 					o.hasOwnProperty(k='checkedState') || (k=void 0);
 					break;
 				case 'number' :
@@ -260,6 +277,8 @@
 
 	({
 
+		// Minimal caption width.
+		// ---
 		CAPW : 100,
 
 		XPPS : function(/*XMLList*/xAtts,  q,TP,x,k,t,v,i)
