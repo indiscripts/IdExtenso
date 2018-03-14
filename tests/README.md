@@ -76,6 +76,15 @@ _Demonstrates:_
 
 Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuffle-characters-the-right-way)
 
+##### [`PlaceWebImage.jsx`](PlaceWebImage.jsx)
+
+Download an image through `http` and place it in the active spread. (This is a variant of GetWebImage.)   
+_Demonstrates:_
+   
+* `$$.Web(url)`, shortcut of `$$.Web.get(url)`.
+* Using `$$.Web.parseURI` to identify the parts of an URL.
+* Using `$$.File.temp` to create a temporary file.
+
 ##### [`PlayWithBigInt.jsx`](PlayWithBigInt.jsx)
 
 Computing arbitrary-precision big integers using **BigInt** module.   
