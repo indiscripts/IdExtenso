@@ -13,11 +13,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       180309 (YYMMDD)
+		Modified:       180318 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180309, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180318, 'access'))
 
 	//==========================================================================
 	// NOTICE
@@ -458,7 +458,7 @@
 	[PUBLIC]
 	
 	({
-		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},SESSION:{},OBJ:{},APP:{},HYB:{}}*/oInput,  I)
+		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},SESSION:{},OBJ:{},APP:{},HYB:{}}*/oInput,  $$,I)
 		//----------------------------------
 		// Create a set of keys from scratch and register their default values. This function must be
 		// called *once* per engine, and before `activate()`. It does not restore nor enable any key.
@@ -508,22 +508,24 @@
 		// ---
 		// => undefined
 		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
 			if( (I=callee.µ['~']).SUID )
 			{
-				$.global[callee.µ.__root__].error( __("Settings already declared. Use %1.canDeclare() to check.",callee.µ), callee )
+				$$.error( __("Settings already declared. Use %1.canDeclare() to check.",callee.µ), callee )
 			}
 
 			if( ('string' != typeof suid) || suid.length < 1 )
 			{
-				$.global[callee.µ.__root__].error( __("Empty UID is not allowed."), callee )
+				$$.error( __("Empty UID is not allowed."), callee )
 			}
 
 			if( oInput !== Object(oInput) )
 			{
-				$.global[callee.µ.__root__].error( __("Invalid object in settings declaration."), callee )
+				$$.error( __("Invalid object in settings declaration."), callee )
 			}
 
-			$.global[callee.µ.__root__].trace(__("%1 > Declaring settings for uid: %2.",callee.µ,suid.toSource()));
+			(+$$.trace) && $$.trace(__("%1 > Declaring settings for uid: %2.",callee.µ,suid.toSource()));
 
 			I.DECL(String(suid), oInput);
 		},
@@ -564,7 +566,7 @@
 			return t&I.MASK;
 		},
 
-		activate : function activate_d_Õ(/*?dom*/host,  I,s)
+		activate : function activate_d_Õ(/*?dom*/host,  $$,I,s)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
 		// If host is a DOM object, use it as a source for any OBJ or HYB key.
@@ -572,18 +574,20 @@
 		// scope and HYB keys will behave at APP scope.
 		// => keys-accessor
 		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
 			if( !(s=(I=callee.µ['~']).SUID) )
 			{
-				$.global[callee.µ.__root__].error( __("Settings must be declared before activation."), callee );
+				$$.error( __("Settings must be declared before activation."), callee );
 			}
 
-			$.global[callee.µ.__root__].trace(__("%1 > Activating settings for uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
+			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
 
 			I.ACRS(host, false);
 			return I.KEYS;
 		},
 
-		reset : function reset_d$null$_Õ(/*?dom|null*/host,  I)
+		reset : function reset_d$null$_Õ(/*?dom|null*/host,  $$,I,s)
 		//----------------------------------
 		// Reset each key to its default or stored value, based on its scope.
 		// ---
@@ -595,16 +599,20 @@
 		// OBJ, APP and HYB keys.
 		// => keys-accessor
 		{
-			if( !(I=callee.µ['~']).SUID )
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			if( !(s=(I=callee.µ['~']).SUID) )
 			{
-				$.global[callee.µ.__root__].error( __("Settings must be declared before calling reset."), callee )
+				$$.error( __("Settings must be declared before calling reset."), callee )
 			}
+
+			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
 
 			I.ACRS(host, true);
 			return I.KEYS;
 		},
 
-		backup : function backup_d$null$_(/*?dom|null*/host,  I)
+		backup : function backup_d$null$_(/*?dom|null*/host,  $$,I,s)
 		//----------------------------------
 		// Backup the current values of label-stored keys.
 		// If host is a DOM object, use it as a target for any I_OBJ or I_HYB key.
@@ -612,10 +620,14 @@
 		// If host is NULL, only backup strict I_APP keys (ignoring I_HYB.)
 		// => undefined
 		{
-			if( !(I=callee.µ['~']).SUID )
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			if( !(s=(I=callee.µ['~']).SUID) )
 			{
-				$.global[callee.µ.__root__].error( __("Settings must be declared before calling backup."), callee )
+				$$.error( __("Settings must be declared before calling backup."), callee )
 			}
+
+			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
 
 			I.BCKP(host);
 		},
