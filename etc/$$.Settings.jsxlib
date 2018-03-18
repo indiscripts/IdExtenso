@@ -7,7 +7,7 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =access() declare() hasScope() canDeclare()
+		API:            =access() declare() hasScope() hasKey() canDeclare()
 		                activate() reset() backup()
 		                addLive() objKeyCount() appKeyCount()
 		DOM-access:     extractLabel() insertLabel()
@@ -18,6 +18,155 @@
 *******************************************************************************/
 
 ;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180318, 'access'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	PURPOSE
+
+	Managing settings and user preferences is an essential need in every solid
+	project. The present module takes this question seriously and offers a
+	consistent solution. It allows to declare the vital settings of your current
+	script, then it provides a complete save/restore/reset mechanism taking into
+	account the lifespan (here called the 'scope') of each setting.
+
+	You can deal with constant (read-only) parameters as well as with session-
+	persistent settings, or even long-term data stored in either the app or any
+	DOM object.
+
+	Settings are basically treated as key-value pairs. Your script can simply
+	declare a set `{ k1:v1, k2:v2, ... }`, each `k_i` being the KEY and each `v_i`
+	being the DEFAULT VALUE of that key. From then, these settings can be easily
+	shared, accessed, modified, throughout the script, using `$$.Settings` as a
+	unique provider in one place.
+
+	[REM] We choose to implement `$$.Settings` as a MODULE, not a CLASS, because
+	there is no point in having concurrent settings in the memory space of a
+	single script. (Only one script is running at a time!)
+
+	
+	STAGES
+	
+	The API of $$.Settings exposes four important methods that can be thought as
+	ordered 'stages' of interaction with the module. Below is just an overview of
+	these routines, whose syntax is detailed in the respective code blocks.
+	
+	1. DECLARATION STAGE -> declare()   [REQUIRED]
+
+	   The client script must, of course, tell `$$.Settings` which set of
+	   key-value pairs it is intended to manage. This is done through the
+	   Declaration stage using `$$.Settings.declare(...)`. This step
+	   must be achieved once-per-engine (typically in a `onEngine`
+	   handler) before performing any other API stage. The `declare` method
+	   expects an Unique ID and an Object that contain the whole set of
+	   parameters with their associated scopes.
+	
+	2. ACTIVATION STAGE  -> activate()  [REQUIRED]
+	   
+	   Each time your script runs or re-runs, it wants to ACTIVATE the settings
+	   with regard to their respective lifespan. Some have to be restored from
+	   their previous states, others need to wake up at their default value.
+	   This is the purpose of the ACTIVATION stage, which rawly corresponds to
+	   an `onLoad` step. Before activation, all settings are considered undefined.
+	
+	3. RESET STAGE       -> reset()     [OPTIONAL]
+	
+	   At any point of the client code, you may want to go back to the default
+	   settings. This is a RESET stage. Some options are available for
+	   fine-tuning this process. Resetting is technically very similar to
+	   activating, with additional instructions. Unlike the Activation stage,
+	   a Reset stage is typically the response to a user request.
+	
+	4. BACKUP STAGE      -> backup()    [OPTIONAL]
+	
+	   It is not *always* required to save the current settings, but of course
+	   this is very frequently what you expect. The Backup stage addresses this
+	   job, which by definition focuses on persistent data (see the SCOPE
+	   section below.) Make sure your script calls `$$.Settings.backup()` when
+	   needed. (If you skip it, data will activate to their previous state on
+	   the next execution of the script.)
+
+
+	SCOPES
+
+	You can assign a SCOPE to each setting, telling the system how, and how long,
+	a key is supposed to both remain in memory and be restored. When the user
+	re-runs the script, some settings need to be restored to their default value,
+	others need to recover their latest state (within the InDesign session), still
+	others have to fit a particular object that wasn't here before, and so on.
+
+	This module is based on my own practice with identifying recurring patterns
+	and requirements about script settings. Although it is probably not exhaustive,
+	it defines the following scopes and scenarios:
+
+	1. CONSTANTS. Pure read-only key-value associations, which the client code
+	cannot even change once declared. Useful for product name, version, user license
+	data, and the many fixed strings or numbers that the script must keep safe.
+	(Thanks to the `watch` method, the system prevents the key from being changed--
+	unless deeply hacked!)
+
+	2. LIVE KEYS. Purely 'volatile' parameters (never saved nor restored) just used
+	to share data across different places during a process. These are not 'settings'
+	in the usual sense; see them as on-the-fly params that belong to the Settings
+	space for convenience. Use case: the active document ID, or some current target,
+	must be known from separate modules to achieve some task. But you want to keep
+	them strongly decoupled, so passing the information as an argument bores you.
+	Instead, your functions will get the data, if available, from `$$.Settings`.
+
+	3. RESET KEYS. Keys that can freely evolve once activated (as the Live Keys),
+	but expected to *always* wake up at a specific value. Here, 'always' means,
+	"each time the script starts up." You can see Reset Keys as Live Keys coming
+	with an 'onLoad' handler that automatically resets them to a determined value.
+	This makes a difference in engine-persistent scripts, where Live Keys wake
+	up in an arbitrary state (depending of previous operations) while Reset Keys
+	are guaranteed to regain their default value.
+
+	4. ENGINE KEYS. These keys are aligned with the script engine. That is, they
+	will remember their latest value throughout the session in a persistent engine,
+	but they will reset to the default value if used in the `main` engine. Unlike
+	Live Keys, Engine Keys have a default value so they can be forcibly reset from
+	the client code. Unlike Reset Keys, Engine Keys do not automatically reset if
+	the engine is persistent. Engine Keys reflect the default scope, they typically
+	behave as data in your script engine, according to its particular lifecycle.
+
+	5. SESSION KEYS. Whatever the engine in use, these keys persist throughout
+	the whole InDesign session (unless forcibly reset, or unsaved.) Data are kept
+	as JSON strings in the system environment, so Session Keys use a very fast
+	backup/restore mechanism compared to DOM-based routines. Use cases: whenever
+	you need to keep track of 'what happened before' in the current InDesign
+	session, e.g, script runcount, tasks already performed, etc.
+
+	6. OBJECT-HOSTED KEYS (OBJ keys.) These special keys are intended to be saved
+	in an InDesign DOM object, if supplied. By default they activate to a default
+	value and behave as Engine Keys--so you can still manage default settings from
+	here when no host object is available. But, if $$.Settings is activated with
+	a DOM object passed in, then it becomes the actual data provider of Obj Keys.
+	The same object (or another one!) can then be used as the target during the
+	backup stage. Use case: your script build & manages highly data-driven docs and
+	needs to keep various metadata attached to each of them. When the user re-opens
+	such a document, the settings should reflect the specific data attached to it.
+
+	7. APPLICATION-HOSTED KEYS (APP keys.) These are the most persistent keys:
+	InDesign will remember them even in later sessions (after quit/restart.)
+	Technically, an APP Key can be thought as an OBJ Key with OBJ==InDesign. Its
+	typical use is of course addressing long-term user preferences. The script
+	should then offer a 'Go Back to Defaults' option, which can be done through
+	`$$.Settings.reset(null)`.
+
+	8. HYBRID KEYS. Mix of an OBJ Key and an APP Key. An Hybrid Key strongly
+	imitates the global vs. local paradigm used in InDesign preferences. If a
+	DOM object is present (typically, a `Document`) then the value is taken
+	from it, otherwise the application key is considered. For example, if your
+	script provide Swatch- or Style-related settings, you may want to manage
+	them in a global/local fashion, as InDesign does.
+
+	See the NOTICE for further technical detail.
+
+	*/
+
 
 	//==========================================================================
 	// NOTICE
@@ -125,7 +274,9 @@
 		// ---
 		SUID : '',
 
-		KEYS : {/*key => fct*/},
+		// The keys and their present value.
+		// ---
+		KEYS : {},
 		
 		// Resettable mask. (Any scope that &-matches RSBL supports the reset feature.)
 		// ---
@@ -229,6 +380,7 @@
 		DELK : function(  o,k)
 		//----------------------------------
 		// (Delete-Keys.) Unwatch and remove all existing keys.
+		// => undefined
 		{
 			o = this.KEYS;
 			for( k in o )
@@ -243,7 +395,8 @@
 
 		ADDK : function(/*key*/k,/*uint*/scope,/*any*/data)
 		//----------------------------------
-		// (Add-Key.) Throws an error if it already exists.
+		// (Add-Key.) Throws an error if the key `k` already exists.
+		// => undefined
 		{
 			if( this.KEYS.hasOwnProperty(k) )
 			{
@@ -269,6 +422,7 @@
 		//----------------------------------
 		// (Declare-All-Settings.)
 		// [REM] Branch names are case-sensitive.
+		// => undefined
 		{
 			// Kills existing keys (if any.)
 			// ---
@@ -317,7 +471,8 @@
 
 		ACRS : function(/*?dom|null*/host,/*bool*/DO_RESET,  o,k,z,v,indd,dobj,zo,za)
 		//----------------------------------
-		// (Activate-Or-Reset.) Activate or Reset declared keys.
+		// (Activate-Or-Reset.) Activate or Reset the declared keys.
+		// => undefined
 		{
 			o = this.KEYS;
 			indd = dobj = false;
@@ -403,6 +558,7 @@
 		BCKP : function(/*?dom|null*/host,  indd,dobj,SKIP_HYB,zo,za,o,k,z)
 		//----------------------------------
 		// (Backup.)
+		// => undefined
 		{
 			indd = this.GAPP({});                // Get the existing app keys, or {}, in a new obj
 			dobj = host && this.GOBJ(host,{}),   // Get the existing obj keys, or {}, in a new obj
@@ -540,11 +696,11 @@
 		
 		hasScope : function hasScope_IS_I(/*uint|str*/scope,  I,t)
 		//----------------------------------
-		// [ADD180309] Whether the declared settings contain a param
-		// having the supplied scope(s).
+		// [ADD180309] Whether the declared settings contain (at least)
+		// one key associated to the supplied scope(s).
 		// CNST: 1 ; LIVE: 2 ; RSET: 4 ; ENGI: 8 ; SESS:16
 		// DOBJ:32 ; INDD:64 ; HYBR:96
-		// `scope` may be any combination of single scope values.
+		// As an uint, `scope` can be a OR of mixed values.
 		// => >0 [OK]  |  0 [KO]
 		{
 			if( !(I=callee.µ['~']).SUID )
@@ -555,6 +711,11 @@
 			if( 'number' != typeof (t=scope) )
 			{
 				scope = String(scope).toUpperCase();
+				
+				// ---
+				// [TODO] Might be improved to support "s1|s2|s3..."
+				// ---
+
 				t = I.BRCH(scope) || (I.hasOwnProperty(scope) && I.BRCH.RE.test(scope) && I[scope]);
 			}
 			
@@ -564,6 +725,22 @@
 			}
 
 			return t&I.MASK;
+		},
+
+		hasKey : function hasKey_K_I(/*key*/k,  I,t)
+		//----------------------------------
+		// [ADD180318] Whether the declared settings contain a key `k`.
+		// If so, returns the associated scope (>0.)
+		// CNST: 1 ; LIVE: 2 ; RSET: 4 ; ENGI: 8 ; SESS:16
+		// DOBJ:32 ; INDD:64 ; HYBR:96
+		// => >0 [OK]  |  0 [KO]
+		{
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$.global[callee.µ.__root__].error( __("Settings must be declared before calling hasScope."), callee );
+			}
+
+			return I.KEYS.hasOwnProperty(k) ? I.KSCO(k) : 0;
 		},
 
 		activate : function activate_d_Õ(/*?dom*/host,  $$,I,s)
