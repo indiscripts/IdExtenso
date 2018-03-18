@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Refine receiveError ; more tests!
 		Created:        150502 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       180318 (YYMMDD)
 
 *******************************************************************************/
 
@@ -254,6 +254,54 @@
 
 	*/
 
+	[PRIVATE]
+	
+	({
+
+		ELOG: function(/*Error&*/e,/*?str*/rawStack,  $$,s)
+		//----------------------------------
+		// (Error-Log.) Conditionally log an error, whatever its origin.
+		// [ADD180318] Made this snippet available as a private routine,
+		// so it's now callable from `receiveError` based on the raw
+		// contents of $.stack (-> rawStack.)
+		// ---
+		// If Log is available and non-MUTE, warn the error.
+		// If logErrors is ON, force the logger to wake up.
+		// ---
+		// [REM] Being a core module, Log is available as soon as
+		// it is included, that is, almost instantly. However, we
+		// want to make `error()` very secure and always callable.
+		// So we check whether $$.Log is already there.
+		// ---
+		// => undefined
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			if( 'function' != typeof $$.Log ) return;
+			
+			if( !($$.Log() || ($$.logErrors && $$.Log.warn(true))) ) return;
+			
+			s = e.managed ? e.stack :
+				( rawStack && rawStack.split(RegExp.LINEs).join(' :: ') );
+
+			// Do not take the risk of over-erroring.
+			// ---
+			try
+			{
+				$$.Log.warn(__("%1 > %2%3Stack: %4",
+					e.managed ? 'ERROR (managed)' : 'ERROR (wild)',
+					e.message,
+					$$.newLine + $$.Log.spaces,
+					s || '<empty>'
+					));
+				e.logged=1;
+			}
+			catch(_){}
+
+		},
+
+	})
+
 	//==========================================================================
 	// API
 	//==========================================================================
@@ -461,33 +509,11 @@
 			// Despite all our effort, `src` may be still empty (!)
 			// ---
 			e.where = src;
+			
+			// [CHG180318] Conditional log error routine. (Code refactoring.)
+			// ---
+			callee.µ['~'].ELOG(e);
 
-			// If Log is available and non-MUTE, warn the error.
-			// If logErrors is ON, force the logger to wake up.
-			// ---
-			// [REM] Being a core module, Log is available as soon as
-			// it is included, that is, almost instantly. However, we
-			// want to make `error()` very secure and always callable.
-			// So we check whether $$.Log is already there.
-			// ---
-			if( 'function' == typeof $$.Log && ($$.Log() || ($$.logErrors && $$.Log.warn(true)))  )
-			{
-				// Do not take the risk of over-erroring.
-				// ---
-				try
-				{
-					$$.Log.warn(__("%1 > %2%3%4Stack: %5",
-						'ERROR',
-						e.message,
-						$$.newLine,
-						$$.Log.spaces,
-						e.stack || '<empty>'
-						));
-					e.logged=1;
-				}
-				catch(_){}
-			}
-	
 			throw e;
 		},
 	
@@ -497,6 +523,9 @@
 		{
 			if( e.managed )
 			{
+				// [REM] Conditional Log already processed -- cf `error()`.
+				// ---
+
 				alert([
 					e.message,
 					'________________________________________\r',
@@ -509,6 +538,10 @@
 			}
 			else
 			{
+				// Try to log me using the current stack.
+				// ---
+				callee.µ['~'].ELOG(e, $.stack||'');
+
 				alert([
 					e.message,
 					'________________________________________\r',
