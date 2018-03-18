@@ -3,7 +3,7 @@
   - Created a private `ELOG()` routine in `Root/errors` to make error logs more modular.
 
 ##### [180312]
-  - Added the **Dom/Dialog** module in the `etc/` branch. Provides a simple API for creating and managing DOM dialogs using XML descriptors.
+  - Added the **Dom.Dialog** module in the `etc/` branch. Provides a simple API for creating and managing DOM dialogs using XML descriptors.
 
 ##### [180309]
   - **Yalt** module. Various fixes and improvements.
