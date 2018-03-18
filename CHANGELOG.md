@@ -1,5 +1,6 @@
 ##### [180318]
   - **Settings** module. Added the `hasKey(str)` method so one can check whether some key is actually declared (before activation.) Added a BACKGROUND text that should make this (great) module more intelligible ;-)
+  - Created a private `ELOG()` routine in `Root/errors` to make error logs more modular.
 
 ##### [180312]
   - Added the **Dom/Dialog** module in the `etc/` branch. Provides a simple API for creating and managing DOM dialogs using XML descriptors.
