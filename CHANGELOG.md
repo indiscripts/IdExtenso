@@ -1,3 +1,6 @@
+##### [180319]
+  - Added `Dialog.prototype.changeListKey()` from **Dom.Dialog**. Useful to dynamically update the `stringList` property of a widget. The routine tries to maintain a consistent item index if possible (that is, if the new list still contains the current string.)
+
 ##### [180318]
   - **Settings** module. Added the `hasKey(str)` method so one can check whether some key is actually declared (before activation.) Added a BACKGROUND text that should make this (great) module more intelligible ;-)
   - Created a private `ELOG()` routine in `Root/errors` to make error logs more modular.
