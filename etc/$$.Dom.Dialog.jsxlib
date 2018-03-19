@@ -8,14 +8,17 @@
 		Core:           NO
 		Kind:           Module (within $$.Dom.)
 		API:            =fromXML()
+		                => Dialog.prototype.getValueKey()
+		                => Dialog.prototype.setValueKey()
+		                => Dialog.prototype.changeListKey()
 		DOM-access:     YES
 		Todo:           Caching dialog instance(s) in non-persistent engine (?)
 		Created:        180311 (YYMMDD)
-		Modified:       180313 (YYMMDD)
+		Modified:       180319 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180313, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180319, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -270,6 +273,32 @@
 
 			return k && (t[k]=v);
 		},
+
+		CGLK : function changeListKey(/*str*/k,/*str|str[]*/a,  t,o,i,z,s)
+		//----------------------------------
+		// (Change-List-for-Key.) [ADD180319] This methods is automatically added
+		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// `a` :: list in the form "item1|item2...", or array of strings
+		// ---
+		// => undefined [KO]  |  -1|0|... [OK]
+		{
+			if( !(t=callee.µ['~'].GETW(this,k)) ) return;
+
+			o = t.properties;
+			if( !o.hasOwnProperty('stringList') ) return;
+
+			i = o.hasOwnProperty('selectedIndex') ? o.selectedIndex : -1;
+			k = 0 <= i && (o=o.stringList) && o[i];
+
+			a instanceof Array || (a=String(a).split('|'));
+			for( z=a.length ; z-- ; (a[z]=s=__(a[z])) && k===s && (i=z) );
+
+			t.stringList = a;
+			
+			0 <= i && (t.selectedIndex=i=Math.min(i,a.length));
+			
+			return i;
+		},
 		
 	})
 
@@ -315,7 +344,6 @@
 				
 				q[k] = v;
 			}
-			
 			return q;
 
 		}.setup({ Q:{}, TYPE:
@@ -400,7 +428,11 @@
 				h = host;
 				if( s=RE.test(wk)&&wx.attribute('caption') )
 				{
-					s = __( "%1:" , __(s.toString()) );
+					// [CHG180319] Make auto-colon (:) a bit smarter.
+					// ---
+					s = __(s.toString());
+					':' == s.charAt(-1+s.length) || (s=__("%1:",s));
+
 					h.hasOwnProperty('dialogRows') || (h=h.dialogColumns.add());
 					(h=h.dialogRows.add()).staticTexts.add({ staticLabel:s, minWidth:I.CAPW });
 				}
@@ -432,21 +464,25 @@
 
 	({
 
-		onEngine: function onEngine_(  I)
+		onEngine: function onEngine_(  I,o)
 		//----------------------------------
-		// Augment Dialog.prototype to support the methods
+		// Augment Dialog.prototype so it supports the methods
 		// getValueKey(str) and setValueKey(str,any).
+		// [ADD180319] + changeListKey.
 		{
 			I = callee.µ['~'];
+			o = Dialog.prototype;
 			
-			Dialog.prototype.getValueKey = I.GTVK;
-			Dialog.prototype.setValueKey = I.STVK;
+			o.getValueKey = I.GTVK;
+			o.setValueKey = I.STVK;
+			
+			o.changeListKey = I.CGLK;
 		},
 
 		fromXML: function fromXML_$XML$S_$Dialog$(/*xml|str*/x,  $$,I,dlg,s)
 		//----------------------------------
 		// Create a new Dialog object based on XML descriptor.
-		// The root element should be <Dialog> and supports `name` and `canCancel` attributes.
+		// The root element should be <Dialog>, it supports `name` and `canCancel` attributes.
 		// Children must be either regular DOM widget class names -- e.g <DialogColumn>,
 		// <BorderPanel>, <Dropdown>, <TextEditbox> etc -- or aliases defined in ~.WDGS
 		// like <DCOL>, <BPNL>, <DROP>, <TEBX> etc. Use attributes to specify properties.
@@ -473,7 +509,7 @@
 
 			if( 'xml' != typeof x ) $$.error(__("Invalid argument (%1). Should be XML.",typeof x),callee);
 			
-			+$$.trace && $$.trace(__("%1 > Creating a new Dialog from XML description %2.",callee.µ,$$.JSON(x)));
+			+$$.trace && $$.trace(__("%1 > Creating a new Dialog from XML description: %2.",callee.µ,$$.JSON(x)));
 			
 			dlg = app.dialogs.add({
 				canCancel: 'false' != x.attribute('canCancel').toString(),
