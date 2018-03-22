@@ -1,3 +1,6 @@
+##### [180322]
+  - Introducing **BasicScript** and its child  modules **Context**, **UserInterface**, and **Server**. Read the notice first! (Concrete examples coming soon.)
+
 ##### [180319]
   - Added `Dialog.prototype.changeListKey()` from **Dom.Dialog**. Useful to dynamically update the `stringList` property of a widget. The routine tries to maintain a consistent item index if possible (that is, if the new list still contains the current string.)
 
