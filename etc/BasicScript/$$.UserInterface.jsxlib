@@ -1,0 +1,136 @@
+/*******************************************************************************
+
+		Name:           UserInterface
+		Desc:           The abstract UI of a Basic Script.
+		Path:           /etc/BasicScript/$$.UserInterface.jsxlib
+		Require:        $$.BasicScript
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.BasicScript)
+		API:            ?beforeShow() ?onClose()
+		DOM-access:     YES
+		Todo:           ---
+		Created:        180307 (YYMMDD)
+		Modified:       180322 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.BasicScript ){ alert(__("%1 requires the %2 module.",'UserInterface','BasicScript')); exit(); }
+;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 180322))
+
+	[PRIVATE]
+	
+	({
+		S2DG : function(/*{ssKey=>prefix}*/o,/*settings*/ss,/*Dialog&*/dlg,  k,p,v)
+		//----------------------------------
+		// (Settings-to-Dialog-Keys.) Update Dialog keys (from ss.)
+		// => undefined
+		{
+			if( !(o.__count__) ) return;
+
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+
+				p = o[k]||'';                 // Special prefix, or empty.
+				v = ss[k];                    // Raw setting value.
+
+				'%'==p && (v*=100);
+
+				dlg.setValueKey( p+k, v );
+			}
+		},
+
+		DG2S : function(/*{ssKey=>prefix}*/o,/*Dialog*/dlg,/*settings&*/ss,  k,p,v)
+		//----------------------------------
+		// (Dialog-to-Settings-Keys.) Update settings (from dlg.)
+		// => undefined
+		{
+			if( !(o.__count__) ) return;
+
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+
+				p = o[k]||'';                 // Special prefix, or empty
+				v = dlg.getValueKey( p+k );   // Raw dialog value.
+				
+				'%'==p && (v/=100);
+
+				ss[k] = v;
+			}
+		},
+
+		_GO_: function(/*{ DXML:xml|false, SPEC:str|false, PRFX:'%', KEYS:{ss-Key=>prefix|''} }*/uiCache,/*int*/runMode,  $$,µ,dlg,ss,r)
+		//----------------------------------
+		// (Go.) Show the dialog (if any) with applied settings ; call the
+		// `beforeShow` and `onClose` hooks if available.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// ---
+		// => any [CONTINUE]  |  true [SKIP-SERVER]   |  false [STOP]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			µ = callee.µ;
+
+			// Check that the dialog exists.
+			// ---
+			(dlg=uiCache.SPEC) && ( (dlg=resolve(dlg)).isValid || (dlg=false) );
+			if( !dlg ) return;
+			
+			// ss -> dlg keys.
+			// ---
+			ss = $$.Settings();
+			this.S2DG(uiCache.KEYS, ss, dlg);
+
+			// `beforeShow` hook.
+			// ---
+			'function' == typeof µ.beforeShow && µ.beforeShow(dlg,ss,runMode);
+			
+			// Show the dialog.
+			// ( If not canceled, dlg -> ss keys. )
+			// ---
+			(r=dlg.show()) && this.DG2S(uiCache.KEYS, dlg, ss);
+			
+			// onClose hook?
+			// ---
+			return 'function' == typeof µ.onClose ?
+				µ.onClose(r,dlg,ss,runMode) :
+				r;
+		},
+	})
+
+	//==========================================================================
+	// HOOKS TO COME NEXT?
+	//==========================================================================
+	// From a distinct `jsxinc` (included later,) you may provide
+	// a [PUBLIC] cluster for implementing the below HOOKS.
+	//==========================================================================
+
+	// beforeShow : function beforeShow_$Dialog$_O_Ï_(/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
+	// ----------------------------------
+	// Would be called once settings have been automatically populated into
+	// the Dialog object through linked keys. Before showing the dialog, you may
+	// use this place to preprocess existing or additional params to be displayed.
+	// ---
+	// `runMode` represents the script run flag (signed integer.)
+	// ---
+	// => undefined
+	// {},
+
+	// onClose : function beforeShow_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
+	// ----------------------------------
+	// Would be called once the dialog is closed and its values have been
+	// automatically populated into Settings through linked keys. You may
+	// use this place to postprocess existing or additional settings to be treated.
+	// `ok` indicates wether the user has validated the dialog. *In most cases*
+	// `false==ok` should lead to stop the process (that is, return false.)
+	// You can also return true to skip the Server while allowing backup.
+	// ---
+	// `runMode` represents the script run flag (signed integer.)
+	// ---
+	// => any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
+	// {},
