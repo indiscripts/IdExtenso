@@ -1,5 +1,5 @@
 ##### [180322]
-  - Introducing **BasicScript** and its child  modules **Context**, **UserInterface**, and **Server**. Read the [notice](/indiscripts/IdExtenso/blob/master/etc/%24%24.BasicScript.jsxlib) first! (Concrete examples coming soon.)
+  - Introducing **BasicScript** and its child  modules **Context**, **UserInterface**, and **Server**. Read the [notice](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.BasicScript.jsxlib) first! (Concrete examples coming soon.)
 
 ##### [180319]
   - Added `Dialog.prototype.changeListKey()` from **Dom.Dialog**. Useful to dynamically update the `stringList` property of a widget. The routine tries to maintain a consistent item index if possible (that is, if the new list still contains the current string.)
