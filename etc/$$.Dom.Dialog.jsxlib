@@ -11,14 +11,15 @@
 		                => Dialog.prototype.getValueKey()
 		                => Dialog.prototype.setValueKey()
 		                => Dialog.prototype.changeListKey()
+		                => Dialog.prototype.changeUnitKey()
 		DOM-access:     YES
-		Todo:           Caching dialog instance(s) in non-persistent engine (?)
+		Todo:           ---
 		Created:        180311 (YYMMDD)
-		Modified:       180319 (YYMMDD)
+		Modified:       180323 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180319, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180323, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -278,7 +279,7 @@
 		//----------------------------------
 		// (Change-List-for-Key.) [ADD180319] This methods is automatically added
 		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
-		// `a` :: list in the form "item1|item2...", or array of strings
+		// `a` :: list in the form "item1|item2...", or array of strings.
 		// ---
 		// => undefined [KO]  |  -1|0|... [OK]
 		{
@@ -299,6 +300,29 @@
 			
 			return i;
 		},
+
+		CGUK : function changeUnitKey(/*str*/k,/*MeasurementUnit*/mu,  t,o,i,z,s)
+		//----------------------------------
+		// (Change-Unit-for-Key.) [ADD180323] This methods is automatically added
+		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// `mu` :: MeasurementUnit to be applied to the widget, supplied either
+		//         as a number (MU value), a MU key, or the Enumerator as such.
+		// E.g. <myDialog>.changeUnitKey('myUnitBox','AGATES')
+		// ---
+		// => undefined [KO]  |  mu [OK]
+		{
+			if( !(t=callee.µ['~'].GETW(this,k)) ) return;
+			
+			if( !(mu=$.global[callee.µ.__root__].isUnit(mu)) ) return;
+
+			o = t.properties;
+			if( !o.hasOwnProperty('editUnits') ) return;
+
+			t.editUnits = mu;
+			
+			return mu;
+		},
+
 		
 	})
 
@@ -468,7 +492,8 @@
 		//----------------------------------
 		// Augment Dialog.prototype so it supports the methods
 		// getValueKey(str) and setValueKey(str,any).
-		// [ADD180319] + changeListKey.
+		// [ADD180319] +changeListKey.
+		// [ADD180323] +changeUnitKey
 		{
 			I = callee.µ['~'];
 			o = Dialog.prototype;
@@ -477,6 +502,7 @@
 			o.setValueKey = I.STVK;
 			
 			o.changeListKey = I.CGLK;
+			o.changeUnitKey = I.CGUK;
 		},
 
 		fromXML: function fromXML_$XML$S_$Dialog$(/*xml|str*/x,  $$,I,dlg,s)
