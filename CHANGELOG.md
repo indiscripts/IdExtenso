@@ -1,3 +1,6 @@
+##### [180323]
+  - Added `$$.Env.isUnit(<any>)`, a little method that checks whether the passed argument refers to a `MeasurementUnits` number, key, or Enumerator, in whatever InDesign version. BTW, I made `isUnit` available straight in `$$` using `<fct>.copy('..')`.
+
 ##### [180322]
   - Introducing **BasicScript** and its child  modules **Context**, **UserInterface**, and **Server**. Read the [notice](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.BasicScript.jsxlib) first! (Concrete examples coming soon.)
 
