@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180322 (YYMMDD)
+		Modified:       180324 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 #include '$$.Settings.jsxlib'
 #include '$$.Dom.Dialog.jsxlib'
 
-;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180322, 'run'))
+;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180324, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -345,8 +345,21 @@
 
 		DIAL: function(  x,$$,xk,k,o,pfx,p)
 		//----------------------------------
-		// (Declare-Dialog.) Normalize and create the dialog (if set.)
-		// [REM] Called by `onLoad`. See also `init()`.
+		// (Declare-Dialog.) Normalize and build the dialog (if wanted.)
+		// 1. Creates a default title unless the XML provides a `name` attr.
+		// 2. Calls Dom.Dialog to get a Dialog instance ; saves its spec.
+		// 3. Keeps track of the dialog<->settings key mapping, allowing
+		//    a few key prefixes to get a special treatment:
+		//    ------------------------------------------------------------
+		//    `%MyKey` (XML) is mapped to `MyKey` (Settings) w/ %-prefix
+		//    Useful to perform special op. regarding percentage boxes.
+		//    ------------------------------------------------------------
+		//    `µMyKey` (XML) is mapped to `MyKey` (Settings) w/ µ-prefix
+		//    Useful to perform special op. regarding unit boxes.
+		//    ------------------------------------------------------------
+		//    More detail in UserInterface.jsxlib.
+		// ---
+		// [REM] This method is called by `onLoad`. See also `init()`.
 		// => undefined
 		{
 			if( !(x=callee.DXML) ) return;
@@ -371,7 +384,7 @@
 				$$.Settings.hasKey(k) && (o[k]=p);
 			}
 		}
-		.setup({ DXML:false, SPEC:false, PRFX:'%', KEYS:{/*ssKey=>prefix|''*/} }),
+		.setup({ DXML:false, SPEC:false, PRFX:'%µ', KEYS:{/*ssKey=>prefix|''*/} }),
 
 	})
 
@@ -470,7 +483,7 @@
 			}
 		},
 
-		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r,s)
+		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r)
 		//----------------------------------
 		// Actual entry point of the script.
 		{
@@ -488,18 +501,31 @@
 
 				// Go to the context (activate settings.)
 				// ---
+				$$.trace(__("%1 > Starting up the Context in runMode %2...",µ,runMode));
 				r = µ.Context['~']._GO_(runMode);
+				$$.trace(__("%1 > Returned value: <%2>.",µ,r));
 				
 				// Go to the UI.
 				// ---
-				false===r || (true===r&&(r=1)) || (r=µ.UserInterface['~']._GO_(I.DIAL,runMode));
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the UserInterface...",µ)),
+					(r=µ.UserInterface['~']._GO_(I.DIAL,runMode)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
 
 				// Go to the Server.
 				// ---
-				false===r || (true===r&&(r=1)) || (r=µ.Server['~']._GO_(runMode));
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the Server...",µ)),
+					(r=µ.Server['~']._GO_(runMode)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
 
 				// Quit the context (backup if non-FALSE.)
 				// ---
+				$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r));
 				µ.Context['~']._QT_(false!==r,runMode);
 			}
 			catch(e)
