@@ -7,11 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =run() init() onEngine() onLoad() onUnload()
+		API:            =run() init() changeLocaleTo()
+		                onEngine() onLoad() onUnload()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180324 (YYMMDD)
+		Modified:       180325 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +20,7 @@
 #include '$$.Settings.jsxlib'
 #include '$$.Dom.Dialog.jsxlib'
 
-;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180324, 'run'))
+;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180325, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -480,6 +481,27 @@
 				+$$.trace && $$.trace(__("%1 > Destroying %2 due to non-persistent engine.",callee.µ,s));
 				 t.destroy();
 				 return;
+			}
+		},
+
+		changeLocaleTo: function changeLocaleTo_i$locale$_B(/*uint|LocaleID=auto*/iLocale,  I,$$,t)
+		// ---------------------------------
+		// [ADD180325] Re-activate Yalt to a different locale, then make
+		// sure the Dialog is accordingly rebuilt. This method should be
+		// called before Dialog values be populated, typically in an onLoad
+		// handler or at onActive stage (Context.)
+		// ---
+		// E.g: µ.changeLocaleTo(Locale.GERMAN_LOCALE);
+		{
+			I = callee.µ['~'];
+			$$ = $.global[callee.µ.__root__];
+			
+			I.YALT && $$.Yalt && $$.Yalt.activate(iLocale);
+			if( (t=I.DIAL.SPEC) && (t=resolve(t)).isValid )
+			{
+				t.destroy();
+				delete I.DIAL.SPEC;
+				I.DIAL();
 			}
 		},
 
