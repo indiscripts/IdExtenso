@@ -1,3 +1,6 @@
+##### [180325]
+  - **BasicScript** module. Added `changeLocaleTo()` in the public API. Allows to reactivate **Yalt** to a different locale, making sure the UI is accordingly rebuilt.
+
 ##### [180323]
   - Added `Dialog.prototype.changeUnitKey()` from **Dom.Dialog**. Useful to dynamically update the `editUnits` property of a measurementUnits box, for example, if you want your dialog units to match those in `document.viewPreferences`.
   - Added `$$.Env.isUnit(<any>)`, a little method that checks whether the passed argument refers to a `MeasurementUnits` number, key, or Enumerator, in whatever InDesign version. BTW, I made `isUnit` available straight in `$$` using `<fct>.copy('..')`.
