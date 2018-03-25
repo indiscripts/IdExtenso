@@ -37,6 +37,17 @@ _Demonstrates:_
 * Some nice options behind it (verbose vs. compact format…)
 * `$$.File.temp()` to output the result in a temp file (and open it.)
 
+##### [`BasicScriptDemo.jsx`](BasicScriptDemo.jsx)
+
+![BasicScriptDemo screenshot](BasicScriptDemo.png)
+
+Manage a complete InDesign script (*PathNodes*) that creates custom circles at each path point of target item(s).   
+_Demonstrates:_
+   
+* Usage of **BasicScript** module (settings, localization, UI).
+* Providing a **Yalt** package in four languages (`EN` + `FR` `DE` `ES`.)
+* **Settings** keys with various lifespans (`RESET`, `SESSION`, `APP`.)
+
 ##### [`EnvSummary.jsx`](EnvSummary.jsx) vs. [`EnvSummary.bin.jsx`](EnvSummary.bin.jsx)
 
 Report scripting context from the Env module.   
