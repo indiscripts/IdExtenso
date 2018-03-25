@@ -27,17 +27,17 @@
 			// ---
 			'RESET' :
 			{
-				canRunSel:  0,     // whether the sel is OK.
+				canRunSel:  0,       // whether the sel is OK.
 			},
 			'SESSION': // Session-persistent settings.
 			{
-				scope:      0,     // 0:selection ; 1:spread
-				autoRunSel: false, // whether the script autoruns on sel.
+				scope:      0,       // 0:selection ; 1:spread
+				autoRunSel: false,   // whether the script autoruns on sel.
 			},
 			'APP':     // App-persistent settings.
 			{
-				radius:     5,     // radius (in pt)
-				stroke:     0,     // stroke weight (in pt)
+				radius:     5,       // radius (in pt)
+				stroke:     0,       // stroke weight (in pt)
 			}
 		}
 	,
