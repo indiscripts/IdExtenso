@@ -69,7 +69,9 @@ _Demonstrates:_
 
 ##### [`InstantDialog.jsx`](InstantDialog.jsx)
 
-InDesign DOM dialog fast, easy, and with automatic localization (see [screenshot](InstantDialog.png)).   
+![InstantDialog screenshot](InstantDialog.png)
+
+InDesign DOM dialog fast, easy, and with automatic localization.   
 _Demonstrates:_
    
 * Usage of `$$.Dom.Dialog.fromXML()`.
