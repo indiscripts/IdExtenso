@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       180309 (YYMMDD)
+		Modified:       180326 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 180309, 'load'))
+;eval(__(MODULE, '$.global', $$, 180326, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -367,6 +367,7 @@
 		// [REM] Unloading $$ is highly recommended when a session-persistent
 		// program is closing, as this allows each included module to update
 		// dynamic data when the program re-runs.
+		// [FIX180326] Helps InDesign to go back to life!
 		// => 1 (unload OK) ; 0 (noop)
 		{
 			I=($$=callee.µ)['~'];
@@ -392,12 +393,23 @@
 			// ---
 			(+$$.trace) && $$.trace(__( "%1 > IdExtenso is now unloaded. (Unloading time: %2ms.)", callee.µ, Date.now() - ts));
 
+			// [FIX180326] For very obscure reasons, the below code seems
+			// to prevent CS5+ crashes on doc closing event!
+			// ---
+			app.properties.activeDocument && app.activeDocument.getElements();
+
 			// Automatic Log.show (if log level != 0.)
 			// ---
 			if( $$.Log() )
 			{
 				$$.Log.mute();
 				$$.Log.show();
+			}
+			else
+			{
+				// [FIX180326] Depending on whether the client code did
+				// use modal SUI dialog, this helps InDesign wake up!
+				app.activate();
 			}
 			
 			// Unset the __load__ flag and return 1.
