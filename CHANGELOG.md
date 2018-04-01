@@ -1,3 +1,6 @@
+##### [180402]
+  - **Env** now includes `Env/$$.screen.jsxinc`, a snippet that collects data relative to the current display config (`$.screens`, ScriptUI workspace, active window bounds (if available) and additional information from `app.generalPreferences` (`mainMonitorPpi` etc.) The main goal here is to get more control over issues that involve screen coordinates and HiDpi (4K, Retina.) `$$.Env.summary()` now returns these extra infos.
+
 ##### [180325]
   - **BasicScript** module. Added `changeLocaleTo()` in the public API. Allows to reactivate **Yalt** to a different locale, making sure the UI is accordingly rebuilt.
 
