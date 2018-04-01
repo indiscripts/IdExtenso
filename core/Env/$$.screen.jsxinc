@@ -1,0 +1,178 @@
+/*******************************************************************************
+
+		Name:           Screen
+		Desc:           Screen & display information.
+		Path:           /core/Env/$$.screen.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            centerWindow() -> $$
+		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
+		Todo:           ---
+		Created:        180401 (YYMMDD)
+		Modified:       180402 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	SCREEN COORDINATES.
+
+	The origin of the 'Screen Coordinate Space' is the top-left corner of the
+	*primary* screen. The 'primary' screen usually owns the system taskbar.
+	This is not necessarily the screen that contains InDesign's main window
+	on Win platforms.
+
+	1. The ExtendScript property `$.screens` returns an array of
+	   { left:L, top:T, right:R, bottom:B, primary:bool } objects describing
+	   the screen regions in screen coordinates. E.g:
+
+	      $.screens[0]:
+	      { left:0, top:0, right:1680, bottom:1020, primary:true }
+
+	      $.screens[1]:
+	      { left:1680, top:-30, right:3600, bottom:1050, primary:false }
+
+	   Note that the bottom edge of the primary screen is located at
+	   Y=1020 (instead of 1050) because the taskbar is 30 pixels height in
+	   the above configuration.
+
+	2. `ScriptUI.workspace.bounds` is a static bounds structure purposed to describe
+	    the entire viewport region that ScriptUI can address. Since multiple screens
+	    are supported, the coordinate space of that region may be non-trivial. E.g,
+
+	              { x:0, y:-29, width:3600, height:1079,
+	                left:0, right:3600, top:-29, bottom:1050 }
+
+	    represents a dual-display configuration based on a 1680x1050 primary screen
+	    and a 1920x1080 secondary screen. The resulting workspace is as follows:
+
+	         0                          1680                           3600
+	    -29  +----------------------------+------------------------------+
+	         | /////// DEAD ZONE //////// |                              |
+	      0  +----------------------------+                              |
+	         |                            |                              |
+	         |                            |          SCREEN #2           |
+	         |         SCREEN #1          |          1920x1080           |
+	         |         1680x1050          |                              |
+	         |                            |                              |
+	   1050  +============================+------------------------------+
+
+	   The top-left corner of the primary screen (i.e [0,0] in screen coords)
+	   does not necessarily coincide with the top-left corner of ScriptUI's
+	   workspace--located at (0,-29) in the figure.
+
+	   The system taskbar is pictured `+=======+` in the figure.
+
+
+	MONITOR INFORMATION.
+
+	[RES] http://thatmichael.com/2014/02/how-to-change-indesigns-default-screen-resolution/
+	[RES] https://forums.adobe.com/thread/744237
+
+	The set `app.generalPreferences` provides useful display parameters.
+
+	      PROPERTY                   FROM  TYPE     DESCRIPTION
+	      ==========================================================================
+	      applicationBarShown        CS4   BOOL(RO) Whether application bar is shown.
+	                                                True in Win.
+	      --------------------------------------------------------------------------
+	      useApplicationFrame        CS4   BOOL(RO) Whether the app lives in a frame.
+	                                                True in Win.
+	      --------------------------------------------------------------------------
+	      mainMonitorPpi             CS6   UINT(RO) Value of the system reported main
+	                                                monitor resolution, in ppi. E.g 96.
+	      --------------------------------------------------------------------------
+	      customMonitorPpi           CS6   UINT     When using a custom monitor resolution,
+	                                                value of that resolution in ppi.
+	                                                Application-persistent.
+	      --------------------------------------------------------------------------
+	      useCustomMonitorResolution CS6   BOOL     Enable the use of a custom monitor
+	                                                resolution in ppi as opposed to
+	                                                querying the system settings.
+	                                                Application-persistent.
+	      --------------------------------------------------------------------------
+
+	About Mac OS application frame (app.generalPreferences.useApplicationFrame)
+	see  https://helpx.adobe.com/creative-suite/kb/
+	     troubleshoot-application-frame-document-window.html
+
+	*/
+
+	[PRIVATE]
+	
+	({
+
+		SCRN : function(/*?Window*/w,  x,y,q,a,i,t)
+		//----------------------------------
+		// [ADD180401] Backup screen and display info at loading stage.
+		{
+			q = callee.Q;
+			
+			if( w && (w=w.properties.bounds) )
+			{
+				x = (w[1]+w[3])/2;
+				y = (w[0]+w[2])/2;
+			}
+			else
+			{
+				x = -1/0;
+				y = -1/0;
+			}
+
+			delete q.ACTV;
+			for( a=$.screens,i=q.length=a.length ; i-- ; )
+			{
+				t = a[i];
+				q[i] = [t.top,t.left,t.bottom,t.right];
+				q[i].center = [(t.left+t.right)>>1, (t.top+t.bottom)>>1];
+				t.primary && (q.PRIM=i);
+				t.left <= x && x <= t.right && t.top <= y && y <= t.bottom && (q.ACTV=i);
+			}
+			
+			t = ScriptUI.workspace.bounds;
+			q.SUIB = [t.top,t.left,t.bottom,t.right];
+
+			t = app.generalPreferences.properties;
+			q.APP_BAR_SHOWN = +(t.applicationBarShown);
+			q.USE_APP_FRAME = +(t.useApplicationFrame);
+			
+			// CS6+
+			q.MAIN_PPI = t.mainMonitorPpi || false;
+			q.CUSTOM_PPI = t.customMonitorPpi || false;
+			q.USE_CUSTOM = t.useCustomMonitorResolution || false;
+			q.CURRENT_PPI = q.USE_CUSTOM ? q.CUSTOM_PPI : q.MAIN_PPI;
+		}
+		.setup({ Q:[] })
+		.self(µ['~'],app.properties.activeWindow),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		centerWindow: function centerWindow_$SUIWindow$_$SUIWindow$(/*ScriptUIWindow*/w,  q,xy,wh)
+		//----------------------------------
+		// => w
+		{
+			q = callee.µ['~'].SCRN.Q;
+			xy = q[q.hasOwnProperty('ACTV')?q.ACTV:q.PRIM].center;
+
+			w.layout.layout(1);
+			wh = w.size;
+
+			w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
+
+			return w;
+		}
+		.copy('..'),
+	})
