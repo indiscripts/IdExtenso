@@ -1,3 +1,7 @@
+##### [180403]
+  - `core/Ext/patterns`: added `RegExp.SPCE` for capturing controls and InDesign specific space caracters.
+  - `core/Ext/string`: added `String.prototype.stripSpaces()` for removing outer and inner spaces from a string. Also, `U+205F` (MEDIUM MATHEMATICAL SPACE) is now seen by the `trim` methods.
+
 ##### [180402]
   - **Env** now includes `Env/$$.screen.jsxinc`, a snippet that collects data relative to the current display config (`$.screens`, ScriptUI workspace, active window bounds (if available) and additional information from `app.generalPreferences` (`mainMonitorPpi` etc.) The main goal here is to get more control over issues that involve screen coordinates and HiDpi (4K, Retina.) `$$.Env.summary()` now returns these extra infos.
 
