@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       171205 (YYMMDD)
+		Modified:       180403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -322,9 +322,11 @@
 	// --- /adobe-flag-hexa/
 	RegExp.ADBE = /^(?:3[0-9]|[46][1-9A-F]|[57][0-9A]){3}(?:3[0-9]|[46][1-9A-F]|[57][0-9A]|20)$/g;
 	// --- /over-0x7F/
-	RegExp.OV7F = /[\x80-\uFFFF]/g;
+	RegExp.OV7F = /[\u0080-\uFFFF]/g;
 	// --- /extendscript-overloadable-operator/ [CHG171204]
 	RegExp.EXOP = /^(?:[*+~%&\/\-\|\^]|<[=<]?|>>>?|===?)$/g;
+	// --- /controls-and-indesign-spaces/ [ADD180403]
+	RegExp.SPCE = /[\u0000-\u0020\u00A0\u2000-\u200C\u2028\u2029\u202F\u205F\u3000]/g;
 
 	// Escaping and parsing RegExps. [ADD171205]
 	// [REM] CS5 requires escaping `|` in regex classes too.
