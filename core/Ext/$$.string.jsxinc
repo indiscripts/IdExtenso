@@ -9,11 +9,11 @@
 		Kind:           Part of /Ext
 		API:            toSource()
 		                asPath() toPath()
-		                trim() ltrim() rtrim() charSet()
+		                trim() ltrim() rtrim() stripSpaces() charSet()
 		DOM-access:     ---
 		Todo:           Performance testing; String.lorem()
 		Created:        150510 (YYMMDD)
-		Modified:       171205 (YYMMDD)
+		Modified:       180403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -395,20 +395,21 @@
 	String.prototype.trim = function trim(  i,j,cc)
 	//----------------------------------
 	// Left- and right-trim the string.
+	// [CHG180403] Added U+205F MEDIUM MATHEMATICAL SPACE 
 	// <anyspace>*XXX<anyspace>*  =>  XXX.
 	{
 		for(
 			j=this.length, i=-1 ;
 			++i < j && (
 				0x20 >= (cc=this.charCodeAt(i)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
-				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+				0x2028 == cc || 0x2029 == cc || 0x202F == cc || 0x205F == cc || 0x3000 == cc )
 			;
 		);
 
 		while(
 			j-- && (
 				0x20 >= (cc=this.charCodeAt(j)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
-				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+				0x2028 == cc || 0x2029 == cc || 0x202F == cc || 0x205F == cc || 0x3000 == cc )
 		);
 
 		
@@ -418,13 +419,14 @@
 	String.prototype.ltrim = function ltrim(  i,j,cc)
 	//----------------------------------
 	// Left-trim the string.
+	// [CHG180403] Added U+205F MEDIUM MATHEMATICAL SPACE 
 	// <anyspace>*XXX  =>  XXX.
 	{
 		for(
 			j=this.length, i=-1 ;
 			++i < j && (
 				0x20 >= (cc=this.charCodeAt(i)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
-				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+				0x2028 == cc || 0x2029 == cc || 0x202F == cc || 0x205F == cc || 0x3000 == cc )
 			;
 		);
 
@@ -434,17 +436,27 @@
 	String.prototype.rtrim = function rtrim(  j,cc)
 	//----------------------------------
 	// Right-trim the string.
+	// [CHG180403] Added U+205F MEDIUM MATHEMATICAL SPACE 
 	// XXX<anyspace>*  =>  XXX.
 	{
 		for(
 			j=this.length ;
 			j-- && (
 				0x20 >= (cc=this.charCodeAt(j)) || 0xA0==cc || (0x2000 <= cc && 0x200C >= cc) ||
-				0x2028 == cc || 0x2029 == cc || 0x3000 == cc || 0x202F == cc )
+				0x2028 == cc || 0x2029 == cc || 0x202F == cc || 0x205F == cc || 0x3000 == cc )
 			;
 		);
 
 		return j < 0 ? '' : this.substring(0, 1+j);
+	};
+
+	String.prototype.stripSpaces = function stripSpaces()
+	//----------------------------------
+	// [ADD180403]
+	// Strip spaces from the string.
+	// <anyspace>*XXX<anyspace>*YYY<anyspace>* =>  XXXYYY
+	{
+		return this.replace(RegExp.SPCE,'');
 	};
 
 	//==========================================================================
