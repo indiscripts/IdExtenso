@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       180326 (YYMMDD)
+		Modified:       180406 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 180326, 'load'))
+;eval(__(MODULE, '$.global', $$, 180406, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -360,7 +360,7 @@
 			return callee.µ['~'].HRTM;
 		},
 
-		unload: function unload_B(  $$,I,ts)
+		unload: function unload_b_B(/*bool=0*/KEEP_DORMANT  ,$$,I,ts)
 		//----------------------------------
 		// Unload framework's data, calling modules' onUnload handlers in reversed
 		// order, and resetting dynamic data to their default values.
@@ -368,6 +368,13 @@
 		// program is closing, as this allows each included module to update
 		// dynamic data when the program re-runs.
 		// [FIX180326] Helps InDesign to go back to life!
+		// ---
+		// [ADD180406] Added the argument `KEEP_DORMANT` (false by default.) When
+		// explicitly turned on, the unload method does not force the app to
+		// (re)activate, which is useful when the client script finally runs
+		// an external process -- e.g myFile.execute() -- which needs to keep
+		// the focus.
+		// ---
 		// => 1 (unload OK) ; 0 (noop)
 		{
 			I=($$=callee.µ)['~'];
@@ -378,7 +385,7 @@
 
 			// Conditional trace, timestamp.
 			// ---
-			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is unloading...", callee.µ)));
+			(+$$.trace) && ((ts=Date.now()),$$.trace(__( "%1 > IdExtenso is unloading (KEEP_DORMANT=%2)...", callee.µ,!!KEEP_DORMANT)));
 
 			// Unload modules (clear dynamic data.)
 			// ---
@@ -409,7 +416,8 @@
 			{
 				// [FIX180326] Depending on whether the client code did
 				// use modal SUI dialog, this helps InDesign wake up!
-				app.activate();
+				// [CHG180406] KEEP_DORMANT prevents app.activate().
+				KEEP_DORMANT || app.activate();
 			}
 			
 			// Unset the __load__ flag and return 1.
