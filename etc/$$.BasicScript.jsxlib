@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180325 (YYMMDD)
+		Modified:       180406 (YYMMDD)
 
 *******************************************************************************/
 
@@ -20,7 +20,7 @@
 #include '$$.Settings.jsxlib'
 #include '$$.Dom.Dialog.jsxlib'
 
-;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180325, 'run'))
+;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 180406, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -516,6 +516,7 @@
 			runMode || (runMode=0);
 
 			$$.load(runMode);
+			r = void 0;
 			try
 			{
 				$$.idVersion(I.DECL.IDRQ)
@@ -548,13 +549,17 @@
 				// Quit the context (backup if non-FALSE.)
 				// ---
 				$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r));
-				µ.Context['~']._QT_(false!==r,runMode);
+				r = µ.Context['~']._QT_(false!==r,runMode);
 			}
 			catch(e)
 			{
 				$$.receiveError(e);
 			}
-			$$.unload();
+
+			// [CHG180406] The returned value from Context._QT_() is used
+			// as the KEEP_DORMANT arg of $$.unload.
+			// ---
+			$$.unload(r);
 		},
 
 	})
