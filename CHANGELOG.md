@@ -1,3 +1,6 @@
+##### [180406]
+  - `$$.unload()` (**Root** module) now supports an argument named `KEEP_DORMANT`, falsy by default. The client code can use it to prevent **IdExtenso** from waking up InDesign when the framework is unloading. The main usage of this flag is to keep active an external process launched by your script at the very end of its own action, for example `myFile.execute()`, etc.
+
 ##### [180403]
   - `core/Ext/patterns`: added `RegExp.SPCE` for capturing controls and InDesign specific space caracters.
   - `core/Ext/string`: added `String.prototype.stripSpaces()` for removing outer and inner spaces from a string. Also, `U+205F` (MEDIUM MATHEMATICAL SPACE) is now seen by the `trim` methods.
