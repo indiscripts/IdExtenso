@@ -1,5 +1,6 @@
-##### [180406]
+## 1.80406
   - `$$.unload()` (**Root** module) now supports an argument named `KEEP_DORMANT`, falsy by default. The client code can use it to prevent **IdExtenso** from waking up InDesign when the framework is unloading. The main usage of this flag is to keep active an external process launched by your script at the very end of its own action, for example `myFile.execute()`, etc.
+  - The **BasicScript** module (`etc/$$.BasicScript.jsxlib`) takes into account the previous point. It now conveys the returned value from `Context.onQuit` (hook) to `$$.unload()`.
 
 ##### [180403]
   - `core/Ext/patterns`: added `RegExp.SPCE` for capturing controls and InDesign specific space caracters.
