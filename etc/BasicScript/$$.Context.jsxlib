@@ -12,12 +12,12 @@
 		DOM-access:     YES [app.properties + Settings' API]
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180322 (YYMMDD)
+		Modified:       180406 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.BasicScript ){ alert(__("%1 requires the %2 module.",'Context','BasicScript')); exit(); }
-;$$.BasicScript.hasOwnProperty('Context') || eval(__(MODULE, $$.BasicScript.toSource(), 'Context', 180322))
+;$$.BasicScript.hasOwnProperty('Context') || eval(__(MODULE, $$.BasicScript.toSource(), 'Context', 180406))
 
 	[PRIVATE]
 	
@@ -63,8 +63,9 @@
 		// module in a way that waives the usual rules. The reason is, we
 		// want to keep it as secure as possible while opening the PUBLIC
 		// area to the client code.
+		// [CHG180406] Returned value from onQuit, if any.
 		// ---
-		// => undefined
+		// => any
 		{
 			µ = callee.µ;
 			$$ = $.global[callee.µ.__root__];
@@ -79,7 +80,9 @@
 				$$.Settings.backup(host);
 			}
 
-			'function' == typeof µ.onQuit && µ.onQuit(bk,$$.Settings(),runMode);
+			return 'function' == typeof µ.onQuit ?
+				µ.onQuit(bk,$$.Settings(),runMode) :
+				void 0;
 		},
 
 	})
@@ -140,13 +143,15 @@
 	// => DOM object | NULL | undefined
 	// {},
 		
-	// onQuit: function onQuit_B_Ï_(/*bool*/bk,/*settings*/ss,/*int*/runMode)
+	// onQuit: function onQuit_B_Ï_b(/*bool*/bk,/*settings*/ss,/*int*/runMode)
 	// ----------------------------------
 	// Would be called at the very end of the process, when
 	// the Context quits. Can be used to display a final prompt, etc.
+	// [CHG180406] The returned value is passed in to $$.unload(), which
+	// allows to set the KEEP_DORMANT flag. (See $$.Root.jsxlib.)
 	// ---
 	// `bk` :: whether the Backup operation has been performed.
 	// `runMode` represents the script run flag (signed integer.)
 	// ---
-	// => undefined
+	// => undefined [NOOP]  |  1 [KEEP_DORMANT_UNLOAD]
 	// {},
