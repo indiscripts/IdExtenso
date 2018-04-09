@@ -9,11 +9,11 @@
 		Kind:           Part of /Ext
 		API:            toSource() toHexa() toAdbe() isAdbe()
 		        static: EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
-		                isInteger() isSafeInteger()
+		                isInteger() isSafeInteger() flatten()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180225 (YYMMDD)
+		Modified:       180409 (YYMMDD)
 
 *******************************************************************************/
 
@@ -185,12 +185,106 @@
 		 return 'number' == typeof x && 0===(x%1) && 2 == (1+x)-(-1+x);
 	});
 
+
+	//==========================================================================
+	// [180409] Number.flatten()
+	//==========================================================================
+
+	Number.flatten = function(/*num|str*/x,  sgn,s,p,e,n)
+	//----------------------------------
+	// Transform the exponential representation of a number (#e#)
+	// into a decimal representation. The argument can be either
+	// a Number (e.g 1.23e-16) or a string (e.g "123.45e8").
+	// [REM] This method is useful when you need to parse an
+	// exponential representation that results from automatic
+	// Number.toString() formatting. It can also interpret `#e#`
+	// strings that represent out-of-range Numbers, e.g "12e-30".
+	// ---
+	// Examples:
+	//   "1e2"     => "100"      ;  "-1e-2"    => "-0.01"
+	//   ".12e3"   => "120"      ;  "-123e-5"  => "-0.00123"
+	//   "12.34e5" => "1234000"  ;  "12.34e-5" => "0.0001234"
+	//   ------------------------------------------------------
+	//   "0.000012345e15" => "12345000000"
+	//   "12.345678e-15"  => "0.000000000000012345678"
+	// 
+	// If the argument is a Number that doesn't require exponential
+	// representation, or a String that doesn't provide an exponential
+	// representation, then Number(x).toString() is returned.
+	// ---
+	// Examples:
+	//   0        => "0"         ;  -1    => "-1"
+	//   "-123"   => "-123"      ;  0.123 => "0.123"
+	//   "-.123"  => "-0.123"    ; "foo"  => "NaN"
+	//   NaN      => "NaN"       ;  "e2"  => "NaN"
+	//   Infinity => "Infinity"  ; "-Infinity" => "-Infinity"
+	// ---
+	// => str
+	{
+		if( 'number' == typeof x )
+		{
+			sgn = 0 > x ? '-' : '';
+			s = String(sgn ? -x : x);
+		}
+		else
+		{
+			s = String(x).trim();
+			'-' == (sgn=s.charAt(0)) ? (s=s.substr(1).ltrim()) : (sgn='');
+			if( isNaN(x=Number(sgn+s)) ) return String(x);
+		}
+
+		if( -1 == (p=s.indexOf('e')) ) return String(x);
+
+		e = parseInt(s.substr(1+p),10);
+		if( isNaN(e) || 0===p ) return String(Number.NaN);
+		
+		// s :: ###e###
+		// ---
+		s = s.substr(0,p).rtrim();
+		while( '0'==s.charAt(0) ) s=s.substr(1);           // 000abc -> abc
+		if( !(n=s.length) ) return '0';
+
+		if( 0 <= (p=s.indexOf('.')) )                      // p may be zero index
+		{
+			// n > p >= 0
+			// ---
+			while( '0'==s.charAt(--n) ) s=s.substr(0,n);   // abc.xyz000 -> abc.xyz
+			if( !n ) return '0';
+			s = s.substr(0,p) + s.substr(1+p);             // abc.xyz -> abcxyz
+			e += p;
+		}
+		else
+		{
+			e += n;
+		}
+
+		if( 0 >= e )
+		{
+			return sgn + '0.' + (e ? Array(1-e).join('0') : '') + s;
+		}
+
+		if( n <= e )
+		{
+			s += (n < e ? Array(1+e-n).join('0') : '');
+			while( '0'==s.charAt(0) ) s=s.substr(1);
+		}
+		else
+		{
+			s = s.substr(0,e) + '.' + s.substr(e);
+			while( '0'==s.charAt(0) && '.' != s.charAt(1) ) s=s.substr(1);
+		}
+
+		return sgn + s;
+	};
+
 	//==========================================================================
 	// Number.prototype.toSource()
 	//==========================================================================
 
 	Number.prototype.toSource = function toSource()
 	//----------------------------------
+	// [ECMA] If x is any Number value other than -0, then ToNumber(ToString(x))
+	// is exactly the same Number value as x.
 	// [TODO] May be improved to get shorter strings ("1e5" etc)
 	// => str
 	{
@@ -266,3 +360,4 @@
 			RegExp.ADBE.test(x)
 			);
 	};
+
