@@ -1,3 +1,6 @@
+##### [180409]
+  - `core/Ext/number`: added `Number.flatten` for converting the exponential representation of a Number into its decimal form. E.g: `Number.flatten(1.234e-8) -> "0.00000001234"`. Also supports string-to-string conversions, e.g: `Number.flatten("12.345678e-15") -> "0.000000000000012345678"`.
+
 ## 1.80406
   - `$$.unload()` (**Root** module) now supports an argument named `KEEP_DORMANT`, falsy by default. The client code can use it to prevent **IdExtenso** from waking up InDesign when the framework is unloading. The main usage of this flag is to keep active an external process launched by your script at the very end of its own procedure, for example `myFile.execute()`, etc.
   - The **BasicScript** module (`etc/$$.BasicScript.jsxlib`) takes into account the previous point. It now conveys the returned value from `Context.onQuit` (hook) to `$$.unload()`.
