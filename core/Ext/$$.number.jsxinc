@@ -8,12 +8,13 @@
 		Core:           YES
 		Kind:           Part of /Ext
 		API:            toSource() toHexa() toAdbe() isAdbe()
+		                toDecimal()
 		        static: EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
 		                isInteger() isSafeInteger() flatten()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180409 (YYMMDD)
+		Modified:       180411 (YYMMDD)
 
 *******************************************************************************/
 
@@ -247,10 +248,11 @@
 		if( 0 <= (p=s.indexOf('.')) )                      // p may be zero index
 		{
 			// n > p >= 0
+			// [CHG180410] A bit faster.
 			// ---
-			while( '0'==s.charAt(--n) ) s=s.substr(0,n);   // abc.xyz000 -> abc.xyz
+			while( '0'==s.charAt(--n) );
 			if( !n ) return '0';
-			s = s.substr(0,p) + s.substr(1+p);             // abc.xyz -> abcxyz
+			s = s.substr(0,p) + s.substring(1+p,1+n);      // abc.xyz000 -> abcxyz
 			e += p;
 		}
 		else
@@ -361,3 +363,161 @@
 			);
 	};
 
+	//==========================================================================
+	// [ADD180410] Number.prototype.toDecimal()
+	//==========================================================================
+
+	/*
+
+	The main problem with `toFixed` is rounding errors:
+
+	      (1.265).toFixed(2) => 1.26 [KO]
+	while
+	      (1.235).toFixed(2) => 1.24 [OK]
+
+	[ECMA] "Let n be an integer for which the exact mathematical value of
+	`n/(10^digits)–x` is as close to zero as possible. If there are two such n, pick
+	the *larger* n." In short, ECMA expects n=Math.round(x*10^digits). However,
+	internal rounding error may occur at this step. Indeed, let x=1.265 and
+	digits=2. Let Y=x*(10^digits) -- which should be 126.5. Let UP=Math.ceil(Y)=127
+	and DOWN=Math.floor(Y)=126. Due to IEEE754 encoding, we actually get:
+
+	      UP - Y      =>  0.50000000000001
+	      Y - DOWN    =>  0.49999999999999
+
+	So DOWN is considered closer than UP (although theoretically equal) and `floor`
+	is then preferred over `ceil`, which brings
+
+	      (1.265).toFixed(2) =>  1.26  [should be 1.27]
+	
+	The `toDecimal` method provides a fix based on parsing the string representation
+	of the considered number.
+
+	*/
+
+	Number.prototype.toDecimal = function toDecimal(/*int(-20..+20)=0*/digits,  fx,x,sgn,s,p,q,n)
+	//----------------------------------
+	// Variant of `toFixed` that fixes rounding issues *as accurately as possible*.
+	// Return a String representation of this Number in decimal notation (#.#).
+	// E.g, (1.265).toDecimal(2) -> "1.27" (while `toFixed` would output "1.26".)
+	// (a) If `digits > 0`, use a fixed-point notation with EXACTLY
+	//     `digits` digits after the decimal point.
+	//     E.g  (1.23).toDecimal(3)    -> "1.230"    // padding
+	//          (1.2345).toDecimal(3)  -> "1.235"    // rounding
+	// (b) If `digits < 0`, use AT MOST `|digits|` digits,
+	//     removing non-signifiant zero(es).
+	//     E.g  (1.23).toDecimal(-3)   -> "1.23"     // removing ending zeroes
+	//          (1.2345).toDecimal(-3) -> "1.235"    // rounding
+	// (c) If `digits==0` (or undefined), return the String
+	//     representation of the rounded value.
+	// ---
+	// Calling this function with |this| >= 10^21 or |digits| > 20 is considered
+	// invalid, although we then use `toFixed` as a fallback routine.
+	// ---
+	// Examples:
+	//         (1.265).toDecimal(2)    => "1.27"
+	//         (325.3).toDecimal(2)    => "325.30"
+	//         (-12.6).toDecimal(0)    => "-13"
+	//        (1.9955).toDecimal(1)    => "2.0"
+	//        (1.2345).toDecimal(4)    => "1.2345"
+	//        (1.2345).toDecimal(3)    => "1.235"
+	//        (1.2345).toDecimal(2)    => "1.23"
+	//        (12.395).toDecimal(-2)   => "12.4"
+	//       (-12.345).toDecimal(-5)   => "-12.345"
+	//    (-1.2355e-7).toDecimal(2)    => "0.00"
+	//    (-1.2355e-7).toDecimal(-2)   => "0"
+	//   (1.235555e-7).toDecimal(9)    => "0.000000124"
+	// ---
+	// => str
+	{
+		// Treat non-finite numbers as `toFixed` would do.
+		// ---
+		if( !isFinite(this) ) return this.toFixed();
+
+		// Coerce `digits` into int.
+		// ---
+		digits|=0;
+		
+		// fx :: 1 [FIXED>0]  |  0 [FLOATING|0]
+		// ---
+		fx = +(0 < digits) || ((digits=-digits),0);
+
+		// Treat out-of-range `digits` as `toFixed` would do.
+		// [REM] ExtendScript supports digits > 20 (up to 100)
+		// but this does not make sense since the underlying
+		// number cannot be handled at such precision.
+		// ---
+		if( 20 < digits ) return this.toFixed(digits);
+
+		// Sign.
+		// ---
+		x = this.valueOf();
+		sgn = 0 > x ? ((x=-x),'-') : '';
+
+		// Treat magnitude >= 10^21 as `toFixed` would do.
+		// ---
+		if( x >= 1e21 ) return this.toFixed(digits);
+
+		// Use the decimal representation of x.
+		// ---
+		0 <= (s=String(x)).indexOf('e') && (s=Number.flatten(s));
+
+		while( 1 )
+		{
+			if( -1 == (p=s.indexOf('.')) )
+			{
+				// No decimal point -> integer case.
+				// ---
+				fx && (s += '.' + Array(1+digits).join('0'));
+				break;
+			}
+
+			q = 1 + p + digits;
+			n = s.length;
+
+			if( n <= q )
+			{
+				// "abc.xyz" -> "abc.xyz0"
+				//     p   q
+				// ---
+				fx && (n < q) && (s+= Array(1+q-n).join('0'));
+				break;
+			}
+
+			if( 0x35 > s.charCodeAt(q) )
+			{
+				// "abc.xyz4www" -> "abc.xyz"
+				//     p   q  n
+				// ---
+				digits || --q;
+				s = s.substr(0,q);
+				if( fx || !digits ) break;
+				while( '0'==s.charAt(--q) );
+				s = s.substr(0, p < q ? (1+q) : p);
+				break;
+			}
+
+			while( '9' == s.charAt(--q) );
+			if( p < q )
+			{
+				// "abc.xy799" -> "abc.xy800"
+				//     p  q  n
+				// ---
+				s = s.substr(0,q) + (s.charCodeAt(q)-0x2F);
+				fx && (s+=Array(1+p+digits-q).join('0'));
+				break;
+			}
+
+			// Rounded to integer: abc.999 = (1+abc).000
+			// ---
+			while( '9' == s.charAt(--q) );
+			s = 0 <= q ? (s.substr(0,q) + (s.charCodeAt(q)-0x2F)) : '1';
+			s += Array(p-q).join('0');
+			fx && (s += '.' + Array(1+digits).join('0'));
+			break;
+		}
+
+		sgn && ('0'==s || (callee.Q||(callee.Q=/^0\.0+$/)).test(s) ) && (sgn='');
+
+		return sgn + s;
+	};
