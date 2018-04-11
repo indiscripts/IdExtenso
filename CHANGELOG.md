@@ -1,3 +1,6 @@
+##### [180412]
+  - `core/Ext/number`: static routines `Number.parse()` and `Number.format()` added, with basic localized delimiters `Number.DecimalChar` and `Number.ThousandsChar`.
+
 ##### [180411]
   - `core/Ext/number`: Added `Number.prototype.toDecimal()`, a variant of `toFixed` that fixes rounding issues and provides more control over the decimal notation.
 
