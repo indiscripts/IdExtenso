@@ -11,10 +11,11 @@
 		                toDecimal()
 		        static: EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
 		                isInteger() isSafeInteger() flatten()
+		                DecimalChar ThousandsChar parse() format()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180411 (YYMMDD)
+		Modified:       180412 (YYMMDD)
 
 *******************************************************************************/
 
@@ -280,6 +281,83 @@
 	};
 
 	//==========================================================================
+	// [180412] Number.DecimalChar ; Number.ThousandsChar
+	//==========================================================================
+
+	// Below are basic i18n adjustments, based on the fact that
+	// $.decimalPoint (ExtendScript) is already localized. It's
+	// just a simplification though, since only two distinct
+	// number formats are implied: `123,456.78`  vs. `123 456,78`
+	// For a fine-tuned localization, implement specific modules
+	// and provide explicit arguments to `parse` and `format`.
+	// ---
+	Number.DecimalChar = $.decimalPoint || '.';
+	Number.ThousandsChar = '.'==Number.DecimalChar ? ',' : ' ';
+	
+	//==========================================================================
+	// [180412] Number.parse() ; Number.format()
+	//==========================================================================
+	
+	Number.parse = function parse(/*str*/s,/*str=auto*/decimal,  p)
+	//----------------------------------
+	// Enhanced parseFloat routine that supports custom decimal point.
+	// ---
+	// Examples:
+	// Number.parse("12.34")     => 12.34
+	// Number.parse("12,345.67") => 12345.67
+	// Number.parse("12,34",",") => 12.34
+	// ---
+	// => Number
+	{
+		p = ('undefined'==typeof decimal ? Number.DecimalChar : String(decimal)).charAt(0);
+
+		'.' != p && -1==s.indexOf(p) && 0 <= s.indexOf('.') && (p='.');
+		s = String(s).stripSpaces().replace(RegExp("[^\\d\\"+p+"-]+",'g'),'');
+		'.' != p && 0 <= (p=s.indexOf(p)) && (s=s.substr(0,p)+'.'+s.substr(1+p));
+
+		return parseFloat(s);
+	};
+	
+	Number.format = function format(/*num|str*/x, /*-20..20=0*/digits,/*str=auto*/decimal,/*str=auto*/thousands,  p,d)
+	//----------------------------------
+	// Format a number using grouped thousands and custom decimal point.
+	// Supports negative `digits` parameter as specified in `toDecimal`.
+	// ---
+	// Examples:
+	// Number.format(1234.56)                 => "1,235"
+	// Number.format(1234.5678, 2, ".", "")   => "1234.57"
+	// Number.format(1234.56, -3, ",", " ")   => "1 234,56"
+	// Number.format(67, 2, ",", ".")         => "67,00"
+	// Number.format(1000)                    => "1,000"
+	// Number.format(67.311, 2)               => "67.31"
+	// Number.format(1000.55, 1)              => "1,000.6"
+	// Number.format(67000, 5, ",", ".")      => "67.000,00000"
+	// Number.format(0.9, 0)                  => "1"
+	// Number.format("1.20", 2)               => "1.20"
+	// Number.format("1.20", 4)               => "1.2000"
+	// Number.format("1.2000", 3)             => "1.200"
+	// Number.format("1 000,50", 2, ".", " ") => "100 050.00"
+	// ---
+	// => str
+	{
+		decimal = 'undefined'==typeof decimal ? Number.DecimalChar : String(decimal);
+		thousands = 'undefined'==typeof thousands ? Number.ThousandsChar : String(thousands);
+		
+		'number' == typeof x || (x=Number.parse(x,decimal));
+
+		x = x.toDecimal(digits);
+		p = x.indexOf('.');
+		d = 0 <= p ? (decimal + x.substr(1+p)) : '';
+		0 <= p && (x=x.substr(0,p));
+		
+		thousands && 3 < x.length
+		&& (x=x.replace(callee.RE||(callee.RE=/\B(?=(?:\d{3})+(?!\d))/g),thousands));
+		
+		return x + d;
+	};
+
+
+	//==========================================================================
 	// Number.prototype.toSource()
 	//==========================================================================
 
@@ -517,7 +595,7 @@
 			break;
 		}
 
-		sgn && ('0'==s || (callee.Q||(callee.Q=/^0\.0+$/)).test(s) ) && (sgn='');
+		sgn && ('0'==s || (callee.RE||(callee.RE=/^0\.0+$/)).test(s) ) && (sgn='');
 
 		return sgn + s;
 	};
