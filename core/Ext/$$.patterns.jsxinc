@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       180403 (YYMMDD)
+		Modified:       180413 (YYMMDD)
 
 *******************************************************************************/
 
@@ -319,6 +319,10 @@
 	RegExp.DIGI = /\d/g;
 	// --- /one-or-more-digits/
 	RegExp.DIGIs= /\d+/g;
+	// --- /any-nondigit/  [180413]
+	RegExp.NOND = /\D/g;
+	// --- /one-or-more-nondigits/  [180413]
+	RegExp.NONDs= /\D+/g;
 	// --- /adobe-flag-hexa/
 	RegExp.ADBE = /^(?:3[0-9]|[46][1-9A-F]|[57][0-9A]){3}(?:3[0-9]|[46][1-9A-F]|[57][0-9A]|20)$/g;
 	// --- /over-0x7F/
