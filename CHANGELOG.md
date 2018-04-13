@@ -1,5 +1,5 @@
 ##### [180413]
-  - **JSON** : In ExtendScript the test `x===null` is not reliable when `x` refers to a `UnitValue` instance whose value is in the range )-1,1(. Indeed, due to an implementation error regarding the `===` operator, `UnitValue(0.5,'pt')===null` is true (!) The LAVE routine has been updated to work around this bug. `$$.JSON(UnitValue(<any>))` now works fine even whatever the magnitude of the `UnitValue`.
+  - **JSON** : In ExtendScript the test `x===null` is not reliable when `x` refers to a `UnitValue` instance whose value is in the range )-1,1(. Indeed, due to an implementation error regarding the `===` operator, `UnitValue(0.5,'pt')===null` is true! The `LAVE` routine has been updated to work around this bug. `$$.JSON(UnitValue(<any>))` now works fine  whatever the magnitude of the `UnitValue`.
 
 ##### [180412]
   - `core/Ext/number`: static routines `Number.parse()` and `Number.format()` added, with basic localized delimiters `Number.DecimalChar` and `Number.ThousandsChar`.
