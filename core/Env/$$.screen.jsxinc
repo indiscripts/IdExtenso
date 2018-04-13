@@ -11,7 +11,7 @@
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       180402 (YYMMDD)
+		Modified:       180413 (YYMMDD)
 
 *******************************************************************************/
 
@@ -108,9 +108,28 @@
 	
 	({
 
-		SCRN : function(/*?Window*/w,  x,y,q,a,i,t)
+		SCRN : function(/*?Window*/w,  x,y,q,a,i,t,tt)
 		//----------------------------------
 		// [ADD180401] Backup screen and display info at loading stage.
+		// [CHG180413] Preventing memory dups.
+		// ---
+		// Cached structure:
+		//   q               ::  Array(screenCount)
+		//   q[i]            ::  int[4]       [t,l,b,r]
+		//   q[i].center     ::  int[2]       [x,y]
+		//   -----------------------------------------------------------
+		//   q.PRIM          ::  uint         Primary screen index
+		//   q.ACTV          ::  ?uint        Active screen index, or undefined
+		//   q.SUIB          ::  int[4]       [t,l,b,r]
+		//   -----------------------------------------------------------
+		//   q.APP_BAR_SHOWN ::  0|1          Whether the app bar is shown
+		//   q.USE_APP_FRAME ::  0|1          Whether the app frame is used
+		//   -----------------------------------------------------------
+		//   q.MAIN_PPI      ::  uint | false[<CS6] Main monitor PPI, if known.
+		//   q.CUSTOM_PPI    ::  uint | false[<CS6] Custom monitor PPI, if defined.
+		//   q.USE_CUSTOM    ::  bool               Whether the custom PPI is in use
+		//   q.CURRENT_PPI   ::  uint | false[<CS6] Current PPI, if known.
+		//   -----------------------------------------------------------
 		{
 			q = callee.Q;
 			
@@ -129,20 +148,32 @@
 			for( a=$.screens,i=q.length=a.length ; i-- ; )
 			{
 				t = a[i];
-				q[i] = [t.top,t.left,t.bottom,t.right];
-				q[i].center = [(t.left+t.right)>>1, (t.top+t.bottom)>>1];
+				tt = q[i] || (q[i]=Array(4));
+				tt[0] = t.top;
+				tt[1] = t.left;
+				tt[2] = t.bottom;
+				tt[3] = t.right;
+				tt = tt.center || (tt.center=Array(2));
+				tt[0] = (t.left+t.right)>>1;
+				tt[1] = (t.top+t.bottom)>>1;
+
 				t.primary && (q.PRIM=i);
 				t.left <= x && x <= t.right && t.top <= y && y <= t.bottom && (q.ACTV=i);
 			}
 			
 			t = ScriptUI.workspace.bounds;
-			q.SUIB = [t.top,t.left,t.bottom,t.right];
+			tt = q.SUIB || (q.SUIB=Array(4));
+			tt[0] = t.top;
+			tt[1] = t.left;
+			tt[2] = t.bottom;
+			tt[3] = t.right;
 
 			t = app.generalPreferences.properties;
 			q.APP_BAR_SHOWN = +(t.applicationBarShown);
 			q.USE_APP_FRAME = +(t.useApplicationFrame);
 			
 			// CS6+
+			// ---
 			q.MAIN_PPI = t.mainMonitorPpi || false;
 			q.CUSTOM_PPI = t.customMonitorPpi || false;
 			q.USE_CUSTOM = t.useCustomMonitorResolution || false;
