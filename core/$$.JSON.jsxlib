@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       171125 (YYMMDD)
+		Modified:       180413 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 171125, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 180413, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -78,6 +78,12 @@
 	[ADD170608] A 'JSON Hook' mechanism has been introduced to allow
 	any IdExtenso-compliant module or class to inject its own method for
 	generating a source string. See details in ~['\x01object'].
+	
+	[FIX180413] In ExtendScript the test `x===null` is not reliable when x
+	refers to a `UnitValue` instance whose value is in the range ]-1,1[.
+	Indeed, due to an implementation error regarding the '===' operator,
+	`UnitValue(0.5,'pt')===null` is true (!) The LAVE routine has been
+	updated to work around this bug.
 
 	*/
 
@@ -593,8 +599,19 @@
 	({
 		LAVE : function(/*any*/x)
 		//----------------------------------
+		// [FIX180413] In ExtendScript the test `x===null` is not reliable
+		// when x is a UnitValue instance whose value is in the range ]-1,1[.
+		// Indeed, due to an implementation error regarding the '===' operator,
+		// `UnitValue(0.5,'pt')===null` is true (!) As a workaround we use
+		// the fact that `UnitValue(any)` is always truthy (being an Object.)
 		{
-			return null===x ? 'null' : this['\x01'+(typeof x)](x);
+			// Old code:
+			//return null===x ? 'null' : this['\x01'+(typeof x)](x);
+			
+			// [180413] UnitValue-compliant fix.
+			// E.g  JSON( UnitValue(0,'mm') ) => 'UnitValue("0mm")'
+			// ---
+			return ( x || null!==x ) ? this['\x01'+(typeof x)](x) : 'null';
 		},
 	})
 
