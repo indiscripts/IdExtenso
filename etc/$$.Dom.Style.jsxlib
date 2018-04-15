@@ -1,0 +1,199 @@
+/*******************************************************************************
+
+		Name:           Style
+		Desc:           Routines for handling (character|paragraph|object) styles.
+		Path:           /etc/$$.Dom.Style.jsxlib
+		Require:        $$.Dom
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.Dom.)
+		API:            =flatList
+		DOM-access:     YES(
+		Todo:           treeList (?) grepStyles/nestedStyles (?)
+		Created:        180414 (YYMMDD)
+		Modified:       180415 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Style') || eval(__(MODULE, $$.Dom.toSource(), 'Style', 180415, 'flatList'))
+
+	//==========================================================================
+	// PRIVATE DATA
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		KIND: {
+			'P': 'paragraph',
+			'C': 'character',
+			'O': 'object',
+		},
+
+		// Default options.
+		// ---
+		NMID: '@',       // Name-to-ID Prefix   ;  @<ItemName> => <ItemId>
+		NMSP: '@',       // Name-to-Spec Prefix ;  @<ItemName> => <ItemSpec>
+		IDNM: '_',       // ID-to-Name Prefix   ;  _<ItemId>   => <ItemName>
+		GSFX: ' *',      // Group suffix marker.
+	})
+
+	//==========================================================================
+	// PRIVATE ROUTINES
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		
+		FLAT: function(/*str[]&*/R,/*Document|StyleGroup*/host,/*'character'|'paragraph'|'object'*/kind,/*str=''*/pfx,  z,e,o,p,g,x,a,b,i,n,s,t,id,ts)
+		//----------------------------------------
+		// (Flatten-Items.) Recursive browser and mapper that feeds R in flat mode.
+		// ---
+		// => undef
+		{
+			pfx||(pfx='');
+
+			const N2I = callee.NMID;          // Activate Name-to-ID with that prefix, or empty.
+			const N2S = callee.NMSP;          // Activate Name-to-Spec with that prefix, or empty.
+			const I2N = callee.IDNM;          // Activate ID-to-Name with that prefix, or empty.
+
+			const SPE = callee.SPEC;          // Activate Spec-to-Name, with no prefix.
+			const SKP = callee.SKIP;          // 1st char to be ignored, if non empty.
+			
+			const ELMS = (SPE||N2S) ? 1 : 0;  // If SPE or N2S, getElements() is required.
+			                                  // otherwise collecting IDs is sufficient.
+
+			for( z=2 ; z-- ; )
+			{
+				e = (o=host[kind + (z?'Styles':'StyleGroups')]).everyItem();
+				p = callee[z?'SPTN':'GPTN'];
+				g = z ? '' : (callee.GSFX||false);
+				x = z ? 1 : callee.GIDK;
+
+				for( a=e.name, (b=ELMS?e.getElements():e.id), n=a.length, i=-1 ; ++i < n ; )
+				{
+					if( SKP === (s=a[i]).charAt(0) ) continue;
+					t = b[i];
+					id = ELMS ? t.properties.id : t;
+					s = pfx + __( p, s, id );
+					if( false !== g )
+					{
+						R[R.length] = s+g;
+
+						N2I && (R[N2I+s+g]=id*x);
+						I2N && (R[I2N+id]=s+g);
+						
+						if( ELMS )
+						{
+							ts = t.toSpecifier();
+							N2S && (R[N2S+s+g]=ts);
+							SPE && (R[ts]=s+g);
+						}
+					}
+					
+					z || callee.call(this,R,ELMS ? t : o.itemByID(id),kind,s+' ');
+				}
+
+				a.length = b.length = 0;
+			}
+		}
+		.setup({
+			NMID: '',
+			NMSP: '',
+			IDNM: '',
+			SPEC: 0,
+			// ---
+			GSFX: '',
+			GIDK: 1,
+			SKIP: "[",
+			// ---
+			SPTN: "%1",    // Style pattern based on %1=name and %2=ID (opt.)
+			GPTN: "[%1]",  // Group pattern . . .
+		}),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		flatList: function flatList_D_C_õ_LÕ(/*Document|...StyleGroup*/host,/*'P'|'C'|'O'*/kind,/*?obj*/options,  I,k,f,t,r)
+		//----------------------------------
+		// Return an Array of style names of the desired `kind` as found within
+		// the `host`. Optionally, extend the returned array for further processing.
+		// ---
+		// Example:
+		//   List all paragraph styles of a document
+		//   var myStyles = $$.Dom.Style.flatList(myDocument,'P',{includeNative:1});
+		// ---
+		// `host`    :: The DOM object from which styles are to be collected.
+		// `kind`    :: 'P'->paragraph styles, 'C'->character styles, 'O'->object styles.
+		// `options` :: Set of options, as detailed below. The <name> of an item that
+		//              belongs to a group is built recursively using the pattern
+		//              `<GroupName> StyleName` where <GroupName> has the form
+		//              "[Group1] [Group2] ..."
+		//   .nameToId      :: 0|1|str   Whether the returned object must map names to IDs
+		//                               thru <nx><name> => <id> (num) ; <nx> is '_' unless
+		//                               you supply a custom, non-empty prefix string.
+		//   .nameToSpec    :: 0|1|str   Whether the returned object must map names to
+		//                               specifiers thru <nx><name> => <spec> (str) ; <nx>
+		//                               is '_' unless otherwise specified. Note that
+		//                               `nameToSpec` supersedes `nameToId` in case both
+		//                               options would be set with the same prefix.
+		//   .idToName      :: 0|1|str   Whether the returned object must map IDs to names
+		//                               thru <ix><id> => <name> ; <ix> is '@' unless you
+		//                               supply a custom, non-empty prefix string.
+		//   .specToName    :: 0|1       Whether the returned object must map specs to names
+		//                               thru <spec> => <name>. Note that no prefix is
+		//                               needed here.
+		//   .groupAsItem   :: 0|1|str   Whether each style group must have its own item
+		//                               in the list. The item name is "<GroupName> *"
+		//                               unless you supply a distinct, non-empty marker.
+		//                               The default marker is the string " *".
+		//   .negGroupId    :: 0|1       If both nameToId and groupAsItem options are set,
+		//                               force name-to-ID mapping to return -id instead of
+		//                               id when the item refers to a group. (Allows to
+		//                               quickly infer that a specific item is a group.)
+		//   .includeNative :: 0|1       Whether native styles --e.g [Basic Paragraph]--
+		//                               must be included in the list.
+		// ---
+		// [REM] Basically you can treat the returned Array as a simple string list
+		// to be used in UI widgets (ListBox, etc.) Adding an optional mapping is
+		// transparent from this standpoint, but this helps you save extra data in
+		// a single object. For example, the flat list can be both sent to the UI and
+		// queried later to recover an ID (or specifier) from some selected item.
+		// ---
+		// => new str[]  + optional mapping
+		{
+			I = callee.µ['~'];
+			
+			(k=I.KIND[kind.charAt(0).toUpperCase()])
+			|| $.global[callee.µ.__root__].error(__("Invalid kind argument (%1).",kind),callee);
+			
+			(host && host.hasOwnProperty(k+'Styles'))
+			|| $.global[callee.µ.__root__].error(__("Invalid host argument (%1).",host),callee);
+			
+			// Options manager.
+			// ---
+			options===Object(options) || (options=0);
+			f = I.FLAT;
+			f.NMID = (t=options.nameToId)   ? ( 'string'==typeof t ? t : I.NMID ) : '';
+			f.NMSP = (t=options.nameToSpec) ? ( 'string'==typeof t ? t : I.NMSP ) : '';
+			f.IDNM = (t=options.idToName)   ? ( 'string'==typeof t ? t : I.IDNM ) : '';
+			f.SPEC = options.specToName ? 1 : 0;
+
+			f.GSFX = (t=options.groupAsItem) ? ( 'string'==typeof t ? t : I.GSFX ) : '';
+			f.GIDK = options.negGroupId ? -1 : 1;
+			f.SKIP = options.includeNative ? '' : '[';
+
+			I.FLAT(r=[], host, k, '');
+
+			return r;
+		},
+
+	})
