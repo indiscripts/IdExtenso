@@ -1,5 +1,5 @@
 ##### [180508]
-  - Corrected a few typos in **Dom.Dialog** comments.
+  - Corrected a few typos in **Dom.Dialog** comments. Added the alias `selected` for either Dropdown or RadiobuttonGroup widgets: it is interpreted `selectedButton` in case of radio group, and `selectedIndex` in case of dropdown.
   - Added a pattern for the vertical line `|` (i.e `U+007C`) in `core/Ext/$$.patterns.jsxinc`. It defines `String.OR`, `RegExp.OR` etc.
 
 ##### [180415]
