@@ -1,0 +1,264 @@
+/*******************************************************************************
+
+		Name:           UnitData
+		Desc:           Unit structure which the Unit module handles.
+		Path:           /etc/Unit/$$.UnitData.jsxlib
+		Require:        $$.Unit
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class (in Unit module.)
+		API:            =create() toString convert
+		    Operators:  ==
+		    Static:     setInstance() getInstances() lock() setDefaultUnit()
+		                getDefaultUnit() setPixelBase() setPercentBase()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180404 (YYMMDD)
+		Modified:       180508 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Unit ){ alert(__("%1 requires the %2 module.",'UnitData','Unit')); exit(); }
+;$$.Unit.hasOwnProperty('UnitData') || eval(__(CLASS, $$.Unit.toSource(), 'UnitData', 180508))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+	
+	This class has been specially embedded within the Unit module to make
+	unit operations easier to express and implement. The class UnitData
+	*does not provide* re-usability for larger purposes. This explains
+	why $$.Unit is a mandatory host module for it. Constructor is
+	therefore accessed (from the outside) using `$$.Unit.UnitData()`.
+	
+	Note. - $$.Unit automatically includes the present file so you don't
+	have to worry about this.
+	
+	*/
+
+	[PRIVATE]
+	
+	({
+		// Registered UnitData instances.
+		// The parent module is responsible for setting these data.
+		// ---
+		DATA : {},
+
+		// Default unit.
+		// ---
+		UDEF : 'pt',
+
+		// BaseUnit for px conversions. (Default assumes 72 dpi => 1px == 1pt.)
+		// ---
+		UVPX : UnitValue(1/72,'in'),
+
+		// BaseUnit for % conversions. (Default is 100pt => 1% == 1pt.)
+		// ---
+		UVPE : UnitValue(100,'pt'),
+
+	})
+
+	[STATIC]
+	
+	({
+		setInstance: function setInstance_K_S_sn_(/*key*/abvKey,/*str*/cap,/*?str|num*/alt)
+		//----------------------------------
+		// Invoke the constructor and save the new instance in ~.DATA.
+		// [REM] This function will fail if the ctor has been locked.
+		// => undefined
+		{
+			callee.µ['~'].DATA[abvKey] = callee.µ(abvKey,cap,alt);
+		},
+
+		getInstances: function getInstances_k_O(/*?key*/uk)
+		//----------------------------------
+		// Return the set of declared UnitData instances.
+		// If uk is supplied, return that particular UnitData object.
+		// => ~.DATA | UnitData
+		{
+			return uk ? callee.µ['~'].DATA[uk] : callee.µ['~'].DATA;
+		},
+		
+		lock: function lock_()
+		//----------------------------------
+		// Lock the contructor.
+		{
+			delete callee.µ.prototype.create.TMP;
+		},
+
+		setDefaultUnit: function setDefaultUnit_S$UnitData$_S(/*str|UnitData*/defUnit,  u)
+		//----------------------------------
+		// Set the default unit.
+		// => unit name [OK]  |  error [KO]
+		{
+			(u=defUnit) && ( (u instanceof callee.µ) || (u=callee.µ.getInstances(u)) );
+
+			// Checkpoint.
+			// ---
+			u || $.global[callee.µ.__root__].error(__("Unknown unit (%1).",defUnit.toSource()),callee);
+			false===u.alias && $.global[callee.µ.__root__].error(__("Unsupported default unit (%1).",u.name),callee);
+
+			return (callee.µ['~'].UDEF=u.name);
+		},
+
+		getDefaultUnit: function getDefaultUnit_b_S$UnitData$(/*bool=0*/GET_OBJ)
+		//----------------------------------
+		// Get the default unit name, or the object itself if GET_OBJ.
+		{
+			return GET_OBJ ? callee.µ['~'].DATA[callee.µ['~'].UDEF] : callee.µ['~'].UDEF;
+		},
+
+		setPixelBase: function setPixelBase_$UnitValue$_(/*UnitValue*/uv)
+		//----------------------------------
+		// Set the base unit for pixel conversions.
+		// => undefined
+		{
+			callee.µ['~'].UVPX = uv;
+		},
+
+		setPercentBase: function setPercentBase_$UnitValue$_(/*UnitValue*/uv)
+		//----------------------------------
+		// Set the base unit for percent conversions.
+		// => undefined
+		{
+			callee.µ['~'].UVPE = uv;
+		},
+
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_S_S_sn_(/*str*/abv,/*str*/cap,/*?str|num*/alt,  MU,s)
+		// ---------------------------------
+		// Constructor:
+		// abv :: lowercase name of the unit, e.g 'pt' ; 'km' ; 'tpt'
+		// cap :: uppercase plural name formatted as MeasurementUnits key ; e.g 'TRADITIONAL_POINTS'
+		// alt :: if this unit is not supported by UnitValue, provides either a equivalent
+		//        unit (str), or the number of points (num) in the present unit.
+		// ---
+		// { name:str , uv:1|0 , plural:STR , muid:uint|0 , reg:RegExp, alias:num|str|false|undef, [baseKey:str] }
+		{
+			if( !(MU=callee.TMP) ) $.global[callee.µ.__root__].error(__("%1 constructor is locked.",callee.µ),callee);
+			
+			this.name = abv;
+			this.uv = +(abv==UnitValue('1'+abv).type);
+			
+			this.plural = cap;
+			this.muid = MU.hasOwnProperty(cap) ? +MU[cap] : 0;
+			
+			// Regex.
+			// ---
+			this.reg = abv;
+			switch( abv )
+			{
+				case 'in' :  this.reg += "?|inch|inches"; break;
+				case 'ft' :  this.reg += "?|foot|feet";   break;
+				
+				case 'q'  :
+				case 'ha' :
+				case 'ind':
+				case 'u'  :
+				case 'bai':
+				case 'cstm': break;
+				
+				default:
+					if( abv == (s=cap.toLowerCase()) ) break;
+					s = '|' + s.replace('_','[ _]?');
+					's' == s.charAt(s.length-1) && ( s += '?' );
+					this.reg += s;
+			}
+			this.reg = RegExp('^'+this.reg+'$', 'i');
+			
+			// Alias:
+			// number -> number of points
+			// str    -> equivalent unit name
+			// false  -> unsupported UV conversion
+			// undef  -> ok
+			// ---
+			this.alias = ('string' == typeof alt || 'number' == typeof alt) ?
+				( alt ) :
+				( this.uv ? void 0 : false );
+			
+			// baseKey
+			// ---
+			'px'==abv && (this.baseKey='UVPX');
+			'%' ==abv && (this.baseKey='UVPE')
+		}
+		.setup({ TMP:MeasurementUnits }),
+
+		toString: function toString_b_S(/*bool=0*/LONG_PLURAL)
+		//----------------------------------
+		// Return the abbreviated unit name (e.g 'in').
+		// If LONG_PLURAL is 1, return the uppercase plural name (e.g 'INCHES').
+		// => str
+		{
+			return LONG_PLURAL ? this.plural : this.name;
+		},
+
+		convert: function convert_N_s$UnitData$_N(/*num*/x,/*str|UnitData=UDEF*/destUnit,  dst,sgn,t)
+		//----------------------------------
+		// Considering the number `x` in <this> unit, return the converted value into destUnit.
+		// destUnit :: abbreviated unit name (e.g 'in')  |  UnitData instance.
+		// If `destUnit` is omitted, use the default unit (~.UDEF).
+		// => Number [OK]  |  Error [KO]
+		{
+			dst = destUnit || callee.µ['~'].UDEF;
+			dst && ( (dst instanceof callee.µ) || (dst=callee.µ.getInstances(dst)) );
+			dst || $.global[callee.µ.__root__].error(__("Unknown unit (%1).",destUnit.toSource()),callee);
+			
+			// Speed up trivial case.
+			// ---
+			if( this['=='](dst) ) return x;
+
+			sgn = 0 > x ? (x=-x,-1) : 1;
+			
+			if( this.uv )
+			{
+				x = UnitValue(x,this.name);
+				(t=this.baseKey) && (x.baseUnit=callee.µ['~'][t]);
+			}
+			else
+			{
+				(t=this.alias) || $.global[callee.µ.__root__].error(__("Unsupported unit for conversion (%1).",this.name),callee);
+				x = 'string'==typeof t ? UnitValue(x,t) : UnitValue(t*x,'pt');
+			}
+
+			if( dst.uv )
+			{
+				(t=dst.baseKey) && ((x=UnitValue(x.as('pt'),'pt')).baseUnit=callee.µ['~'][t]);
+				x = x.as(dst.name);
+			}
+			else
+			{
+				(t=dst.alias) || $.global[callee.µ.__root__].error(__("Unsupported unit for conversion (%1).",dst.name),callee);
+				x = 'string'==typeof t ? x.as(t) : ( x.as('pt')/t );
+			}
+
+			return sgn*x;
+		},
+
+		// ---
+		// PUBLIC OPERATOR
+		// ---
+	
+		'==' : function equals_S$UnitData$_$Boolean$(/*str|UnitData*/x,  a,b)
+		// ---------------------------------
+		// Two UnitData instances are considered equal if
+		//  (a) they have the same `name` property
+		// or
+		//  (b) the name of the one strictly equals the `alias` prop of the other.
+		// => true | false
+		{
+			'string' == typeof x && (x=callee.µ.getInstances(x));
+			if( !(x instanceof callee.µ) ) return false;
+			return (a=x.name)==(b=this.name) || a===this.alias || b===x.alias;
+		},
+
+	})
