@@ -15,11 +15,11 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180311 (YYMMDD)
-		Modified:       180323 (YYMMDD)
+		Modified:       180508 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180323, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180508, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -147,7 +147,7 @@
 	structure. For example:
 
 	      var myDlg = $$.Dom.Dialog(
-	         <Dialog name="My Dialog>
+	         <Dialog name="My Dialog">
 	           <DialogColumn>
 	             <TextEditbox editContents="Type your text here" />
 	             <Checkbox checkedState="false" />
@@ -448,13 +448,14 @@
 				skey = wx.attribute('key').toString() || false;
 				
 				// Embed caption?
+				// [FIX180324] Check `.attribute(...).length()` + string.length
 				// ---
 				h = host;
-				if( s=RE.test(wk)&&wx.attribute('caption') )
+				if( RE.test(wk) && (s=wx.attribute('caption')).length() && (s=s.toString()).length )
 				{
 					// [CHG180319] Make auto-colon (:) a bit smarter.
 					// ---
-					s = __(s.toString());
+					s = __(s);
 					':' == s.charAt(-1+s.length) || (s=__("%1:",s));
 
 					h.hasOwnProperty('dialogRows') || (h=h.dialogColumns.add());
@@ -518,11 +519,11 @@
 		// Dialog instance through getValueKey(k) and setValueKey(k,v).
 		// ---
 		// Full example:
-		// <Dialog name="My Dialog Title canCancel="true">
+		// <Dialog name="My Dialog Title" canCancel="true">
 		//   <DCOL>
 		//     <TEBX key="txInput" edit="Type your text here" />
-		//     <EGRP key="allowFeatures" checked='true'>
-		//       <CBOX key="feat1" checked='false' caption='My Feature1' />
+		//     <EGRP key="allowFeatures" checked="true">
+		//       <CBOX key="feat1" checked="false" caption="My Feature1" />
 		//     </EGRP>
 		//   </DCOL>
 		// </Dialog>
