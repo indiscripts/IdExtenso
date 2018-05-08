@@ -334,11 +334,24 @@
 		// ---
 		CAPW : 100,
 
-		XPPS : function(/*XMLList*/xAtts,  q,TP,x,k,t,v,i)
+		MTCH : function(/*str*/widgKey,/*str*/propKey,  s)
+		//----------------------------------
+		// (Matcher.) Tell whether the class `className` supports the prop `propKey`
+		// in the particular context of multi-case alias.
+		// => true [OK]  |  false [KO]
+		{
+			s = widgKey + '.' + propKey;
+			return ( 'RadiobuttonGroup.selectedButton' == s )
+				|| ( 'Dropdown.selectedIndex' == s )
+				;
+		},
+
+		XPPS : function(/*XMLList*/xAtts,/*str*/widgKey,  q,TP,x,k,t,v,i)
 		//----------------------------------
 		// (Property-Parser.) Given a list of XML attributes, return
 		// a volatile set of validated properties in their final form.
 		// E.g => { staticLabel:"My Label", checkedState:false }
+		// [CHG180508] Support multicase aliases.
 		// ---
 		// => {...}&
 		{
@@ -354,7 +367,19 @@
 
 				// Alias?
 				// ---
-				'@' == (t=TP[k]).charAt(0) && (t=TP[k=t.substr(1)]);
+				while( '@' == (t=TP[k]).charAt(0) )
+				{
+					k = t.substr(1);
+					i = k.indexOf(String.OR);
+					if( -1 == i ){ t=TP[k]; break; }
+
+					// [ADD180508] Multi-case alias.
+					// ---
+					t = k.split(RegExp.OR);
+					while( (k=t.pop()) && !(this.MTCH(widgKey,k)) );
+					t = k ? TP[k] : '';
+					break;
+				}
 
 				switch( t )
 				{
@@ -362,11 +387,11 @@
 					case 'B' : v = eval('Boolean('+v+')'); break;
 					case 'N' : v = parseFloat(v); break;
 					case 'I' : v = parseInt(v,10); break;
-					case 'L' : for( i=(v=v.split('|')).length ; i-- ; v[i]=__(v[i]) ); break;
+					case 'L' : for( i=(v=v.split(RegExp.OR)).length ; i-- ; v[i]=__(v[i]) ); break;
 					default: ;
 				}
 				
-				q[k] = v;
+				k && (q[k]=v);
 			}
 			return q;
 
@@ -392,6 +417,7 @@
 			largeNudge:     'N',
 			// ---
 			minWidth:       'I',
+			selected:       '@selectedButton|selectedIndex',
 			selectedButton: 'I',
 			selectedIndex:  'I',
 			},
@@ -419,7 +445,7 @@
 			// ---
 			ACBX: '@AngleCombobox',      AngleCombobox:'angleComboboxes',          // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 			ICBX: '@IntegerCombobox',    IntegerCombobox:'integerComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
-			MCBX: '@MeasurementCombobox',MeasurementCombobox:'measurementComboboxes',// hosts:'DCOL|DROW|BPNL|EGRP', props:'edit|value|list|min|max|small|large'
+			MCBX: '@MeasurementCombobox',MeasurementCombobox:'measurementComboboxes',// hosts:'DCOL|DROW|BPNL|EGRP',props:'edit|value|list|min|max|small|large'
 			PCBX: '@PercentCombobox',    PercentCombobox:'percentComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 			RCBX: '@RealCombobox',       RealCombobox:'realComboboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 		},
@@ -464,7 +490,7 @@
 				
 				// Other properties.
 				// ---
-				pp = (t=wx.attributes()).length() ? I.XPPS(t) : void 0;
+				pp = (t=wx.attributes()).length() ? I.XPPS(t,wk) : void 0;
 
 				// Create the DOM widget.
 				// ---
