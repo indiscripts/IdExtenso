@@ -1,0 +1,786 @@
+/*******************************************************************************
+
+		Name:           Unit
+		Desc:           Consistent facade for handling metrical units.
+		Path:           /etc/$$.Unit.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =format() onEngine()
+		                info() getUnitList() setDefault() setDPI() setPercent()
+		                parse() toUnitValue() convertNumber() convert()
+		                DecimalChar ThousandsChar SpacingChar MinusChar
+		                UseTypographicNotation
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180402 (YYMMDD)
+		Modified:       180508 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 180508, 'format'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	
+	ExtendScript features a `UnitValue` helper while the scripting DOM
+	provides a MeasurementUnits enumeration. Unfortunately they do not
+	interact and several drawbacks may arise. The present module integrates
+	unit features in a more uniform way.
+
+
+	I. NOTES ON `UnitValue`
+	----------------------------------------------------------------------------
+
+	[REF] http://javascript-tools-guide.readthedocs.io
+
+	ExtendScript has a UnitValue object to represent measurement values
+	and help perform conversions from one unit to another. Each UnitValue
+	instance is basically treated as a {value,type} pair, where `value`
+	represents the numeric magnitude and `type` the measurement unit.
+
+	The constructor* supports one or two arguments:
+
+	      UnitValue( valUnit );     // valUnit:str         -- e.g ("5 mm")
+	      UnitValue( value,unit );  // value:num, unit:str -- e.g (8,'px')
+	
+	* The `new` keyword is optional.
+
+	Units can be specified in abbreviated, singular, or plural form, and are
+	parsed disregarding the case ('cm' = 'CM' = 'centimeter' = 'CENTimeterS').
+
+	The created instance exposes the following properties:
+	----------------------------------------------------------------------------
+	type     (str)       The unit in abbreviated, lowercase form -- e.g 'mm'
+	                     Unknown type is represented by a question mark "?"
+	                     Note: The `type` property is read-only.
+	----------------------------------------------------------------------------
+	value    (num)       The numeric magnitude.
+	                     Note: `+uv` is a shortcut of `uv.value`
+	----------------------------------------------------------------------------
+	baseUnit (UnitValue) "A UnitValue object that defines the size of one pixel,
+	                     or a total size to use as a base for percentage values.
+	                     Used as the conversion unit for pixels and percentages."
+	----------------------------------------------------------------------------
+	
+	[REM] If an unknown unit is supplied to the constructor, the type is set
+	to "?" and the `toString()` method returns "UnitValue 0.00000".
+
+	      SUPPORTED UNITS                EQUIVALENCE
+	      -------------------------------------------
+	      mm  | millimeter(s)
+	      cm  | centimeter(s)
+	      m   | meter(s)
+	      km  | kilometer(s)
+	      -------------------------------------------
+	      in  | inch(es)                    2.54 cm
+	      ft  | foot | feet                30.48 cm
+	      yd  | yard(s)                    91.44 cm
+	      mi  | mile(s)                  1609.344 m
+	      -------------------------------------------
+	      pt  | point(s)                 in/72
+	      pc  | pica(s)                  12 pt
+	      ci  | cicero(s)                12.7872 pt
+	      tpt | traditional point(s)     in/72.27
+	      tpc | traditional pica(s)      12 tpt
+	      -------------------------------------------
+	      px  | pixel(s)                 (custom base)*
+	      %   | percent                  (custom base)*
+	      -------------------------------------------
+
+	* Converting measurements among different units requires a common base unit.
+	Pixels and percentages do not have a standard common base unit. Indeed, pixel
+	measurements are relative to display resolution, and percentages are relative
+	to an absolute magnitude.
+	
+	-- To convert pixels into lengths, you must know the size of a single pixel.
+	A common resolution is 72 dpi, which means that there are 72 px to the inch.
+	The conversion base for pixels *at 72 dpi* is 0.013889 in (1/72 inch). This
+	UnitValue object is the default baseUnit. It can be changed though. If the
+	UnitValue represents pixels at any other dpi, you must set the `baseUnit`
+	property accordingly. For example,
+
+	      myPixUV.baseUnit = UnitValue(1/150,'in') // 150 dpi
+	
+	For a system using a different resolution, you can change the `baseUnit`
+	property in the UnitValue class, thus changing the default *for all new
+	unitValue objects*." To restore the default, assign `null` to that static
+	property, as follows:
+
+	      UnitValue.baseUnit = null; // Restore the default base UV
+
+	-- Percentage values are relative to a total measurement. Then the conversion
+	base of a percentage is the UnitValue corresponding to 100%. For example,
+	
+	      uv = UnitValue("25%");
+	      uv.baseUnit = UnitValue("10cm");
+	      alert( uv );                      // => 25 %
+	      alert( uv.as('cm') );             // => 2.5
+
+	
+	`UnitValue.prototype` provides the following methods:
+	
+	      as(unitType) => Number
+	      -------------------------------------------
+	      Returns the numeric value of this object in the given unit.
+	      `unitType` (str) is expected in abbreviated form, e.g "in".
+	      If the unit is unknown or cannot be computed, a runtime
+	      error is thrown.
+
+	      convert(unitType) => true|false
+	      -------------------------------------------
+	      Changes the UV instance into the given unit, resetting the
+	      `type` and `value` properties accordingly. Returns true if
+	      the conversion is successful. If the unit is unknown or
+	      the object cannot be converted, "generates a run-time error
+	      and returns false."
+	
+	[BUG] As detailed in the JSON module, the test `UnitValue(<any>)===null`
+	returns true when the magnitude of the `UnitValue` is < 1. This must be
+	kept in mind while checking conditions on UnitValue instances.
+
+
+	OVERLOADED OPERATORS AND ISSUES
+
+	Unary Operators: ~ ! + -
+	--------------------------------------------------
+	~uv   32-bit integer with inverted bits.
+	!uv   true if the value is nonzero, false otherwise.
+	+uv   ==  uv.value.
+	-uv   == -uv.value
+
+	Binary Arithmetic Operators : + - * / %
+	--------------------------------------------------
+	(a) If one operand is a UnitValue object and the other is
+	a number, the operation is applied to the number and
+	the numeric value of the object. The expression returns a
+	new unitValue object with the result as its value. E.g,
+
+	      val = new UnitValue ("10 cm");
+	      res = val * 20; // res is a UnitValue (200, "cm");
+	      
+	[BUG] A generic bug, experienced in CS4/CS5/CS6/CC, affects the
+	subtract operator, the scheme `Number(x) - UnitValue(y)` being
+	treated in reversed order (y-x):
+
+	      r = Number(10) - UnitValue('2 in');
+	      alert(r);            // => -8 in        (!)
+	      alert(r.__class__);  // => UnitValue
+	      alert(r.value);      // => -8           (!)
+	      alert(r.type);       // => 'in'
+
+	This issue seems specific to the `-` operator, the other
+	asymmetric operators `/` and `%` being processed as expected.
+	Unfortunately, UnitValue.prototype[<op>] does not exist,
+	all native methods being *dynamically loaded* in UV instances
+	rather than inherited:
+	
+	      UnitValue().as   !== UnitValue().as     // true!
+	      UnitValue()['-'] !== UnitValue()['-']   // true!
+	      etc
+	
+	Thus, it doesn't seem possible to fix the wrong implementation.
+
+	(b) If both operands are UV objects, ExtendScript converts
+	the right operand to the same unit *as the left operand* and
+	applies the operation to the resulting values. The expression
+	returns a new unitValue object with the unit of the left
+	operand, and the result value. E.g,
+
+	      a = new UnitValue ("1 m");
+	      b = new UnitValue ("10 cm");
+	      a + b;  // UnitValue(1.1, "m")
+	      b + a;  // UnitValue(110, "cm");
+
+	Comparisons (=, ==, <, >, <=, >=)
+	--------------------------------------------------
+	If one operand is a UV object and the other is a number,
+	compares the number with the unitValue’s numeric value.
+	If both operands are UV objects, converts both objects to
+	the same unit, and compares the converted numeric values:
+
+	      a = new UnitValue ("98 cm");
+	      b = new UnitValue ("1 m");
+	      a < b;   // => true
+	      a < 1;   // => false
+	      a == 98; // => true
+	
+	
+	II. NOTES ON `MeasurementUnits`
+	----------------------------------------------------------------------------
+
+	List of MeasurementUnits vs. UnitValue (UV) items
+
+	CODE  UID         ABV  UV  ID  PLURAL           NOTES
+	=========================================================================
+	zpoi  0x7A706F69  pt   OK  6   POINTS           see also Cstm
+	zpic  0x7A706963  pc   OK  6   PICAS            12pt
+	zinc  0x7A696E63  in   OK  6   INCHES           2.54cm ; see also zind
+	-------------------------------------------------------------------------
+	zmms  0x7A6D6D73  mm   OK  6   MILLIMETERS    
+	zcms  0x7A636D73  cm   OK  6   CENTIMETERS    
+	-------------------------------------------------------------------------
+	zcic  0x7A636963  ci   OK  6   CICEROS          12.7872pt
+	zAgt  0x7A416774  ag   KO  6   AGATES           5.142857pt ; not in UV
+	-------------------------------------------------------------------------
+	zque  0x7A717565   q   KO  7   Q                .25 mm     ; CJK only
+	Zha   0x5A686120  ha   KO  7   HA               .25 mm     ; CJK only
+	ZApt  0x5A417074  ap   KO  7   AMERICAN_POINTS  .35146 mm  ; CJK only
+	-------------------------------------------------------------------------
+	zind  0x7A696E64  in   KO  8   INCHES_DECIMAL   -> in (affects ruler display)
+	zJU   0x7A4A5520   ?   KO  8   U                ?
+	zBai  0x7A426169   ?   KO  8   BAI              ?
+	zMil  0x7A4D696C   ?   KO  8   MILS             in / 1000 ; see note below
+	-------------------------------------------------------------------------
+	zpix  0x7A706978  px   OK  7   PIXELS           baseless / 1pt
+	Cstm  0x4373746D  pt   KO  8   CUSTOM           -> pt (affects ruler display)
+	-------------------------------------------------------------------------
+	                   m   OK  KO  METERS         
+	                  km   OK  KO  KILOMETERS     
+	   AVAILABLE      ft   OK  KO  FEET                30.48cm
+	      IN          yd   OK  KO  YARDS               91.44cm
+	   UnitValue      mi   OK  KO  MILES               1609.344m
+	     ONLY        tpt   OK  KO  TRADITIONAL POINTS  in / 72.27 ; i.e american points
+	                 tpc   OK  KO  TRADITIONAL PICAS   12 tpt
+	                   %   OK  KO  PERCENT             baseless
+	-------------------------------------------------------------------------
+
+	SPECIAL MEASUREMENT UNITS
+
+	CUSTOM: Uses points as the unit of measurement and specifies the number of
+	points between major tick marks on the specified ruler.
+
+	[REF] https://helpx.adobe.com/indesign/using/rulers-measurement-units.html
+
+	"Q and Ha are units used in a Japanese manual or automatic photo composer to show
+	font size, tracking or leading length. Each unit has a value of 0.25mm. Q is
+	used only to express font size, Ha can be used to express direction and length
+	for leading, object spacing and similar elements.
+
+	You can also use points (also known as American points) to indicate font size on
+	computers, or Adobe PostScript® points to indicate leading or spacing. One
+	American point is 0.35146 millimeters, and there are 72.27 American points in 1
+	inch and 72 PostScript points in 1 inch."
+	
+	[REF] http://www.alcula.com/conversion/length/mil-to-centimeter/
+	
+	      1 mil = 127/50000 cm = 0.00254 cm = 1/1000 in
+	
+	The mil is a unit of measure typically used in manufacturing and engineering
+	for describing distance tolerances with high precision or for specifying the
+	thickness of materials. One mil is equal to one thousandth of an inch, or
+	10^-3 inches. The mil is also referred to as thou. The closest unit to the
+	mil in the metric system is the micrometer: One mil is equal to 25.4 µm.
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+	
+	/*
+
+	Since UnitValue is a native ExtendScript tool, it is desirable to use its own
+	methods whenever possible. They likely run faster than any JS numeric routine.
+	For that reason we will avoid hardcoding or re-encoding unit conversion in the
+	present module, unless no UV approach is available.
+
+	The `UnitData` submodule is entirely responsible for managing all supported
+	units, and for translating 'exotic' units into data that UnitValue can handle.
+	As a CLASS, UnitData provides a constructor and a structure that describe units
+	in a consistent way. Each UnitData instance can then determine how to convert a
+	magnitude (any simple Number) into another unit. `UnitData.prototype.convert`
+	deals with that task. If the scheme `UnitValue(in).as(out)` is supported, no
+	extra calculation is done. If either <in> or <out> is outside the UnitValue
+	space, an intermediate UnitValue instance is used based on the `alias`
+	property of the UnitData. Then the conversion is performed.
+
+	For example, `ag` (AGATES) is not directly available in the UnitValue space. But
+	we know that 1 ag is defined as 1/14th of one inch. So we build for the key `ag`
+	a UnitData instance with `alias` property set to `UnitValue(1/14,'in').as('pt')`.
+	That UV instance will allow to temporarily work in points while converting a
+	measurement from, or into, agates.
+
+	The present module (Unit) interacts with UnitData in a way that makes all operations
+	transparent. In most cases the client code doesn't even need to know that UnitData
+	instances exist behind the scene. Unit provides a rich API that supports inputs
+	and/or outputs either as:
+
+	- Simple numbers and strings           e.g  Unit.convertNumber(12, "ag", "in")
+	                                            Unit.convert("5 CICEROS", "meters")
+	                                            Unit.toUnitValue("3p5", "cm")
+	
+	- MesurementUnits enumerators/keys     e.g  Unit.convertNumber(3, MesurementUnits.MILS, "m")
+	                                            Unit.convert("5ha", "AMERICAN_POINTS")
+	                                            Unit.toUnitValue(3, 0x7A696E63)
+	
+	- UnitValue instances                  e.g  Unit.toUnitValue("3ag","mm")
+	                                            Unit.parse(UnitValue("5pt"), "cm")
+
+	*/
+
+	[PRIVATE]
+
+	({
+		FEED : function(  UD,o,I,q,k,oo,t)
+		//----------------------------------
+		// (Feed.) Called once per engine.
+		{
+			UD = callee.µ.UnitData;
+			
+			UD.setInstance('pt' , 'POINTS');
+			UD.setInstance('pc' , 'PICAS');
+			UD.setInstance('in' , 'INCHES');
+			// ---
+			UD.setInstance('mm' , 'MILLIMETERS');
+			UD.setInstance('cm' , 'CENTIMETERS');
+			UD.setInstance('m'  , 'METERS');
+			UD.setInstance('km' , 'KILOMETERS');
+			// ---
+			UD.setInstance('ft' , 'FEET');
+			UD.setInstance('yd' , 'YARDS');
+			UD.setInstance('mi' , 'MILES');
+			// ---
+			UD.setInstance('tpt', 'TRADITIONAL_POINTS' );
+			UD.setInstance('tpc', 'TRADITIONAL_PICAS' );
+			// ---
+			UD.setInstance('ci' , 'CICEROS' );
+			UD.setInstance('ag' , 'AGATES',          UnitValue(1/14, 'in').as('pt') );
+			// ---
+			UD.setInstance('q'  , 'Q',               UnitValue(1/4,  'mm').as('pt') );
+			UD.setInstance('ha' , 'HA',              UnitValue(1/4,  'mm').as('pt') );
+			UD.setInstance('ap' , 'AMERICAN_POINTS', UnitValue(1,   'tpt').as('pt') );
+			// ---
+			UD.setInstance('ind', 'INCHES_DECIMAL',  'in' );
+			// ---
+			UD.setInstance('u'  , 'U',               false );
+			UD.setInstance('bai', 'BAI',             false );
+			UD.setInstance('mil', 'MILS',            UnitValue(1/1e3,'in').as('pt') );
+			// ---
+			UD.setInstance('px' , 'PIXELS' );
+			UD.setInstance('cstm','CUSTOM',          'pt' );
+			// ---
+			UD.setInstance('%'  , 'PERCENT' );
+
+			UD.lock();
+
+			o = UD.getInstances();
+			I = callee.µ['~'];
+			q = I.MTCH.Q;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				(t=(oo=o[k]).muid) && (q['_'+t]=k);
+				k != (t=oo.plural.toLowerCase()) && (q['_'+t]=k);
+			}
+		},
+
+		MTCH : function(/*str*/s,/*bool=0*/GET_OBJ,  r,o,q,k,re)
+		//----------------------------------
+		// (Unit-Matcher.) Find the UnitData instance that matches s.
+		// s  :: unit name (e.g 'in') | plural form (e.g 'INCHES') |
+		//       variant (e.g 'inch') | muid (e.g 0x7A696E63.)
+		// ---
+		// [REM] The cache is set by FEED.
+		// if  GET_OBJ  =>  UnitData [OK]  |  false [KO]
+		// if !GET_OBJ  =>  UD name  [OK]  |  ''    [KO]
+		{
+			r = '';
+			while( s=s.trim().toLowerCase() )
+			{
+				if( (o=callee.µ.UnitData.getInstances()).hasOwnProperty(s) ){ r=s; break; }
+				if( (q=callee.Q).hasOwnProperty(k='_'+s) ){ r=q[k]; break; }
+				for( k in o ) if( (re=o[k].reg) && re.test(s) ){ r=k; break; }
+				break;
+			}
+
+			return GET_OBJ ? ( r ? o[r] : false ) : r;
+		}
+		.setup({ Q:{} }),
+		
+		UDAT: function(/*any*/u)
+		//----------------------------------
+		// (Get-UnitData.)
+		// => UnitData [OK]  |  false [KO]
+		{
+			u && 'Enumerator' == u.__class__ && (u=Number(u));
+			return ( u && this.MTCH(String(u),1) ) || false;
+		},
+
+		PRSE : function(/*str*/s,/*str*/decPt,  v,u,k,p,c,m,q)
+		//----------------------------------
+		// (Value-Unit-Parser.) `s` is a value-type string,
+		// e.g "2.5 mm" ; "2p3" ; "-12agates"
+		// Return a volatile object { value:num, type:str|'' }
+		// where `type` can be empty if no UnitData matches.
+		// => obj [OK]  |  false [NON-PARSABLE-NUMBER]
+		{
+			s = s.stripSpaces().toLowerCase();
+			v = Number.NaN;
+			u = '';
+			k = 1;
+
+			// Sign
+			// ---
+			c = s.charAt(0);
+			( '+'==c || (('-'==c || callee.µ.MinusChar==c) && (k=-1)) ) && (s=s.substr(1));
+
+			// Parse the <value><type> syntax
+			// ---
+			if( m = s.match(callee.RE_D12) )
+			{
+				// Converts ##p## | ##c##  into  ##.##pc | ##.##ci
+				v = (parseInt(m[1],10)||0) + Number.parse(m[3],decPt)/12;
+				u = 'c'==m[2] ? 'ci' : 'pc';
+			}
+			else
+			{
+				(m=s.match(callee.RE_D10)) &&
+				(
+					v = Number.parse(m[1],decPt),
+					u = this.MTCH(m[2])
+				);
+			}
+
+			return isNaN(v) ?
+				false :
+				( (q=callee.Q).value=k*v, q.type=u, q );
+		}
+		.setup({
+			Q:      { value:0, type:'' },
+			RE_D12: /^(\d*)(c|p)([\d\.\,]*)$/,
+			RE_D10: /^([\d\.\,]+)(.*)$/,
+		}),
+		
+	})
+
+	//==========================================================================
+	// PUBLIC API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		// Delimiters used in `format`. (Could be localized.)
+		// ---
+		DecimalChar:           '.',
+		ThousandsChar:         '',
+		SpacingChar:           ' ',
+		MinusChar:             '-',
+		UseTypographicNotation: 1,  // Use `#p#` and `#c#` notations (as in InDesign)
+		                            // Otherwise, `1p2` becomes `14pc`
+		                            //        and `1c2` becomes `14ci`
+
+		onEngine : function onEngine_()
+		//----------------------------------
+		{
+			callee.µ['~'].FEED();
+		},
+
+		info: function info_SI$MeasurementUnitsEnum$_O$false$(/*str|uint|MeasurementUnitsEnum*/unit)
+		//----------------------------------
+		// Return the UnitData object that matches the input unit.
+		// E.g  info(MeasurementUnits.inches)
+		//      => { name:'in', uv:1, plural:'INCHES', muid:0x7A696E63, reg:/^in?|inch|inches$/i, alias:undef }
+		// ---
+		// => { name:str, uv:1|0, plural:STR, muid:uint|0, reg:RegExp, alias:num|str|false|undef, [baseKey:str] } [OK]
+		//    | false [KO]
+		{
+			return callee.µ['~'].UDAT(unit);
+		},
+		
+		getUnitList: function getUnitList_b_W(/*bool=0*/SORTED,/*bool=0*/FILTER,  o,b,k,r)
+		//----------------------------------
+		// Return the wagon list of all available unit keys in the form "key1|key2|..."
+		// SORTED :: Default=0. Whether the list must be alphabetically sorted.
+		// FILTER :: Default=0. Only returns units that support conversion features.
+		// => str
+		{
+			o = callee.µ.UnitData.getInstances();
+			b = !FILTER;
+			
+			if( SORTED )
+			{
+				(r = callee.Q||(callee.Q=[])).length = 0;
+				for( k in o ) o.hasOwnProperty(k) && b!==o[k].alias && (r[r.length]=k);
+				r.sort();
+				r = r.join('|');
+			}
+			else
+			{
+				r = '';
+				for( k in o ) o.hasOwnProperty(k) && b!==o[k].alias && (r += '|'+k);
+				r.length && (r=r.substr(1));
+			}
+
+			return r;
+		},
+
+		setDefault: function setDefault_SI$MeasurementUnitsEnum$$UnitData$_(/*str|uint|MUEnum|UnitData*/unit,  o,$$)
+		//----------------------------------
+		// Set the default unit.
+		// [REM] The default unit is implied when missing in conversion methods.
+		// => undef [OK]  |  Error [KO]
+		{
+			if( !(o=callee.µ.info(unit)) )
+			{
+				$$ = $.global[callee.µ.__root__]; // agnostic reference
+				$$.error(__("Invalid unit (%1).",$$.JSON(unit)),callee);
+			}
+
+			callee.µ.UnitData.setDefaultUnit(o.name);
+		},
+
+		setDPI: function setDPI_i_(/*uint=72*/dpi,  $$)
+		//----------------------------------
+		// Given a DPI magnitude, set the base unit for pixel conversions.
+		// The default dpi is 72, which leads 1/72th of a inch to match 1px -> 1px==1pt.
+		// In other case, (1/dpi) inch defines 1px, which then differs from 1pt.
+		// => undef [OK]  |  Error [KO]
+		{
+			'undefined' == typeof dpi && (dpi=72);
+			if( (!dpi) || dpi !== (dpi>>>0) )
+			{
+				$$ = $.global[callee.µ.__root__]; // agnostic reference
+				$$.error(__("Invalid dpi argument (%1).",$$.JSON(dpi)),callee);
+			}
+
+			callee.µ.UnitData.setPixelBase(UnitValue(1/dpi,'in'));
+		},
+		
+		setPercent: function setPercent__SN$UnitValue$_si$MeasurementUnitsEnum$_(/*str|num|UnitValue*/x,/*str|uint|MUEnum=def*/unit,  uv,$$)
+		//----------------------------------
+		// Set the input as a base for percent conversions.
+		// Arguments are interpreted as detailed in parse.
+		// => undef [OK]  |  Error [KO]
+		{
+			uv = callee.µ.toUnitValue(x,unit);
+			if( !uv )
+			{
+				$$ = $.global[callee.µ.__root__]; // agnostic reference
+				$$.error(__("Invalid percent base arguments (%1,%2).",$$.JSON(x),$$.JSON(unit)),callee);
+			}
+
+			callee.µ.UnitData.setPercentBase(uv);
+		},
+
+		parse: function parse_SN$UnitValue$_si$MeasurementUnitsEnum$_b_O$false$(/*str|num|UnitValue*/x,/*str|uint|MUEnum=def*/unit,/*bool=0*/VOLATILE,  µ,$$,t,v,o,q)
+		//----------------------------------
+		// Parse the input into a {value, type} object.
+		// ---
+		// If x either null, undefined, or false, throws an error.
+		// (A) If `unit` is missing or falsy:
+		//    (a) If `x` is a Number or has no valid inner unit,
+		//        -> set  T = <defUnit>.name
+		//        -> set  V = x.
+		//    (b) If some valid unit can be extracted from x,
+		//        -> set  T = unit(x).name
+		//        -> set  V = value(x).
+		// (B) If `unit` is supplied and truthy:
+		//     -> set T = <unit>.name  (throws an error if unit can't be handled.)
+		//    (a) If `x` is a Number or has no valid inner unit,
+		//        -> set  V = x.
+		//    (b) If some valid unit can be extracted from x,
+		//        -> set  V = result of converting (value(x),unit(x)) into T
+		// Return { value:V, type:T }.
+		// [REM] If `VOLATILE` is on, return a volatile object.
+		// [REM] The parser both supports strings of the regular form "<value><unit>",
+		// and the special formats `#p#` (picas) and `#c#` (ciceros). For example,
+		// "2p3.5" is interpreted (as expected) { value:2.29166666666667, type:'pc' }
+		// ---
+		// => { value:num , type:str }  [OK]  |  false [KO]
+		{
+			µ = callee.µ;
+			$$ = $.global[µ.__root__]; // agnostic reference
+			
+
+			// Inspect `x`.
+			// [REM] (!x) is required due to the NULL-UnitValue bug.
+			// ---
+			if( (!x) && ('undefined' == typeof x || false===x || null===x) )
+			{
+				$$.warn(__("%1 > Invalid value argument (%2).",callee.µ,x));
+				return false;
+			}
+
+			if( x instanceof UnitValue )
+			{
+				v = x.value;
+				t = x.type;
+				if( '?' == t )
+				{
+					$$.warn(__("%1 > Undefined UnitValue type.",callee.µ));
+					return false;
+				}
+			}
+			else
+			{
+				v = 'number' == typeof x ? x : ( (o=µ['~'].PRSE(String(x),µ.DecimalChar)) && o.value );
+				t = o ? o.type : '';
+				if( false===v )
+				{
+					$$.warn(__("%1 > Invalid value argument (%2).",callee.µ,$$.JSON(x)));
+					return false;
+				}
+			}
+
+			// Manage `unit`.
+			// ---
+			if( unit )
+			{
+				if( !(o=µ.info(unit)) )
+				{
+					$$.warn(__("%1 > Invalid unit argument (%2).",callee.µ,$$.JSON(unit)));
+					return false;
+				}
+				t && (v=µ.info(t).convert(v,o));
+				t = o.name;
+			}
+			else
+			{
+				t || (t=callee.µ.UnitData.getDefaultUnit(0));
+			}
+			
+			// Result.
+			// ---
+			q = VOLATILE ? (callee.Q||callee.Q={}) : {};
+			return (q.value=v), (q.type=t), q;
+		},
+
+		toUnitValue: function toUnitValue_SN$UnitValue$_si$MeasurementUnitsEnum$_$UnitValue$$false$(/*str|num|UnitValue*/x,/*str|uint|MUEnum=def*/unit,  o)
+		//----------------------------------
+		// Coerce the input into a UnitValue. Arguments are interpreted as detailed in parse.
+		// Return a UnitValue instance based on the parsed {value,type}. If UnitValue does not
+		// support the target type (e.g 'ag') then the returned instance is translated into 'pt.'
+		// ---
+		// => UnitValue [OK]  |  false [KO]
+		{
+			o = callee.µ.parse(x,unit,1);
+			if( !o ) return false;
+			unit = callee.µ.info(o.type);
+
+			return unit.uv ? UnitValue(o.value,o.type) : UnitValue(unit.convert(o.value,'pt'),'pt');
+		},
+
+		convertNumber: function convertNumber_N_si$MeasurementUnitsEnum$_si$MeasurementUnitsEnum$_N(/*num*/x,/*str|uint|MUEnum=def*/srcUnit,/*str|uint|MUEnum=def*/dstUnit,  µ)
+		//----------------------------------
+		// Given a number `x`, a source unit `srcUnit`, and a destination unit `dstUnit`,
+		// convert (x,srcUnit) into dstUnit and return the resulting magnitude.
+		// If `srcUnit` and/or `dstUnit` is missing or falsy, take the default unit.
+		// [REM] In particular, `convertNum(x)` always return x unchanged.
+		// => Number [OK]  |  Error [KO]
+		{
+			µ = callee.µ;
+
+			// Checkpoints.
+			// ---
+			if( 'number' != typeof x )
+				$.global[µ.__root__].error(__("The first argument must be a number (received: %1.)",typeof x),callee);
+			
+			srcUnit = srcUnit ? µ.info(srcUnit) : false;
+			dstUnit = dstUnit ? µ.info(dstUnit) : false;
+			
+			// The below test both covers ==(false,false) and ==(UnitData,UnitData)
+			// since UnitData.prototype exposes an `==` operator.
+			// ---
+			if( srcUnit == dstUnit ) return x;
+			
+			// Note that `dstUnit` may still be false, but `UnitData.convert()`
+			// supports that event.
+			// ---
+			return (srcUnit||µ.UnitData.getDefaultUnit(1)).convert(x,dstUnit);
+		},
+
+		convert: function convert_SN$UnitValue$_si$MeasurementUnitsEnum$_N(/*str|num|UnitValue*/x,/*str|uint|MUEnum=def*/dstUnit,  µ,o)
+		//----------------------------------
+		// If `x` is a Number, return `convertNum(x,<default>,dstUnit)`.
+		// Otherwise, call parse(x) and convert the result into dstUnit.
+		// Return the resulting magnitude.
+		// If `dstUnit` is missing or falsy, take the default unit.
+		// [REM] Keep in mind that any input number is assumed *in the default unit*,
+		// so if you need more control, use the `convertNumber` method instead.
+		// ---
+		// => Number [OK]  |  Error [KO]
+		{
+			µ = callee.µ;
+			
+			if( 'number' == typeof x ) return µ.convertNumber(x,void 0,dstUnit);
+
+			if( !(o=µ.parse(x,void 0,1)) )
+			{
+				$.global[µ.__root__].error(__("Invalid arguments (%1, %2)", typeof x, typeof dstUnit),callee);
+			}
+
+			dstUnit = dstUnit ? µ.info(dstUnit) : false;
+			
+			return µ.info(o.type).convert(o.value,dstUnit);
+		},
+
+		format: function format_SN$UnitValue$_si$MeasurementUnitsEnum$_ï_S(/*str|num|UnitValue*/x,/*str|uint|MUEnum=def*/unit,/*-20..20=auto*/digits,  µ,o,v,t,r,n,d)
+		//----------------------------------
+		// [AUTO] Format the measurement (x,unit) according to `digits` and delimiters.
+		// `x` and `unit` are interpreted as in `parse` (see above.)
+		// `digits` : supports negative value (as detailed in `Number.format`.)
+		//            If not supplied an automatic precision is determined with
+		//            respect to the output unit.
+		// ---
+		// Examples (with default delimiters):
+		//   $$.Unit("123.45mm")                      => "123.45 mm"
+		//   $$.Unit(123.45, MeasurementUnits.AGATES) => "123.45 ag"
+		//   $$.Unit(UnitValue(.5,'yd'), 'm')         => "0.4572 m"
+		//   $$.Unit("125pt","pc")                    => "10p5"      (if µ.UseTypographicNotation.)
+		//   $$.Unit(-12.34567,'in',-2)               => "-12.35 in"
+		//   $$.Unit('5pt','in',8)                    => "0.06944444 in"
+		//   $$.Unit(1.5,'',3)                        => "1.500 pt"  (default unit.)
+		// ---
+		// => str [OK]  |  '' [KO]
+		{
+			µ = callee.µ;
+			o = µ.parse(x,unit,1); // { value:num , type:str }
+			if( !o ) return '';
+
+			v = o.value;
+			t = o.type;
+
+			// Normalize special types.
+			// ---
+			'cstm' == t && (t='pt');
+
+			// Normalize the precision.
+			// ---
+			digits = 'undefined' == typeof digits ?
+				-( 3 + (1*('in'==t||'cm'==t||'ag'==t||'ind'==t)||2*('m'==t||'ft'==t)||3*('km'==t||'yd'==t||'mi'==t)) ) :
+				(digits|0);
+
+			if( ('pc'==t || 'ci'==t) && µ.UseTypographicNotation )
+			{
+				r = 0 > v ? ((v=-v),µ.MinusChar) : '';
+				n = parseInt(v,10);
+				d = Number.format(12*(v-n),digits,µ.DecimalChar,'');
+				'12'==d.substr(0,2) && ( ++n , (d='0'+d.substr(2)) );
+				r && !n && !parseInt(d.replace(RegExp.NONDs,''),10) && (r='');
+				r += String(n||'') + t.charAt(0) + d;
+			}
+			else
+			{
+				r = Number.format(v,digits,µ.DecimalChar,µ.ThousandsChar);
+				r += µ.SpacingChar + t;
+				'-' == r.charAt(0) && µ.MinusChar != '-' && (r=µ.MinusChar+r.substr(1));
+			}
+			
+			return r;
+		},
+
+	})
+
+	/*
+	
+	Makes the UnitData class available at including time.
+	
+	*/
+
+	#include 'Unit/$$.UnitData.jsxlib'
