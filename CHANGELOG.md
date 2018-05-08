@@ -1,5 +1,6 @@
 ##### [180508]
   - Corrected a few typos in **Dom.Dialog** comments.
+  - Added a pattern for the vertical line `|` (i.e `U+007C`) in `core/Ext/$$.patterns.jsxinc`. It defines `String.OR`, `RegExp.OR` etc.
 
 ##### [180415]
   - Introducing the **Dom.Style** module (`/etc/Dom.Style`) for handling and browsing InDesign DOM styles (character/paragraph/object styles.) The automatic method is `flatList()`, a very flexible routine whose options are detailed in the code.
