@@ -109,6 +109,18 @@ _Demonstrates:_
 * Divide-and-Remainder method, primality.
 * Finding a huge prime number.
 
+##### [`PlayWithUnit.jsx`](PlayWithUnit.jsx)
+
+![PlayWithUnit dialog](PlayWithUnit.png)
+
+Using a consistent facade for handling metrical units.   
+_Demonstrates:_
+   
+* Optional module inclusion.
+* Usage of `$$.Dom.Dialog()`.
+* Basic internationalization (decimal point, etc.)
+* Experimenting the Unit API: `info()`, `parse()`, `convertNumber()`, `format()`.
+
 ##### [`ShowHelp.jsx`](ShowHelp.jsx)
 
 Get help on core and included modules.   
