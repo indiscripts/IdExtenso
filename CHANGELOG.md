@@ -1,5 +1,5 @@
 ##### [180508]
-  - Added the **Unit** module, a consistent facade for handling metrical units.
+  - Added the **Unit** module, a consistent facade for handling metrical units. [Test script](https://github.com/indiscripts/IdExtenso/blob/master/tests/PlayWithUnit.jsx)
   - Corrected a few typos in **Dom.Dialog** comments. Added the alias `selected` for either Dropdown or RadiobuttonGroup widgets: it is interpreted `selectedButton` in case of radio group, and `selectedIndex` in case of dropdown.
   - **Dom.Dialog** now installs a method named `Dialog.prototype.getStringKey(k)` which, unlike `getValueKey(k)`, returns the string associated to the accessed widget. Useful for dropdowns and similar widgets that basically would return an index.
   - Added a pattern for the vertical line `|` (i.e `U+007C`) in `core/Ext/$$.patterns.jsxinc`. It defines `String.OR`, `RegExp.OR` etc.
