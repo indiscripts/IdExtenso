@@ -9,6 +9,7 @@
 		Kind:           Module (within $$.Dom.)
 		API:            =fromXML()
 		                => Dialog.prototype.getValueKey()
+		                => Dialog.prototype.getStringKey()
 		                => Dialog.prototype.setValueKey()
 		                => Dialog.prototype.changeListKey()
 		                => Dialog.prototype.changeUnitKey()
@@ -166,6 +167,9 @@
 	      value:    alias of 'editValue'
 	      list:     alias of 'stringList'
 	      ------------------------------
+	      selected: alias of 'selectedButton' (in RadiobuttonGroup)
+	                      or 'selectedIndex'  (in Dropdown)
+	      ------------------------------
 	      min:      alias of 'minimumValue'
 	      max:      alias of 'maximumValue'
 	      small:    alias of 'smallNudge'
@@ -237,6 +241,35 @@
 			|| o.hasOwnProperty(k='staticLabel');
 
 			return o[k];
+		},
+
+		GTSK : function getStringKey(/*str*/k,  wg,o)
+		//----------------------------------
+		// (Get-String-by-Key.) This methods is automatically added
+		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// [ADD180508] Unlike getValueKey, this method gives precedence
+		// to `editContents` and returns a string rather than an index
+		// when relevant.
+		// => undefined [KO]  |  str [OK]
+		{
+			if( !(wg=callee.µ['~'].GETW(this,k)) ) return;
+			
+			(o=wg.properties).hasOwnProperty(k='editContents')
+			|| o.hasOwnProperty(k='selectedIndex')
+			|| o.hasOwnProperty(k='selectedButton')
+			|| o.hasOwnProperty(k='staticLabel')
+			|| o.hasOwnProperty(k='checkedState')
+			|| o.hasOwnProperty(k='editValue');
+
+			if( 'selectedIndex'==k ) return o.stringList[o[k]];
+
+			if( 'selectedButton'==k && (wg=wg.radiobuttonControls[o[k]]).isValid )
+			{
+				o = wg.properties;
+				k = 'staticLabel';
+			}
+
+			return String(o[k]);
 		},
 
 		STVK : function setValueKey(/*str*/k,/*str|num|bool*/v,  t,o,a,i)
@@ -336,7 +369,7 @@
 
 		MTCH : function(/*str*/widgKey,/*str*/propKey,  s)
 		//----------------------------------
-		// (Matcher.) Tell whether the class `className` supports the prop `propKey`
+		// (Matcher.) Tell whether the class `widgKey` supports the prop `propKey`
 		// in the particular context of multi-case alias.
 		// => true [OK]  |  false [KO]
 		{
@@ -521,11 +554,13 @@
 		// getValueKey(str) and setValueKey(str,any).
 		// [ADD180319] +changeListKey.
 		// [ADD180323] +changeUnitKey
+		// [ADD180508] +getStringKey(str)
 		{
 			I = callee.µ['~'];
 			o = Dialog.prototype;
 			
 			o.getValueKey = I.GTVK;
+			o.getStringKey = I.GTSK;
 			o.setValueKey = I.STVK;
 			
 			o.changeListKey = I.CGLK;
