@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       180413 (YYMMDD)
+		Modified:       180508 (YYMMDD)
 
 *******************************************************************************/
 
@@ -87,6 +87,8 @@
 	\u005C   Backslash                 <BK>      \
 	\u0022   Double Quote              <DQ>      "
 	\u0027   Single Quote              <SQ>      '
+	---
+	\u007C   Vertical Line             <OR>      |    [ADD180508]
 	---
 	\u000A   Line Feed (EOL)           <LF>      n
 	\u000D   Carriage Return           <CR>      r
@@ -201,6 +203,14 @@
 	RegExp.DTs  = /\u002E+/g;                                   // /one-or-more-DT/
 	RegExp.DT2  = /\u002E\u002E+/g;                             // /two-or-more-DT/
 	RegExp.DT3  = /\u002E\u002E\u002E+/g;                       // /three-or-more-DT/
+
+	// <OR> U+007C `|` VERTICAL LINE (vertical bar) [ADD180508]
+	// -------------------------------------------------------------------------
+	String.OR   = '\u007C';
+	RegExp.OR   = /\u007C/g;                                    // /OR/
+	String._OR  = String.BK + String.OR;                        // Regular esc `\|`
+	RegExp._OR  = /\u005C(?:\u007C|u007[Cc]|[xX]07[Cc])/g;      // /any-esc/
+	RegExp.BKOR = /\u005C\u007C/g;                              // /BKOR/ only
 
 	// <DQ> U+0022 `"` Double Quote
 	// <SQ> U+0027 `'` Single Quote
