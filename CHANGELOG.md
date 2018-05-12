@@ -1,3 +1,6 @@
+##### [180513]
+  - **Dom.Dialog** : Added the global attributes `captionWidth` (resp. `editWidth`) for declaring default `minWidth` for labeled (resp. editable) widgets. Example: `<Dialog name="My Dialog Title" canCancel="true" captionWidth="100" editWidth="150">...`.
+
 ##### [180508]
   - Added the **Unit** module, a consistent facade for handling metrical units. Test script: [PlayWithUnit](https://github.com/indiscripts/IdExtenso/tree/master/tests#playwithunitjsx).
   - Corrected a few typos in **Dom.Dialog** comments. Added the alias `selected` for either Dropdown or RadiobuttonGroup widgets: it is interpreted `selectedButton` in case of radio group, and `selectedIndex` in case of dropdown.
