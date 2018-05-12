@@ -16,11 +16,11 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180311 (YYMMDD)
-		Modified:       180508 (YYMMDD)
+		Modified:       180513 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180508, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180513, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -363,7 +363,7 @@
 
 	({
 
-		// Minimal caption width.
+		// Minimal caption width (default.)
 		// ---
 		CAPW : 100,
 
@@ -483,7 +483,7 @@
 			RCBX: '@RealCombobox',       RealCombobox:'realComboboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 		},
 
-		XDLG: function(/*XML*/x,/*Dom&*/host,  I,W,RE,wx,wk,k,skey,s,h,pp,t)
+		XDLG: function(/*XML*/x,/*Dom&*/host,  I,W,RE,wx,wk,k,skey,s,h,ed,mw,pp,t)
 		//----------------------------------
 		// (XML-Dialog.) Create a DOM dialog from a XML description
 		// based on WDGS shortcuts and property aliases.
@@ -493,6 +493,11 @@
 			I = callee.µ['~'];
 			W = I.WDGS;
 			RE = callee.RE;
+			
+			// [ADD180512] Manage default minWidth
+			// ---
+			const CPW = callee.CAPTION_WIDTH; // may be zero
+			const EDW = callee.EDIT_WIDTH;    // may be zero
 			
 			for each( wx in x )
 			{
@@ -508,9 +513,10 @@
 				
 				// Embed caption?
 				// [FIX180324] Check `.attribute(...).length()` + string.length
+				// [ADD180512] `ed` flag
 				// ---
 				h = host;
-				if( RE.test(wk) && (s=wx.attribute('caption')).length() && (s=s.toString()).length )
+				if( (ed=RE.test(wk)) && (s=wx.attribute('caption')).length() && (s=s.toString()).length )
 				{
 					// [CHG180319] Make auto-colon (:) a bit smarter.
 					// ---
@@ -518,13 +524,13 @@
 					':' == s.charAt(-1+s.length) || (s=__("%1:",s));
 
 					h.hasOwnProperty('dialogRows') || (h=h.dialogColumns.add());
-					(h=h.dialogRows.add()).staticTexts.add({ staticLabel:s, minWidth:I.CAPW });
+					(h=h.dialogRows.add()).staticTexts.add({ staticLabel:s, minWidth:CPW||I.CAPW });
 				}
-				
+
 				// Other properties.
 				// ---
 				pp = (t=wx.attributes()).length() ? I.XPPS(t,wk) : void 0;
-
+				
 				// Create the DOM widget.
 				// ---
 				if( !h.hasOwnProperty(k) )
@@ -533,6 +539,9 @@
 				}
 				else
 				{
+					// [ADD180512] Min width.
+					// ---
+					(t=ed?EDW:CPW) && !(pp && pp.hasOwnProperty('minWidth')) && ((pp||(pp={})).minWidth=t);
 					t = h[k].add(pp);
 					skey && (callee.LABEL += '\x02'+skey+'\x01'+t.id);
 				}
@@ -540,7 +549,13 @@
 				wx.hasComplexContent() && callee(wx.children(),t);
 			}
 		}
-		.setup({ LABEL:'', RE:/Dropdown|box$/ }),
+		.setup(
+		{
+			LABEL:'',
+			CAPTION_WIDTH: 0, // [ADD180512] Minimum caption with -- cf fromXML()
+			EDIT_WIDTH:    0, // [ADD180512] Minimum edit with    -- cf fromXML()
+			RE:/Dropdown|box$/,
+		}),
 
 	})
 
@@ -567,7 +582,7 @@
 			o.changeUnitKey = I.CGUK;
 		},
 
-		fromXML: function fromXML_$XML$S_$Dialog$(/*xml|str*/x,  $$,I,dlg,s)
+		fromXML: function fromXML_$XML$S_$Dialog$(/*xml|str*/x,  $$,I,dlg,t,s)
 		//----------------------------------
 		// Create a new Dialog object based on XML descriptor.
 		// The root element should be <Dialog>, it supports `name` and `canCancel` attributes.
@@ -576,11 +591,14 @@
 		// like <DCOL>, <BPNL>, <DROP>, <TEBX> etc. Use attributes to specify properties.
 		// (Allowed attributes and aliases are defined in ~.XPPS.TYPES.)
 		// Containers can have XML children, e.g `<DCOL><CBOX /><TCBX /></DCOL>`.
+		// ---
 		// You can use a special attribute, `key`, to access widget values from the
 		// Dialog instance through getValueKey(k) and setValueKey(k,v).
+		// [ADD180512] Use the global attributes `captionWidth` and/or `editWidth`
+		// to set a default minWidth properties for labels and/or editable widgets.
 		// ---
 		// Full example:
-		// <Dialog name="My Dialog Title" canCancel="true">
+		// <Dialog name="My Dialog Title" canCancel="true" captionWidth="100" editWidth="150">
 		//   <DCOL>
 		//     <TEBX key="txInput" edit="Type your text here" />
 		//     <EGRP key="allowFeatures" checked="true">
@@ -605,6 +623,14 @@
 				});
 
 			(I=callee.µ['~']).XDLG.LABEL='';
+
+			// [ADD180512] Manage default caption and edit widths:
+			// x.attribute('captionWidth') :: default minWidth property of labels
+			// x.attribute('editWidth')    :: default minWidth property of editable widgets
+			// ---
+			I.XDLG.CAPTION_WIDTH = ((t=x.attribute('captionWidth').toString())&&parseInt(t,10))||0;
+			I.XDLG.EDIT_WIDTH =    ((t=x.attribute('editWidth').toString())&&parseInt(t,10))||0;
+
 			I.XDLG(x,dlg);
 			(s=I.XDLG.LABEL) && (dlg.label=s);
 			
