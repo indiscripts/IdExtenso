@@ -1,4 +1,5 @@
 ##### [180513]
+  - **Env** : Added the `userName()` method.
   - **Dom.Dialog** : Added the global attributes `captionWidth` (resp. `editWidth`) for declaring default `minWidth` for labeled (resp. editable) widgets. Example: `<Dialog name="My Dialog Title" canCancel="true" captionWidth="100" editWidth="150">...`.
 
 ##### [180508]
