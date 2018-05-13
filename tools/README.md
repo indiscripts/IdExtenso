@@ -14,4 +14,6 @@ Compute and prompt the MD5 hash of the input string. (Based on `etc/$$.MD5.jsxli
 
 ##### [`SelToPng.jsx`](SelToPng.jsx)
 
+![SelToPng anim](SelToPng.gif)
+
 Convert the current selection (`PageItem`, `Group` etc.) into a serialized PNG string and show the result in a dialog. You can then copy-paste the PNG string and use it to build a ScriptUI image straight in your code without the need of deploying a file.
