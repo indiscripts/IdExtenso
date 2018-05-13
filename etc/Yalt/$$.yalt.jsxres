@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           adding other locales!
 		Created:        150509 (YYMMDD)
-		Modified:       170306 (YYMMDD)
+		Modified:       180513 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 	// NOTICE
 	//==========================================================================
 
-	// Supported locales: <EN> FR DE SP.
+	// Supported locales: <EN> FR DE ES.
 	// Feel free to correct, or to add new locales, as long as
 	// you don't change the keys (1st column.) Each translation
 	// string must have the following format, in a single line:
@@ -33,6 +33,7 @@
 	/*<YALT> # FRENCH # GERMAN # SPANISH
 	%1: # %1 : # %1: # %1:
 	%1: %2 # %1 : %2 # %1: %2 # %1: %2
+	%1! # %1 ! # %1! # %1!
 
 	================================
 
@@ -55,55 +56,25 @@
 	Powered by %1 # Produit par %1 # Erstellt mit %1 # Generado por %1
 	InDesign returned the following error: # InDesign a renvoyé l'erreur suivante : # InDesign hat einen Fehler zurückgegeben: # InDesign devolvió el siguiente error:
 	%1 encountered a serious issue: # %1 a rencontré un problème critique : # %1 hat einen Fehler zurückgegeben: # %1 encontró un problema grave:
-
-	================================
-
-	Indiscripts menu # Menu Indiscripts # Indiscriptsmenü # Menú Indiscripts
 	About %1 # À propos de %1 # Über %1 # Acerca de %1
-	%1's Home Page # Page d'accueil de %1 # %1-Homepage # Página principal de %1
-	Licensed to: %1 # Licence : %1 # Lizensiert für: %1 # Licencia: %1
-	Report a bug: %1 # Signaler un bug : %1 # Fehler melden: %1 # Reportar un error: %1
-	Feel free to give feedback to: %1 # Votre avis nous intéresse : %1 # Bitte, geben Sie Feedback an: %1 # No dude en dar su opinión: %1
-	Tryout version # Version d'évaluation # Tryout-Version # Versión de prueba
 
 	================================
 
-	[Private use only] # [Usage privé seulement] # [Für den privaten Gebrauch bestimmt] # [Sólo para uso privado]
-	Version: # Version: # Version: # Versión:
-	Release: # Édition: # Ausgabe: # Lanzamiento:
-	License: # Licence: # Lizenz: # Licencia:
-	User: # Utilisateur: # Benutzer: # Usuario:
-	Email: # Courriel: # E-Mail: # Correo electr.:
-	Host: # Hôte: # Host: # Host:
-	System: # Système: # Betriebssystem: # Sistema:
-	ExtendScript: # ExtendScript: # ExtendScript: # ExtendScript:
-	ScriptUI: # ScriptUI: # ScriptUI: # ScriptUI:
-	Developed by: # Développement: # Entwickler: # Autor:
-	Designed by: # Design: # Designer: # Diseñador:
-	Localization: # Localisation: # Lokalisierung: # Localización:
-	Localization (%1): # Localisation (%1): # Lokalisierung (%1): # Localización (%1):
-	Support: # Support tech.: # Support: # Soporte:
-	Copyright: # Copyright: # Copyright: # Copyright:
+	Version # Version # Version # Versión
+	Release # Édition # Ausgabe # Lanzamiento
+	License # Licence # Lizenz # Licencia
+	User # Utilisateur # Benutzer # Usuario
+	Email # Courriel # E-Mail # Correo electr.
+	Host # Hôte # Host # Host
+	System # Système # Betriebssystem # Sistema
+	Developed by # Développement # Entwickler # Autor
+	Designed by # Design # Designer # Diseñador
+	Localization # Localisation # Lokalisierung # Localización
+	Localization (%1) # Localisation (%1) # Lokalisierung (%1) # Localización (%1)
+	Support # Support tech. # Support # Soporte
+	Copyright # Copyright # Copyright # Copyright
 
 	================================
 
-	Thanks for testing %1. # Merci de tester %1. # Vielen Dank für das Testen von %1. # Gracias por probar %1.
-	Thanks for using %1. # Merci d'utiliser %1. # Vielen Dank für Ihr Interesse an %1. # Gracias por usar %1.
-	Found a bug? # Vous avez décelé un bug ? # Haben Sie Fehler gefunden? # ¿Ha encontrado un error?
-	Have feature requests? # Une fonctionnalité vous paraît faire défaut ? # Haben Sie Wünsche für neue Funktionen? # ¿Tiene solicitudes de funciones?
-	This release is no longer functional. # Cette version n'est plus opérationnelle. # Diese Version ist nicht mehr funktionsfähig. # Esta versión ya no es funcional.
-	This program requires InDesign CS%1 or later. # Ce programme nécessite InDesign CS%1 ou plus récent.
-	Check out %1 at: # Découvrez %1 ici : # Entdecken Sie %1 auf unserer Website: # Ver %1 en nuestro sitio web:
-
-	================================
-
-	Display units # Unité d'affichage # Einheiten # Unidades de medida
-	Agates # Agates # Agaten # Ágatas
-	Ciceros # Cicéros # Cicero # Cíceros
-	Centimeters # Centimètres # Zentimeter # Centímetros
-	Inches # Pouces (in) # Zoll (in) # Pulgadas (in)
-	Millimeters # Millimètres # Millimeter # Millímetros
-	Picas # Picas # Pica # Picas
-	Points # Points # Punkt # Puntos
 	</YALT>*/
 """
