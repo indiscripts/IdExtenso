@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       171110 (YYMMDD)
+		Modified:       180513 (YYMMDD)
 
 *******************************************************************************/
 
@@ -172,7 +172,15 @@
 		// Make sure __path__ is undefined before using the MODULE macro.
 		// ---
 		delete $.global.__path__;
-	
+
+		// [ADD180513] If the framework is being included (not embedded in
+		// a bin package) then `$.fileName` contains the full path to the
+		// present file, something like "/path/to/IdExtenso/$$.jsxinc".
+		// The `Env` module uses this information if available.
+		// [REM] Env will remove __jsxinc__ from the [[global]] space.
+		// ---
+		$.global.__jsxinc__ = $.fileName;
+
 		// Some temporary global strings.
 		// [REM] Autodeleted once the framework has been loaded.
 		// ---
