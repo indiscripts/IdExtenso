@@ -1,5 +1,6 @@
 ##### [180513]
-  - **Env** : Added the `userName()` method.
+  - A temporary global `__jsxinc__` is declared in `$$.jsxinc` to keep track of the entry point location.
+  - **Env** : Added the `userName()` method. Added the `idexEntryPath` property.
   - **Dom.Dialog** : Added the global attributes `captionWidth` (resp. `editWidth`) for declaring default `minWidth` for labeled (resp. editable) widgets. Example: `<Dialog name="My Dialog Title" canCancel="true" captionWidth="100" editWidth="150">...`.
 
 ##### [180508]
