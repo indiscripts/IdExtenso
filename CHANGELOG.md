@@ -1,3 +1,6 @@
+##### [180514]
+  - `$$.Env.isUnit()` now supports _numeral_ inputs, that is, strings having the form `"2054187384"` or `"0x7A696E63"`. (Useful in XML context.)
+
 ##### [180513]
   - **Yalt** : The `YALT` routine now automatically handles terminators `:` `.` and `!`. For example, if `"Hello"` has a translation while `"Hello!"` is not registered, then `__("Hello!")` is interpreted as `__( "%1!" , __("Hello") )`.
   - A temporary global `__jsxinc__` is declared in `$$.jsxinc` to keep track of the entry point location.
