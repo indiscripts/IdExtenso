@@ -1,7 +1,7 @@
 ##### [180513]
   - **Yalt** : The `YALT` routine now automatically handles terminators `:` `.` and `!`. For example, if `"Hello"` has a translation while `"Hello!"` is not registered, then `__("Hello!")` is interpreted as `__( "%1!" , __("Hello") )`.
   - A temporary global `__jsxinc__` is declared in `$$.jsxinc` to keep track of the entry point location.
-  - **Env** : Added the `userName()` method. Added the `idexEntryPath` property.
+  - **Env** : Added the `userName()` method. Added the `idexEntryPath` property. Added the `scriptsPanel()` method (returns the path of the Scripts Panel folder in either app or user branch.)
   - **Dom.Dialog** : Added the global attributes `captionWidth` (resp. `editWidth`) for declaring default `minWidth` for labeled (resp. editable) widgets. Example: `<Dialog name="My Dialog Title" canCancel="true" captionWidth="100" editWidth="150">...`.
 
 ##### [180508]
