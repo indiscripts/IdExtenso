@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       180309 (YYMMDD)
+		Modified:       180513 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 180309, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 180513, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -232,7 +232,7 @@
 			}
 		},
 
-		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  o,k)
+		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  o,k,z,c)
 		//----------------------------------
 		// (Localization routine.) A reference to this function is assigned
 		// to `$.global.__` at including stage (as shown above) so the localization
@@ -242,9 +242,39 @@
 		// [REM] Although declared 'private' this function cannot rely on `this` for
 		// referencing the private module zone, as it is invoked from the outside.
 		{
-			return $.global.localize.apply(null,
-				[(s && (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) ? o[k] : s), x1,x2,x3,x4,x5,x6,x7,x8,x9]
-				);
+			// [CHG180513] Handle terminators  `:`  `.`  `!`
+			// ---
+			while( s )
+			{
+				if( (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) )
+				{
+					s = o[k];
+					break;
+				}
+
+				if( -1 == ":.!".indexOf(c=s.charAt(-1+(z=s.length))) || s == '%1'+c )
+				{
+					break;
+				}
+
+				if( o.hasOwnProperty(k=k.substr(0,z)) )
+				{
+					s = o[k];
+					0 <= s.indexOf('%') && (s=$.global.localize.apply(null, [s,x1,x2,x3,x4,x5,x6,x7,x8,x9]));
+				}
+				else
+				{
+					s = k.substr(1);
+				}
+
+				k = callee.µ['~'].KPFX + "%1" + c;
+				s = o.hasOwnProperty(k) ? $.global.localize(o[k],s) : (s+c);
+				break;
+			}
+
+			return s && 0 <= s.indexOf('%') ?
+				$.global.localize.apply(null, [s,x1,x2,x3,x4,x5,x6,x7,x8,x9]) :
+				String(s);
 		},
 		
 		HASK : function(/*str*/s)
