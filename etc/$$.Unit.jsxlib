@@ -15,11 +15,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180402 (YYMMDD)
-		Modified:       180508 (YYMMDD)
+		Modified:       180514 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 180508, 'format'))
+;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 180514, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -232,9 +232,9 @@
 	ZApt  0x5A417074  ap   KO  7   AMERICAN_POINTS  .35146 mm  ; CJK only
 	-------------------------------------------------------------------------
 	zind  0x7A696E64  in   KO  8   INCHES_DECIMAL   -> in (affects ruler display)
-	zJU   0x7A4A5520   ?   KO  8   U                ?
-	zBai  0x7A426169   ?   KO  8   BAI              ?
-	zMil  0x7A4D696C   ?   KO  8   MILS             in / 1000 ; see note below
+	zJU   0x7A4A5520   ?   KO  8   U                .792 pt    ; CJK only
+	zBai  0x7A426169   ?   KO  8   BAI              6.336 pt   ; CJK only
+	zMil  0x7A4D696C   ?   KO  8   MILS             in / 1000  ; see note below
 	-------------------------------------------------------------------------
 	zpix  0x7A706978  px   OK  7   PIXELS           baseless / 1pt
 	Cstm  0x4373746D  pt   KO  8   CUSTOM           -> pt (affects ruler display)
@@ -275,7 +275,11 @@
 	thickness of materials. One mil is equal to one thousandth of an inch, or
 	10^-3 inches. The mil is also referred to as thou. The closest unit to the
 	mil in the metric system is the micrometer: One mil is equal to 25.4 µm.
-
+	
+	[REF] http://sysys.blog.shinobi.jp/Entry/20/
+	
+	      MeasurementUnits.BAI  <=>  6.336 pt
+	      MeasurementUnits.U    <=>  0.792 pt
 	*/
 
 	//==========================================================================
@@ -357,8 +361,8 @@
 			// ---
 			UD.setInstance('ind', 'INCHES_DECIMAL',  'in' );
 			// ---
-			UD.setInstance('u'  , 'U',               false );
-			UD.setInstance('bai', 'BAI',             false );
+			UD.setInstance('u'  , 'U',               .792  ); // [FIX180514] Was `false`
+			UD.setInstance('bai', 'BAI',             6.336 ); // [FIX180514] Was `false`
 			UD.setInstance('mil', 'MILS',            UnitValue(1/1e3,'in').as('pt') );
 			// ---
 			UD.setInstance('px' , 'PIXELS' );
