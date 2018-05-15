@@ -1,3 +1,6 @@
+##### [180516]
+  - Added the method `$$.failure()` in `/core/Root/$$.messaging.jsxinc`.
+
 ## 1.80515
   - The **Dom.Dialog** module now provides a public property `SmartMeasurementBoxes` (0 or 1) that affects the behavior of getters and setters attached to measurement controls (`MeasurementEditbox` and `MeasurementCombobox` instances.) In summary, `SmartMeasurementBoxes==1` guarantees that numeric values managed through the module interface are understood relative to the control unit (`editUnits`). This is useful when you need to set, get, and compute magnitudes straight into a particular unit (instead of points.) More details in the [NOTICE](etc/%24%24.Dom.Dialog.jsxlib#L207).
   - Small addition: **Dom.Dialog** also installs the accessor `Dialog.prototype.getWidgetKey()` which returns the widget associated to some key. Usually you don't need this, since the existing getters and setters do a great job while hiding access to the DOM widget. Just in case you'd need more _tweaking_ capabilities...
