@@ -1,4 +1,4 @@
-# *IdExtenso*  [beta]
+# *IdExtenso*  1.80515
 
 *ExtendScript Framework for InDesign Ninjas.*
 
