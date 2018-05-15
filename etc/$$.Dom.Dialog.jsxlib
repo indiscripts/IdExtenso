@@ -7,7 +7,7 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module (within $$.Dom.)
-		API:            =fromXML()
+		API:            =fromXML() SmartMeasurementBoxes
 		                => Dialog.prototype.getValueKey()
 		                => Dialog.prototype.getStringKey()
 		                => Dialog.prototype.setValueKey()
@@ -16,11 +16,11 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180311 (YYMMDD)
-		Modified:       180513 (YYMMDD)
+		Modified:       180515 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180513, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180515, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -164,7 +164,8 @@
 	      checked:  alias of 'checkedState'
 	      caption:  alias of 'staticLabel' ; adds a label component if needed.
 	      edit:     alias of 'editContents'
-	      value:    alias of 'editValue'
+	      value:    alias of 'editValue'   ; see special case `SmartMeasurementBoxes` flag.
+	      units:    alias of 'editUnits'   ; [ADD180514]
 	      list:     alias of 'stringList'
 	      ------------------------------
 	      selected: alias of 'selectedButton' (in RadiobuttonGroup)
@@ -201,7 +202,43 @@
 	      STAT = StaticText                    ICBX = IntegerCombobox     
 	      CBOX = CheckboxControl               MCBX = MeasurementCombobox 
 	      DROP = Dropdown                      PCBX = PercentCombobox     
-                                               RCBX = RealCombobox        
+	                                           RCBX = RealCombobox        
+
+	[CHG180514] Smart Measurement Boxes
+	
+	The public property `SmartMeasurementBoxes` can be set to either 1
+	(default) or 0 from the client code.
+	
+	When this flag is turned ON, every measurement widget --MEBX or MCBX--
+	expects and returns *numeric* values with respect to the particular
+	unit applied to the widget (cf `editUnits` property.) This affects
+	the prototyped methods `getValueKey` and `setValueKey`. On the XML
+	side the `editValue` attribute (alias `value`) is interpreted with
+	respect to editUnits as well. (Note however that `myWidget.editValue`
+	keeps seeing the magnitude in pt since this is the native DOM behaviour.)
+	
+	If SmartMeasurementBoxes is turned OFF, the widget behaves in legacy
+	mode: numeric values match `editValue` and imply points, while
+	string values match `editContents` and imply editUnits.
+	
+	In summary, `SmartMeasurementBoxes==1` guarantees that numeric values
+	managed through the present module are understood relative to the unit
+	associated to the widget. This is useful when you need to set, get, and
+	compute magnitudes straight into a particular unit which is not POINTS.
+	
+	For example, in the below declaration,
+	
+	      <MEBX value="3.5" min="1" max="10" units="PICAS"/>
+	
+	the attributes `value` , `min` and `max` are interpreted in PICAS, meaning
+	that the box will display "3p6" (3p6 == 3.5 picas) and the value can range
+	from 1p0 to 10p0.
+	
+	[REM] In the particular example above, note that `value="3p6"` wouldn't be
+	a valid assignment since the `value` attribute expects a numeral. If you
+	want to provide a measurement string ("3p6", "5mm", etc) use the `edit`
+	attribute instead.
+	
 	*/
 
 	[PRIVATE]
@@ -225,15 +262,52 @@
 			return t.getElements()[0];
 		},
 
-		GTVK : function getValueKey(/*str*/k,  o)
+		GTVK : function getValueKey(/*str*/k,  o,t,s)
 		//----------------------------------
 		// (Get-Value-by-Key.) This methods is automatically added
 		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
+		// ---
+		// [ADD180514] In measurement box case (MEBX|MCBX), this
+		// function returns a number (unlike getStringKey)
+		// but with respect to the `SmartMeasurementBoxes` flag:
+		// - If SmartMeasurementBoxes is ON, coerces the magnitude
+		//   into editUnits (note: contents like "3p6" becomes 3.5) ;
+		// - If SmartMeasurementBoxes is OFF, returns editValue
+		//   (magnitude in *points*.)
+		// ---
 		// => undefined [KO]  |  bool|num|str [OK]
 		{
 			if( !(o=callee.µ['~'].GETW(this,k)) ) return;
 			
-			(o=o.properties).hasOwnProperty(k='checkedState')
+			o = o.properties;
+			
+			// [ADD180514] Measurement box case.
+			// ---
+			if( callee.µ.SmartMeasurementBoxes && o.hasOwnProperty('editUnits') )
+			{
+				s = o.editContents;
+
+				// Usually parseFloat(s) is fine, unless s has the form
+				// ##p## (resp. ##c##) in PICAS (resp. CICEROS) case.
+				// ---
+				t = +o.editUnits;
+				t = ( callee.PC==t && 'p' ) || ( callee.CI==t && 'c' );
+				t = t ? s.indexOf(t) : -1;
+
+				if( 0 <= t )
+				{
+					0 > (k='-'==s.charAt(0)?-1:1) && ((s=s.substr(1)),--t);
+					t = k*( (parseInt(s.substr(0,t),10)||0) + (parseFloat(s.substr(1+t))||0)/12 );
+				}
+				else
+				{
+					t = parseFloat(s)||0;
+				}
+				
+				return t;
+			}
+
+			o.hasOwnProperty(k='checkedState')
 			|| o.hasOwnProperty(k='editValue')
 			|| o.hasOwnProperty(k='editContents')
 			|| o.hasOwnProperty(k='selectedIndex')
@@ -241,7 +315,11 @@
 			|| o.hasOwnProperty(k='staticLabel');
 
 			return o[k];
-		},
+		}
+		.setup({
+			PC: +MeasurementUnits.PICAS,
+			CI: +MeasurementUnits.CICEROS,
+		}),
 
 		GTSK : function getStringKey(/*str*/k,  wg,o)
 		//----------------------------------
@@ -276,23 +354,43 @@
 		//----------------------------------
 		// (Set-Value-for-Key.) This methods is automatically added
 		// to `Dialog.prototype` at loading time ; `this` :: Dialog.
-		// [FIX180313] Typo!
+		// [FIX180313] Typo.
+		// ---
+		// [CHG180514] Measurement box case (MEBX|MCBX.)
+		// (A) If `v` is a string (not a number) it is always assumed
+		//     that it provides the `editContents` property as such,
+		//     as formerly done.
+		// (B) If `v` is a number *and* SmartMeasurementBoxes is ON,
+		//     `editContents` is invoked with `String(v)`.
+		//     If `v` is a number *and* SmartMeasurementBoxes is OFF,
+		//     `editValue` is invoked--which implies *points* unit.
 		// ---
 		// => undefined [KO]  |  v [OK]
 		{
 			if( !(t=callee.µ['~'].GETW(this,k)) ) return;
 			
 			o = t.properties;
+			
 			switch( typeof v )
 			{
 				case 'boolean' :
 					o.hasOwnProperty(k='checkedState') || (k=void 0);
 					break;
+
 				case 'number' :
+					// [ADD180514] Measurement box case.
+					// ---
+					if( o.hasOwnProperty('editUnits') && callee.µ.SmartMeasurementBoxes )
+					{
+						k = 'editContents';
+						v = String(v);
+						break;
+					}
 					if( o.hasOwnProperty(k='editValue') ) break;
 					if( v===(0|v) && (o.hasOwnProperty(k='selectedIndex') || o.hasOwnProperty(k='selectedButton')) ) break;
 					v = String(v);
 					// no break;
+
 				case 'string' :
 					if( o.hasOwnProperty(k='editContents') || o.hasOwnProperty(k='staticLabel') ) break;
 					if( o.hasOwnProperty('stringList') && o.hasOwnProperty(k='selectedIndex') )
@@ -362,45 +460,67 @@
 	[PRIVATE]
 
 	({
-
 		// Minimal caption width (default.)
 		// ---
 		CAPW : 100,
 
-		MTCH : function(/*str*/widgKey,/*str*/propKey,  s)
+		MTCH : function(/*str*/wgClass,/*str*/propKey,  s)
 		//----------------------------------
-		// (Matcher.) Tell whether the class `widgKey` supports the prop `propKey`
+		// (Matcher.) Tell whether the class `wgClass` supports the prop `propKey`
 		// in the particular context of multi-case alias.
 		// => true [OK]  |  false [KO]
 		{
-			s = widgKey + '.' + propKey;
+			s = wgClass + '.' + propKey;
 			return ( 'RadiobuttonGroup.selectedButton' == s )
 				|| ( 'Dropdown.selectedIndex' == s )
 				;
 		},
 
-		XPPS : function(/*XMLList*/xAtts,/*str*/widgKey,  q,TP,x,k,t,v,i)
+		XPPS : function(/*XMLList*/xAtts,/*str*/wgClass,  q,TP,x,k,t,v,i,CONV,vMin,vMax)
 		//----------------------------------
 		// (Property-Parser.) Given a list of XML attributes, return
 		// a volatile set of validated properties in their final form.
 		// E.g => { staticLabel:"My Label", checkedState:false }
+		// ---
 		// [CHG180508] Support multicase aliases.
+		// wgClass :: Widget class name -- e.g "Dropdown", "BorderPanel" etc
+		// ---
+		// [ADD180514] Measurement box case (MEBX|MCBX.)
+		// (A) `edit` (aka `editContents` -> S) is expected to provide
+		//     a *string*, so no special treatment is needed.
+		// (B) `value` (aka `editValue` -> N) expects a number, which
+		//     involves parsing the attribute as such. Note that "3p6"
+		//     shouldn't be valid in such context, since the client
+		//     must supply a well-formed, parseFloat-compliant numeral.
+		//     However, if SmartMeasurementBoxes is ON, the parsed number
+		//     is likely meant to express the magnitude *in editUnits*
+		//     (not in legacy points) in order to comply with the `get`
+		//     and `setValueKey` policy. The most consistant solution is
+		//     to pass the original attribute, as a string, straight to
+		//     `editContents` instead of `editValue`.
+		//     In addition, `min` and `max` (aka `minimumValue` and
+		//     `maximumValue`) are to be parsed in widget unit too. Here
+		//     we cannot use the `editContents` trick and a clean
+		//     converter is required.
 		// ---
 		// => {...}&
 		{
 			q = callee.Q;
 			for( k in q ) delete q[k];
-
+			
 			TP = callee.TYPE;
 			for each( x in xAtts )
 			{
-				if( !TP.hasOwnProperty(k=x.name()) ) continue;
+				// [FIX180514] Use String(x.name()) to avoid k being a QName obj.
+				// ---
+				if( !TP.hasOwnProperty(k=String(x.name())) ) continue;
 				
 				v = x.toString();
+				t = TP[k];
 
-				// Alias?
+				// Alias => refine (k,t)
 				// ---
-				while( '@' == (t=TP[k]).charAt(0) )
+				while( '@' == t.charAt(0) )
 				{
 					k = t.substr(1);
 					i = k.indexOf(String.OR);
@@ -409,9 +529,28 @@
 					// [ADD180508] Multi-case alias.
 					// ---
 					t = k.split(RegExp.OR);
-					while( (k=t.pop()) && !(this.MTCH(widgKey,k)) );
+					while( (k=t.pop()) && !(this.MTCH(wgClass,k)) );
 					t = k ? TP[k] : '';
 					break;
+				}
+
+				// [ADD180514] Measurement box case (MEBX|MCBX.)
+				// ---
+				if( callee.µ.SmartMeasurementBoxes && 'Value'==k.substr(-5) && 0===wgClass.indexOf("Measurement") )
+				{
+					switch( k )
+					{
+						case 'editValue' : q['editContents'] = v; break;
+
+						// [REM] Strings like "3p6" are not supported in a `...Value` context!
+						// We must wait for editUnits before processing any conversion.
+						// ---
+						case 'minimumValue' : CONV=1; vMin = parseFloat(v); break;
+						case 'maximumValue' : CONV=1; vMax = parseFloat(v); break;
+						default:;
+					}
+					
+					continue;
 				}
 
 				switch( t )
@@ -421,11 +560,28 @@
 					case 'N' : v = parseFloat(v); break;
 					case 'I' : v = parseInt(v,10); break;
 					case 'L' : for( i=(v=v.split(RegExp.OR)).length ; i-- ; v[i]=__(v[i]) ); break;
+
+					// [ADD180514] editUnits item (MU or various implied forms, cf Env.isUnit.)
+					case 'U' :
+						(v=$.global[callee.µ.__root__].Env.isUnit(v)) || (k='');
+						break;
+
 					default: ;
 				}
 				
 				k && (q[k]=v);
 			}
+			
+			// Basic Unit Converter.
+			// ---
+			if( CONV )
+			{
+				CONV = $.global[callee.µ.__root__].toPoints;
+				t = q.editUnits;
+				'undefined' == typeof vMin || (q.minimumValue=CONV(vMin,t));
+				'undefined' == typeof vMax || (q.maximumValue=CONV(vMax,t));
+			}
+
 			return q;
 
 		}.setup({ Q:{}, TYPE:
@@ -448,6 +604,9 @@
 			smallNudge:     'N',
 			large:          '@largeNudge',
 			largeNudge:     'N',
+			// --- [ADD180513]
+			units:          '@editUnits',
+			editUnits:      'U',
 			// ---
 			minWidth:       'I',
 			selected:       '@selectedButton|selectedIndex',
@@ -472,13 +631,13 @@
 			TEBX: '@TextEditbox',        TextEditbox:'textEditboxes',              // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit'
 			AEBX: '@AngleEditbox',       AngleEditbox:'angleEditboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
 			IEBX: '@IntegerEditbox',     IntegerEditbox:'integerEditboxes',        // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
-			MEBX: '@MeasurementEditbox', MeasurementEditbox:'measurementEditboxes',// hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large'
+			MEBX: '@MeasurementEditbox', MeasurementEditbox:'measurementEditboxes',// hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large|units'
 			PEBX: '@PercentEditbox',     PercentEditbox:'percentEditboxes',        // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large',
 			REBX: '@RealEditbox',        RealEditbox:'realEditboxes',              // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|min|max|small|large',
 			// ---
 			ACBX: '@AngleCombobox',      AngleCombobox:'angleComboboxes',          // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 			ICBX: '@IntegerCombobox',    IntegerCombobox:'integerComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
-			MCBX: '@MeasurementCombobox',MeasurementCombobox:'measurementComboboxes',// hosts:'DCOL|DROW|BPNL|EGRP',props:'edit|value|list|min|max|small|large'
+			MCBX: '@MeasurementCombobox',MeasurementCombobox:'measurementComboboxes',// hosts:'DCOL|DROW|BPNL|EGRP',props:'edit|value|list|min|max|small|large|units'
 			PCBX: '@PercentCombobox',    PercentCombobox:'percentComboboxes',      // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 			RCBX: '@RealCombobox',       RealCombobox:'realComboboxes',            // hosts:'DCOL|DROW|BPNL|EGRP',  props:'edit|value|list|min|max|small|large'
 		},
@@ -501,13 +660,18 @@
 			
 			for each( wx in x )
 			{
+				// wk=wx.name()
+				// => wk :: 'DCOL' | 'DialogColumn' | etc
+				// ---
 				if( !W.hasOwnProperty(wk=wx.name()) ) continue;
 				
 				// Alias?
+				// => wk :: 'DialogColumn' | 'DialogRow' | etc
 				// ---
 				'@' == (k=W[wk]).charAt(0) && (k=W[wk=k.substr(1)]);
 
 				// `key` property (if provided.)
+				// => skey :: 'someSettingsKey' | false
 				// ---
 				skey = wx.attribute('key').toString() || false;
 				
@@ -563,6 +727,11 @@
 
 	({
 
+		// [ADD180515] This flag affects the getters and setters of measurement
+		// boxes (in particular `getValueKey `and `setValueKey`). See NOTICE.
+		// ---
+		SmartMeasurementBoxes : 1,
+		
 		onEngine: function onEngine_(  I,o)
 		//----------------------------------
 		// Augment Dialog.prototype so it supports the methods
