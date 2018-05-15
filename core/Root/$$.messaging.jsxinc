@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Root module.
-		API:            success()
+		API:            success() failure() edit()
 		DOM-access:     ---
 		Todo:           Fix dual-screen issues
 		Created:        170427 (YYMMDD)
-		Modified:       170508 (YYMMDD)
+		Modified:       180516 (YYMMDD)
 
 *******************************************************************************/
 
@@ -23,6 +23,9 @@
 	
 	Provides simple messaging functions for quick prompts, warnings, or
 	pending messages.
+	
+	[REM180516] The current implementation of the [PRIVATE] area is not
+	meant to be finalized.
 
 	*/
 
@@ -32,6 +35,52 @@
 		// Default title for message widgets.
 		//----------------------------------
 		TTLE : '\xA0' + "IdExtenso",
+
+		MDMG : function(/*str*/msg,/*str|false*/title,/*uint*/msec,  s,n,ML,xm,ym,w)
+		//----------------------------------
+		// [ADD180516] Modal Message (based on a dialog.)
+		{
+			// UI resource pattern.
+			// ---
+			s = """dialog
+			{
+				text:               %1,
+				properties:         { borderless: %2 },
+				orientation:        'column',
+				alignChildren:      ['center','top'],
+				margins:            %3,
+				_:StaticText
+				{
+					text:           %4,
+					properties:     { name: 'S0', multiline: %5 },
+				},
+				_:Button
+				{
+					text:           %6,
+					properties:     { name: 'OK' },
+				},
+			}""";
+
+			// UI params.
+			// ---
+			n = msg.length;
+			ML = 30 < n || RegExp.LINE.test(msg); // multiline?
+			xm = Math.max(30,3*(20-n));
+			ym = 15 + (xm>>>1);
+			s = __(s
+				, (title||'').toSource()
+				, !title
+				, __("[%1,%2,%1,%2]",xm,ym)
+				, msg.toSource()
+				, ML
+				, __("OK").toSource()
+			);
+
+			// Window.
+			// ---
+			w = new Window(s);
+			$.global[callee.µ.__root__].centerWindow(w).show();
+		},
 
 		SLMG : function(/*str*/msg,/*str|false*/title,/*uint*/msec,  s,n,ML,xm,ym,w)
 		//----------------------------------
@@ -61,18 +110,19 @@
 			ML = 30 < n || RegExp.LINE.test(msg); // multiline?
 			xm = Math.max(30,3*(20-n));
 			ym = 15 + (xm>>>1);
-			s = __(s,
-				(title||'').toSource(),
-				!title,
-				__("[%1,%2,%1,%2]",xm,ym),
-				msg.toSource(),
-				ML
+			s = __(s
+				, (title||'').toSource()
+				, !title
+				, __("[%1,%2,%1,%2]",xm,ym)
+				, msg.toSource()
+				, ML
 			);
 
 			// Window + sleep.
 			// ---
 			w = new Window(s);
-			w.show();
+			$.global[callee.µ.__root__].centerWindow(w).show(); // [CHG180401]
+			
 
 			// [ADD170504] Calling update() here seems to solve (rare?) issues on MacOS
 			// [RES] https://forums.adobe.com/message/9484275#9484275
@@ -85,7 +135,54 @@
 			// ---
 			if( 'dialog' != w.type ) w.hide();
 		},
- 
+
+		EDIT : function(/*str*/txt,/*str|false*/title,  s,n,ML,xm,ym,w)
+		//----------------------------------
+		// Editable Message (based on a dialog.)
+		{
+			// UI resource pattern.
+			// ---
+			s = """dialog
+			{
+				text:               %1,
+				properties:         { borderless: %2 },
+				orientation:        'column',
+				alignChildren:      ['center','top'],
+				margins:            %3,
+				spacing:            %3,
+				_:EditText
+				{
+					preferredSize:  [%4,%5],
+					text:           %6,
+					active:         true,
+					properties:     { name: 'E0', multiline: %7 },
+				},
+				_:Button
+				{
+					text:           "OK",
+					properties:     { name: 'OK' },
+				},
+			}""";
+
+			// UI params.
+			// ---
+			n = txt.length;
+			ML = 30 < n || RegExp.LINE.test(txt); // multiline?
+			s = __(s,
+				(title||'').toSource(),
+				!title,
+				30,
+				400,
+				ML ? 300 : 22,
+				txt.toSource(),
+				ML
+			);
+
+			// Dialog.
+			// ---
+			w = new Window(s);
+			$.global[callee.µ.__root__].centerWindow(w).show(); // [CHG180401]
+		},
 
 	})
 
@@ -97,10 +194,10 @@
 
 	({
 
-		success: function success_S_s_i(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=auto*/seconds)
+		success: function success_S_s_i_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=auto*/seconds)
 		//----------------------------------
-		// [170427] Displays a OK message box during a short time.
-		// `message` :: String to be prompted.
+		// [ADD170427] Displays a OK message box during a short time.
+		// `message` :: String to be displayed.
 		// `title`   :: Title of the box (default is "IdExtenso")
 		//              -1 => remove the title bar.
 		// `seconds` :: Delay, in seconds.
@@ -115,6 +212,49 @@
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
 
 			callee.µ['~'].SLMG(msg, title, 1e3*seconds);
+		},
+
+		failure: function failure_S_s_i_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=infinite*/seconds)
+		//----------------------------------
+		// [ADD180516] Displays a KO message box.
+		// `message` :: String to be displayed.
+		// `title`   :: Title of the box (default is "IdExtenso")
+		//              -1 => remove the title bar.
+		// `seconds` :: Delay, in seconds. If not provided, the box is modal.
+		// ---
+		// [TODO] So far this method is just a placeholder, it mainly behaves as `success`
+		// when `seconds` is supplied. Our purpose is just to provide a KO routine
+		// semantically distinct from `success`.
+		// ---
+		// E.g  $$.failure("Cannot open the file.", "MyTool");
+		{
+			msg = String(msg);
+			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
+			
+			if( !seconds )
+			{
+				callee.µ['~'].MDMG(msg, title);
+			}
+			else
+			{
+				( 'number' == typeof seconds && 0 < seconds ) || (seconds=2+msg.length/15);
+				callee.µ['~'].SLMG(msg, title, 1e3*seconds);
+			}
+		},
+
+		edit: function edit_S_s_(/*str*/txt,/*-1|str="IdExtenso"*/title)
+		//----------------------------------
+		// [ADD171105] Displays an editable text in a message box.
+		// `txt`     :: String to be displayed.
+		// `title`   :: Title of the box (default is "IdExtenso")
+		//              -1 => remove the title bar.
+		// ---
+		// E.g  $$.edit($$.JSON(app.properties), "MyTool");
+		{
+			txt = String(txt);
+			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
+
+			callee.µ['~'].EDIT(txt, title);
 		},
 
 	})
