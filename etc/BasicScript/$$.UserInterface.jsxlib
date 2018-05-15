@@ -7,23 +7,24 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module (within $$.BasicScript)
-		API:            ?beforeShow() ?onClose()
+		API:            SmartListItemGetter
+		                ?beforeShow() ?onClose()
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180322 (YYMMDD)
+		Modified:       180515 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.BasicScript ){ alert(__("%1 requires the %2 module.",'UserInterface','BasicScript')); exit(); }
-;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 180322))
+;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 180515))
 
 	[PRIVATE]
 	
 	({
 		S2DG : function(/*{ssKey=>prefix}*/o,/*settings*/ss,/*Dialog&*/dlg,  k,p,v)
 		//----------------------------------
-		// (Settings-to-Dialog-Keys.) Update Dialog keys (from ss.)
+		// (Settings-to-Dialog-Keys.) Update Dialog keys from settings.
 		// => undefined
 		{
 			if( !(o.__count__) ) return;
@@ -33,9 +34,21 @@
 				if( !o.hasOwnProperty(k) ) continue;
 
 				p = o[k]||'';                 // Special prefix, or empty.
-				v = ss[k];                    // Raw setting value.
+				v = ss[k];                    // Raw ss value.
 
+				// UI keys with `%` prefix must be treated as 100*v,
+				// where the ss key `v` is the *real* value. If your
+				// ss key handles the percentage value as such, do not
+				// use the `%` prefix on it: values already match!
+				// ---
 				'%'==p && (v*=100);
+
+				// UI keys with `µ` prefix do not require special
+				// treatment at this point. Indeed, we assume that both
+				// ui and ss handles POINT units behind the scene.
+				// So far, `µ` is therefore a "transparent prefix."
+				// ---
+				// 'µ'==p && (v);
 
 				dlg.setValueKey( p+k, v );
 			}
@@ -43,19 +56,38 @@
 
 		DG2S : function(/*{ssKey=>prefix}*/o,/*Dialog*/dlg,/*settings&*/ss,  k,p,v)
 		//----------------------------------
-		// (Dialog-to-Settings-Keys.) Update settings (from dlg.)
+		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
 		// => undefined
 		{
 			if( !(o.__count__) ) return;
+			
+			// [ADD180515] Manages smart list strings.
+			// ---
+			const SLIG = callee.µ.SmartListItemGetter;
 
 			for( k in o )
 			{
 				if( !o.hasOwnProperty(k) ) continue;
 
-				p = o[k]||'';                 // Special prefix, or empty
-				v = dlg.getValueKey( p+k );   // Raw dialog value.
+				p = o[k]||'';                  // Special prefix, or empty
 				
+				v = SLIG && 'string'==typeof ss[k] && 'Dropdown'==(dlg.getWidgetKey(p+k)||0).__class__ ?
+					dlg.getStringKey( p+k ) :  // List item as a string.
+					dlg.getValueKey ( p+k );   // Raw ui value.
+
+				// UI keys with `%` prefix must be understood as returning
+				// 100*ss[k], so ss[k] has to be set to v/100. If your
+				// ss key handles the percentage value as such, do not use
+				// the `%` prefix on it: values already match!
+				// ---
 				'%'==p && (v/=100);
+
+				// UI keys with `µ` prefix do not require special
+				// treatment at this point. Indeed, we assume that both
+				// ui and ss handles POINT units behind the scene.
+				// So far, `µ` is therefore a "transparent prefix."
+				// ---
+				// 'µ'==p && (v);
 
 				ss[k] = v;
 			}
@@ -101,6 +133,22 @@
 				µ.onClose(r,dlg,ss,runMode) :
 				r;
 		},
+	})
+	
+	[PUBLIC]
+	
+	({
+		// [ADD180515] Improves the *getter* of key-based dropdowns.
+		// By default, the current item is returned *by index* (its
+		// index in the stringList.) If the flag SmartListItemGetter
+		// is ON, any settings key that has been declared as a *string*
+		// will be returned as the corresponding string in the list.
+		// See ~.DG2S for detail.
+		// [REM] This flag does not affect the setter (~.S2DG) since
+		// `dlg.setValueKey` is smart enough to route, either a number
+		// to a list index, or a string to a list item.
+		// ---
+		SmartListItemGetter : 0,
 	})
 
 	//==========================================================================
