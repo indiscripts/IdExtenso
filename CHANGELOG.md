@@ -1,4 +1,5 @@
 ##### [180516]
+  - **Entry Point** (`$$.jsxinc`) now allows up to 9 formal arguments in _automatic_ methods and contructors. Indeed, there are cases where the `__auto__` property of a module may refer to a function that expects many parameters. The previous implementation was using a general `(x,y,z,t)` argument list limited to four parameters. Same thing with constructors built from the `CLASS` macro. (REM. - For technical and performance reasons, ***IdExtenso*** does not invoke the `arguments` property of `Function` instances. This would pollute ExtendScript memory with additional `[Workspace]` objects that puzzle garbage collection.)
   - Added the method `$$.failure()` in `/core/Root/$$.messaging.jsxinc`.
 
 ## 1.80515
