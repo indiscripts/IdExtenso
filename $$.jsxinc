@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       180513 (YYMMDD)
+		Modified:       180516 (YYMMDD)
 
 *******************************************************************************/
 
@@ -192,10 +192,12 @@
 	
 		// Macro `MODULE`. (See implementation notes.)
 		// [ADD171109] __core__ property.
+		// [FIX180516] Supports up to 9 formal arguments in automatic methods and constructors.
 		// ---
+		$.global.ARGLIST = "_1,_2,_3,_4,_5,_6,_7,_8,_9"; // [180516] Temporary global string.
 		$.global.MODULE = """
 		(
-			($.global.µ=(%1['%2']=(function %2(x,y,z,t){return callee[callee.__auto__].call(callee,x,y,z,t)}))).setup
+			($.global.µ=(%1['%2']=(function %2("""+ARGLIST+"""){return callee[callee.__auto__].call(callee,"""+ARGLIST+""")}))).setup
 				({
 					__root__: $$.name||(($.global.$$=$.global.µ).name),
 					__core__: 1,
@@ -219,10 +221,10 @@
 		// ---
 		$.global.CLASS = """
 		(
-			($.global.µ=(%1['%2']=(function %2(x,y,z,t)
+			($.global.µ=(%1['%2']=(function %2("""+ARGLIST+""")
 				{
-					if( callee!==this.constructor ) return new callee(x,y,z,t);
-					'function' == typeof this.create && this.create(x,y,z,t);
+					if( callee!==this.constructor ) return new callee("""+ARGLIST+""");
+					'function' == typeof this.create && this.create("""+ARGLIST+""");
 				}))).setup
 				({
 					__root__: $$.name,
@@ -240,7 +242,8 @@
 				})
 		)
 		""";
-	
+		delete $.global.ARGLIST;
+
 		// Core includes (order matters.)
 		// ---
 		#include 'core/$$.Ext.jsxinc'
