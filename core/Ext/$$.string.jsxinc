@@ -8,12 +8,12 @@
 		Core:           YES
 		Kind:           Part of /Ext
 		API:            toSource()
-		                asPath() toPath()
+		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() stripSpaces() charSet()
 		DOM-access:     ---
 		Todo:           Performance testing; String.lorem()
 		Created:        150510 (YYMMDD)
-		Modified:       180403 (YYMMDD)
+		Modified:       180517 (YYMMDD)
 
 *******************************************************************************/
 
@@ -268,8 +268,8 @@
 
 	/*
 
-	The added methods asPath and toPath allow to manipulate POSIX paths
-	based on the slash separator '/' and the usual shortcuts '..' and '.'
+	The methods `asPath`, `toPath`, adn `relPathTo`, allow to manipulate POSIX
+	paths based on the slash separator '/' and the usual shortcuts '..' and '.'
 
 	Syntax of a POSIX path
 	-----------------------------------------------------
@@ -311,11 +311,9 @@
 	
 	(3b)   NP  ::    ( <SP> | ( <DD> <SP> )* ) ( <XX> <SP>? )*
 	
-	In other words, Absolute and Relative Paths are said 'normalized'
-	by definition, and no other form can be said normalized. If a
-	string S is known to be normalized, it's easy to decide whether
-	it is a AP or a RP, since (S[0]==<SP>)->(S is an AP.)
-	Note also that no NP can contain a <DT> alone.
+	If a string S is known to be normalized, it's easy to decide
+	whether it is a AP or a RP, since (S[0]==<SP>)->(S is an AP.)
+	Note also that no NP can contain a dot (`.`) alone.
 	
 	CONTAINER VS ELEMENT. - An AP may refer to either a Container,
 	or an Element, depending on the last character of the string.
@@ -338,14 +336,31 @@
 	String.prototype.asPath = function asPath(  a,ups,fd,q,i,s)
 	//----------------------------------
 	// Convert this into a normalized path, that is
-	// ( <SP> | ( <DD> <SP> )* ) ( <XX> <SP>? )*
+	//    ( <SP> | ( <DD> <SP> )* ) ( <XX> <SP>? )*
 	// where:
-	// <SP> ::= '/'  ;  <DD> ::= '..'
-	// <XX> ::= [neither-<SP>-nor-<DD>]+
+	//    <SP> ::= '/'  ;  <DD> ::= '..'
+	//    <XX> ::= [neither-<SP>-nor-<DD>]+
+	// [REM] Use this routine to build a clean path from any
+	// string that results from complex concatenations. Note
+	// that the ending '/' is preserved if originally present.
+	// [REM] This function preserves the path kind (REL vs. ABS)
+	// ---
+	// Examples:
+	//        "".asPath() => ""      ;     "xyz".asPath() => "xyz"
+	//    "/xyz".asPath() => "/xyz"  ;    "xyz/".asPath() => "xyz/"
+	//    "/x/y".asPath() => "/x/y"  ;    "x/y/".asPath() => "x/y/"
+	//   "/x/..".asPath() => "/"     ;   "x/../".asPath() => "/"
+	//   "/../x".asPath() => "/x"    ;   "../x/".asPath() => "../x/"
+	// "/x/../y".asPath() => "/y"    ; "x/../y/".asPath() => "y/"
+	// "/x/./y/".asPath() => "/x/y/" ;   "x/./y".asPath() => "x/y"
+	// "x//y/./z/..//../a/./b/..//c/./d/".asPath() => "x/a/c/d/"
+	// ---
+	// => str
 	{
 		// Shortcut. (The empty string is a valid RP.)
+		// [FIX180517] `this.length` needed!
 		// ---
-		if( !this ) return '';
+		if( !this.length ) return '';
 
 		// Replace triple dots (or more) by double dots,
 		// then split the string along /+ into a.
@@ -371,22 +386,161 @@
 		// Format the result.
 		// ---
 		s = ( ups ? ups.join('') : '/' ) + q.join('/').replace(RegExp.DTs, '');
-		'/'!=this.substr(-1) || '/'==s.substr(-1) || (s+='/');
+
+		'/' != this.substr(-1) || '/' == s.substr(-1) || (s+='/');
 		return s;
 	};
 
 	String.prototype.toPath = function toPath(/*str*/dest)
 	//----------------------------------
 	// If dest[0]==<SP>,  return dest.asPath().
-	// If !dest || !this, return (dest||this).asPath().
+	// If !dest || !this.length, return (dest||this).asPath().
 	// Otherwise, return (this+<SP>+dest).asPath().
+	// - If `dest` is ABSOLUTE, `this` is ignored and
+	//   `toPath(dest)` always results in `dest.asPath()`
+	// - If `dest` is RELATIVE, it is assumed relative to
+	//   `this` and the result is either relative or absolute
+	//   depending on `this` path kind. In particular, if
+	//   `this` is relative (to some implicit location,)
+	//   the result is relative to that same location.
+	//      this    dest    result
+	//    --------------------------------------------
+	//      any     ABS      ABS   ; result==<dest>
+	//      REL     REL      REL
+	//      ABS     REL      ABS
+	// ---
+	// [REM] Ending '/' is preserved if present at the end
+	// of the result.
+	// ---
+	// Examples:
+	//          "".toPath()              => ""
+	//       "xyz".toPath()              => "xyz"
+	//      "/xyz".toPath("abc")         => "/xyz/abc"
+	//      "xyz/".toPath("abc")         => "xyz/abc"
+	//      "/x/y".toPath("a/b/c")       => "/x/y/a/b/c"
+	//     "/x/y/".toPath("a/b/c/")      => "/x/y/a/b/c/"
+	//      "x/y/".toPath("/a/b/")       => "/a/b/"
+	//     "/x/..".toPath("a/../b/c")    => "/b/c"
+	//     "x/../".toPath("a/../b/c")    => "b/c"
+	//   "x/../..".toPath("a/b/c")       => "../a/b/c"
+	//  "../../x/".toPath("a/b/../../c") => "../../x/c"
+	//      "/x/y".toPath("../../../a")  => "/a"
+	// ---
+	// => str
 	{
+		// [FIX180517] `this.length` needed!
+		// ---
 		return (
 			dest ?
-			( (!this) || '/'==dest.charAt(0) ? dest : (this+'/'+dest) ) :
+			( (!this.length) || '/'==dest.charAt(0) ? dest : (this+'/'+dest) ) :
 			this
 			).asPath();
 	};
+
+	String.prototype.relativePath = function relativePath(/*str*/dest,  from,fAB,dAB,b,s0,s1,eq,p)
+	//----------------------------------
+	// [ADD180517] Convert `this` into a normalized path p0,
+	// convert `dest` into a normalized path p1, then return
+	// the p0-to-p1 path *if resolvable*.
+	// ---
+	// 1 Usually the client provides ABSOLUTE inputs and the
+	//   result is a relative path based on the location
+	//   which `this` points out to, e.g
+	//   a) "/a/b/c/d".relativePath("/a/b/x/y") => "../../x/y"
+	//      The output may still be absolute (`dest` as is)
+	//      if `this` and `dest` do not share any node:
+	//      "/u/a/b/c".relativePath("/v/x/y/z") => "/v/x/y/z"
+	//   b) Also, if `this` is RELATIVE while `dest` is ABSOLUTE,
+	//      no assumption is made on the actual location which
+	//      `this` is based on, and `dest` is returned as is:
+	//        e.g  "a/b/c".relativePath("/a/x")   => "/a/x"
+	//        or   "../a/b".relativePath("/x/y")  => "/x/y"
+	// ---
+	// 2 If `dest` is RELATIVE, it is assumed based on the
+	//   location which `this` is based on, that is,
+	//   a) `/` if `this` is ABSOLUTE
+	//      `dest` is then strictly equiv to `/dest`  =>1
+	//      E.g  "/a/b".relativePath("a/x") => "../x"
+	//   b) an implicit shared basis if `this` is RELATIVE,
+	//      E.g   "a/b".relativePath("a/x") => "../x"
+	//      interpreted [B/]a/b -> [B/]a/x            =>1
+	//      Here a problem may arise if the point-to-point
+	//      route cannot be resolved, e.g
+	//         [B/]../a/b -> [B/]x/y      ; unresolvable
+	//      We cannot go from `../a/b` to `x/y` as this would
+	//      require B to be known (=> ../../B/x/y.)  In such
+	//      cases the function gets to FALSE.
+	//      However,
+	//          [B/]a/b    -> [B/]../x/y  =>  "../../../x/y"
+	//      or  [B/]../a/b -> [B/]../x/y  =>  "../../x/y"
+	//      can be successfully resolved due to the fact that
+	//      the final path does no longer involve B.
+	// ---
+	// => str [OK]  |  false [CANT_RESOLVE]
+	{
+		// [REM] asPath preserves the path type.
+		// ---
+		if( !(dest=dest.asPath()) ) return '';
+		if( !(from=this.asPath()) ) return dest;
+		
+		'/' == (fAB=from.charAt(0)) || (fAB='');
+		'/' == (dAB=dest.charAt(0)) || (dAB='');
+
+		// 2a)  ABS(from) + REL(dest) --> ABS(dest)
+		// ---
+		fAB && (!dAB) && (dest=(dAB='/')+dest);
+		
+		// 1b)  REL(from)+ABS(dest)   => return dest
+		// ---
+		if( (!fAB) && dAB ) return dest;
+
+		// 2b) REL(from)+ABS(from)
+		// Remove common starting '../' from both paths.
+		// If `from` has more UPs, return FALSE.
+		// ---
+		if( (!fAB) && (!dAB) )
+		{
+			while( '../'==from.substr(0,3) )
+			{
+				if( '../' != dest.substr(0,3) ) return false;
+				from = from.substr(3);
+				dest = dest.substr(3);
+			}
+			
+			// From here,  `from` has no starting UP and
+			// the generic algorithm is fine.
+			// from :: a / b / c ;  dest :: UP* x / y
+		}
+		
+		// ---
+		// Paths are now of the same kind,
+		// eiher REL->REL or ABS->ABS
+		// ---
+		
+		// Normalize `from` (-> s0) and `dest` (-> s1)
+		// ---
+		'/' == (s0=from.toLowerCase()).substr(-1) || (s0+='/');
+		'/' == (s1=dest.toLowerCase()).substr(-1) || (s1+='/');
+
+		// Equality test.
+		// ---
+		if( s0==s1 ) return '';
+
+		// Generic algorithm.
+		// ---
+		// a/b/ -> a/b/x/y/   =>  ''     -> x/y/  => "x/y#"
+		// a/b/ -> a/x/y/     =>  'b/'   -> x/y/  => "../x/y#"
+		// a/b/ -> x/y/       =>  'a/b/' -> x/y/  => "../../x/y#"
+		// ---
+		for( eq=true ; (p=1+s0.indexOf('/')) ; s0=s0.substr(p) )
+		{
+			eq && (eq=s0.substr(0,p)==s1.substr(0,p)) && (s1=s1.substr(p));
+			dest = eq ? dest.substr(p) : ( '../'+dest );
+		}
+		
+		return dest;
+	};
+
 
 	//==========================================================================
 	// String.prototype.trim() ; String.prototype.ltrim() ; String.prototype.rtrim()
