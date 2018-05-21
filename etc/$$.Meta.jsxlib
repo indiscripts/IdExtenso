@@ -1,0 +1,129 @@
+/*******************************************************************************
+
+		Name:           Meta
+		Desc:           Templates and tools for building IdExtenso files/components.
+		Path:           /etc/$$.Meta.jsxlib
+		Require:        Date.guess() ; trim()
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =header() NewLine yymmdd() topic()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        180516 (YYMMDD)
+		Modified:       180521 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Meta') || eval(__(MODULE, $$, 'Meta', 180521, 'header'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+
+		// Prolog pattern.
+		//----------------------------------
+		HEAD : [
+			String.SL + Array(80).join('*'),
+			'',
+			String.TB + String.TB + "Name:           %1",            // %1  Short name of the ressource
+			String.TB + String.TB + "Desc:           %2",            // %2  Description
+			String.TB + String.TB + "Path:           %3",            // %3  Path in the form '/etc/$$.name.jsxres'
+			String.TB + String.TB + "Require:        %4",            // %4  Required module (e.g 'Yalt'), or '---'
+			String.TB + String.TB + "Encoding:       ÛȚF8",
+			String.TB + String.TB + "Core:           %5",            // %5  In the core? 'YES' | 'NO'
+			String.TB + String.TB + "Kind:           %6.",           // %6  'Module' | 'Resource' ...
+			String.TB + String.TB + "API:            ---",
+			String.TB + String.TB + "DOM-access:     %7",            // %7  'YES' | 'NO' | <any>
+			String.TB + String.TB + "Todo:           ---",
+			String.TB + String.TB + "Created:        %8 (YYMMDD)",   // %8  Creation date in YYMMDD form
+			String.TB + String.TB + "Modified:       %9 (YYMMDD)",   // %9  Current date in YYMMDD form
+			'',
+			Array(80).join('*') + String.SL,
+			'',
+			''
+			].join(String.X1),
+		
+		// Separation line :: `//===...`
+		// ---
+		EQLN : String.SL + String.SL + Array(75).join('='),
+		
+		YYMD : function(/*Date*/d)
+		//----------------------------------
+		// => `YYMMDD` date form.
+		{
+			return (''+d.getFullYear()).substring(2) +
+				('0'+(1+d.getMonth())).substr(-2) +
+				('0'+d.getDate()).substr(-2);
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		NewLine: String.LF,
+
+		yymmdd: function yymmdd_s$Date$x_S(/*Date|any=now*/dt)
+		//----------------------------------
+		// Return `dt` in YYMMDD form.
+		// => str
+		{
+			return callee.µ['~'].YYMD(Date.guess(dt));
+		},
+		
+		topic : function topic_S_S(/*str*/title,/*str=''*/spacing,  I)
+		//----------------------------------
+		// Return a three-line topic name in the form
+		//   `<spacing>//======================
+		//    <spacing>// <title>
+		//    <spacing>//======================`
+		// => str
+		{
+			I = callee.µ['~'];
+			spacing = String(spacing||'');
+			return [ spacing+I.EQLN, spacing + '// ' + title, spacing+I.EQLN].join(callee.µ.NewLine);
+		},
+
+		header : function header_S_s_s_s_s_s_b_s_bs_S(/*str*/name,/*?str*/desc,/*?ymd*/modf,/*?ymd*/crea,/*?str*/path,/*?str*/req,/*bool=0*/inCore,/*?str*/kind,/*?bool|str*/dom,  I)
+		//----------------------------------
+		// Build a full IdExtenso's header:
+		// `name`   str       Name of the component.
+		// `desc`   str       Description line (opt.)
+		// `modf`   str       Modified date in YYMMDD form (default=now.)
+		// `crea`   str       Created date in YYMMDD form (default=modf.)
+		// `path`   str       Path of the component -- e.g "/etc/MyModule/$$.MyResource.jsxres" -- (opt.)
+		// `req`    str       List of required components -- e.g "Web ; Yalt" -- (opt.)
+		// `inCore` bool      Whether the component belongs to the core branch (default=0.)
+		// `kind`   str       'Module' | 'Snipper' | 'Resource' ... (opt.)
+		// `dom`    bool|str  Whether the component performs DOM-access (default='NO'.)
+		//                    If a string is supplied, it is rendered as is.
+		// ---
+		// => str
+		{
+			I = callee.µ['~'];
+			
+			modf = modf && 6==(modf=String(modf).trim()).length ? modf : I.YYMD(new Date);
+			crea = crea && 6==(crea=String(crea).trim()).length ? crea : modf;
+			dom = ( 'string' == typeof dom && (dom=dom.trim()) ) || ( dom ? 'YES' : 'NO' );
+
+			return __(callee.µ['~'].HEAD.replace(RegExp.X1,callee.µ.NewLine)
+				, String(name).trim()
+				, String(desc||'').trim() || '---'
+				, String(path||'').trim() || '---'
+				, String(req ||'').trim() || '---'
+				, inCore ? 'YES' : 'NO'
+				, String(kind||'').trim() || '---'
+				, dom
+				, crea
+				, modf
+				);
+		},
+	})
