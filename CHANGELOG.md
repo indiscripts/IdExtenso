@@ -1,3 +1,6 @@
+##### [180521]
+  - Introducing the **Meta** module. Will provide tools for building IdExtenso components (file templates, etc.)
+
 ##### [180517]
   - Added `String.prototype.relativePath()` and much more detail on all these POSIX-path-oriented routines: `asPath()`, `toPath()`, and `relativePath()`. These methods are internally used by the framework to manage module relationships, but they can do a great job outside too. In particular, `myFolder1.fullName.relativePath(myFolder2.fullName)` returns the relative path from `myFolder1` to `myFolder2` in `"../../path/to"` form. The code works with generic strings as well, subject you use the universal `/` separator.
 
