@@ -1,3 +1,6 @@
+##### [180524]
+  - Added string truncation methods `trunc()`, `rtrunc()`, and `ltrunc()` to `String.prototype` ; cf polyfill in `core/Ext/$$.string.jsxinc`.
+
 ##### [180521]
   - Introducing the **Meta** module. Will provide tools for building IdExtenso components (file templates, etc.)
 
