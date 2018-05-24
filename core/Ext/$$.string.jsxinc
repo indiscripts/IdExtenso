@@ -7,13 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            toSource()
-		                asPath() toPath() relativePath()
-		                trim() ltrim() rtrim() stripSpaces() charSet()
+		API:            SourceEscapes
+		      proto:    toSource() asPath() toPath() relativePath()
+		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
+		                stripSpaces() charSet()
 		DOM-access:     ---
-		Todo:           Performance testing; String.lorem()
+		Todo:           Perf tests ; string.lorem() ; warn if relativePath() fails
+		                May improve word boundary detection in trunc methods (?)
 		Created:        150510 (YYMMDD)
-		Modified:       180517 (YYMMDD)
+		Modified:       180524 (YYMMDD)
 
 *******************************************************************************/
 
@@ -259,7 +261,7 @@
 
 
 	//==========================================================================
-	// String.prototype.asPath() ; String.prototype.toPath(str)
+	// String.prototype.asPath() ; ...toPath(str) ; ...relativePath(str)
 	//==========================================================================
 
 	//==========================================================================
@@ -268,7 +270,7 @@
 
 	/*
 
-	The methods `asPath`, `toPath`, adn `relPathTo`, allow to manipulate POSIX
+	The methods `asPath`, `toPath`, and `relativePath`, allow to manipulate POSIX
 	paths based on the slash separator '/' and the usual shortcuts '..' and '.'
 
 	Syntax of a POSIX path
@@ -543,7 +545,7 @@
 
 
 	//==========================================================================
-	// String.prototype.trim() ; String.prototype.ltrim() ; String.prototype.rtrim()
+	// String.prototype.trim() ; ...ltrim() ; ...rtrim()
 	//==========================================================================
 
 	String.prototype.trim = function trim(  i,j,cc)
@@ -603,6 +605,76 @@
 
 		return j < 0 ? '' : this.substring(0, 1+j);
 	};
+
+	//==========================================================================
+	// String.prototype.rtrunc() ; ...ltrunc() ; ...trunc()
+	//==========================================================================
+	
+	String.prototype.rtrunc = function rtrunc(/*uint>0*/maxSize,/*str='...'*/ellipsis,/*bool=0*/wordBound,  p,s,c)
+	//----------------------------------
+	// Remove the RIGHT part of the string if its length > maxSize.
+	//   `maxSize`   :: If this.length <= maxSize, the string is returned as is.
+	//                  Otherwise, at most maxSize characters are kept.
+	//   `ellipsis`  :: undefined (false, 0)  -> use `...` (three dots) ; default.
+	//                  true (1)              -> use U+2026 (Unicode character.)
+	//                  any string (incl. '') -> use it!
+	//   `wordbound` :: whether the result must preserve word boundaries.
+	// XXXYYY => XXX...
+	{
+		if( (p=maxSize>>>0) >= this.length ) return String(this);
+		s = this.substr(0,p); // Keep the left part.
+		wordBound && -1 != (p=s.lastIndexOf(' ')) && (s=s.substr(0,p));
+		c = 'string'==typeof ellipsis ? ellipsis : (ellipsis ? '\u2026' : '...');
+		return s.rtrim() + c;
+	};
+
+	String.prototype.ltrunc = function ltrunc(/*uint>0*/maxSize,/*str='...'*/ellipsis,/*bool=0*/wordBound,  p,s,c)
+	//----------------------------------
+	// Remove the LEFT part of the string if its length > maxSize.
+	//   `maxSize`   :: If this.length <= maxSize, the string is returned as is.
+	//                  Otherwise, at most maxSize characters are kept.
+	//   `ellipsis`  :: undefined (false, 0)  -> use `...` (three dots) ; default.
+	//                  true (1)              -> use U+2026 (Unicode character.)
+	//                  any string (incl. '') -> use it!
+	//   `wordbound` :: whether the result must preserve word boundaries.
+	// XXXYYY => ...YYY
+	{
+		if( (p=maxSize>>>0) >= this.length ) return String(this);
+		s = this.substr(-p); // Keep the right part.
+		wordBound && -1 != (p=s.indexOf(' ')) && (s=s.substr(1+p));
+		c = 'string'==typeof ellipsis ? ellipsis : (ellipsis ? '\u2026' : '...');
+		return c + s.ltrim();
+	};
+
+	String.prototype.trunc = function trunc(/*uint>0*/maxSize,/*str='...'*/ellipsis,/*bool=0*/wordBound,  p,c,x,s,t)
+	//----------------------------------
+	// Remove the MIDDLE part of the string if its length > maxSize.
+	//   `maxSize`   :: If this.length <= maxSize, the string is returned as is.
+	//                  Otherwise, at most maxSize characters are kept.
+	//   `ellipsis`  :: undefined (false, 0)  -> use `...` (three dots) ; default.
+	//                  true (1)              -> use U+2026 (Unicode character.)
+	//                  any string (incl. '') -> use it!
+	//   `wordbound` :: whether the result must preserve word boundaries.
+	// XXXYYYZZZ => XXX...ZZZ
+	{
+		if( (p=maxSize>>>0) >= this.length ) return String(this);
+		if( 1 == p ) return this.rtrunc(1,wordBound,ellipsis);
+
+		c = 'string'==typeof ellipsis ? ellipsis : (ellipsis ? '\u2026' : '...');
+		x = p >>> 1;
+		s = this.rtrunc(p-x,'',wordBound) + c + this.ltrunc(x,'',wordBound);
+		if( !wordBound || (x==p-x) ) return s;
+
+		// If `p` is odd and `wordBound` turned on, we may get a
+		// longer result from the split (x,p-x) instead of (p-x,x)
+		// ---
+		t = this.rtrunc(x,'',wordBound) + c + this.ltrunc(p-x,'',wordBound);
+		return t.length > s.length ? t : s;
+	};
+
+	//==========================================================================
+	// String.prototype.stripSpaces()
+	//==========================================================================
 
 	String.prototype.stripSpaces = function stripSpaces()
 	//----------------------------------
