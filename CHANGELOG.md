@@ -1,3 +1,8 @@
+##### [180528]
+  - `core/Ext/$$.scriptui.jsxinc`: Added the static `ScriptUI.builder()` method. Provides a compact and generic tool for building resource-based user intarfaces (full `Window` or custom components.) Unlike the native 'resource string' mechanism which involves literal strings and therefore leads to issue when dynamic data are to be treated, `ScriptUI.builder()` deals with actual objects whose internal data may still be browsed and refined just before being sent to the builder.
+  - `ScriptUI.isWidget()` is a companion tool of `ScriptUI.builder`; its internal map might be used in more advanced modules.
+  - Also, we have fixed the combined alignment shortcuts (`ScriptUI.LT`, `ScriptUI.RT`, etc) as the numeric values caused problems in recent ScriptUI versions.
+
 ##### [180524]
   - Added string truncation methods `trunc()`, `rtrunc()`, and `ltrunc()` to `String.prototype` ; cf polyfill in `core/Ext/$$.string.jsxinc`.
 
