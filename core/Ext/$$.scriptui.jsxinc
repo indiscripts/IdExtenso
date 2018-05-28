@@ -8,10 +8,11 @@
 		Core:           YES
 		Kind:           Part of /Ext.
 		API:            FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
+		                isWidget() builder()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       170427 (YYMMDD)
+		Modified:       180528 (YYMMDD)
 
 *******************************************************************************/
 
@@ -27,42 +28,324 @@
 	properties) support the array form [<horizAlign>, <vertAlign>]. This
 	makes sense in controlling the overall strategy of a container having
 	subcontainers. Thus, we often need to pass arguments such as
-	['left','top'] or ['fill','fill'], which creates temporary arrays that
+	['left','top'] or ['fill','center'], which creates temporary arrays that
 	could be avoided using static data structures. This is done by
-	globally declaring ScriptUI.FT, .LT, and so on.
+	globally declaring ScriptUI.LT, .FC, and so on.
+	
+	SCRIPTUI BUILDER.
+	
+	The purpose of `ScriptUI.builder()` is to provide a compact and generic
+	tool for building resource-based UI (full Window or custom components).
+	Unlike the native 'resource string' mechanism which involves literal
+	strings and therefore leads to issue when dynamic data are to be treated,
+	`ScriptUI.builder()` deals with actual objects whose internal data may
+	still be browsed and refined just before being sent to the builder.
+	This brings more flexibility to the client code.
+	
+	Another point is that the `builder` function supports custom factories
+	and external assignment mechanisms that could be implemented in more
+	advanced modules.
+	
+	[REM] There is no sensible cost in having this helper available in the
+	`core` distribution of IdExtenso, even if some particular script does not
+	invoke ScriptUI at all.
 
 	*/
 
 	//==========================================================================
-	// Temporary global aliases.
-	//==========================================================================
-
-	$.global.ALIG = ScriptUI.Alignment;
-
-	//==========================================================================
 	// Combined Alignments (ScriptUI.FT, ScriptUI.LT, etc.)
-	// [REM] ALIG.FILL, ALIG.LEFT, etc., just encodes uint numbers.
+	// [FIX180528] Use strings instead of numbers (SUI bug.)
 	//==========================================================================
 
 	ScriptUI.setup({
-		LT : [ALIG.LEFT,   ALIG.TOP],       // [ 3, 1 ]
-		RT : [ALIG.RIGHT,  ALIG.TOP],       // [ 4, 1 ]
-		FT : [ALIG.FILL,   ALIG.TOP],       // [ 5, 1 ]
-		CT : [ALIG.CENTER, ALIG.TOP],       // [ 6, 1 ]
+		LT : ['left',   'top'],
+		RT : ['right',  'top'],
+		FT : ['fill',   'top'],
+		CT : ['center', 'top'],
 		// ---
-		LB : [ALIG.LEFT,   ALIG.BOTTOM],    // [ 3, 2 ]
-		RB : [ALIG.RIGHT,  ALIG.BOTTOM],    // [ 4, 2 ]
-		FB : [ALIG.FILL,   ALIG.BOTTOM],    // [ 5, 2 ]
-		CB : [ALIG.CENTER, ALIG.BOTTOM],    // [ 6, 2 ]
+		LB : ['left',   'bottom'],
+		RB : ['right',  'bottom'],
+		FB : ['fill',   'bottom'],
+		CB : ['center', 'bottom'],
 		// ---
-		LC : [ALIG.LEFT,   ALIG.CENTER],    // [ 3, 6 ]
-		RC : [ALIG.RIGHT,  ALIG.CENTER],    // [ 4, 6 ]
-		FC : [ALIG.FILL,   ALIG.CENTER],    // [ 5, 6 ]
-		CC : [ALIG.CENTER, ALIG.CENTER],    // [ 6, 6 ]
+		LC : ['left',   'center'],
+		RC : ['right',  'center'],
+		FC : ['fill',   'center'],
+		CC : ['center', 'center'],
+		// --- [ADD180528]
+		LF : ['left',   'fill'],
+		RF : ['right',  'fill'],
+		FF : ['fill',   'fill'],
+		CF : ['center', 'fill'],
 		});
 
 	//==========================================================================
-	// Clear globals.
+	// [180527] ScriptUI.isWidget()
 	//==========================================================================
 
-	delete $.global.ALIG;
+	ScriptUI.isWidget = function isWidget(/*any*/x)
+	//----------------------------------
+	// [180528] Tell whether x is a ScriptUI control or widget.
+	// x's class name must mach the `name` property in callee.MAP.
+	// => true [OK]  |  false [KO]
+	{
+		return x && (x=x.__class__) ? x===(callee.MAP[x.toLowerCase()]||0).name : false;
+	}
+	.setup({ MAP:
+	{
+		// --- Containers
+		'window':       { abbr:'W' , name:'Window' },       // type,text,bounds ,{name/borderless/resizeable/closeButton/maximizeButton/minimizeButton}
+		'group':        { abbr:'G' , name:'Group'  },       // -,bounds         ,{name}
+		'panel':        { abbr:'P' , name:'Panel'  },       // -,bounds,text    ,{name/borderStyle/su1PanelCoordinates}
+		// --- Texts
+		'statictext':   { abbr:'S' , name:'StaticText' },   // -,bounds,text    ,{name/multiline/scrolling}
+		'edittext':     { abbr:'E' , name:'EditText' },     // -,bounds,text    ,{name/multiline/scrolling/borderless/readonly/noecho/enterKeySignalsOnChange}
+		// --- Buttons
+		'button':       { abbr:'B' , name:'Button' },       // -,bounds,text    ,{name}
+		'iconbutton':   { abbr:'I' , name:'IconButton' },   // -,bounds,image   ,{name/style/toggle}
+		'checkbox':     { abbr:'C' , name:'Checkbox' },     // -,bounds,text    ,{name}
+		'radiobutton':  { abbr:'R' , name:'RadioButton' },  // -,bounds,text    ,{name}
+		// --- Image container
+		'image':        { abbr:'i' , name:'Image' },        // -,bounds,icon    ,{name}
+		// --- Lists
+		'listbox':      { abbr:'L' , name:'ListBox' },      // -,bounds,items   ,{name/items/multiselect/numberOfColumns/showHeaders/columnWidths/columnTitles}
+		'dropdownlist': { abbr:'D' , name:'DropDownList' }, // -,bounds,items   ,{name/items}
+		'treeview':     { abbr:'T' , name:'TreeView' },     // -,bounds,items   ,{name/items}
+		// --- List item
+		'listitem':     { abbr:'l' , name:'ListItem' },     // type,text
+		// --- Bars
+		'scrollbar':    { abbr:'b' , name:'Scrollbar' },    // -,bounds,value,minvalue,maxvalue,  {name}
+		'slider':       { abbr:'s' , name:'Slider' },       // -,bounds,value,minvalue,maxvalue,  {name}
+		'progressbar':  { abbr:'p' , name:'Progressbar' },  // -,bounds,value=0,maxvalue=100,     {name}
+		// --- Tabs
+		'tabbedpanel':  { abbr:'X',  name:'TabbedPanel' },  // -,bounds         ,{name}
+		'tab':          { abbr:'x',  name:'Tab' },          // -,bounds,text    ,{name}
+		// --- FlashPlayer (deprecated.)
+		'flashplayer':  { abbr:'F',  name:'FlashPlayer' },  // -,bounds,file,    {name}		
+	}});
+
+	//==========================================================================
+	// [180528] ScriptUI.builder()
+	//==========================================================================
+
+	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,u,f,win,pp,k,x,p,t,name,wg,ISWG)
+	//----------------------------------
+	// Basic UI builder. The `res` object has the form { <key>:<value>, <key>:<value>, ... }
+	// where <key> is the name of some property for the current widget and <value> its value,
+	//     E.g  `{ ..., spacing: 5, ... }`  or  `{ ..., minimumSize: [100,50], ... }`
+	// Special syntax:
+	// (1) If <key> has the form `<WidgClass>$<WidgName>` -- e.g `Button$btn1` -- then the
+	//     corresponding widget is created at this point so that window[<WidgName>] refers
+	//     to the object. The associated <value> is then parsed as a `res` object in turn.
+	//     E.g  `{ ..., Button$btn1:{ size:[100,20] }, ... }`
+	//     If <WidgName> is empty or a numeral -- e.g `Button$` or `Button$0` -- then the
+	//     resulting widget has no associated key in the root window.
+	// (2) If `<key>==properties` and <value> is an object, then the parent widget is built
+	//     using the given creation properties, including creation arguments, as detailed in
+	//     `ScriptUI.isWidget.MAP` (see comments.)
+	//     E.g  `{ ..., Checkbox$cb:{ properties:{text:"Hello",name:"innerName"}, ... }, ... }`
+	// (3) If <key> has the form `Custom$<WidgName>` then the function looks after a `factory`
+	//     function to build a custom object. The factory can be supplied in two ways:
+	//     (a) Custom$<WidgName> : [<factory>,<args>...]
+	//     (b) Custom$<WidgName> : { factory:[<factory>,<args>...], ... }
+	//     where `<factory>` is either a function, or the name of a method available in
+	//     the `this` context or in the prototype of the parent widget ;
+	//     and `<args>` additional arguments to pass in to the factory.
+	//     The object will then be created using <factoryFunc>.apply(<cx>,<parent>,<args>)
+	//     using <cx>===this unless <factory> was provided as a method name in the
+	//     parent widget prototype. Note that the <factoryFunc> function must support at
+	//     least one argument (the 1st one) which always refers to the parent widget.
+	// [REM] When using the `Custom...` syntax it's up to the client code to guarantee that
+	// the factory function returns a valid ScriptUI component if builder recursion is
+	// desired within. If a non-ScriptUI object is returned, the function will not recurse
+	// in that object.
+	// ---
+	// If `parent` is not provided, then the builder is expected to build a Window instance,
+	// which usually involves at least a `properties` key as shown below,
+	//    { properties: { type:'dialog', text:"hello", resizable: true, ...}, ... }
+	// When the `properties` key is not provided, default creation properties are used.
+	// ---
+	// The `this` context may be adjusted from the client code to meet the requirements
+	// of factory functions. For example, if your code context `myContext` provides
+	// various data and methods used in the factories, then you likely want to use
+	// `ScriptUI.builder.call(myContext,myRes)` rather than `ScriptUI.builder(myRes)`.
+	// ---
+	// For a detailed example, see /tests/ScriptUIBuilder.jsx.
+	// ---
+	// => Window | Widget  [== the parent component of the objects being built.]
+	{
+		(q=callee.Q||callee.Q=[]).length=0;
+		u = void 0;
+		f = callee.F_ASSIGNMENT;
+
+		win = parent && parent.window;
+		if( !win )
+		{
+			pp = res.properties||{};
+			t = pp.text||pp.name||'';
+			t && !pp.name && (pp.name=t);
+			win = new Window( pp.type||'dialog', t, pp.bounds||u, pp );
+			parent = win;
+		}
+
+		for( k in res )
+		{
+			if( !res.hasOwnProperty(k) ) continue;
+
+			// Skip any key already treated upstream.
+			// ---
+			if( callee.RE_UPSTREAM.test(k) ) continue;
+
+			x = res[k];
+
+			// If res[k] is not an object, don't waste time.
+			// ---
+			if( x !== Object(x) ){ parent[k]=x; continue; }
+
+			// Parse k::<WidgType>$<WidgName> -->  k=<WidgType> , name=<WidgName>
+			// If `name` is a numeral, it is considered empty.
+			// ---
+			0 < (p=k.indexOf('$')) ? ( t=k.substr(1+p), k=k.substr(0,p).toLowerCase() ) : (t='');
+			name = t.length && isNaN(parseInt(t,10)) ? t : '';
+			
+			// Default scheme.
+			// ---
+			pp = x.properties || 0;
+			q[0] = k;
+			q[1] = pp.bounds||u;
+			ISWG = wg = 0;
+
+			switch( k )
+			{
+				case 'window':           q.length=0; break;                     // Disable; already done!
+
+				case 'flashplayer':      q.push(pp.file||u);                    // `file` key in pp.
+
+				case 'group':
+				case 'tabbedpanel':      break;                                 // Done.
+
+				case 'panel':
+				case 'statictext':
+				case 'edittext':
+				case 'button':
+				case 'checkbox':
+				case 'radiobutton':
+				case 'tab':              q.push(pp.text||u); break;             // `text` key in pp.
+
+				case 'image':
+				case 'iconbutton':       q.push(pp.image||pp.icon||u); break;   // `image` or `icon` key.
+
+				case 'listbox':
+				case 'dropdownlist':
+				case 'treeview':         q.push(u); break;                      // Do not use pp.items as arg, would duplicate the list.
+
+				case 'listitem':         q[0] = pp.type||'item';
+				                         q[1] = pp.text||'';
+				                         pp=0; break;
+
+				case 'scrollbar':
+				case 'slider':           q.push(pp.value||0, pp.minvalue||0, pp.maxvalue||100); break;
+
+				case 'progressbar':      q.push(pp.value||0, pp.maxvalue||100); break;
+				
+				case 'custom':           q.length = 0;
+				                         t = x.hasOwnProperty('factory') ? x.factory : x;
+				                         if( !(t instanceof Array) || (!t[0]) ) break;
+
+				                         q.push.apply(q,t);
+				                         wg = this;
+				                         'function' == typeof(t=q[0])
+				                         || 'function' == typeof(q[0]=wg[t])
+				                         || 'function' == typeof(q[0]=(wg=parent)[t])
+				                         || (t=wg=q.length=0);
+				                         
+				                         break;
+
+				default:                 q.pop();                               // Make q.length==1.
+			}
+
+			if( !q.length ) continue;
+			
+			// Custom case ; `wg` has been initialized to the func context.
+			// (Might be either `this` or the parent widget.)
+			// ---
+			if( wg )
+			{
+				// Factory function.
+				// ---
+				t = q[0];
+				
+				// Make sure the 1st argument is always the parent widget.
+				// ---
+				q[0] = parent;
+
+				// Create the custom object.
+				// ---
+				wg = t.apply(wg, q);
+				q.length = 0;
+				ISWG = ScriptUI.isWidget(wg);
+			}
+			
+			// Manage non-widget assignments.
+			// ---
+			if( 1 == q.length)
+			{
+				k = q.pop();
+
+				// External assignment process, if set.
+				// ---
+				if( f && f.call(this,parent,k,x) ) continue;
+				
+				// Default process.
+				// ---
+				switch( k )
+				{
+					case 'preferredSize':
+					case 'minimumSize':
+					case 'maximumSize':
+					case 'size':
+						t = parent[k] || 0;
+						if( (!t) || (x instanceof Array) ){ parent[k]=x; break; }
+						x.hasOwnProperty('width')  && (t.width=x.width);
+						x.hasOwnProperty('height') && (t.height=x.height);
+						break;
+
+					default:
+						parent[k] = x;
+				}
+				continue;
+			}
+			
+			// Appends the `properties` property.
+			// ---
+			if( pp )
+			{
+				// If not provided, pp.name is defaulted to `name`
+				// ---
+				name.length && ( pp.hasOwnProperty('name') || (pp.name=name) );
+				q.push(pp);
+			}
+
+			// Create a ScriptUI widget (if not done.)
+			// ---
+			0===wg && ( (wg = parent.add.apply(parent,  q)), ISWG=1 );
+			q.length = 0;
+
+			// If a name is provided, make the widget available from win[name].
+			// ---
+			if( name.length || !(name in win) )
+			{
+				win[name] = wg;
+			}
+
+			// If wg is a ScriptUI widget, recurse.
+			// ---
+			ISWG && callee.call(this,  x,wg);
+		}
+		
+		return parent;
+	}
+	.setup({
+		RE_UPSTREAM:  /^(?:properties|factory)$/,
+		F_ASSIGNMENT: false,
+	});
