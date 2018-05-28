@@ -121,6 +121,17 @@ _Demonstrates:_
 * Basic internationalization (decimal point, etc.)
 * Experimenting the Unit API: `info()`, `parse()`, `convertNumber()`, `format()`.
 
+##### [`ScriptUIBuilder.jsx`](ScriptUIBuilder.jsx)
+
+![ScriptUIBuilder demo](ScriptUIBuilder.png)
+
+Building a powerful ScriptUI interface with no effort.   
+_Demonstrates:_
+   
+* Using the static `ScriptUI.builder()` function.
+* Example of a 'resource object' with various widgets.
+* Implementing a custom component thru a 'factory.'
+
 ##### [`ShowHelp.jsx`](ShowHelp.jsx)
 
 Get help on core and included modules.   
