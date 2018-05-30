@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        171108 (YYMMDD)
-		Modified:       171111 (YYMMDD)
+		Modified:       180530 (YYMMDD)
 
 *******************************************************************************/
 
@@ -40,8 +40,8 @@
 
 		USHW: function ON_SHOW()
 		//----------------------------------
-		// (UI-OnShow.)
-		// <this> :: Window/dialog
+		// (UI-OnShow.) <this> :: Window/dialog
+		// => undef
 		{
 			this.modList.selection = 0;
 			this.modList.notify();
@@ -49,8 +49,8 @@
 
 		UMCH: function ON_MODULE_CHANGE(  w,s,k)
 		//----------------------------------
-		// (UI-ModuleList-OnChange.)
-		// <this> :: ListBox
+		// (UI-ModuleList-OnChange.) <this> :: ListBox
+		// => undef
 		{
 			w = this.window;
 
@@ -63,7 +63,9 @@
 
 		ULST: function(/*ListBox*/lb,/*str[]*/a,  q,n,i,t,s,p,o,j,z)
 		//----------------------------------
-		// (ListBox-Generic-Loader.)
+		// (ListBox-Generic-Loader.) <this> :: ~
+		// [CHG180530] `str.charAt()` is faster than `str[]`
+		// => str
 		{
 			q = this.PNGS;
 
@@ -74,14 +76,14 @@
 				t = a[i].split(RegExp.X2);
 
 				s = t.shift();
-				p = '{'==s[0] ? s.indexOf('}') : -1;
+				p = '{'==s.charAt(0) ? s.indexOf('}') : -1;
 				o = lb.add('item',s.substr(1+p));
 				0 < p && (s=q[s.substring(1,p)]) && (o.image=s);
 				
 				for( o=o.subItems, z=o.length, j=-1 ; ++j < z ; )
 				{
 					s = t[j]||'';
-					p = '{'==s[0] ? s.indexOf('}') : -1;
+					p = '{'==s.charAt(0) ? s.indexOf('}') : -1;
 					o[j].text = s.substr(1+p);
 					0 < p && (s=q[s.substring(1,p)]) && (o[j].image=s);
 				}
@@ -96,92 +98,89 @@
 			lb.size = [t[0],t[1]];
 		},
 
-		UHLP: function(/*str[]*/a,  $$,s)
+		UHLP: function(/*str[]*/a,  q,w)
 		//----------------------------------
 		// (Help-UI.)
+		// [CHG180530] Use ScriptUI.builder().
+		// => undef
 		{
-			$$ = callee.µ;
-
-			// UI resource.
-			// ---
-			s = """dialog
+			q = callee.Q || (callee.Q=
 			{
-				orientation:              'column',
-				alignChildren:            ['center','top'],
+				properties:               { type:'dialog', text:"\xA0IdExtenso's API", borderless:false },
 				margins:                  15,
 				spacing:                  15,
-				properties:               { borderless: false },
-				text:                     "\xA0IdExtenso's API",
-				_:Panel
+				alignChildren:            ScriptUI.CT,
+				// ---
+				onShow:                   this.USHW,
+				
+				Panel$0:
 				{
 					orientation:          'row',
-					alignChildren:        ['left','bottom'],
 					margins:              15,
 					spacing:              15,
-					properties:           { name:'P0' },
-					_:Group
+					alignChildren:        ScriptUI.LT,
+
+					Group$0:
 					{
 						orientation:      'column',
-						alignChildren:    ['left','top'],
 						spacing:          15,
-						properties:       { name:'G0' },
-						_:ListBox
+						alignChildren:    ScriptUI.LT,
+
+						ListBox$modList:
 						{
-							preferredSize:[220,330],
-							properties:   { name:'L0', numberOfColumns:2, columnWidths:[130,80], showHeaders:false, columnTitles:['Name','Version'] },
+							properties:   { numberOfColumns:2, columnWidths:[130,80], showHeaders:false, columnTitles:['Name','Version'] },
+							preferredSize:[ 220,330 ],
 							active:       true,
+							// ---
+							onChange:     this.UMCH,
 						},
-						_:StaticText
+
+						StaticText$modInfo:
 						{
-							alignment:    ['fill','bottom'],
-							minimumSize:  [10,100],
-							properties:   { name:'S0', multiline:true },
-							text:         "",
+							properties:   { text:'', multiline:true },
+							alignment:    ScriptUI.FB,
+							minimumSize:  [ 10,100 ],
 						}
-					}
-					_:Group
+					},
+
+					Group$1:
 					{
 						orientation:      'column',
-						alignment:        ['left','fill'],
-						alignChildren:    ['left','top'],
 						spacing:          15,
-						properties:       { name:'G1' },
-						_:StaticText
+						alignment:        ScriptUI.LF,
+						alignChildren:    ScriptUI.LT,
+						
+						StaticText$fctHead:
 						{
-							alignment:    ['left','top'],
 							indent:       10,
-							properties:   { name:'S1' },
 							characters:   30,
+							alignment:    ScriptUI.LT,
 						},
-						_:ListBox
+
+						ListBox$fctList:
 						{
-							alignment:    ['left','fill'],
-							minimumSize:  [420,300],
-							properties:   { name:'L1', numberOfColumns:2, columnWidths:[280,130], showHeaders:false, columnTitles:['Signature','RetVal'] },
+							properties:   { numberOfColumns:2, columnWidths:[280,130], showHeaders:false, columnTitles:['Signature','RetVal'] },
+							alignment:    ScriptUI.LF,
+							minimumSize:  [ 420,300 ],
 						},
 					},
+
 				},
-				_:Button
+				
+				Button$0:
 				{
-					properties:           { name:'OK' },
-					text:                 "Close",
+					properties:           { text:"Close", name:'OK' },
 				},
-			}""";
+			});
 
 			// Dialog.
 			// ---
-			w = new Window(s);
-			w.data = a;
+			w = ScriptUI.builder.call(this,q);
 			
-			w.modList = w.P0.G0.L0;
-			w.modInfo = w.P0.G0.S0;
-			w.fctHead = w.P0.G1.S1;
-			w.fctList = w.P0.G1.L1;
+			// Init.
+			// ---
+			this.ULST(w.modList,w.data=a);
 
-			this.ULST(w.modList,a);
-
-			w.modList.onChange = this.UMCH;
-			w.onShow = this.USHW;
 			w.show();
 		},
 	})
@@ -377,8 +376,6 @@
 		help: function help_(  I,a)
 		//----------------------------------
 		// Display all API infos available from the included modules.
-		// If SHORT==0, show type codes;
-		// if SHORT==1, show type names.
 		// => undefined
 		{
 			I = callee.µ['~'];
