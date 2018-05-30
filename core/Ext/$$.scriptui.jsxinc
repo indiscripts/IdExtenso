@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       180528 (YYMMDD)
+		Modified:       180530 (YYMMDD)
 
 *******************************************************************************/
 
@@ -125,7 +125,7 @@
 	}});
 
 	//==========================================================================
-	// [180528] ScriptUI.builder()
+	// [180528] ScriptUI.builder() ; [180530] Added event keys.
 	//==========================================================================
 
 	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,u,f,win,pp,k,x,p,t,name,wg,ISWG)
@@ -155,6 +155,10 @@
 	//     using <cx>===this unless <factory> was provided as a method name in the
 	//     parent widget prototype. Note that the <factoryFunc> function must support at
 	//     least one argument (the 1st one) which always refers to the parent widget.
+	// (4) [180530] If <key> has the form `_<evType>` where <evType> is a valid event type
+	//     ('move', 'focus', 'mouseover', ...), and if <value> is a function, then <value>
+	//     is interpreted an event handler declared as follows,
+	//          `parent.addEventListener( <evType>, <value> )`
 	// [REM] When using the `Custom...` syntax it's up to the client code to guarantee that
 	// the factory function returns a valid ScriptUI component if builder recursion is
 	// desired within. If a non-ScriptUI object is returned, the function will not recurse
@@ -296,6 +300,15 @@
 				// ---
 				if( f && f.call(this,parent,k,x) ) continue;
 				
+				// [ADD180530] Convert special event keys into addEventListener statement.
+				// k :: `_move` | `_mouseup` | `_keydown` | etc
+				// ---
+				if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVENTS.test(t=k.substr(1)) )
+				{
+					parent.addEventListener(t,x);
+					continue;
+				}
+				
 				// Default process.
 				// ---
 				switch( k )
@@ -348,4 +361,5 @@
 	.setup({
 		RE_UPSTREAM:  /^(?:properties|factory)$/,
 		F_ASSIGNMENT: false,
+		RE_EVENTS:    /^(?:move|moving|resize|resizing|show|close|focus|blur|change|changing|click|mousedown|mouseup|mousemove|mouseover|mouseout|enterKey|keyup|keydown)$/,
 	});
