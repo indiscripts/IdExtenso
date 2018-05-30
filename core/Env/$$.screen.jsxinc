@@ -11,7 +11,7 @@
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       180413 (YYMMDD)
+		Modified:       180531 (YYMMDD)
 
 *******************************************************************************/
 
@@ -191,17 +191,25 @@
 	[PUBLIC]
 
 	({
-		centerWindow: function centerWindow_$SUIWindow$_$SUIWindow$(/*ScriptUIWindow*/w,  q,xy,wh)
+		centerWindow: function centerWindow_$SUIWindow$_$Window$_$SUIWindow$(/*SUIWindow*/w,/*?Window*/relWin,  q,xy,wh)
 		//----------------------------------
+		// [CHG180531] Added the `relWin` (optional) argument.
+		// ---
 		// => w
 		{
-			q = callee.µ['~'].SCRN.Q;
-			xy = q[q.hasOwnProperty('ACTV')?q.ACTV:q.PRIM].center;
-
 			w.layout.layout(1);
-			wh = w.size;
-
-			w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
+			
+			if( relWin && (relWin instanceof Window) )
+			{
+				w.center(relWin);
+			}
+			else
+			{
+				q = callee.µ['~'].SCRN.Q;
+				xy = q[q.hasOwnProperty('ACTV')?q.ACTV:q.PRIM].center;
+				wh = w.size;
+				w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
+			}
 
 			return w;
 		}
