@@ -1,3 +1,6 @@
+##### [180531]
+  - Fixed a bug in `Dom.Dialog['~'].XDLG` (XML dialog builder): needed to change `wx.name()` into `String(wx.name())` to prevent the code from handling a QName object. (This bug had undesirable side effects on [InstantDialog.jsx](tests/InstantDialog.jsx) sample script.)
+
 ##### [180530]
   - `core/Root/$$.help.jsxinc`: Improved the implementation of the dialog -- it now uses `ScriptUI.builder()` :-)
   - `ScriptUI.builder()` now parses event types preceded by an underscore (e.g `_mousedown`) and declares the corresponding event listener if the associated value is a function.
