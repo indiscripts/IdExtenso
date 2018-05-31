@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Root module.
-		API:            success() failure() edit()
+		API:            success() failure() edit() yesNo()
 		DOM-access:     ---
-		Todo:           Fix dual-screen issues
+		Todo:           Fix dual-screen issues ;
 		Created:        170427 (YYMMDD)
-		Modified:       180516 (YYMMDD)
+		Modified:       180531 (YYMMDD)
 
 *******************************************************************************/
 
@@ -36,152 +36,152 @@
 		//----------------------------------
 		TTLE : '\xA0' + "IdExtenso",
 
-		MDMG : function(/*str*/msg,/*str|false*/title,/*uint*/msec,  s,n,ML,xm,ym,w)
+		KTXT: function(/*Group|Panel|Window*/parent,/*0|1*/edit,/*str*/txt,/*0|1*/autoMg,  q,n,ML,xm,ym,r,o)
 		//----------------------------------
-		// [ADD180516] Modal Message (based on a dialog.)
+		// (Text-Factory.)
+		// => EditText | StaticText
 		{
-			// UI resource pattern.
+			q = callee.Q||(callee.Q={ multiline: false, });
+
+			// Multiline?
 			// ---
-			s = """dialog
+			ML = 30 < (n=txt.length) || RegExp.LINE.test(txt);
+
+			// Automargin?
+			// ---
+			if( autoMg )
 			{
-				text:               %1,
-				properties:         { borderless: %2 },
-				orientation:        'column',
-				alignChildren:      ['center','top'],
-				margins:            %3,
-				_:StaticText
-				{
-					text:           %4,
-					properties:     { name: 'S0', multiline: %5 },
-				},
-				_:Button
-				{
-					text:           %6,
-					properties:     { name: 'OK' },
-				},
-			}""";
+				30 > (xm=3*(20-n)) && (xm=30);
+				ym = 15 + (xm>>>1);
+				parent.margins = [xm,ym,xm,ym];
+			}
 
-			// UI params.
-			// ---
-			n = msg.length;
-			ML = 30 < n || RegExp.LINE.test(msg); // multiline?
-			xm = Math.max(30,3*(20-n));
-			ym = 15 + (xm>>>1);
-			s = __(s
-				, (title||'').toSource()
-				, !title
-				, __("[%1,%2,%1,%2]",xm,ym)
-				, msg.toSource()
-				, ML
-				, __("OK").toSource()
-			);
+			q.multiline = ML;
+			r = parent.add(edit?'edittext':'statictext', void 0, txt, q);
 
-			// Window.
-			// ---
-			w = new Window(s);
-			$.global[callee.µ.__root__].centerWindow(w).show();
+			ML && !edit && (r.characters=40);
+
+			o = r.preferredSize;
+			o.width  = edit ? 400 : -1;
+			o.height = edit ? (ML ? 300 : 22) : -1;
+
+			edit && (r.active=true);
+			return r;
+		},
+		
+		KBTS: function(/*Window|Group|Panel*/parent,/*str*/okStr,/*str*/koStr)
+		//----------------------------------
+		// (Buttons-Factory.)
+		// => Group
+		{
+			r = parent.add('group');
+			
+			okStr && (r.window.ok=r.add('button',void 0,okStr,{name:'ok'}));
+			koStr && (r.window.ko=r.add('button',void 0,koStr,{name:'cancel'}));
+
+			return r;
+		},
+		
+		WRES: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  o)
+		//----------------------------------
+		// [ADD180531]
+		{
+			q = callee.Q || (callee.Q={
+				properties:             { type:'dialog', text:'', bounds:[0,0,void 0,void 0], borderless:false, closeButton:true },
+				alignChildren:          ScriptUI.CT,
+				margins:                20,
+				spacing:                20,
+				Group$0:                { Custom$data: ['KTXT', /*edit*/1, /*text*/'', /*autoMargin*/0], },
+				Custom$0:               ['KBTS', /*okStr*/'', /*koStr*/''],
+			});
+
+			o = q.properties;
+			o.type = tpe;
+			o.text = title;
+			o.borderless = !border;
+			o.closeButton = !ko;
+			
+			o = o.bounds;
+			o[0] = w && (w.location.x);
+			o[1] = w && (w.location.y + (w.size.height >>> 1));
+			o[2] = void 0;
+			o[3] = void 0;
+
+			o = q.Group$0.Custom$data;
+			o[1] = edit;
+			o[2] = txt;
+			o[3] = autoMg;
+			
+			o = q.Custom$0;
+			o[1] = ok || '';
+			o[2] = ko || '';
+			
+			return q;
 		},
 
-		SLMG : function(/*str*/msg,/*str|false*/title,/*uint*/msec,  s,n,ML,xm,ym,w)
+		MSSG : function(/*str*/txt,/*str|false*/title,/*uint|false*/msec,/*0|1*/failing,/*?Window*/win,  ui,w)
 		//----------------------------------
-		// Sleeping Message (based on a palette.)
+		// (Generic-Message.)
 		// [REM] Palettes usually show up on $.screens[0] whatever app screen.
 		// [CS4] If borderless==false (titlebar shown) app screen is focused on.
+		// [CHG180531] Refactored code.
+		// => undef
 		{
-			// UI resource pattern.
+			// Build the UI.
 			// ---
-			s = """palette
+			ui = this.WRES(msec?'palette':'dialog', title||'', +(false!==title), 0, txt, msec?'':__("OK"), '', win||0, 1);
+			w = ScriptUI.builder.call(this,ui);
+
+			// Position and show.
+			// ---
+			$.global[callee.µ.__root__].centerWindow(w,win);
+			w.show();
+			
+			if( 'dialog' != w.type )
 			{
-				text:               %1,
-				properties:         { borderless: %2 },
-				orientation:        'column',
-				alignChildren:      ['center','top'],
-				margins:            %3,
-				_:StaticText
-				{
-					text:           %4,
-					properties:     { name: 'S0', multiline: %5 },
-				},
-			}""";
-
-			// UI params.
-			// ---
-			n = msg.length;
-			ML = 30 < n || RegExp.LINE.test(msg); // multiline?
-			xm = Math.max(30,3*(20-n));
-			ym = 15 + (xm>>>1);
-			s = __(s
-				, (title||'').toSource()
-				, !title
-				, __("[%1,%2,%1,%2]",xm,ym)
-				, msg.toSource()
-				, ML
-			);
-
-			// Window + sleep.
-			// ---
-			w = new Window(s);
-			$.global[callee.µ.__root__].centerWindow(w).show(); // [CHG180401]
-			
-
-			// [ADD170504] Calling update() here seems to solve (rare?) issues on MacOS
-			// [RES] https://forums.adobe.com/message/9484275#9484275
-			// ---
-			w.update();
-
-			$.sleep(msec);
-			
-			// Required if a persistent engine is running.
-			// ---
-			if( 'dialog' != w.type ) w.hide();
+				// [ADD170504] Calling update() here seems to solve (rare?) issues on MacOS
+				// [RES] https://forums.adobe.com/message/9484275#9484275
+				// ---
+				w.update();
+				$.sleep(msec);
+				
+				// Required if a persistent engine is running.
+				// [REM] Do not use hide() on a 'dialog'.
+				// ---
+				w.hide();
+			}
 		},
 
-		EDIT : function(/*str*/txt,/*str|false*/title,  s,n,ML,xm,ym,w)
+		EDIT : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w)
 		//----------------------------------
-		// Editable Message (based on a dialog.)
+		// (Editable-Message-Box.) [CHG180531]
+		// => undef
 		{
-			// UI resource pattern.
+			// Build the UI.
 			// ---
-			s = """dialog
-			{
-				text:               %1,
-				properties:         { borderless: %2 },
-				orientation:        'column',
-				alignChildren:      ['center','top'],
-				margins:            %3,
-				spacing:            %3,
-				_:EditText
-				{
-					preferredSize:  [%4,%5],
-					text:           %6,
-					active:         true,
-					properties:     { name: 'E0', multiline: %7 },
-				},
-				_:Button
-				{
-					text:           "OK",
-					properties:     { name: 'OK' },
-				},
-			}""";
+			ui = this.WRES('dialog', title||'', +(false!==title), 1, txt, __("OK"), '', win||0);
+			w = ScriptUI.builder.call(this,ui);
 
-			// UI params.
+			// Position and show.
 			// ---
-			n = txt.length;
-			ML = 30 < n || RegExp.LINE.test(txt); // multiline?
-			s = __(s,
-				(title||'').toSource(),
-				!title,
-				30,
-				400,
-				ML ? 300 : 22,
-				txt.toSource(),
-				ML
-			);
+			$.global[callee.µ.__root__].centerWindow(w,win);
+			w.show();
+		},
 
-			// Dialog.
+		YSNO : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w)
+		//----------------------------------
+		// (Yes-No-Box.) [180531]
+		// => 1 [OK]  |  0 [KO]
+		{
+			// Build the UI.
 			// ---
-			w = new Window(s);
-			$.global[callee.µ.__root__].centerWindow(w).show(); // [CHG180401]
+			ui = this.WRES('dialog', title||'', +(false!==title), 0, txt, __("Yes"), __("No"), win||0);
+			w = ScriptUI.builder.call(this,ui);
+
+			// Position and show.
+			// ---
+			$.global[callee.µ.__root__].centerWindow(w,win);
+			return 1==w.show() ? 1 : 0;
 		},
 
 	})
@@ -194,67 +194,89 @@
 
 	({
 
-		success: function success_S_s_i_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=auto*/seconds)
+		success: function success_S_s_i_$Window$_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=auto*/seconds,/*?Window*/relWin)
 		//----------------------------------
 		// [ADD170427] Displays a OK message box during a short time.
 		// `message` :: String to be displayed.
 		// `title`   :: Title of the box (default is "IdExtenso")
 		//              -1 => remove the title bar.
 		// `seconds` :: Delay, in seconds.
+		// `relWin`  :: Optional, related Window.
 		// [CHG170508] Coerce msg and title into string (if relevant.)
+		// [ADD180531] Added relWin.
 		// ---
 		// E.g  $$.success("Web data have been entirely retrieved.", "MyTool", 3);
+		// => undef
 		{
 			// [CHG170508] Better type checking.
 			// ---
 			msg = String(msg);
 			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
 
-			callee.µ['~'].SLMG(msg, title, 1e3*seconds);
+			callee.µ['~'].MSSG(msg, title, 1e3*seconds, 0, relWin);
 		},
 
-		failure: function failure_S_s_i_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=infinite*/seconds)
+		failure: function failure_S_s_i_$Window$_(/*str*/msg,/*-1|str="IdExtenso"*/title,/*uint=infinite*/seconds,/*?Window*/relWin)
 		//----------------------------------
 		// [ADD180516] Displays a KO message box.
 		// `message` :: String to be displayed.
 		// `title`   :: Title of the box (default is "IdExtenso")
 		//              -1 => remove the title bar.
 		// `seconds` :: Delay, in seconds. If not provided, the box is modal.
+		// `relWin`  :: Optional, related Window.
 		// ---
 		// [TODO] So far this method is just a placeholder, it mainly behaves as `success`
 		// when `seconds` is supplied. Our purpose is just to provide a KO routine
 		// semantically distinct from `success`.
 		// ---
 		// E.g  $$.failure("Cannot open the file.", "MyTool");
+		// => undef
 		{
 			msg = String(msg);
 			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
-			
-			if( !seconds )
-			{
-				callee.µ['~'].MDMG(msg, title);
-			}
-			else
-			{
-				( 'number' == typeof seconds && 0 < seconds ) || (seconds=2+msg.length/15);
-				callee.µ['~'].SLMG(msg, title, 1e3*seconds);
-			}
+			seconds && ( ( 'number' == typeof seconds && 0 < seconds ) || (seconds=2+msg.length/15) );
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
+
+			callee.µ['~'].MSSG(msg, title, seconds ? 1e3*seconds : false, 1, relWin);
 		},
 
-		edit: function edit_S_s_(/*str*/txt,/*-1|str="IdExtenso"*/title)
+		edit: function edit_S_s_$Window$_(/*str*/txt,/*-1|str="IdExtenso"*/title,/*?Window*/relWin)
 		//----------------------------------
 		// [ADD171105] Displays an editable text in a message box.
+		// [ADD180531] Added the `relWin` (optional) argument.
 		// `txt`     :: String to be displayed.
-		// `title`   :: Title of the box (default is "IdExtenso")
+		// `title`   :: Title of the box ; default is "IdExtenso"
 		//              -1 => remove the title bar.
+		// `relWin`  :: Optional, related Window.
 		// ---
 		// E.g  $$.edit($$.JSON(app.properties), "MyTool");
+		// => undef
 		{
 			txt = String(txt);
-			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
+			title = -1===title ? false : ( title ? String(title) : callee.µ['~'].TTLE );
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
 
-			callee.µ['~'].EDIT(txt, title);
+			callee.µ['~'].EDIT(txt, title, relWin);
+		},
+		
+		yesNo: function yesNo_S_s_$Window$_B(/*str*/msg,/*-1|str=auto*/title,/*?Window*/relWin)
+		//----------------------------------
+		// [ADD180531] Displays a Yes/No question and return the user answer (1 or 0.)
+		// `msg`     :: Y/N question to be prompted.
+		// `title`   :: Title of the box ; default is __("Confirm")
+		//              -1 => remove the title bar.
+		// `relWin`  :: Optional, related Window.
+		// ---
+		// E.g  $$.yesNo("Are you sure you want to do this?");
+		// => 1 [OK]  |  0 [KO]
+		{
+			msg = String(msg);
+			title = -1===title ? false : ( title ? String(title) : __("Confirm") );
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
+			
+			return callee.µ['~'].YSNO(msg, title, relWin);
 		},
 
 	})
