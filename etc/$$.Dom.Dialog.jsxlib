@@ -17,11 +17,11 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180311 (YYMMDD)
-		Modified:       180515 (YYMMDD)
+		Modified:       180531 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180515, 'fromXML'))
+;$$.Dom.hasOwnProperty('Dialog') || eval(__(MODULE, $$.Dom.toSource(), 'Dialog', 180531, 'fromXML'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -678,10 +678,10 @@
 			
 			for each( wx in x )
 			{
-				// wk=wx.name()
+				// [FIX180531] Use String(wx.name()) to avoid wk being a QName obj.
 				// => wk :: 'DCOL' | 'DialogColumn' | etc
 				// ---
-				if( !W.hasOwnProperty(wk=wx.name()) ) continue;
+				if( !W.hasOwnProperty(wk=String(wx.name())) ) continue;
 				
 				// Alias?
 				// => wk :: 'DialogColumn' | 'DialogRow' | etc
