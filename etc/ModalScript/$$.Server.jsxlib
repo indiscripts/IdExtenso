@@ -1,0 +1,59 @@
+/*******************************************************************************
+
+		Name:           Server
+		Desc:           The abstract Server of a Modal Script.
+		Path:           /etc/ModalScript/$$.Server.jsxlib
+		Require:        $$.ModalScript
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.ModalScript)
+		API:            ?run()
+		DOM-access:     YES
+		Todo:           ---
+		Created:        180602 (YYMMDD)
+		Modified:       180604 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'Server','ModalScript')); exit(); }
+;$$.ModalScript.hasOwnProperty('Server') || eval(__(MODULE, $$.ModalScript.toSource(), 'Server', 180604))
+
+	[PRIVATE]
+	
+	({
+		_GO_: function(/*int*/runMode,  µ)
+		//----------------------------------
+		// (Go.) Call `µ.run(ss,runMode)` if available.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// ---
+		// => any [CONTINUE] | false [STOP]
+		{
+			µ = callee.µ;
+			
+			return 'function' == typeof(µ.run) ?
+				µ.run($.global[µ.__root__].Settings(),runMode) :
+				void 0;
+		},
+	})
+
+	//==========================================================================
+	// HOOK TO COME NEXT?
+	//==========================================================================
+	// From a distinct `jsxinc` (included later,) you should provide
+	// a [PUBLIC] cluster for implementing the below HOOK.
+	//==========================================================================
+
+	// run: function run_O_Ï_x$false$(/*settings*/ss,/*int*/runMode)
+	// ----------------------------------
+	// Highly expected, this function runs the hot process.
+	// If not implemented, no actions are served.
+	// If it returns `false`, settings won't be saved while
+	// quitting the context.
+	// ---
+	// `runMode` represents the script run flag (signed integer.)
+	// => undefined [OK] | false [SKIP-BACKUP]
+	// {},

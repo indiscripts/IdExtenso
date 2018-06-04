@@ -1,0 +1,161 @@
+/*******************************************************************************
+
+		Name:           UserInterface
+		Desc:           The abstract UI of a Modal Script.
+		Path:           /etc/ModalScript/$$.UserInterface.jsxlib
+		Require:        $$.ModalScript
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.ModalScript)
+		API:            SmartListItemGetter
+		                ?beforeShow() ?onClose()
+		DOM-access:     YES
+		Todo:           ---
+		Created:        180601 (YYMMDD)
+		Modified:       180604 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 180604))
+
+	[PRIVATE]
+	
+	({
+		_SD_ : function(/*key[]*/a,/*settings*/ss,/*SUIWindow&*/dlg,  i,k)
+		//----------------------------------
+		// (Settings-to-Dialog-Keys.) Update Dialog keys from settings.
+		// => undefined
+		{
+			for( i=a.length ; i-- ; (k=a[i]), dlg.setValueKey(k,ss[k]) );
+		},
+
+		_DS_ : function(/*key[]*/a,/*SUIWindow*/dlg,/*settings&*/ss,  i,k,v)
+		//----------------------------------
+		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
+		// => undefined
+		{
+			// Manages smart list strings.
+			// ---
+			const SLIG = callee.µ.SmartListItemGetter;
+
+			for( i=a.length ; i-- ; )
+			{
+				k = a[i];
+				v = SLIG && 'string'==typeof ss[k] && (dlg[k]||0).hasOwnProperty('items') ?
+					dlg.getStringKey( k ) :  // List item as a string.
+					dlg.getValueKey ( k );   // Raw ui value.
+				ss[k] = v;
+			}
+		},
+
+		_GO_: function(/*int*/runMode,  $$,µ,ss,dlg,q,k,pfx,r)
+		//----------------------------------
+		// (Go.) Build and show the dialog (if any) with applied settings ;
+		// call the `beforeShow` and `onClose` hooks if available.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// ---
+		// => any [CONTINUE]  |  true [SKIP-SERVER]   |  false [STOP]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			µ = callee.µ;
+			ss = $$.Settings();
+
+			// Get and check the SUI resource obj.
+			// [REM] ~._UI_() must be implemented by the client code.
+			// ---
+			dlg = 'function' == typeof this._UI_ && this._UI_(ss);
+
+			if( !dlg )
+			{
+				$$.warn(__("%1 > Invalid _UI_ method.", µ));
+				return;
+			}
+			if( 'dialog' != (dlg.properties||0).type )
+			{
+				$$.warn(__("%1 > Invalid ScriptUI Resource Object.", µ));
+				return;
+			}
+
+			// Build the dialog.
+			// ---
+			dlg = ScriptUI.builder.call(this,dlg);
+
+			// Register ss keys found in dlg.
+			// ---
+			(q=callee.Q||(callee.Q=[])).length = 0;
+			for( k in ss ) ss.hasOwnProperty(k) && dlg.hasOwnProperty(k) && (q[q.length]=k);
+
+			// ss -> dlg keys.
+			// ---
+			this._SD_(q, ss, dlg);
+
+			// `beforeShow` hook.
+			// ---
+			'function' == typeof µ.beforeShow && µ.beforeShow(dlg,ss,runMode);
+			
+			// Show the dialog.
+			// ( If not canceled, dlg -> ss keys. )
+			// ---
+			0 < (r=dlg.show()) && this._DS_(q, dlg, ss);
+			
+			// onClose hook?
+			// ---
+			return 'function' == typeof µ.onClose ?
+				µ.onClose(r,dlg,ss,runMode) :
+				r;
+		},
+
+	})
+	
+	[PUBLIC]
+	
+	({
+		// Improves the *getter* of key-based list widgets.
+		// By default, the current item is returned *by index* (its
+		// index in the list.) If the flag SmartListItemGetter is ON,
+		// any settings key that has been declared as a *string*
+		// will be returned as the corresponding string in the list.
+		// See ~._DS_ for detail.
+		// [REM] This flag does not affect the setter (~._SD_) since
+		// `dlg.setValueKey` is smart enough to route, either a number
+		// to a list index, or a string to a list item.
+		// ---
+		SmartListItemGetter : 0,
+	})
+
+	//==========================================================================
+	// HOOKS TO COME NEXT?
+	//==========================================================================
+	// From a distinct `jsxinc` (included later,) you may provide
+	// a [PUBLIC] cluster for implementing the below HOOKS.
+	//==========================================================================
+
+	// beforeShow : function beforeShow_$Dialog$_O_Ï_(/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
+	// ----------------------------------
+	// Would be called once settings have been automatically populated into
+	// the Dialog object through linked keys. Before showing the dialog, you may
+	// use this place to preprocess existing or additional params to be displayed.
+	// ---
+	// `runMode` represents the script run flag (signed integer.)
+	// ---
+	// => undefined
+	// {},
+
+	// onClose : function beforeShow_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
+	// ----------------------------------
+	// Would be called once the dialog is closed and its values have been
+	// automatically populated into Settings through linked keys. You may
+	// use this place to postprocess existing or additional settings to be treated.
+	// `ok` indicates wether the user has validated the dialog. *In most cases*
+	// `false==ok` should lead to stop the process (that is, return false.)
+	// You can also return true to skip the Server while allowing backup.
+	// ---
+	// `runMode` represents the script run flag (signed integer.)
+	// ---
+	// => any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
+	// {},
