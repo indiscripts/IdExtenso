@@ -1,0 +1,561 @@
+/*******************************************************************************
+
+		Name:           ModalScript
+		Desc:           Facade of a simple Yalt/Settings/SUI script.
+		Path:           /etc/$$.ModalScript.jsxlib
+		Require:        Yalt, Settings
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =run() init() onEngine()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        180531 (YYMMDD)
+		Modified:       180604 (YYMMDD)
+
+*******************************************************************************/
+
+#include '$$.Yalt.jsxlib'
+#include '$$.Settings.jsxlib'
+
+;if( $$.BasicScript ){ alert(__("%1 cannot work with the %2 module.",'ModalScript','BasicScript')); exit(); }
+;$$.hasOwnProperty('ModalScript') || eval(__(MODULE, $$, 'ModalScript', 180604, 'run'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	The present module offers a full template system for creating InDesign scripts.
+	It integrates the localization engine (Yalt) and the settings manager (Settings).
+	It mostly duplicates the logics of the BasicScript module, except it does not
+	involve Dom.Dialog and lets the user provide a custom ScriptUI-based dialog.
+	
+	ModalScript is a 'facade' in that it hides many IdExtenso intricacies and just
+	shows you the essential bricks to get your script working fast, safely, and
+	with all $$ features still available if need be (log, JSON, etc.)
+
+
+	THE 'CONTEXT/UI/SERVER' PARADIGM
+
+	ModalScript implements a Context/UI/Server paradigm. It fits well a
+	wide variety of scripts, under the following requirements:
+
+	(a) The program primarily needs to check a Context,
+	    which highly determines what can/may be done.
+
+	    In DOM terms this refers to any condition on the current selection,
+	    existence or status of the active document, constraints on some object,
+	    layer, spread, layout, style name(s), preference, units, coordinates.
+	    Anything that is now visible, or selected, from the user perspective.
+	    Any data, parameter, or condition that can be found in the environment.
+	    
+	REM As an abstraction the Context is responsible for extracting, reading,
+	    parsing data. It isn't intended to create things or perform 'actual'
+	    tasks altering the DOM (unless it can restore the initial state.)
+	
+	(b) Before processing, the program usually opens a simple dialog (UI),
+	    from which the user validates options and tasks, or cancel.
+
+	    The dialog has to be *modal* and ScriptUI based. Basically, it gathers
+	    both contextual data and user preferences for this particular program.
+	    The UI makes the Context and the User meet in order to define a process.
+	
+	(c) Once properly defined and requested, the process can be 'served'
+	    as a consistent, airtight, set of tasks.
+
+	    The process must be 'strongly decoupled' from the previous stages.
+	    Ideally, it just has to take as input the current settings (incl.
+	    some contextual data) and run. It is the heavy component, the one
+	    that acts (layout processing, font/style report, preflight, XML,
+	    graphic adjustments, text cleaning, etc.)
+
+
+	ABSTRACT COMPONENTS
+	
+	ModalScript handles and interacts with three child modules: Context,
+	UserInterface, and Server. They are built and loaded as abstract
+	components, that is, formal placeholders ready to receive specific
+	features.
+	
+	The constant part of each abstract component is coded in its
+	respective `jsxlib` file (`etc/ModalScript/<Component>.jsxlib`).
+	You don't want to change any code there. Instead, you will extend
+	each module from your own project (as we shall see) by defining
+	callback functions, also called 'hooks', which the system invokes
+	when needed. If a certain hook is missing, then the default
+	scenario goes on to the next step.
+	
+	For example, the Context module supports a `beforeActivate` hook.
+	If you define it, it is automatically called before settings
+	activation so you can provide a specific DOM host for those
+	settings that require to wake up from DOM data.
+	
+	
+	COMPONENT      PURPOSE AND SUPPORTED HOOKS
+	------------------------------------------------------------------
+	Context        Manage settings (activate, backup) and contexual data.
+	               Hooks: beforeActivate, onActive, beforeBackup, onQuit.
+	------------------------------------------------------------------
+	UserInterface  Run and close the UI dialog (if available).
+	               Special private function: ~._UI_(settings)
+	               Hooks: beforeShow, onClose.
+	------------------------------------------------------------------
+	Server         Full container of the 'hot' process.
+	               Hook:  run.
+	------------------------------------------------------------------
+	
+	
+	ModalScript exposes a public `run` function that performs the
+	following steps:
+	
+	1. Load IdExtenso now ($$.load).
+	2. Get the Context active (in particular, activate the settings.)
+	3. If all is fine, call the UserInterface (show/close steps).
+	4. If all is fine, call the Server (run step).
+	5. Quit the Context (in particular, save the settings if needed.)
+
+
+	BOILERPLATE
+
+	Below is a template that shows how your final program (the main JSX)
+	will look like:
+
+	----------------------------------------------------------
+
+	      // Use "main" to discard session-persistence.
+	      #targetengine "MyGreatScript"
+
+	      #include 'path/to/idextenso/$$.jsxinc'
+	      #include 'path/to/idextenso/etc/$$.ModalScript.jsxlib'
+	      // #include. . . (additional $$ modules you may need)
+
+	      ;if( $$.isBooting() )
+	      {
+	         $$.ModalScript.init
+	         (
+	         <yourSettings>,
+	         <yourYaltPackage>
+	         )
+	        ;
+	         // Your specific Context API.
+	         // ---
+	         ($.global.µ=$$.ModalScript['Context'])
+	         #include '<yourContext>.jsxinc'
+	        ;
+	         // Your specific UserInterface API.
+	         // ---
+	         ($.global.µ=$$.ModalScript['UserInterface'])
+	         #include '<yourUI>.jsxinc'
+	         [PRIVATE]
+	         ({
+	           _UI_: function(ss)
+	           {
+	             q=callee.Q||(callee.Q=
+	             #include '<yourUI>.jsxres'
+	             )
+	             return q;
+	           },
+	         })
+	        ;
+	         // Your specific Server API.
+	         // ---
+	         ($.global.µ=$$.ModalScript['Server'])
+	         #include '<yourServer>.jsxinc'
+	      }
+
+	      $$.ModalScript();
+
+	----------------------------------------------------------
+
+	Use `$$.ModalScript.init(...)` to load (once for all) the fixed
+	data, or 'resources,' of your program:
+	
+	      <yourSettings>, if supplied, is the Object that
+	      declares all settings key/value pairs.
+	      -> See $$.Settings for further detail.
+	      
+	      <yourYaltPackage>, if supplied, is a String that
+	      encodes all L10N strings used in your project,
+	      formatted as a Yalt package.
+	      -> See $$.Yalt for further detail.
+
+	[REM]  Each of these two optional arguments can be loaded
+	       through a local `#include ...` directive, which
+	       helps keep your 'resource' distinct from the program.
+
+	Finally, you provide the local implementation of each abstract
+	component (if used) in your own `jsxinc` files:
+	
+	      . . .
+	      #include '<yourContext>.jsxinc'
+	      . . .
+	      #include '<yourUI>.jsxinc'
+	      . . .
+	      #include '<yourUI>.jsxres'
+	      . . .
+	      #include '<yourServer>.jsxinc'
+
+
+	[REM] The lines of the form `($.global.µ=$$.ModalScript[...])`
+	      in the template may look obscure. Keep them as written!
+	      They just allow to inject your `jsxinc` files in the
+	      corresponding module space while preserving the general
+	      syntax and conventions used in the framework.
+	
+	Now, what is left to you? Only implementing the desired 'hooks'
+	(see above) in the respective `jsxinc` files. For example,
+	<yourContext>.jsxinc may look like:
+
+	----------------------------------------------------------
+	
+	      [PRIVATE]
+	      ({
+
+	          MY_FUNC: function()
+	          // ----------------------
+	          // For some reason you need a private method...
+	          {
+	              $$.trace("Just to say HELLO to the log!"):
+	          },
+	          
+	          // etc
+
+	      })
+	
+	      [PUBLIC]
+	      ({
+
+	          onActive: function onActive_O_(ss)
+	          // ----------------------
+	          // This is the `onActive` hook. Great news is,
+	          // it provides the active settings as 1st arg.
+	          {
+	              $$.success(__("Script name is %1",ss.$NAME));
+	          },
+	          
+	          // etc
+
+	      })
+	
+	----------------------------------------------------------
+	
+	Note that the code has the form we already see anywhere else
+	in IdExtenso modules. You will use the [PRIVATE] and [PUBLIC]
+	clusters to separate inner members from public API. You can use
+	`.setup(...)` on incoming functions, and so on. Strictly
+	speaking, your own `jsxinc` code becomes a *part* of the
+	respective modules, it is injected at including time in either
+	Context.jsxlib, UserInterface.jsxlib, or Server.jsxlib.
+
+	In fact, when your program is very simple in terms of settings
+	and UI, all you have to do is to create the `<yourServer>.jsxinc`
+	snippet and implement the `run` hook!
+
+	*/
+
+	//==========================================================================
+	// SUI EXPANDER -> Window.prototype.setValueKey()/getValueKey()/getStringKey()
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		_SV_ : function setValueKey(/*key*/k,/*any*/v,  o,t)
+		//----------------------------------
+		// `this` :: Window
+		// => undefined [KO]  |  v-result [OK]
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+			
+			// Set the internal `pp.value`.
+			// ---
+			(t=o.properties) && (t.value=v);
+
+			// Use the custom setter, if available.
+			// ---
+			if( 'function' == typeof o.setValue ) return o.setValue(v);
+
+			// Default algorithm.
+			// ---
+			switch( typeof v )
+			{
+				case 'boolean' :
+					if( ((k='value') in o) && 'boolean'==typeof(o[k]) ) break;
+					if( 'ListItem'== o.__class__ ){ k = 'selected'; break; }
+					k = 'enabled';
+					break;
+				
+				case 'number' :
+					if( (k='value') in o )
+					{
+						if( 'number'==typeof(o[k]) ) break;
+						if( 'boolean'==typeof(o[k]) && (0===v || 1===v) ){ v=!!v; break; }
+					}
+					if( (v===v>>>0) && ('items' in o) && v < (o.items||'').length ){ k='selection'; break; }
+					k = void 0;
+					break;
+
+				case 'string' :
+					if( (k='text') in o ) break;
+					if( ('items' in o) && (t=o.find(v)) ){ k='selection'; v=t.index; break; }
+					// no break;
+
+				default:
+					k = void 0;
+			}
+
+			return k && (o[k]=v);
+
+		},
+		
+		_GV_ : function getValueKey(/*key*/k,  o)
+		//----------------------------------
+		// `this` :: Window
+		// => any
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+
+			// Use the custom getter, if available.
+			// ---
+			if( 'function' == typeof o.getValue ) return o.getValue();
+
+			// Default algorithm.
+			// ---
+			if( o.hasOwnProperty(k='value') ) return o[k];
+			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.index : -1;
+			if( o.hasOwnProperty(k='text') ) return o[k];
+
+			return o.enabled;
+		},
+		
+		_GS_ : function getStringKey(/*key*/k,  o)
+		//----------------------------------
+		// `this` :: Window
+		// => str
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+
+			// Use the custom getter, if available.
+			// ---
+			if( 'function' == typeof o.getValue ) return String(o.getValue()||'');
+
+			// Default algorithm.
+			// ---
+			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.text : -1;
+			if( o.hasOwnProperty(k='text') || o.hasOwnProperty(k='title') ) return o[k];
+
+			return String(o.value||'');
+		},
+	})
+
+	//==========================================================================
+	// PRIVATE INITIALIZERS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		YALT: false,
+
+		DECL: function(  $$,q,v,o)
+		//----------------------------------
+		// (Declare-Settings.) Declare and normalize settings.
+		// [REM] Called by `onEngine`. See also `init()`.
+		// Normalized constant settings (the starting `_` is the contant shortcut.)
+		// ---------------------------------------------------------------------
+		// _$IDRQ :: (num)  InDesign version required ;  e.g 7.5
+		// _$SUID :: (str)  Unique ID                 ;  e.g "d7d1fbece5d803ed5c9bf50eb68580cd"
+		// ---------------------------------------------------------------------
+		// _$NAME :: (str)  Script name               ;  e.g "MyScript"
+		// _$VSTR :: (str)  Script version            ;  e.g "2.027"
+		// _$TYPE :: (str)  Script type (A,B,F,T,P)   ;  e.g "B"  (for beta.)
+		// _$COPY :: (str)  Copyright line            ;  e.g "© 2018, myserver.com"
+		// _$HEAD :: (str)  Full script title         ;  e.g "MyScript 2.027[beta]"
+		// ---------------------------------------------------------------------
+		// => undefined
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			// Script file name.
+			// ---
+			callee.FNME=$$.Env.runningScript;
+
+			// Raw data.
+			// ---
+			q = callee.DATA||(callee.DATA={});
+
+			// Required ID version ($IDRQ).
+			// ---
+			if( q.hasOwnProperty('_$IDRQ') )
+			{
+				v = q._$IDRQ;
+				'number' == typeof v || (v=parseFloat(String(s)));
+				6 < v && (callee.IDRQ=v);
+			}
+
+			// Script name ($NAME).
+			// ---
+			callee.NAME = q._$NAME || (q._$NAME=File(callee.FNME).nudeName);
+
+			// Script version ($VSTR). Fallback: "1.0".
+			// ---
+			callee.VSTR = q._$VSTR || (q._$VSTR='1.0');
+
+			// Script type ($TYPE) among 'A'|'B'|'F'|'T'|'P' or empty.
+			// ---
+			callee.TYPE = {A:' alpha', B:' beta', F:' free', T:' trial', P:' pro'}[q._$TYPE] || '';
+
+			// Copyright line ($COPY). May be empty.
+			// ---
+			callee.COPY = q._$COPY || "";
+			
+			// Script head ($HEAD) served as title in dialogs etc.
+			// Unless specified, mix of NAME, VSTR, TYPE and COPY.
+			// ---
+			callee.HEAD = q._$HEAD || (q._$HEAD=__("%1 %2%3 %4"
+				, callee.NAME
+				, callee.VSTR
+				, callee.TYPE
+				, callee.COPY
+				).trim());
+
+			// Settings Unique ID ($SUID).
+			// ---
+			callee.SUID = q._$SUID = String(q._$SUID) || ($$.MD5||String)(callee.NAME);
+
+			// Default LIVE keys:
+			// hasDocument ; hasSelection
+			// ---
+			( (o=q.LIVE) && o===Object(o) ) || (o=q.LIVE={});
+			o.hasOwnProperty('hasDocument')  || (o.hasDocument=void 0);
+			o.hasOwnProperty('hasSelection') || (o.hasSelection=void 0);
+
+			// Default RESET keys:
+			// endMessage
+			// ---
+			( (o=q.RESET) && o===Object(o) ) || (o=q.RESET={});
+			o.hasOwnProperty('endMessage') || (o.endMessage="");
+
+			// Declare the settings.
+			// ---
+			$$.Settings.declare(callee.SUID,q);
+		}
+		.setup({ DATA:false, IDRQ:6, FNME:'', NAME: '', VSTR:'', COPY:'', SUID:'', TYPE:'', HEAD:'' }),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		init: function init_õs_õs_$this$(/*?obj|str*/a,/*?obj|str*/b,  t,x,o,$$,I)
+		//----------------------------------
+		// Initialize settings and/or yalt pack, these arguments being
+		// *passed in no particular order*.
+		// This function is invoked at including time, before $$.load(),
+		// to get various engine persistent data already available.
+		// (a) Any object-type arg is interpreted script Settings
+		//     (Normalized settings properties are detailed in ~.DECL.)
+		// (b) Any string-typed arg is interpreted Yalt package.
+		// ---
+		// => this
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			for( t=[a,b] ; t.length ; )
+			{
+				x = t.pop();
+				switch( typeof x )
+				{
+					case 'string' :
+						I.YALT || -1==x.indexOf('#') || $$.Yalt(I.YALT=x);
+						break;
+					default :
+						if( x!==Object(x) ) break;
+						I.DECL.DATA || (I.DECL.DATA=x);
+				}
+			}
+			return callee.µ;
+		},
+
+		onEngine: function onEngine_(  I)
+		// ---------------------------------
+		// Executed once if the script uses a persistent #targetengine.
+		{
+			I = callee.µ['~'];
+			I.DECL();
+			
+			Window.prototype.setValueKey  = I._SV_;
+			Window.prototype.getValueKey  = I._GV_;
+			Window.prototype.getStringKey = I._GS_;
+		},
+
+		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r)
+		//----------------------------------
+		// Actual entry point of the script.
+		{
+			µ = callee.µ;                   // the present module
+			$$ = $.global[µ.__root__];      // agnostic reference
+			I = µ['~'];                     // private zone
+
+			runMode || (runMode=0);
+
+			$$.load(runMode);
+			r = void 0;
+			try
+			{
+				$$.idVersion(I.DECL.IDRQ)
+				|| $$.error( __("Unsupported InDesign version. Should be at least %1.",I.DECL.IDRQ) );
+
+				// Go to the context (activate settings.)
+				// ---
+				$$.trace(__("%1 > Starting up the Context in runMode %2...",µ,runMode));
+				r = µ.Context['~']._GO_(runMode);
+				$$.trace(__("%1 > Returned value: <%2>.",µ,r));
+				
+				// Go to the UI.
+				// ---
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the UserInterface...",µ)),
+					(r=µ.UserInterface['~']._GO_(runMode)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
+
+				// Go to the Server.
+				// ---
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the Server...",µ)),
+					(r=µ.Server['~']._GO_(runMode)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
+
+				// Quit the context (backup if non-FALSE.)
+				// ---
+				$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r));
+				r = µ.Context['~']._QT_(false!==r,runMode);
+			}
+			catch(e)
+			{
+				$$.receiveError(e);
+			}
+
+			// [CHG180406] The returned value from Context._QT_() is used
+			// as the KEEP_DORMANT arg of $$.unload.
+			// ---
+			$$.unload(r);
+		},
+
+	})
+
+#include 'ModalScript/$$.Context.jsxlib'
+#include 'ModalScript/$$.UserInterface.jsxlib'
+#include 'ModalScript/$$.Server.jsxlib'
