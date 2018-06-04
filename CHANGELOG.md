@@ -1,3 +1,6 @@
+##### [180604]
+  - Introducing **ModalScript** (`/etc/ModalScript`), a variant of the **BasicScript** module that supports ScriptUI dialogs instead of DOM dialogs. While **BasicScript** relies on the **Dom.Dialog** module, **ModalScript** only involves the `ScriptUI.builder()` routine available in the core branch. Aside from that, **ModalScript** provides the same functionalities based on **Settings** and **Yalt**.
+
 ##### [180531]
   - Added `$$.yesNo()`. And the whole _messaging_ toolbox (`/core/Root/$$.messaging.jsxinc`) has been re-factored, now using `ScriptUI.builder`'s API--much more secure than the old ScriptUI resource strings!
   - Fixed a bug in `Dom.Dialog['~'].XDLG` (XML dialog builder): needed to change `wx.name()` into `String(wx.name())` to prevent the code from handling a QName object. (This bug had undesirable side effects on [InstantDialog.jsx](tests/InstantDialog.jsx) sample script.)
