@@ -1,4 +1,5 @@
 ##### [180605]
+  - **BasicScript** and **ModalScript** now provide the user with the option to reset the preferences (**Settings**) to factory values when an error occurs. (Of course this is just a workaround in case your script, being in debug phase, does not properly address weird or out-of-range settings. This event is not supposed to occur in the final release of the script! Also, keep in mind that an error is not necessarily caused by wrong settings...)
   - **Settings**: the `backup()` method now calls the internal `~.BCKP` routine from within `app.doScript(..., UndoMode.autoUndo)`, which prevents this step from being undone. Usually, when a user runs a script and validates the UI, s/he expects *Undo* to reverse the process but wants the settings to reflect the validated choices.
 
 ##### [180604]
