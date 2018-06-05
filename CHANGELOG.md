@@ -1,5 +1,5 @@
 ##### [180605]
-  - **Settings**: the `backup()` method now calls the internal `~.BCKP` routine from within `app.doScript(..., UndoMode.autoUndo)`, which prevents this step from being undone. Usually, when a user run a script and validate the UI, s/he expects *Undo* to reverse the process but wants the settings to reflect validated choices.
+  - **Settings**: the `backup()` method now calls the internal `~.BCKP` routine from within `app.doScript(..., UndoMode.autoUndo)`, which prevents this step from being undone. Usually, when a user runs a script and validates the UI, s/he expects *Undo* to reverse the process but wants the settings to reflect the validated choices.
 
 ##### [180604]
   - Introducing **ModalScript** (`/etc/ModalScript`), a variant of the **BasicScript** module that supports ScriptUI dialogs instead of DOM dialogs. While **BasicScript** relies on the **Dom.Dialog** module, **ModalScript** only involves the `ScriptUI.builder()` routine available in the core branch. Aside from that, **ModalScript** provides the same functionalities based on **Settings** and **Yalt**.
