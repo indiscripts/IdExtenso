@@ -13,11 +13,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       180318 (YYMMDD)
+		Modified:       180605 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180318, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180605, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -61,7 +61,7 @@
 	   Declaration stage using `$$.Settings.declare(...)`. This step
 	   must be achieved once-per-engine (typically in a `onEngine`
 	   handler) before performing any other API stage. The `declare` method
-	   expects an Unique ID and an Object that contain the whole set of
+	   expects an Unique ID and an Object that contains the whole set of
 	   parameters with their associated scopes.
 	
 	2. ACTIVATION STAGE  -> activate()  [REQUIRED]
@@ -160,10 +160,10 @@
 	imitates the global vs. local paradigm used in InDesign preferences. If a
 	DOM object is present (typically, a `Document`) then the value is taken
 	from it, otherwise the application key is considered. For example, if your
-	script provide Swatch- or Style-related settings, you may want to manage
+	script provides Swatch- or Style-related settings, you may want to manage
 	them in a global/local fashion, as InDesign does.
 
-	See the NOTICE for further technical detail.
+	See the NOTICE for further detail.
 
 	*/
 
@@ -795,6 +795,7 @@
 		// If host is a DOM object, use it as a target for any I_OBJ or I_HYB key.
 		// If host is undefined, backup I_HYB and I_APP keys in app.
 		// If host is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// [CHG180605] Prevents undo.
 		// => undefined
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -806,7 +807,10 @@
 
 			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
 
-			I.BCKP(host);
+			// [CHG180605] Calling doScript/autoUndo prevents the backup stage from being undone.
+			// ---
+			// I.BCKP(host);
+			app.doScript("I.BCKP(host)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
 		},
 
 		addLive : function addLive_Õ_Õ(/*any{}*/oLiveKeys,  I,k)
