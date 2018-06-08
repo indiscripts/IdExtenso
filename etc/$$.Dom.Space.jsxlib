@@ -1,0 +1,444 @@
+/*******************************************************************************
+
+		Name:           Space
+		Desc:           Simplified management of InDesign coordinate systems.
+		Path:           /etc/$$.Dom.Space.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =convert() fromXY() fromUV() fromRL()
+		                           intoXY() intoUV() intoRL()
+		DOM-access:     YES (Enums.)
+		Todo:           Page inner box and page CS may not coincide
+		                (cf CS&T, Fig. 18)
+		Created:        180606 (YYMMDD)
+		Modified:       180608 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 180608, 'convert'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	The primary purpose of this module is to hide the subtleties of the generic
+	`<DOM>.resolve()` method which allows to handle and convert locations in
+	InDesign coordinate systems. The native `<DOM>.resolve()` function has many
+	possible formal parameters. Although very powerful, most are unknown from
+	script developers due to their deep complexity.
+
+	InDesign addresses three kinds of coordinate systems, as detailed in
+	<indiscripts.com/post/2014/03/coordinate-spaces-and-transformations-1>.
+	These are:
+
+	(1) Regular Coordinate Spaces (CS) attached to DOM objects (pasteboard,
+	    spread, page, parent and inner spaces.)
+
+	(2) Bounding Box Spaces (BS) with respect to a DOM object bounding box
+	    seen in the perspective of a CS. (Keep in mind that a same object
+	    has multiple associated bounding boxes depending on the CS under
+	    consideration.)
+	
+	(3) Rulers Space (RS), which reflects the GUI coordinates. It depends on
+	    various preferences, in particular custom units, `Document.zeroPoint`,
+	    `ViewPreference.rulerOrigin`, `DocumentPreference.facingPages`, and
+	    of course the specific page geometry involved at some location.
+
+	DOM methods usually expect and produce RS coordinates (e.g, path points)
+	but we'd often want to access more reliable (CS) or more practical (BS)
+	coordinate systems, as they are more closely connected to transform states.
+	
+	The present module provides tools for managing and converting coordinates
+	from any system into any other. The `from..` methods allow to specify a
+	source space for incoming coordinates, the `into..` methods allow to specify
+	a destination space for output coordinates. Then the `convert` method
+	efficiently computes data with respect to the specified input/output systems.
+	
+	Note that `from..` and `into..` methods both return a reference to the module
+	itself, which allows nested calls as follows:
+	
+	      `$$.Dom.Space.fromXY(...).intoRL(...).convert(input,output)`
+
+	*/
+
+	[PRIVATE]
+
+	({
+
+		// Coordinate spaces.
+		// ---
+		csIN:       +CoordinateSpaces.INNER_COORDINATES,
+		csPR:       +CoordinateSpaces.PARENT_COORDINATES,
+		csPG:       $$.idVersion(8) ? +CoordinateSpaces.PAGE_COORDINATES : 0,
+		csSP:       +CoordinateSpaces.SPREAD_COORDINATES,
+		csPB:       +CoordinateSpaces.PASTEBOARD_COORDINATES,
+		
+		// Bounding Box Limits.
+		// ---
+		bGEO:       +BoundingBoxLimits.GEOMETRIC_PATH_BOUNDS,
+		bVSB:       +BoundingBoxLimits.OUTER_STROKE_BOUNDS,
+		
+		// Anchor point.
+		// ---
+		apBC:       +AnchorPoint.BOTTOM_CENTER_ANCHOR,
+		apBL:       +AnchorPoint.BOTTOM_LEFT_ANCHOR,
+		apBR:       +AnchorPoint.BOTTOM_RIGHT_ANCHOR,
+		apCC:       +AnchorPoint.CENTER_ANCHOR,
+		apLC:       +AnchorPoint.LEFT_CENTER_ANCHOR,
+		apRC:       +AnchorPoint.RIGHT_CENTER_ANCHOR,
+		apTC:       +AnchorPoint.TOP_CENTER_ANCHOR,
+		apTL:       +AnchorPoint.TOP_LEFT_ANCHOR,
+		apTR:       +AnchorPoint.TOP_RIGHT_ANCHOR,
+
+	})
+
+	[PRIVATE]
+	
+	({
+		DEEP: function(/*fct*/f,/*pt[]..[]*/src,/*pt[]..[]&*/dst,  i)
+		//----------------------------------
+		// (Deep-Recursive-Point-Process.)
+		// `f` :: func(x,y,pt&)
+		// [REM] We may have src===dst.
+		// => undef
+		{
+			dst.length = (i = src.length);
+			if( 2==i && !(src[0] && (src[0] instanceof Array)) )
+			{
+				f.call(this,src[0],src[1],dst);
+				return;
+			}
+			while( i-- )
+			{
+				( dst[i] && dst[i] instanceof Array ) || (dst[i]=[]);
+				callee.call(this,f,src[i],dst[i])
+			}
+		},
+
+		CHKO: function(/*any*/obj)
+		//----------------------------------
+		// (Check-DOM-Object.)
+		// => 1 [OK] | 0 [KO]
+		{
+			return ('toSpecifier' in obj) && ('resolve' in obj) && (obj.isValid) ? 1 : 0;
+		},
+		
+		CHKS: function(/*any*/space)
+		//----------------------------------
+		// (Check-Space.)
+		// => <CoordSpaceEnum> [OK] | 0 [KO]
+		{
+			if( 'string' == typeof space )
+			{
+				space = (space.toLowerCase().match(callee.RE)||'')[1];
+				return space ? this[callee.Q[space]] : 0;
+			}
+			space = +space;
+			return ( this.csIN==space || this.csPR==space || this.csPG==space
+				  || this.csSP==space || this.csPB==space ) ? space : 0;
+		}
+		.setup({
+			RE:/(inner|parent|page|spread|board)/,
+			Q: { inner:'csIN', parent:'csPR', page:'csPG', spread:'csSP', board:'csPB' },
+		}),
+		
+		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,/*bool*/rulerUnits,  xy)
+		//----------------------------------
+		// (Resolver.)
+		// => undef
+		{
+			((xy=q[0]).length=0) || xy.push.apply(xy,obj.resolve(locs.zero,destSpace,rulerUnits)[0]);
+			((xy=q[1]).length=0) || xy.push.apply(xy,obj.resolve(locs.right,destSpace,rulerUnits)[0]);
+			((xy=q[2]).length=0) || xy.push.apply(xy,obj.resolve(locs.bottom,destSpace,rulerUnits)[0]);
+		},
+
+		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool*/flag,  locs,a,b)
+		//----------------------------------
+		// (Initializer.)
+		// => undef [OK]  |  str [KO-ERR]
+		{
+			if( !this.CHKO(ref) )
+				return __("Invalid `ref` argument (%1). Should be a PageItem, Spread, or Page.",ref);
+
+			if( false !== space && !(space=this.CHKS(space)) )
+				return __("Invalid `space` argument (%1)",space);
+
+			// Register the FROM specifier.
+			// ---
+			step || (callee.SPEC=ref.toSpecifier());
+
+			locs = callee[kind];
+			switch( kind )
+			{
+				case 'XY':
+					locs.zero[1] = locs.right[1] = locs.bottom[1] = space;
+					flag = false;
+					break;
+				case 'UV':
+					locs.zero[1] = locs.right[1] = locs.bottom[1] = this[flag?'bVSB':'bGEO'];
+					locs.zero[2] = locs.right[2] = locs.bottom[2] = space;
+					flag = false;
+					break;
+				case 'RL':
+				default:
+					;
+			}
+
+			a = callee.FROM;
+			b = callee.INTO;
+			this.RESO(step?b:a, ref, locs, this.csPB, flag);
+			this.RMAP(this.CONV.MX,a[0],a[1],a[2],b[0],b[1],b[2]);
+		}
+		.setup({
+			XY: {
+				zero:   [ [0,0], void 0 ],
+				right:  [ [1,0], void 0 ],
+				bottom: [ [0,1], void 0 ],
+				},
+			UV: {
+				zero:   [ µ['~'].apTL, void 0, void 0 ],
+				right:  [ µ['~'].apTR, void 0, void 0 ],
+				bottom: [ µ['~'].apBL, void 0, void 0 ],
+				},
+			RL: {
+				zero:   [ [0,0], µ['~'].apCC ],
+				right:  [ [1,0], µ['~'].apCC ],
+				bottom: [ [0,1], µ['~'].apCC ],
+				},
+			FROM: [ [0,0] , [1,0], [0,1] ],
+			INTO: [ [0,0] , [1,0], [0,1] ],
+			SPEC: 0,
+		}),
+
+		RMAP: function(/*num[6]&*/mx,/*pt*/o,/*pt*/i,/*pt*/j,/*pt*/O,/*pt*/I,/*pt*/J,  x,y,a,b,c,d,X,Y,A,B,C,D,t)
+		//----------------------------------
+		// (Re-Map.)
+		// => undef
+		{
+			// FROM-to-PB matrix.
+			// ---
+			x = o[0];   y = o[1];
+			a = i[0]-x;  b = i[1]-y;
+			c = j[0]-x;  d = j[1]-y;
+
+			// INTO-to-PB matrix.
+			// ---
+			X = O[0];   Y = O[1];
+			A = I[0]-X;  B = I[1]-Y;
+			C = J[0]-X;  D = J[1]-Y;
+
+			// Invert matrix --> PB-to-INTO.
+			// ---
+			t = A*D-B*C;
+			I = (C*Y-D*X)/t;
+			J = (B*X-A*Y)/t;
+			(O=A), (A=D/t), (D=O/t);
+			B = -B/t;
+			C = -C/t;
+
+			// Product --> FROM-to-INTO
+			// ---
+			mx[0] = a*A + b*C;
+			mx[1] = a*B + b*D;
+			mx[2] = c*A + d*C;
+			mx[3] = c*B + d*D;
+			// ---
+			mx[4] = x*A + y*C + I;
+			mx[5] = x*B + y*D + J;
+		},
+
+		CONV: function(/*num*/x,/*num*/y,/*pt&*/r,  mx)
+		//----------------------------------
+		// (Location-Converter.)
+		// => [x,y]&
+		{
+			mx = callee.MX;
+
+			r[0] = mx[0]*x + mx[2]*y + mx[4];
+			r[1] = mx[1]*x + mx[3]*y + mx[5];
+			
+			return r;
+		}
+		.setup({
+			MX:   [ 1, 0, 0, 1, 0, 0 ],
+		}),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		fromXY: function fromXY_D_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,  s)
+		//----------------------------------
+		// Initialize the `convert` method so it takes as input arguments
+		// *coordinate space* coordinates, with respect to the `ref` object.
+		// ---
+		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
+		// [REM] `page` coordinate space is only supported from InDesign CS6.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			( s=callee.µ['~'].INIT(0, 'XY', ref, space||'inner') )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+
+		fromUV: function fromUV_D_s$CoordSpace$_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,  s)
+		//----------------------------------
+		// Initialize the `convert` method so it takes as input arguments
+		// *bounding box* coordinates --[0,0]=top-left; [1,1]=bottom-right--
+		// the box being framed relative to `space` and w/ respect to `visibleBounds`.
+		// ---
+		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
+		// visibleBounds :: whether the bounding box relies on visible bounds rather
+		//                  than geometric path (default.)
+		// [REM] `page` coordinate space is only supported from InDesign CS6.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			( s=callee.µ['~'].INIT(0,'UV', ref, space||'inner', visibleBounds) )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+		
+		fromRL: function fromRL_D_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*bool=0*/fromPoints,  s)
+		//----------------------------------
+		// Initialize the `convert` method so it takes as input arguments
+		// *rulers* coordinates attached to the `ref` object.
+		// ---
+		// `fromPoints` :: whether coordinates are to be considered in POINTS rather
+		//                 than current horizontal and vertical units (default.)
+		// [REM] Rulers coordinates depends on both `Document.zeroPoint`,
+		// `ViewPreference.rulerOrigin`, and `DocumentPreference.facingPages`.
+		// [REM] If `ref` is a Spread while rulerOrigin is page dependent, the
+		// considered page is the one that contains the spread center point.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			( s=callee.µ['~'].INIT(0, 'RL', ref, false, !fromPoints) )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+
+		intoXY: function intoXY_ds$CoordSpace$_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,  I,s)
+		//----------------------------------
+		// Initialize the `convert` method so it outputs *coordinate space*
+		// coordinates. If `ref` is provided use it as space provider,
+		// otherwise use the latest object declared in the `from..` method.
+		// [REM] If `ref` is omitted the 1st arg is parsed as a `space` arg.
+		// ---
+		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
+		// [REM] `page` coordinate space is only supported from InDesign CS6.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			I = callee.µ['~'];
+			
+			// Parse arguments.
+			// ---
+			I.CHKS(ref) && (space=ref, ref=0);
+			ref || ( (s=I.INIT.SPEC) && (ref=resolve(s)) );
+
+			( s=I.INIT(1, 'XY', ref, space||'inner') )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+
+		intoUV: function intoUV_ds$CoordSpace$_s$CoordSpace$b_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,  I,s)
+		//----------------------------------
+		// Initialize the `convert` method so it outputs *bounding box*
+		// coordinates--[0,0]=top-left; [1,1]=bottom-right--
+		// If `ref` is provided use it as box reference, otherwise use the
+		// latest object declared in the `from..` method.
+		// [REM] If `ref` is omitted the 1st arg is parsed as a `space` arg.
+		// ---
+		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
+		// visibleBounds :: whether the bounding box relies on visible bounds rather
+		//                  than geometric path (default.)
+		// [REM] `page` coordinate space is only supported from InDesign CS6.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			I = callee.µ['~'];
+
+			// Parse arguments.
+			// ---
+			I.CHKS(ref) && (visibleBounds=space, space=ref, ref=0);
+			ref || ( (s=I.INIT.SPEC) && (ref=resolve(s)) );
+
+			( s=I.INIT(1,'UV', ref, space||'inner', visibleBounds) )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+		
+		intoRL: function intoRL_db_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*bool=0*/intoPoints,  I,s)
+		//----------------------------------
+		// Initialize the `convert` method so it outputs *rulers*
+		// coordinates. If `ref` is provided use it as ruler reference,
+		// otherwise use the latest object declared in the `from..` method.
+		// [REM] If `ref` is omitted the 1st arg is parsed as `intoPoints` arg.
+		// `intoPoints` :: whether coordinates are to be outputed in POINTS rather
+		//                 than current horizontal and vertical units (default.)
+		// [REM] If `ref` is a Spread while rulerOrigin is page dependent, the
+		// considered page is the one that contains the spread center point.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			I = callee.µ['~'];
+
+			// Parse arguments.
+			// ---
+			s = typeof ref;
+			('boolean' == s || 'number' == s) && (intoPoints=ref, ref=0);
+			ref || ( (s=I.INIT.SPEC) && (ref=resolve(s)) );
+
+			( s=callee.µ['~'].INIT(1, 'RL', ref, false, !intoPoints) )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+		
+		convert: function convert_pa_pa_pa$matrix$(/*?pnt|pnt[]&*/xyInput,/*?pnt|pnt[]&*/xyOutput,  I,r)
+		//----------------------------------
+		// Given a point, or an array of points, expressed in 'from' coordinates
+		// --as specified in `from..` methods--, convert each coordinate pair in
+		// 'into' coordinates--as specified in `into..` methods.
+		// `xyInput`  :: Point or array of points (input coordinates.) If no argument is
+		//               supplied, return the conversion matrix (array of 6 numbers.)
+		// `xyOutput` :: (opt.) If supplied, reference of the output array. If `xyOutput`
+		//               is missing, output coordinates will be loaded in `xyInput`.
+		// This function returns a reference to the output array (xyOutput or xyInput.)
+		// ---
+		// Examples:
+		// µ.fromUV(obj,'inner').intoRL().convert([ [.5,0],[1,.5],[.5,1],[0,.5] ])
+		// -> Return the UV losange points of the inner bounding box in rulers coords.
+		// µ.fromRL(obj).intoXY('spread').convert(obj.paths[0].entirePath)
+		// -> Return the pathpoints coordinates in spread coordinate space coords.
+		// ---
+		// => point& | point[]& | matrix (i.e new num[6]) [OK]  |  ERROR [KO]
+		{
+			I = callee.µ['~'];
+			
+			if( !xyInput ) return [].push.apply([],I.CONV.MX);
+			
+			(xyInput instanceof Array)
+			|| $.global[callee.µ.__root__].error(__("Invalid `xyInput` argument (%1). Should be an Array.", xyInput.__class__),callee);
+			
+			r = ( xyOutput && xyOutput instanceof Array ) ? xyOuput : xyInput;
+
+			if( xyInput[0] && (xyInput[0] instanceof Array) )
+			{
+				I.DEEP(I.CONV,xyInput,r);
+				return r;
+			}
+			
+			if( 2==xyInput.length && 'number' == typeof xyInput[0] )
+			{
+				return I.CONV(xyInput[0],xyInput[1],r);
+			}
+
+			$.global[callee.µ.__root__].error(__("Invalid `xyInput` argument. Should be either a point or an Array of points."),callee);
+		},
+
+	})
