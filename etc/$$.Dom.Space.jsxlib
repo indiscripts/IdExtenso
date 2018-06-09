@@ -9,15 +9,16 @@
 		Kind:           Module.
 		API:            =convert() fromXY() fromUV() fromRL()
 		                           intoXY() intoUV() intoRL()
+		                -> MasterSpread.prototype.resolve() [CS4]
 		DOM-access:     YES (Enums.)
 		Todo:           Page inner box and page CS may not coincide
 		                (cf CS&T, Fig. 18)
 		Created:        180606 (YYMMDD)
-		Modified:       180608 (YYMMDD)
+		Modified:       180609 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 180608, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 180609, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -65,36 +66,247 @@
 
 	*/
 
+	//==========================================================================
+	// ENUMERATORS
+	//==========================================================================
+
 	[PRIVATE]
 
 	({
 
 		// Coordinate spaces.
 		// ---
-		csIN:       +CoordinateSpaces.INNER_COORDINATES,
-		csPR:       +CoordinateSpaces.PARENT_COORDINATES,
-		csPG:       $$.idVersion(8) ? +CoordinateSpaces.PAGE_COORDINATES : 0,
-		csSP:       +CoordinateSpaces.SPREAD_COORDINATES,
-		csPB:       +CoordinateSpaces.PASTEBOARD_COORDINATES,
+		csIN: +CoordinateSpaces.INNER_COORDINATES,
+		csPR: +CoordinateSpaces.PARENT_COORDINATES,
+		csPG: $$.idVersion(8) ? +CoordinateSpaces.PAGE_COORDINATES : 0,
+		csSP: +CoordinateSpaces.SPREAD_COORDINATES,
+		csPB: +CoordinateSpaces.PASTEBOARD_COORDINATES,
 		
 		// Bounding Box Limits.
 		// ---
-		bGEO:       +BoundingBoxLimits.GEOMETRIC_PATH_BOUNDS,
-		bVSB:       +BoundingBoxLimits.OUTER_STROKE_BOUNDS,
+		bGEO: +BoundingBoxLimits.GEOMETRIC_PATH_BOUNDS,
+		bVSB: +BoundingBoxLimits.OUTER_STROKE_BOUNDS,
 		
-		// Anchor point.
+		// Anchor points.
 		// ---
-		apBC:       +AnchorPoint.BOTTOM_CENTER_ANCHOR,
-		apBL:       +AnchorPoint.BOTTOM_LEFT_ANCHOR,
-		apBR:       +AnchorPoint.BOTTOM_RIGHT_ANCHOR,
-		apCC:       +AnchorPoint.CENTER_ANCHOR,
-		apLC:       +AnchorPoint.LEFT_CENTER_ANCHOR,
-		apRC:       +AnchorPoint.RIGHT_CENTER_ANCHOR,
-		apTC:       +AnchorPoint.TOP_CENTER_ANCHOR,
-		apTL:       +AnchorPoint.TOP_LEFT_ANCHOR,
-		apTR:       +AnchorPoint.TOP_RIGHT_ANCHOR,
+		apBC: +AnchorPoint.BOTTOM_CENTER_ANCHOR,
+		apBL: +AnchorPoint.BOTTOM_LEFT_ANCHOR,
+		apBR: +AnchorPoint.BOTTOM_RIGHT_ANCHOR,
+		apCC: +AnchorPoint.CENTER_ANCHOR,
+		apLC: +AnchorPoint.LEFT_CENTER_ANCHOR,
+		apRC: +AnchorPoint.RIGHT_CENTER_ANCHOR,
+		apTC: +AnchorPoint.TOP_CENTER_ANCHOR,
+		apTL: +AnchorPoint.TOP_LEFT_ANCHOR,
+		apTR: +AnchorPoint.TOP_RIGHT_ANCHOR,
+		// --- [ADD180609]
+		AP2S: eval(AnchorPoint.revSource().replace(/_ANCHOR$/g,'')),    // { 1095656035:"BOTTOM_CENTER", 1095656044:"BOTTOM_LEFT", etc }
+		APUV: function(/*uint|AnchorPointEnum*/ap)
+		//----------------------------------
+		// (AnchorPoint-To-UV.)
+		// => [u,v]&
+		{
+			return callee[this.AP2S[+ap]];
+		}
+		.setup({
+			BOTTOM_CENTER: [.5, 1],
+			BOTTOM_LEFT:   [ 0, 1],
+			BOTTOM_RIGHT:  [ 1, 1],
+			// ---
+			CENTER:        [.5,.5],
+			LEFT_CENTER:   [ 0,.5],
+			RIGHT_CENTER:  [ 1,.5],
+			// ---
+			TOP_CENTER:    [.5, 0],
+			TOP_LEFT:      [ 0, 0],
+			TOP_RIGHT:     [ 1, 0],
+		}),
 
 	})
+
+	//==========================================================================
+	// COMPATIBILITY PATCHES
+	//==========================================================================
+	
+	/*
+
+	In CS4:
+	- Regular spreads can be transformed, while pages cannot.
+	- MasterSpreads have neither `resolve` nor `transform` methods
+	  (although the user can rotate master spread view.)
+	- Every page (incl. mastered) have both `resolve` and `transformValuesOf`
+	  methods.
+
+	The problem is to get the inner box of a master spread in order to fully
+	implement `MasterSpread.prototype.resolve` when used with UV coordinates
+	or rulers coordinates involving UV location. The inner box of a spread
+	always includes the room around the pages, so we cannot just use page
+	boxes to compute the whole spread area.
+
+	Given a MasterSpread MS, we have the following options:
+	
+	   1. SPACE LOCATION.
+	   ---------------------------------------------------------------
+	      MS.resolve( [ [X,Y], <space> ], <destSpace> )
+	   ---------------------------------------------------------------
+	   is equivalent to
+	      MS.pages[0].resolve( [ [X,Y], <subst> ], <subst> )
+	   with the following substitution table:
+	      <space> | <destSpace>        <subst>
+	      INNER                        PARENT
+	      PARENT                       PASTEBOARD
+	      SPREAD                       SPREAD
+	      PASTEBOARD                   PASTEBOARD
+
+	   2. BOX LOCATION.
+	   ---------------------------------------------------------------
+	      MS.resolve( [ [U,V]|Anchor, <boxLimits>, <space> ], <destSpace> )
+	   ---------------------------------------------------------------
+	   Here the idea is to first express the location relative to the spread
+	   space (-> x,y) then to use
+	      MS.pages[0].resolve( [ [x,y], PARENT ], <subst> )
+	   Since all spreads have the same inner space and inner box geometry
+	   in CS4--whatever the particular transformation they undergo--, we
+	   can invoke `MS.parent.spreads[0].resolve(<location>, INNER)` to
+	   get x,y.
+
+	   3. RULER LOCATION.
+	   ---------------------------------------------------------------
+	   a) MS.resolve( [ [rx,ry], PAGE_INDEX ], <destSpace>, rulerUnits )
+	   b) MS.resolve( [ [rx,ry], [U,V]|Anchor, ... ], <destSpace>, rulerUnits )
+	   ---------------------------------------------------------------
+	   In case a) we can simply invoke
+	      MS.pages[0].resolve( [ [rx,ry], PAGE_INDEX ], <subst>, rulerUnits )
+	   since there is nothing specific to the spread in that syntax.
+	   ---
+	   In case b) we need to express the spread-UV location in terms of
+	   pages[0]-UV location (-> pu,pv), in order to use the syntax
+	      MS.pages[0].resolve( [ [rx,ry], [pu,pv] ], <subst>, rulerUnits )
+	   To get (pu,pv) from (U,V) we proceed as follows:
+	      - Get (Xu,Yv) the spread coordinates of (U,V) location using
+	        MS.parent.spreads[0].resolve( [U,V], INNER );
+	      - Get (Xl,Yt) the spread coordinates of pages[0] TOP-LEFT using
+	        MS.pages[0].resolve( TOP_LEFT, PARENT );
+	      - Get (Xr,Yb) the spread coordinates of pages[0] BOR-RIGHT using
+	        MS.pages[0].resolve( BOT_RIGHT, PARENT );
+	      - Noting that in CS4 pages are only *translated* relative to their
+	        parent spread, we have
+	        pu = (Xu-Xl)/(Xr-Xl) ; pv = (Yv-Yt)/(Yb-Yt)
+	        which solves the problem.
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		MCS4: (!$$.idVersion(7)) && function resolve(/*any*/location,/*uint|SpaceEnum*/destSpace,/*?bool*/rulerUnits,  I,sbs,xy,uv,ru,s,i,t,lt,rb)
+		//----------------------------------
+		// (MasterSpread-Resolve-CS4.) [ADD180609] `this` :: MasterSpread
+		// In CS4 MasterSpread does not support resolve. This patch makes it available.
+		// --> MasterSpread.prototype.resolve() -- see onEngine
+		// [REM] In CS5 and later, ~.MCS4 is set to false.
+		// => [ [x,y] ]
+		{
+			I = callee.µ['~'];
+			
+			// Substituted parent space, from this.pages[0].
+			// ---
+			switch( sbs=+destSpace )
+			{
+				case I.csIN: sbs=I.csPR; break;
+				case I.csPR: sbs=I.csPB; break;
+				default:;
+			}
+			
+			// Parse the location scheme.
+			// ---
+			xy = uv = ru = s = i = false;
+			while( 1 )
+			{
+				// Box spec :: <ANCHOR_PT> -- Implied: bVSB, csIN
+				// ---
+				if( !(location instanceof Array) ){ uv=location ; break; }
+				
+				// Box spec :: [ <ANCHOR_PT>, <BOX_LIMITS>, ?<SPACE> ]
+				// ---
+				t = +location[1];
+				if( t==I.bGEO || t==I.bVSB ){ uv=location[0]; s=+(location[2]||0); break; }
+				
+				// Space spec :: [x,y] -- Implied: pasteboard space
+				// ---
+				if( !(location[0] instanceof Array) ){ xy=location; s=I.csPB; break; }
+
+				// Space spec :: [ [x,y], <SPACE> ]
+				// ---
+				if( I.CHKS(t) ){ xy=location[0]; s=t; break; }
+				
+				// ---
+				// `location` is a ruler spec :: [ [rx,ry], [u,v]|Anchor, ?boxLim, ?space ]
+				// ---
+				
+				ru = location[0];
+				t = location[1];
+				if( (t instanceof Array) || I.AP2S.hasOwnProperty(+t) )
+				{
+					uv = t;
+					s = location[3]||0;
+				}
+				else
+				{
+					i = t||0;
+				}
+				break;
+			}
+
+			// Substituted reference space.
+			// ---
+			switch( s||(s=I.csIN) )
+			{
+				case I.csIN: s=I.csPR; break;
+				case I.csPR: s=I.csPB; break;
+				default:;
+			}
+			
+			// 1. SPACE LOCATION.
+			// ---
+			if( xy )
+			{
+				return this.pages[0].resolve( [xy,s] , sbs );
+			}
+			
+			// 2. BOX LOCATION.
+			// ---
+			if( !ru )
+			{
+				xy = this.parent.spreads[0].resolve(location,I.csIN)[0];
+				return this.pages[0].resolve( [xy,I.csPR] , sbs );
+			}
+			
+			// 3. RULER LOCATION.
+			// ---
+			rulerUnits = !!rulerUnits;
+			if( false !== i )
+			{
+				return this.pages[0].resolve( [ru,i] , sbs, rulerUnits);
+			}
+
+			// See algorithm 3.b in COMPATIBILITY PATCHES.
+			// ---
+			xy = this.parent.spreads[0].resolve( [uv,I.bVSB,s] , I.csIN )[0];
+			t = this.pages[0];
+			lt = t.resolve( I.apTL, I.csPR )[0];
+			rb = t.resolve( I.apBR, I.csPR )[0];
+			uv = [
+				(xy[0]-lt[0])/(rb[0]-lt[0]),
+				(xy[1]-lt[1])/(rb[1]-lt[1]),
+				];
+			return t.resolve( [ru,uv], sbs, rulerUnits );
+		},
+
+	})
+
+	//==========================================================================
+	// COORDINATE PROCESSOR
+	//==========================================================================
 
 	[PRIVATE]
 	
@@ -276,6 +488,14 @@
 	[PUBLIC]
 	
 	({
+		onEngine: function onEngine_(  I,f)
+		//----------------------------------
+		{
+			I = callee.µ['~'];
+			
+			(f=I.MCS4) && (MasterSpread.prototype.resolve = f);
+		},
+
 		fromXY: function fromXY_D_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,  s)
 		//----------------------------------
 		// Initialize the `convert` method so it takes as input arguments
