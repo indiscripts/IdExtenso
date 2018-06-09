@@ -1,5 +1,5 @@
 ##### [180609]
-  -**Dom.Space**:  Added a patch `MasterSpread.prototype.resolve()` for InDesign CS4. (For some reason this method is not available in the CS4 DOM while `Spread.prototype.resolve` is OK. Thanks to `Page`'s API we can implement a fully functional `resolve` method for master spreads. See detail in the COMPATIBILITY PATCHES section.)
+  - **Dom.Space**:  Added a patch `MasterSpread.prototype.resolve()` for InDesign CS4. (For some reason this method is not available in the CS4 DOM while `Spread.prototype.resolve` is OK. Thanks to `Page`'s API we can implement a fully functional `resolve` method for master spreads. See detail in the COMPATIBILITY PATCHES section.)
 
 ##### [180608]
   - **Dom.Space**: a new DOM oriented module aimed to simplify management and conversions throughout InDesign coordinate systems.
