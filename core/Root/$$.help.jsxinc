@@ -9,9 +9,9 @@
 		Kind:           Part of the Root module.
 		API:            help()
 		DOM-access:     ---
-		Todo:           ---
+		Todo:           Make listbox sub items optional to allow exotic apps to run $$.help()
 		Created:        171108 (YYMMDD)
-		Modified:       180530 (YYMMDD)
+		Modified:       180615 (YYMMDD)
 
 *******************************************************************************/
 
@@ -80,6 +80,9 @@
 				o = lb.add('item',s.substr(1+p));
 				0 < p && (s=q[s.substring(1,p)]) && (o.image=s);
 				
+				// [REM] Sub items are not implemented in Photoshop
+				// so the below loop should be skipped in EXOTIC mode.
+				// ---
 				for( o=o.subItems, z=o.length, j=-1 ; ++j < z ; )
 				{
 					s = t[j]||'';
@@ -152,9 +155,10 @@
 						
 						StaticText$fctHead:
 						{
+							properties:   { text:'', multiline:false },
 							indent:       10,
-							characters:   30,
 							alignment:    ScriptUI.LT,
+							minimumSize:  [ 400,20 ],
 						},
 
 						ListBox$fctList:
