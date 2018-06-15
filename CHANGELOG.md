@@ -1,3 +1,6 @@
+##### [180615]
+  - `$$.estk.jsxinc` added. An alternate _entry point_ for using ***IdExtenso*** from ExtendScript ToolKit--without InDesign. Experimental feature.
+
 ##### [180609]
   - **Dom.Space**:  Added a patch `MasterSpread.prototype.resolve()` for InDesign CS4. (For some reason this method is not available in the CS4 DOM while `Spread.prototype.resolve` is OK. Thanks to `Page`'s API we can implement a fully functional `resolve` method for master spreads. See detail in the COMPATIBILITY PATCHES section.)
 
