@@ -1,0 +1,148 @@
+/*******************************************************************************
+
+		Name:           IdExtenso Entry Point for ESTK
+		Desc:           Patch for running IdExtenso from ExtendScript ToolKit (without InDesign.)
+		Path:           $$.estk.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Entry point.
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180614 (YYMMDD)
+		Modified:       180615 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+
+	The idea behind this alternate Entry Point is to allow ESTK to run IdExtenso
+	without InDesign. So, instead of the regular directive
+
+	      #include 'path/to/$$.jsxinc'
+	
+	you now have the option to use
+	
+	      #include 'path/to/$$.estk.jsxinc'
+
+	in order to execute a script which is based on IdExtenso but does not require
+	any InDesign feature.
+
+	THIS OPTION IS PURELY EXPERIMENTAL THOUGH. Some demo scripts will run fine
+	as they don't invoke InDesign at all. For example, $$.help() should be OK
+	in ExtendScript ToolKit (however Photoshop can't run it due to incompatibili-
+	ties with ScriptUI's listbox implementation.)
+	
+	Thanks to this special patch you may use CORE modules like `JSON` or `Log`
+	in your scripts, and even extra modules like `Yalt`, `MD5`, `BigInt`...
+
+	However, keep in mind that IdExtenso is primarily thought to automate
+	InDesign so DOM-oriented modules and functions (`$$.Env`, `$$.Dom`...)
+	will either stop working, or return irrelevant results.
+
+	*/
+
+
+	//==========================================================================
+	// BEFORE INCLUDE
+	//==========================================================================
+
+	if( !$.global['NothingEnum'] )
+	//----------------------------------
+	// [180615] Dummy DOM objects required to allow IdExtenso to start up.
+	{
+		$.global.G = $.global;
+		G.Enumeration = function Enumeration(){ this['0']='0' };
+		G.Enumeration.prototype.toString = function toString(){ return '0' };
+		G.Enumeration.prototype.valueOf =  function valueOf(){ return 0 };
+		// ---
+		G.NothingEnum =           new G.Enumeration;
+		G.Locale =                new G.Enumeration;
+		G.UndoModes =             new G.Enumeration;
+		G.UserInteractionLevels = new G.Enumeration;
+		G.MeasurementUnits =      new G.Enumeration;
+
+		// ---
+
+		$.global.A = G.app || (G.app={ version:"1.0", name:"estk" });
+		A.translateKeyString = function translateKeyString(s){ return String(s) };
+		A.findKeyStrings =     function findKeyString(s){ return String(s) };
+		A.activate =           function activate(){ };
+		A.scriptPreferences = {
+			version:              A.version,
+			enableRedraw:         0,
+			userInteractionLevel: 0,
+			scriptsFolder:        Folder.myDocuments,
+			measurementUnit:      0,
+			};
+		A.generalPreferences =    { properties:0 };
+		A.userName =              '';
+		A.locale =                0;
+		A.fullName =              A.name;
+		A.properties =            0;
+
+		delete $.global.A;
+		delete $.global.G;
+	}
+
+
+	//==========================================================================
+	// REGULAR ENTRY POINT
+	//==========================================================================
+
+	#include '$$.jsxinc'
+
+
+	//==========================================================================
+	// AFTER INCLUDE
+	//==========================================================================
+
+	$$['~'].ISCL.HACKED || ($$['~'].ISCL = function(  G)
+	//----------------------------------
+	// [180615] Hack the Include-Stage-Cleaner to preserve
+	// some dummy live objects (Locale, UndoModes...)
+	// [REM] Here we have a bit of 'code redundancy' but
+	// it's the price to pay :-/
+	{
+		callee.HACKED = 1;
+
+		G = $.global;
+
+		// Counterpart of $$/Ext.
+		// ---
+		delete Function.prototype.copy;
+		delete Function.prototype.self;
+		delete Function.prototype.send;
+
+		G.PRIVATE && delete Function.prototype[G.PRIVATE];
+		G.PUBLIC  && delete Function.prototype[G.PUBLIC];
+		G.STATIC  && delete Function.prototype[G.STATIC];
+		G.PARENT  && delete Function.prototype[G.PARENT];
+		G.PROTO   && delete Function.prototype[G.PROTO];
+
+		delete Object.prototype.setup;
+		delete Object.prototype.keys;
+		
+		delete G.PRIVATE;
+		delete G.PUBLIC;
+		delete G.STATIC;
+		delete G.PARENT;
+		delete G.PROTO;
+		delete G.__path__;
+		
+		delete G.MODULE;
+		delete G.CLASS;
+		delete G.µ;
+		
+		// DO NOT DELETE the following objects:
+		// ---
+		// delete G.Locale;
+		// delete G.UndoModes;
+		// delete G.UserInteractionLevels;
+		// delete G.MeasurementUnits;
+	});
