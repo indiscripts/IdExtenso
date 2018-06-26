@@ -1,0 +1,298 @@
+/*******************************************************************************
+
+		Name:           MatrixArray
+		Desc:           Transformation matrices throughout arrays, outside the DOM.
+		Path:           /etc/$$.MatrixArray.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =install()
+		DOM-access:     NO
+		Todo:           Notice, `rev` flag in `_MUL`
+		Created:        180626 (YYMMDD)
+		Modified:       180626 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('MatrixArray') || eval(__(MODULE, $$, 'MatrixArray', 180626, 'install'))
+
+	[PRIVATE]
+	
+	({
+		BKTS: false,
+		
+		DC2S: function(/*-1|0|+1*/detail,/*digits=2*/dec,/*?func*/F,  alpha,theta)
+		//----------------------------------
+		// (Decomp-To-String.) `this` :: {sx,sy,cos,sin,tan,tx,ty}
+		// detail == -1  -->  "{ sx:<num>, sy:<num>, cos:<num>, sin:<num>, tan:<num>, tx:<num>, ty:<num> }"
+		// detail ==  0  -->  "[ <sx> 0 0 <sy> ]*[ 1 0 <-tan> 1 ]*[ <cos> <-sin> <sin> <cos> ]*[ 1 0 0 1 <tx> <ty> ]"
+		// detail ==  1  -->  "SCALE(<sx>, <sy>) * SHEAR(<alphaDeg>) * ROT(<thetaDeg>) * TRANS(<tx>, <ty>)
+		// => str
+		{
+			detail||(detail=0);
+			'undefined' == typeof dec && (dec=2);
+			'function' != typeof F && (F=Number.prototype.toDecimal||Number.prototype.toFixed);
+
+			switch( detail )
+			{
+				case -1:
+					return __("{ sx:%1, sy:%2, cos:%3, sin:%4, tan:%5, tx:%6, ty:%7 }"
+						,F.call(this.sx,dec), F.call(this.sy,dec)
+						,F.call(this.cos,dec), F.call(this.sin,dec), F.call(this.tan,dec)
+						,F.call(this.tx,dec), F.call(this.ty,dec)
+						);
+				case 1:
+					alpha = (180*Math.atan(this.tan))/Math.PI;
+					theta = (180*Math.acos(this.cos))/Math.PI; // 0..180
+					0 > this.sin && (theta=-theta);
+					return __("SCALE(%1, %2) * SHEAR(%3\xB0) * ROT(%4\xB0) * TRANS(%5, %6)"
+						,F.call(this.sx,dec), F.call(this.sy,dec)
+						,F.call(alpha,dec)
+						,F.call(theta,dec)
+						,F.call(this.tx,dec), F.call(this.ty,dec)
+						);
+				default:
+					return __("[ %1 0 0 %2 ]*[ 1 0 %3 1 ]*[ %4 %5 %6 %4 ]*[ 1 0 0 1 %7 %8 ]"
+						,F.call(this.sx,dec), F.call(this.sy,dec)
+						,F.call(-this.tan,dec)
+						,F.call(this.cos,dec) ,F.call(-this.sin,dec), F.call(this.sin,dec)
+						,F.call(this.tx,dec), F.call(this.ty,dec)
+						);
+			}
+		},
+		
+		SHRT: function(/*num[4|6]*/M,  q,A,B,C,D,k,c,s,t)
+		//----------------------------------
+		// (SHRT-Decomposition.) Return a volatile structure.
+		// { sx:num, sy:num, cos:[-1..+1], sin:[-1..+1], tan:num, tx:num, ty:num }
+		// so that
+		// M = [sx 0 0 sy 0,0] × [1 0 -tan 1 0,0] × [cos -sin sin cos 0,0] × [1 0 0 1 tx,ty]
+		{
+			q = callee.Q||(callee.Q={
+				'sx':1,  'sy':1,
+				'cos':1, 'sin':0, 'tan':0,
+				'tx':0,  'ty':0,
+				toString: callee.µ['~'].DC2S,
+				});
+			
+			// Translation elements.
+			// ---
+			q.tx = M[4]||0;
+			q.ty = M[5]||0;
+			
+			// Rotation: -180 < θ <= +180  CCW
+			// Shear:     -90 < α < +90    CW
+			// ---
+			A = M[0];                  // Sx *  cosθ   ; Sx > 0
+			B = M[1];                  // Sx * -sinθ   ; Sx > 0
+			C = M[2];                  // Sy * (sinθ - cosθ*tanα)
+			D = M[3];                  // Sy * (cosθ - sinθ*tanα)
+			
+			// In InDesign the horizontal scaling factor is
+			// always made positive (sx > 0)
+			// ---
+			q.sx  = k = Math.sqrt(A*A+B*B);
+			q.cos = c =  A/k;  // -1 <= c <= 1
+			q.sin = s = -B/k;  // -1 <= s <= 1
+			
+			// tanα = (D*sinθ - C*cosθ) / (D*cosθ + C*sinθ )
+			// ---
+			q.tan = t = (D*s-C*c)/(D*c+C*s);
+
+			// Sy = C/(sinθ - cosθ*tanα) = D/(cosθ + sinθ*tanα)
+			// ---
+			q.sy = (k=s-c*t) ? (C/k) : (D/(c+s*t));
+			
+			return q;
+		},
+	})
+
+	//==========================================================================
+	// ARRAY EXTENSION
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		_TOS: function toString(/*digits=2*/dec,/*str=', '|(-1|0|1)*/flag,  s,F)
+		//----------------------------------
+		// (To-String.) `this` :: Array of four or six numbers.
+		// `dec`    :: decimal digits.
+		// `flag` :: string or undefined -> separator (default: ", ".)
+		//           -1 | 0 | 1 -        -> decomposition flag (cf. ~.DC2S.)
+		// -> Array.prototype.toString
+		// ---
+		// => str
+		{
+			// Checkpoint. If `this` doesn't look like a matrix,
+			// use the native toString method.
+			// ---
+			if( this.length < 4 || 6 < this.length || 'number'!=typeof this[0] )
+			{
+				return callee.µ['~'].BKTS.call(this);
+			}
+
+			('undefined' == typeof dec) && (dec=2);
+			F = callee.Q || (callee.Q=Number.prototype.toDecimal||Number.prototype.toFixed);
+
+			// Decomposition flag.
+			if( 'number' == typeof flag )
+			{
+				return callee.µ['~'].SHRT(this).toString(flag,dec,F);
+			}
+
+			flag || (flag=', ');
+			s = [
+				F.call(this[0],dec), F.call(this[1],dec),
+				F.call(this[2],dec), F.call(this[3],dec)
+				]
+				.join(flag);
+			
+			4 < this.length && ( s += flag + F.call(this[4],dec) + flag + F.call(this[5],dec) );
+			
+			return '[ ' + s + ' ]';
+		},
+		
+		_EQL: function isEqual(/*num[4|6]*/M,  d)
+		//----------------------------------
+		// (Is-Equal.) `this` :: Array of four or six numbers.
+		// Precision is determined by callee.DIGITS (default:4.)
+		// -> Array.prototype['==']
+		// ---
+		// => bool
+		{
+			d = callee.DIGITS;
+			return this.length==M.length && this.toString(d,'\x01')==M.toString(d,'\x01');
+		}
+		.setup({ DIGITS:4 }),
+
+		_MUL: function multiply(/*num[4|6]*/M,/*bool*/rev,  T,a,b,c,d,e,f)
+		//----------------------------------
+		// (Multiply.) `this` :: Array of four or six numbers.
+		// -> Array.prototype['*']
+		// [TODO] `rev` flag.
+		// ---
+		// => new num[4|6]
+		{
+			rev ? (T=M, M=this) : (T=this);
+
+			a = T[0]*M[0] + T[1]*M[2]; // aa' + bc'
+			b = T[0]*M[1] + T[1]*M[3]; // ab' + bd'
+			c = T[2]*M[0] + T[3]*M[2]; // ca' + dc'
+			d = T[2]*M[1] + T[3]*M[3]; // cb' + dd'
+			
+			if( 4 >= T.length && 4 >= M.length )
+			{
+				return [a,b,c,d];
+			}
+			
+			// ea' + fc' + e'
+			// ---
+			e = (T[4]||0)*M[0] + (T[5]||0)*M[2] + (M[4]||0);
+			
+			// eb' + fd' + f'
+			// ---
+			f = (T[4]||0)*M[1] + (T[5]||0)*M[3] + (M[5]||0);
+			
+			return [a,b,c,d,e,f];
+		},
+
+		_INV: function invert(  div,a,b,c,d,e,f)
+		//----------------------------------
+		// (Invert.) `this` :: Array of four or six numbers.
+		// -> Array.prototype['~']
+		// ---
+		// Test: mx being a TransformationMatrix,
+		//       mx.invertMatrix().matrixValues == ~(mx.matrixValues)
+		// ---
+		// => new num[4|6]
+		{
+			div = this[0]*this[3] - this[1]*this[2];
+
+			a =  this[3] / div;
+			b = -this[1] / div;
+			c = -this[2] / div;
+			d =  this[0] / div;
+			
+			if( 4 >= this.length )
+			{
+				return [a,b,c,d];
+			}
+			
+			// (c*f - d*e ) / div
+			// ---
+			e = (this[2]*this[5] - this[3]*this[4]) / div;
+
+			// (b*e - a*f ) / div
+			// ---
+			f = (this[1]*this[4] - this[0]*this[5]) / div;
+			
+			return [a,b,c,d,e,f];
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+
+		install: function install_(  I,o)
+		//----------------------------------
+		// Install the custom Array.prototype implemented in this module
+		// (toString, operators, etc.)
+		// [REM] This function requires to be *explicitly* invoked by the
+		// client code before using MatrixArray features; it is not called
+		// through the load process to avoid overloading Array prototype
+		// while not needed yet.
+		{
+			I = callee.µ['~'];
+			o = Array.prototype;
+
+			// Backup the built-in toString method
+			// before loading our custom stuff.
+			// ---
+			I.BKTS = o.toString;
+			o.toString = I._TOS;
+			
+			// Operators.
+			// ---
+			o['=='] = I._EQL;
+			o['*']  = I._MUL;
+			o['~']  = I._INV;
+		},
+		
+		uninstall: function uninstall_(  I,o)
+		//----------------------------------
+		// Uninstall the custom Array.prototype implemented in this module
+		// (toString, operators, etc.)
+		// [REM] This function should be invoked by the client code as
+		// soon as it no longer uses MatrixArray features, in order to
+		// go back to the regular Array behavior. Note that the `unload`
+		// process automatically calls uninstall (see onUnload.)
+		{
+			I = callee.µ['~'];
+			o = Array.prototype;
+			
+			delete o['=='];
+			delete o['*'];
+			delete o['~'];
+
+			if( 'function' != typeof(I.BKTS) ) return;
+			
+			o.toString = I.BKTS;
+			I.BKTS = false;
+		},
+		
+		onUnload: function onUnload_()
+		//----------------------------------
+		{
+			callee.µ.uninstall();
+		},
+
+	})
