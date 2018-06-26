@@ -1,3 +1,6 @@
+##### [180626]
+  - Introducing the **MatrixArray** module, a tool for dealing with transformation matrices throughout `Array.prototype`, without involving DOM objects :-)
+
 ##### [180615]
   - `$$.estk.jsxinc` added. An alternate _entry point_ for using ***IdExtenso*** from ExtendScript ToolKit--without InDesign. Experimental feature.
 
