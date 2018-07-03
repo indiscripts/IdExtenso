@@ -1,26 +1,27 @@
 /*******************************************************************************
 
 		Name:           string
-		Desc:           Improves and extends String.prototype
+		Desc:           Improves and extends String and String.prototype
 		Path:           /core/Ext/$$.string.jsxinc
 		Require:        __() ; /Ext/patterns
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            SourceEscapes
-		      proto:    toSource() asPath() toPath() relativePath()
+		API:  static:   SourceEscapes fromCodePoint()
+		       proto:   toSource() asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                stripSpaces() charSet()
 		DOM-access:     ---
 		Todo:           Perf tests ; string.lorem() ; warn if relativePath() fails
 		                May improve word boundary detection in trunc methods (?)
+		                `codePointAt()`
 		Created:        150510 (YYMMDD)
-		Modified:       180524 (YYMMDD)
+		Modified:       180703 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
-	// Static String.SourceEscapes entity.
+	// [Static] String.SourceEscapes entity.
 	//==========================================================================
 
 	String.SourceEscapes = (function(/*str[]&*/a,  i,n,k)
@@ -37,6 +38,68 @@
 		return a;
 
 	})(['BK','CR','LF','DQ','SQ','TB','BS','VT','FF']);
+
+
+	//==========================================================================
+	// [180703] String.fromCodePoint() --cf ECMAScript 2018 (9th Edition, ECMA-262.)
+	//==========================================================================
+
+	String.fromCodePoint = function fromCodePoint(/*?(u24,u24...)|u24[]*/a,  i,f,t)
+	//----------------------------------
+	// Implements ECMAScript's `String.fromCodePoint` function. (Supports either a
+	// list of arguments--as in the spec--or a simple array of code points.)
+	// ---
+	// [ECMA2018] 21.1.2.2 String.fromCodePoint( ...codePoints )
+	// The String.fromCodePoint function may be called with any number of arguments
+	// which form the rest parameter codePoints. The following steps are taken:
+	//   1. Let codePoints be a List containing the arguments passed to this function.
+	//   2. Let length be the number of elements in codePoints.
+	//   3. Let elements be a new empty List.
+	//   4. Let nextIndex be 0.
+	//   5. Repeat, while nextIndex < length
+	//      a. Let next be codePoints[nextIndex].
+	//      b. Let nextCP be ? ToNumber(next).
+	//      c. If SameValue(nextCP, ToInteger(nextCP)) is false, throw a RangeError exception.
+	//      d. If nextCP < 0 or nextCP > 0x10FFFF, throw a RangeError exception.
+	//      e. Append the elements of the UTF16Encoding of nextCP to the end of elements.
+	//      f. Let nextIndex be nextIndex + 1.
+	//   6. Return the String value whose elements are, in order, the elements in the
+	//      List elements. If length is 0, the empty string is returned.
+	// ---
+	// E.g  String.fromCodePoint(0x30,0x31,0x32)    =>  "012"
+	//      String.fromCodePoint(0x61,0x28FF0,0x62) =>  "a\uD863\uDFF0b"  ; i.e "a𨿰b"
+	//      String.fromCodePoint()                  =>  ""
+	//      String.fromCodePoint(0xFFFFFFF)         =>  [Out of range error.]
+	//      String.fromCodePoint([25,0,0x1F602]).toSource() => `"\x19\0\uD83D\uDE02"`
+	//      String.fromCodePoint('a')         =>  [Out of range error.]
+	// => str
+	{
+		// If 1st arg is already an Array, clone it  -> `a`.
+		// Otherwise, turn `arguments` into an Array -> `a`.
+		// ---
+		a = a instanceof Array ?
+			( 1==a.length ? [a[0]] : Array.apply(null,a) ) :
+			[].slice.call(arguments);
+
+		// Develop surrogate pairs.
+		// ---
+		for( f=Math.floor, i=a.length ; i-- ; 0xFFFF >= t || a.splice(i,1,0xD800+f((t-0x10000)/0x400),0xDC00+((t-0x10000)%0x400)) )
+		{
+			t = a[i];
+
+			// IsInteger?  [KO] -> "Bad argument ..."
+			// ---
+			t !== (0|t) && Error.runtimeError(19, (($.global['$$']||0).JSON||String)(t));
+			
+			// IsCodePoint? [KO] -> "... is out of range"
+			// ---
+			( 0 > t || t > 0x10FFFF ) && Error.runtimeError(41,__("Code point [%1]",t)); // ... is out of range
+		}
+		
+		// Result string (taking advantage of `fromCharCode` :-)
+		// ---
+		return String.fromCharCode.apply(null,a);
+	}
 
 
 	//==========================================================================
@@ -262,8 +325,6 @@
 
 	//==========================================================================
 	// String.prototype.asPath() ; ...toPath(str) ; ...relativePath(str)
-	//==========================================================================
-
 	//==========================================================================
 	// IMPLEMENTATION NOTES
 	//==========================================================================
