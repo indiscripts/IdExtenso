@@ -99,7 +99,7 @@
 		// Result string (taking advantage of `fromCharCode` :-)
 		// ---
 		return String.fromCharCode.apply(null,a);
-	}
+	};
 
 
 	//==========================================================================
