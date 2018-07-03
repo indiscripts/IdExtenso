@@ -1,3 +1,6 @@
+##### [180703]
+  - `core/Ext/$$.string.jsxinc` now provides an implementation of `String.fromCodePoint()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.fromcodepoint), including the ability to supply an `Array` of code points rather than an arg list. The purpose of this function is to allow to build a JS string (sequence of UTF-16 units) from code points that may be greater than 0xFFFF, that is, in the range U+10000-U+10FFFF. This then involves _surrogate pairs_ as defined by the Unicode standard.
+
 ##### [180626]
   - Introducing the **MatrixArray** module, a tool for dealing with transformation matrices throughout `Array.prototype`, without involving DOM objects :-)
 
