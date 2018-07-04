@@ -7,15 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            toSource() toHexa() toAdbe() isAdbe()
-		                toDecimal()
-		        static: EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
+		API:     proto: toSource() toHexa() toAdbe() isAdbe()
+		                toDecimal() toIEEE754()
+		        static: P2_M52 (=2^-52)  P2_M1022 (=2^-1022)
+		                EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
+		                DecimalChar ThousandsChar
 		                isInteger() isSafeInteger() flatten()
-		                DecimalChar ThousandsChar parse() format()
+		                parse() format() fromIEEE754()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180412 (YYMMDD)
+		Modified:       180704 (YYMMDD)
 
 *******************************************************************************/
 
@@ -125,11 +127,18 @@
 	//==========================================================================
 	// [180225] Number.EPSILON ; Number.MAX_SAFE_INTEGER ; Number.MIN_SAFE_INTEGER
 	//          as specified in ECMAScript 2015 (6th Edition, ECMA-262)
+	// [180703] Added Number.P2_M52=Math.pow(2,-52)
+	//          Distinct from EPSILON key in case EPSILON definition changes.
+	//          [REM] P2_M52 is used in various Number routines.
+	// [180704] Added Number.P2_M1022=Math.pow(2,-1022)
+	//          which likely coincides with Number.MIN_VALUE in ExtendScript
 	//==========================================================================
 
-	'number' == typeof Number.EPSILON || (Number.EPSILON = Math.pow(2, -52));                     // 2^-52
-	'number' == typeof Number.MAX_SAFE_INTEGER || (Number.MAX_SAFE_INTEGER = 9007199254740991);   // 2^53-1
-	'number' == typeof Number.MIN_SAFE_INTEGER || (Number.MIN_SAFE_INTEGER = -9007199254740991);  // -(2^53-1)
+	'number' == typeof Number.P2_M52   || (Number.P2_M52   = Math.pow(2, -52));                  // 2^-52
+	'number' == typeof Number.P2_M1022 || (Number.P2_M1022 = Math.pow(2, -1022));                // 2^-1022
+	'number' == typeof Number.EPSILON  || (Number.P2_M52);                                       // 2^-52
+	'number' == typeof Number.MAX_SAFE_INTEGER || (Number.MAX_SAFE_INTEGER = 9007199254740991);  // 2^53-1
+	'number' == typeof Number.MIN_SAFE_INTEGER || (Number.MIN_SAFE_INTEGER = -9007199254740991); // -(2^53-1)
 
 	//==========================================================================
 	// [180225] Number.isInteger() --cf ECMAScript 2015 (6th Edition, ECMA-262.)
@@ -303,9 +312,9 @@
 	// Enhanced parseFloat routine that supports custom decimal point.
 	// ---
 	// Examples:
-	// Number.parse("12.34")     => 12.34
-	// Number.parse("12,345.67") => 12345.67
-	// Number.parse("12,34",",") => 12.34
+	// Number.parse("12.34")         => 12.34
+	// Number.parse("12,345.67",".") => 12345.67
+	// Number.parse("12,34",",")     => 12.34
 	// ---
 	// => Number
 	{
@@ -599,3 +608,145 @@
 
 		return sgn + s;
 	};
+
+	//==========================================================================
+	// [180704] Number.fromIEEE754() ; Number.prototype.toIEEE754()
+	// [REM] Tests can be done from <binaryconvert.com/result_double.html>
+	//==========================================================================
+
+	Number.fromIEEE754 = function fromIEEE754(/*hex(16)*/hex,  e,m,s)
+	// -------------------------------------
+	// [180704] Fast and compact IEEE754 decoder (double-precision
+	// 64-bit format) that returns the number represented by `hex`.
+	// `hex` :: the hex string to decode (should have 16 characters)
+	// ---
+	// E.g. Number.fromIEEE754('405EDD2F1A9FBE77') => 123.456
+	//      Number.fromIEEE754('A7F6A2FEC16CBD42') => -3.59066421145637e-116
+	//      Number.fromIEEE754('7FF38CC71C9330DF') => NaN
+	//      Number.fromIEEE754('7FF0000000000000') => Infinity
+	//      Number.fromIEEE754('8000000000000000') => -0
+	// ---
+	// => Number ;function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                               -1 (±Zero or Denormalized)
+	//                                               +1 (Normalized)
+	{
+		// Make sure the input has the desired hex(16) format.
+		// ---
+		16 == hex.length || (hex=('0000000000000000'+hex).substr(-16));
+
+		// Pre-compute exponent/mantissa/sign
+		// ---
+		e = Number('0x'+hex.substr(0,3));                   // 0xHHH     (3 digits)  , 12 bits (=1+11)
+		m = Number('0x'+hex.substr(-13));                   // 0xHH...HH (13 digits) , 52 bits
+		s = (0x800&e) ? ((e&=0x7FF),-1) : 1;                // ±1
+		
+		// Reflect the state of the number being computed:
+		// 0:NaN-or-Infinity ; 1:Normalized ; -1:Zero-or-Denormalized
+		// ---
+		// The client code can read `Number.fromIEEE754.STATUS` for
+		// advanced processing (e.g, excluding denormalized result etc.)
+		// ---
+		callee.STATUS = (0x7FF!=e)*(e?1:-1);
+
+		// Result.
+		// [REM] If the expression is denormalized (e==0 && m>0)
+		// the formal result is ± 2^(1-bias)*m*2^(-mBits), that
+		// is, ± m*2^(1-bias-mBits) -- where bias=1023, mBits=52.
+		// However, we cannot use the factor 2^(1-bias-mBits),
+		// as it equals 2^-1074 (≈5e-324), which is lower than
+		// Number.MIN_VALUE (≈2e-308) in ExtendScript. So it is
+		// required to keep the original form 2^(1-1023)*m*2^(-52)
+		// I suspect that Number.MIN_VALUE *is* 2^(-1022).
+		// I also suspect that ExtendScript doesn't properly
+		// address denormalized numbers... [TOCHECK]
+		// ---
+		return s*                                           // Sign ; work with Inf, NaN, and 0 :-)
+		(
+			0x7FF == e ? ((!m)/0) :                         // NaN or Infinity  ; e==(1<<eBits)-1
+			( e ?
+			  Math.pow(2,e-0x3FF)*(1+m*Number.P2_M52) :     // Normalized:  2^(e-bias)*(1 + m*2^(-mBits))
+			  ( m && (m*Number.P2_M1022)*Number.P2_M52 )    // 0 or denorm: 2^(1-bias)*     m*2^(-mBits)
+			)
+		);
+	};
+
+	Number.prototype.toIEEE754 = function toIEEE754(  v,s,m,e)
+	// -------------------------------------
+	// [180704] Fast and compact IEEE754 encoder (double-prevision
+	// 64-bit format) that returns the representation of this value
+	// as a hex string formed of 16 characters, uppercase.
+	// `this` :: the Number to encode (incl. NaN, Infinity, -0)
+	// ---
+	// [REM] A possible DOM-based implementation would be to return
+	// `app.transformationMatrices.add({matrixValues:[1,0,0,1,
+	// +this,0]}).name.split(' ')[5]` but this would make the
+	// routine DOM-dependent and requiring a non-modal context.
+	// This trick, however, might be used for checking purpose,
+	// as shown in `/tests/CheckIEEE754.jsx`.
+	// ---
+	// E.g.  (123.456).toIEEE754()               => '405EDD2F1A9FBE77'
+	//      (-3.59066421145637e-116).toIEEE754() => 'A7F6A2FEC16CBD42'
+	//      (0/0).toIEEE754()                    => '7FF8000000000000' ; 1st positive QNaN
+	//      (-1/0).toIEEE754()                   => 'FFF0000000000000' ; -Infinity
+	//      (-0).toIEEE754()                     => '8000000000000000' ; Negative Zero
+	// ---
+	// => hex   ; function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                               -1 (±Zero or Denormalized)
+	//                                               +1 (Normalized)
+	{
+		v = this.valueOf();
+
+		// [REM] According to <reddit.com/r/javascript/comments/7jr4pv/
+		// binary_representation_of_nan/>, "JavaScript appears to always
+		// generate a QNaN" (Quiet-NaN). Also, as noted in <perlmonks.org/
+		// ?node_id=984141>, 18,442,240,474,082,181,117 distinct forms are
+		// "used to represent quiet NANs. Half positive; half-1 negative."
+		// The present implementation then outputs the representation of the
+		// 1st positive QNaN (that is, `7FF8000000000000`) keeping in mind
+		// that this choice is arbitrary.
+		// ---
+		if( isNaN(v) )     return (callee.STATUS=0),
+			'7FF8000000000000';
+		if( !isFinite(v) ) return (callee.STATUS=0),
+			(0 < v     ? '7' : 'F') + 'FF0000000000000';
+		if( 0 == v )       return (callee.STATUS=-1),
+			(0 < (1/v) ? '0' : '8') + '000000000000000';
+
+		// s :: 0x800 (neg) | 0x000 (pos)
+		// ---
+		s = 0 > v ? (v=-v,0x800) : 0;
+		
+		if( Number.P2_M1022 <= v )
+		{
+			// We have: 2^(-1022) <= v  ->  -1022 <= (e=ln2(v))
+			// Assert:  e <= 1023 ;   [KO] ... is out of range
+			// ---
+			0x3FF < (e=Math.floor(Math.log(v)/Math.LN2)) && Error.runtimeError(41,e);
+			
+			// So far: -1022 <= e <= 1023
+			// ---
+			m = (-1+v*Math.pow(2,-e))/Number.P2_M52;
+
+			// We'll then get:
+			// 1 <= (e+=1023) <= 2046 ; i.e  1 <= e <= 0x7FE
+			// ---
+			e += 0x3FF;
+
+			callee.STATUS = 1;  // NORMALIZED
+		}
+		else
+		{
+			m = (v/Number.P2_M1022)/Number.P2_M52;
+			e = 0;
+
+			callee.STATUS = -1;  // DENORMALIZED
+		}
+
+		// Pack (sign,exponent,mantissa) => hex16
+		// ---
+		return (
+			( '000'+(s|e).toString(16) ).substr(-3) +
+			( '0000000000000'+m.toString(16) ).substr(-13)
+		).toUpperCase();
+	};
+
