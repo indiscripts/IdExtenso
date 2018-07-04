@@ -8,15 +8,14 @@
 		Core:           YES
 		Kind:           Part of /Ext
 		API:  static:   SourceEscapes fromCodePoint()
-		       proto:   toSource() asPath() toPath() relativePath()
+		       proto:   codePointAt() toSource() asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                stripSpaces() charSet()
-		DOM-access:     ---
+		DOM-access:     NO
 		Todo:           Perf tests ; string.lorem() ; warn if relativePath() fails
 		                May improve word boundary detection in trunc methods (?)
-		                `codePointAt()`
 		Created:        150510 (YYMMDD)
-		Modified:       180703 (YYMMDD)
+		Modified:       180705 (YYMMDD)
 
 *******************************************************************************/
 
@@ -41,13 +40,15 @@
 
 
 	//==========================================================================
-	// [180703] String.fromCodePoint() --cf ECMAScript 2018 (9th Edition, ECMA-262.)
+	// [180703] String.fromCodePoint()          -- cf ECMA-262, 9th Edition
+	// [180705] String.prototype.codePointAt()  -- ibid
 	//==========================================================================
 
 	String.fromCodePoint = function fromCodePoint(/*?(u24,u24...)|u24[]*/a,  i,f,t)
 	//----------------------------------
 	// Implements ECMAScript's `String.fromCodePoint` function. (Supports either a
 	// list of arguments--as in the spec--or a simple array of code points.)
+	// [REM] Code points must range in 0..0x10FFFF.
 	// ---
 	// [ECMA2018] 21.1.2.2 String.fromCodePoint( ...codePoints )
 	// The String.fromCodePoint function may be called with any number of arguments
@@ -66,12 +67,13 @@
 	//   6. Return the String value whose elements are, in order, the elements in the
 	//      List elements. If length is 0, the empty string is returned.
 	// ---
-	// E.g  String.fromCodePoint(0x30,0x31,0x32)    =>  "012"
-	//      String.fromCodePoint(0x61,0x28FF0,0x62) =>  "a\uD863\uDFF0b"  ; i.e "a𨿰b"
-	//      String.fromCodePoint()                  =>  ""
-	//      String.fromCodePoint(0xFFFFFFF)         =>  [Out of range error.]
+	// E.g  String.fromCodePoint(0x30,0x31,0x32)            =>  "012"
+	//      String.fromCodePoint(0x61,0x28FF0,0x62)         =>  "a\uD863\uDFF0b"  ; i.e "a𨿰b"
+	//      String.fromCodePoint()                          =>  ""
+	//      String.fromCodePoint(0xFFFFFFF)                 =>  [Out of range error.]
 	//      String.fromCodePoint([25,0,0x1F602]).toSource() => `"\x19\0\uD83D\uDE02"`
-	//      String.fromCodePoint('a')         =>  [Out of range error.]
+	//      String.fromCodePoint('a')                       =>  [Bad argument error.]
+	// ---
 	// => str
 	{
 		// If 1st arg is already an Array, clone it  -> `a`.
@@ -83,7 +85,8 @@
 
 		// Develop surrogate pairs.
 		// ---
-		for( f=Math.floor, i=a.length ; i-- ; 0xFFFF >= t || a.splice(i,1,0xD800+f((t-0x10000)/0x400),0xDC00+((t-0x10000)%0x400)) )
+		//for( f=Math.floor, i=a.length ; i-- ; 0xFFFF >= t && a.splice(i,1,0xD800+f((t-0x10000)/0x400),0xDC00+((t-0x10000)%0x400)) )
+		for( f=Math.floor, i=a.length ; i-- ; 0xFFFF < t && (t-=0x10000, a.splice(i,1,0xD800+f(t/0x400),0xDC00+(t%0x400))) )
 		{
 			t = a[i];
 
@@ -101,16 +104,43 @@
 		return String.fromCharCode.apply(null,a);
 	};
 
+	String.prototype.codePointAt = function codePointAt(/*uint*/pos,  z,x,y)
+	//----------------------------------
+	// Implements ECMAScript's `String.prototype.codePointAt` function.
+	// In addition, the function's SIZE property is set to the number
+	// of consumed code units (0:None ; 1:RegularCharCode ; 2:Surrogate.)
+	// ---
+	// E.g  "012".codePointAt(1)                            =>  0x31
+	//      "a\uD863\uDFF0b".codePointAt(1)                 =>  0x28FF0  ; this is "a𨿰b"
+	//      "a\uD863\uDFF0b".codePointAt(2)                 =>  0xDFF0   ; inside the surrogate pair
+	//      "".codePointAt(0)                               =>  undefined
+	// ---
+	// => u24 (<= 0x10FFFF)  ;  callee.SIZE :: 0|1|2
+	{
+		z = -1 + this.length;
+		if( 0 > (pos|=0) || z < pos ) return callee.SIZE=0, void 0;
+		
+		x = this.charCodeAt(pos);
+		if( 0xD800 > x || x > 0xDBFF || z==pos ) return callee.SIZE=1, x;
+		
+		y = this.charCodeAt(1+pos);
+		if( 0xDC00 > y || y > 0xDFFF ) return callee.SIZE=1, x;
+		
+		// Surrogate pair.
+		// 0x400*(lead-0xD800)  +  (trail-0xDC00) + 0x10000
+		//                     ie  0x2400+trail
+		// ---
+		return callee.SIZE=2, (0x400*(x-0xD800) + 0x2400 + y);
+	};
+
 
 	//==========================================================================
 	// String.prototype.toSource()
 	//==========================================================================
 
-	// Backup of the native method
-	// => String.__toSource__
+	// Backup of the native method => String.__toSource__
 	// ---
-	'function' == typeof String.__toSource__ ||
-	(String.__toSource__ = String.prototype.toSource);
+	'function' == typeof String.__toSource__ || (String.__toSource__ = String.prototype.toSource);
 
 	String.prototype.toSource = function toSource(/*<DQ>|<SQ>|false=<DQ>*/quote,/*bool=0*/allowUTF16,  q,o,NOQ,altQuote,r,i,s,k)
 	//----------------------------------
@@ -739,8 +769,7 @@
 
 	String.prototype.stripSpaces = function stripSpaces()
 	//----------------------------------
-	// [ADD180403]
-	// Strip spaces from the string.
+	// [ADD180403] Strip spaces from the string.
 	// <anyspace>*XXX<anyspace>*YYY<anyspace>* =>  XXXYYY
 	{
 		return this.replace(RegExp.SPCE,'');
