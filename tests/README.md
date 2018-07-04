@@ -48,6 +48,18 @@ _Demonstrates:_
 * Providing a **Yalt** package in four languages (`EN` + `FR` `DE` `ES`.)
 * **Settings** keys with various lifespans (`RESET`, `SESSION`, `APP`.)
 
+##### [`CheckIEEE754.jsx`](CheckIEEE754.jsx)
+
+![CheckIEEE754 results](CheckIEEE754.png)
+
+Perform tests on `Number.fromIEEE754()` and `Number.prototype.toIEEE754()` functions. This script generates 10,000 random numbers in IEEE754 64bit format and check whether the dedicated routines properly handle them. We used it to benchmark and validate the implementation of `fromIEEE754()` and `toIEEE754()`. The cool thing is, the script double-check each conversion throughout the `TransformationMatrix` object, which provides a hidden way to encode a Number instance into IEEE754 form. See the code for details.
+
+_Demonstrates:_
+   
+* Using `Number.fromIEEE754(hex)` and `Number.prototype.toIEEE754()`
+* Getting IEEE754 representation from `TransformationMatrix`'s name property (personal hack.)
+* Using the `Random` class to generate random numbers.
+
 ##### [`EnvSummary.jsx`](EnvSummary.jsx) vs. [`EnvSummary.bin.jsx`](EnvSummary.bin.jsx)
 
 Report scripting context from the Env module.   
