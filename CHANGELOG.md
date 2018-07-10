@@ -1,3 +1,6 @@
+##### [180710]
+  - `core/Ext/$$.string.jsxinc`: Patched `String.prototype.split()` for CS4.
+
 ##### [180705]
   - `core/Ext/$$.string.jsxinc` now implements `String.prototype.codePointAt()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.prototype.codepointat).
 
