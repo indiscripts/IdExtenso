@@ -8,14 +8,16 @@
 		Core:           YES
 		Kind:           Part of /Ext
 		API:  static:   SourceEscapes fromCodePoint()
-		       proto:   codePointAt() toSource() asPath() toPath() relativePath()
+		       proto:   codePointAt() toSource() split() [CS4]
+		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                stripSpaces() charSet()
 		DOM-access:     NO
 		Todo:           Perf tests ; string.lorem() ; warn if relativePath() fails
 		                May improve word boundary detection in trunc methods (?)
+		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       180705 (YYMMDD)
+		Modified:       180710 (YYMMDD)
 
 *******************************************************************************/
 
@@ -351,6 +353,123 @@
 		return R;
 
 	})({});
+
+
+	//==========================================================================
+	// String.prototype.split (CS4 patch.)
+	//==========================================================================
+
+	/*
+
+	The below block is executed only if the split method is broken. It overrides
+	`String.prototype.split()` in order to restore the desired behavior. In
+	principle this patch only affects CS4, since `split` has been fixed in higher
+	versions of ExtendScript. Anyway we use a typical test to load it agnostically.
+
+	*/
+	
+	if( "abc" != "a\0b\0c".split(/\u0000/).join('') )
+	{
+		// Backup of the native method => String.__toSource__
+		// ---
+		String.__split__ = String.prototype.split;
+		
+		String.prototype.split = function split(/*str|RegExp*/separator,/*?uint32*/limit,  IS_REGEX,t)
+		//----------------------------------
+		// [180709] Allows to split a string even if it contains
+		// occurrences of U+0000, in ExtendScript CS4
+		// `separator` ::  String or RegExp
+		// `limit`     ::  Max. number of results [opt.]
+		// ---
+		// Examples:
+		// "aei\0abc\0\0xyz\0".split('\0')      => ["aei", "abc", "", "xyz", ""]
+		// "aei\0abc\0\0xyz".split(/[ab\x00]+/) => ["", "ei", "c", "xyz"]
+		// ---
+		// Return the resulting Array of substrings.
+		// => str[]
+		{
+			// Default limit is 2^32-1 (cf. ECMA-262)
+			// ---
+			'undefined'== typeof limit && (limit=0xFFFFFFFF);
+
+			// Limit===0 --> ret. empty array
+			// ---
+			if( 0 >= limit ){ return []; }
+			
+			// IS_REGEX flag, or coerce `separator` into String.
+			// ---
+			(IS_REGEX = +(separator instanceof RegExp)) || (separator=String(separator));
+
+			// If:   (a) separator is undefined/empty
+			//    OR (b) `this` does not contain U+0000
+			//    OR (c) separator is a regexp that matches ''
+			// then the regular split() method is called.
+			// ---
+			if( (!separator) || -1 == this.indexOf('\0') || (IS_REGEX && separator.test('')) )
+			{
+				return String.__split__.call(this,separator,limit);
+			}
+			
+			// If separator is equivalent to U+0000, reduce it.
+			// ---
+			IS_REGEX
+			&& ('\\u0000'===(t=separator.source) || '\\x00'===t || '\0'===t)
+			&& (IS_REGEX=0, separator='\0');
+			
+			return callee[IS_REGEX ? 'SPLIT_BY_REG' : 'SPLIT_BY_STR'](this.valueOf(),separator,0,limit);
+		}
+
+		String.prototype.split.SPLIT_BY_STR = function(/*str*/s,/*str*/strSep,/*bool=0*/VOLATILE,/*uint=UINTMAX*/limit,  q,z,i,p)
+		//----------------------------------
+		// Split a string by strSep.
+		// [REM] We use the fact that `myString.indexOf(strSep)` works fine,
+		// while `myString.split(strSep)` is unsafe. Splits are built one-by-one.
+		// ---
+		// => new str[] (unless VOLATILE==1)
+		{
+			( q = VOLATILE ? (callee.Q||(callee.Q=[])) : [] ).length = 0;
+
+			if( !s ) return q;
+
+			// Default limit is 2^32-1 (cf. ECMA-262)
+			// ---
+			'undefined'== typeof limit && (limit=0xFFFFFFFF);
+			
+			for( z=strSep.length, i=-1 ; (limit > ++i) && 0 <= (p=s.indexOf(strSep)) ; (q[i]=s.substr(0,p)),(s=s.substr(z+p)) );
+			(limit > i) && (q[i] = s);
+
+			return q;
+		};
+
+		String.prototype.split.SPLIT_BY_REG = function(/*str*/s,/*RegExp*/regSep,/*bool=0*/VOLATILE,/*uint=UINTMAX*/limit,  q,t,i)
+		//----------------------------------
+		// Split a string by regSep.
+		// [REM] Assumed that myString.match(RegExp) properly works, in
+		// particular that the statics `leftContext` and `rightContext`
+		// are updated accordingly--which seems to be the case in CS4.
+		// ---
+		// => new str[] (unless VOLATILE==1)
+		{
+			( q = VOLATILE ? (callee.Q||(callee.Q=[])) : [] ).length = 0;
+
+			if( !s ) return q;
+
+			// Default limit is 2^32-1 (cf. ECMA-262)
+			// ---
+			'undefined'== typeof limit && (limit=0xFFFFFFFF);
+			
+			// Clone regSep, making sure it has no 'g' flag.
+			// ---
+			(t=regSep.flags()) && 'g'==t.charAt(0) && (t=t.substr(1));
+			regSep = RegExp(regSep.source,t);
+
+			for( i=-1 ; (limit > ++i) && s.match(regSep) ; (q[i]=RegExp.leftContext), (s=RegExp.rightContext) );
+			(limit > i) && (q[i] = s);
+
+			return q;
+		};
+
+	};
 
 
 	//==========================================================================
