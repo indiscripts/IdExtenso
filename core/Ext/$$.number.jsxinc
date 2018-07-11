@@ -17,7 +17,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180704 (YYMMDD)
+		Modified:       180711 (YYMMDD)
 
 *******************************************************************************/
 
@@ -136,7 +136,7 @@
 
 	'number' == typeof Number.P2_M52   || (Number.P2_M52   = Math.pow(2, -52));                  // 2^-52
 	'number' == typeof Number.P2_M1022 || (Number.P2_M1022 = Math.pow(2, -1022));                // 2^-1022
-	'number' == typeof Number.EPSILON  || (Number.P2_M52);                                       // 2^-52
+	'number' == typeof Number.EPSILON  || (Number.EPSILON=Number.P2_M52);                        // 2^-52 [FIX180711]
 	'number' == typeof Number.MAX_SAFE_INTEGER || (Number.MAX_SAFE_INTEGER = 9007199254740991);  // 2^53-1
 	'number' == typeof Number.MIN_SAFE_INTEGER || (Number.MIN_SAFE_INTEGER = -9007199254740991); // -(2^53-1)
 
