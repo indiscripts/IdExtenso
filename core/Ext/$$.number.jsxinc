@@ -8,16 +8,16 @@
 		Core:           YES
 		Kind:           Part of /Ext
 		API:     proto: toSource() toHexa() toAdbe() isAdbe()
-		                toDecimal() toIEEE754()
-		        static: P2_M52 (=2^-52)  P2_M1022 (=2^-1022)
+		                toDecimal() toIEEE754() toIEEE754_32()
+		        static: P2_M52(=2^-52) P2_M1022(=2^-1022) P2_M149(=2^-149)
 		                EPSILON  MAX_SAFE_INTEGER  MIN_SAFE_INTEGER
 		                DecimalChar ThousandsChar
 		                isInteger() isSafeInteger() flatten()
-		                parse() format() fromIEEE754()
+		                parse() format() fromIEEE754() fromIEEE754_32()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180711 (YYMMDD)
+		Modified:       180715 (YYMMDD)
 
 *******************************************************************************/
 
@@ -132,11 +132,14 @@
 	//          [REM] P2_M52 is used in various Number routines.
 	// [180704] Added Number.P2_M1022=Math.pow(2,-1022)
 	//          which likely coincides with Number.MIN_VALUE in ExtendScript
+	// [180715] Added Number.P2_M149, used in IEEE754_32 routines
 	//==========================================================================
 
 	'number' == typeof Number.P2_M52   || (Number.P2_M52   = Math.pow(2, -52));                  // 2^-52
 	'number' == typeof Number.P2_M1022 || (Number.P2_M1022 = Math.pow(2, -1022));                // 2^-1022
-	'number' == typeof Number.EPSILON  || (Number.EPSILON=Number.P2_M52);                        // 2^-52 [FIX180711]
+	'number' == typeof Number.P2_M149  || (Number.P2_M149  = Math.pow(2, -149));                 // 2^-149 [ADD180715]
+	// ---
+	'number' == typeof Number.EPSILON  || (Number.EPSILON=Number.P2_M52);                        // 2^-52  [FIX180711]
 	'number' == typeof Number.MAX_SAFE_INTEGER || (Number.MAX_SAFE_INTEGER = 9007199254740991);  // 2^53-1
 	'number' == typeof Number.MIN_SAFE_INTEGER || (Number.MIN_SAFE_INTEGER = -9007199254740991); // -(2^53-1)
 
@@ -201,7 +204,7 @@
 	// [180409] Number.flatten()
 	//==========================================================================
 
-	Number.flatten = function(/*num|str*/x,  sgn,s,p,e,n)
+	Number.flatten = function flatten(/*num|str*/x,  sgn,s,p,e,n)
 	//----------------------------------
 	// Transform the exponential representation of a number (#e#)
 	// into a decimal representation. The argument can be either
@@ -210,6 +213,7 @@
 	// exponential representation that results from automatic
 	// Number.toString() formatting. It can also interpret `#e#`
 	// strings that represent out-of-range Numbers, e.g "12e-30".
+	// [ADD180715] Function name (`flatten`.)
 	// ---
 	// Examples:
 	//   "1e2"     => "100"      ;  "-1e-2"    => "-0.01"
@@ -611,7 +615,9 @@
 
 	//==========================================================================
 	// [180704] Number.fromIEEE754() ; Number.prototype.toIEEE754()
+	// [180715] Number.fromIEEE754_32() ; Number.prototype.toIEEE754_32()
 	// [REM] Tests can be done from <binaryconvert.com/result_double.html>
+	//       and <www.h-schmidt.net/FloatConverter/IEEE754.html> (single)
 	//==========================================================================
 
 	Number.fromIEEE754 = function fromIEEE754(/*hex(16)*/hex,  e,m,s)
@@ -626,9 +632,9 @@
 	//      Number.fromIEEE754('7FF0000000000000') => Infinity
 	//      Number.fromIEEE754('8000000000000000') => -0
 	// ---
-	// => Number ;function's STATUS is set to either  0 (NaN or ±Infinity)
-	//                                               -1 (±Zero or Denormalized)
-	//                                               +1 (Normalized)
+	// => Number ; function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                                -1 (±Zero or Denormalized)
+	//                                                +1 (Normalized)
 	{
 		// Make sure the input has the desired hex(16) format.
 		// ---
@@ -663,7 +669,7 @@
 		return s*                                           // Sign ; work with Inf, NaN, and 0 :-)
 		(
 			0x7FF == e ? ((!m)/0) :                         // NaN or Infinity  ; e==(1<<eBits)-1
-			( e ?
+			( e ?                                           // [REM] bias=0x3FF=1023 ; mBits=52
 			  Math.pow(2,e-0x3FF)*(1+m*Number.P2_M52) :     // Normalized:  2^(e-bias)*(1 + m*2^(-mBits))
 			  ( m && (m*Number.P2_M1022)*Number.P2_M52 )    // 0 or denorm: 2^(1-bias)*     m*2^(-mBits)
 			)
@@ -690,9 +696,9 @@
 	//      (-1/0).toIEEE754()                   => 'FFF0000000000000' ; -Infinity
 	//      (-0).toIEEE754()                     => '8000000000000000' ; Negative Zero
 	// ---
-	// => hex   ; function's STATUS is set to either  0 (NaN or ±Infinity)
-	//                                               -1 (±Zero or Denormalized)
-	//                                               +1 (Normalized)
+	// => hex(16) ; function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                                 -1 (±Zero or Denormalized)
+	//                                                 +1 (Normalized)
 	{
 		v = this.valueOf();
 
@@ -750,3 +756,127 @@
 		).toUpperCase();
 	};
 
+	/*
+
+	Regarding 32bit routines the general contract is to guarantee the
+	hex-to-Number conversion, and the equality
+
+	      hex8 === (Number.fromIEEE754_32(hex8)).toIEEE754_32()
+
+	But the routines *cannot guarantee* for any Number `x`
+	
+	      x === Number.fromIEEE754_32(x.toIEEE754_32())  // NOT TRUE!
+
+	since `x` is internally encoded in double-precision representation.
+
+	*/
+
+	Number.fromIEEE754_32 = function fromIEEE754_32(/*hex(8)*/hex,  e,m,s)
+	// -------------------------------------
+	// [180715] Fast and compact IEEE754 decoder (single-precision
+	// 32-bit format) that returns the number represented by `hex`.
+	// `hex` :: the hex string to decode (should have 8 characters)
+	// ---
+	// [REM] "If a decimal string with at most 6 significant digits
+	// is converted to IEEE 754 single-precision representation, and
+	// then converted back to a decimal string with the same number
+	// of digits, the final result should match the original string."
+	// ---
+	// E.g. Number.fromIEEE754_32('3F800000') => 1
+	//      Number.fromIEEE754_32('C0000000') => -2
+	//      Number.fromIEEE754_32('7F7FFFFF') => 3.402823(46638529)e+38 ; max finite positive value
+	//      Number.fromIEEE754_32('00800000') => 1.175494(35082229)e-38 ; min normalized positive value
+	//      Number.fromIEEE754_32('80000000') => -0
+	//      Number.fromIEEE754_32('FF800000') => -Infinity
+	//      Number.fromIEEE754_32('40490FDB') => 3.14159274101257
+	//      Number.fromIEEE754_32('FFC00001') => NaN ; Quiet-NaN
+	// ---
+	// => Number ; function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                                -1 (±Zero or Denormalized)
+	//                                                +1 (Normalized)
+	{
+		8 == hex.length || (hex=('00000000'+hex).substr(-8));
+		e = Number('0x'+hex.substr(0,3))>>>3;               // 0xHHH >>> 3 ; 12-3 = 9 bits (1+8)
+		m = Number('0x'+hex.substr(-6))&0x7FFFFF;           // 0xHHHHHH & 0x7FFFFF ; 23 bits
+		s = (0x100&e) ? ((e&=0xFF),-1) : 1;                 // ±1
+		
+		callee.STATUS = (0xFF!=e)*(e?1:-1);
+
+		return s*                                           // Sign ; work with Inf, NaN, and 0 :-)
+		(
+			0xFF == e ? ((!m)/0) :                          // NaN or Infinity  ; e==(1<<eBits)-1
+			( e ?                                           // [REM] bias=0x7F=127 ; mBits=23
+			  Math.pow(2,e-127)*(1+m/0x800000) :           // Normalized:  2^(e-bias)*(1 + m*2^(-mBits))
+			  ( m && (m*Number.P2_M149) )                   // 0 or denorm: 2^(1-bias)*     m*2^(-mBits)
+			                                                //         i.e  m*2^(-126-23) = m*2^-149
+			)
+		);
+	};
+
+	Number.prototype.toIEEE754_32 = function toIEEE754_32(  v,s,m,e)
+	// -------------------------------------
+	// [180715] Fast and compact IEEE754 encoder (single-prevision
+	// 32-bit format) that returns the representation of this value
+	// as a hex string formed of 8 characters, uppercase.
+	// `this` :: the Number to encode (incl. NaN, Infinity, -0)
+	// ---
+	// [REM] "If an IEEE 754 single-precision number is converted to
+	// a decimal string with at least 9 significant digits, and then
+	// converted back to single-precision representation, the final
+	// result must match the original number."
+	// ---
+	// E.g.  (123.456).toIEEE754_32()               => '42F6E979'
+	//       (1234567).toIEEE754_32()               => '4996B438'
+	//       (0/0).toIEEE754_32()                   => '7FC00000'
+	//       (-1/0).toIEEE754_32()                  => 'FF800000' ; -Infinity
+	//       (-0).toIEEE754_32()                    => '80000000' ; Negative Zero
+	// ---
+	// => hex(8) ; function's STATUS is set to either  0 (NaN or ±Infinity)
+	//                                                -1 (±Zero or Denormalized)
+	//                                                +1 (Normalized)
+	{
+		v = this.valueOf();
+		if( isNaN(v) )     return (callee.STATUS=0),  '7FC00000';
+		if( !isFinite(v) ) return (callee.STATUS=0),  (0 < v     ? '7' : 'F') + 'F800000';
+		if( 0 == v )       return (callee.STATUS=-1), (0 < (1/v) ? '0' : '8') + '0000000';
+
+		// s :: b100..00 (neg) | 0 (pos)
+		// ---
+		s = 0 > v ? (v=-v,0x80000000) : 0;
+		
+		// e :: ln2(v)
+		// ---
+		e = Math.floor(Math.log(v)/Math.LN2);
+
+		if( -126 <= e )
+		{
+			m = 0x800000*(-1+v*Math.pow(2,-e));
+			e += 127;
+		}
+		else
+		{
+			// Too small for a float(32) -> underflow to zero.
+			// ---
+			if( -152 >= e ) return (callee.STATUS=-1), (s ? '8' : '0') + '0000000';
+			
+			m = v/Number.P2_M149;
+			e = 0;
+		}
+
+		// Round mantissa.
+		// [REF] github.com/andrasq/node-ieee-float/blob/master/index.js
+		// ---
+		( (1&m) || .5 !== (m-Math.floor(m)) ) && (m+=.5);
+		0x800000 <= m && (m-=0x800000, ++e);
+
+		// Too large for a float(32) -> overflow to Infinity.
+		// ---
+		if( 254 < e ) return (callee.STATUS=0), (s ? 'F' : '7') + 'F800000';
+
+		callee.STATUS = e ? 1 : -1;  // DENORMALIZED
+
+		// Pack (sign,exponent,mantissa) => hex8
+		// ---
+		v = (s | (e<<23) | m) >>> 0;
+		return ('00000000'+v.toString(16).toUpperCase()).substr(-8);
+	};
