@@ -1,3 +1,6 @@
+##### [180715]
+  - `core/Ext/$$.number.jsxinc`: added `Number.fromIEEE754_32(hexStr)` and `Number.prototype.toIEEE754_32()` for decoding from (resp. encoding to) IEEE754 32bit format (single-precision floating-point representation.) Keep in mind that JS numbers are still double (i.e float64), so you cannot assert, in general, that `x === Number.fromIEEE754_32(x.toIEEE754_32())` for any JS number `x`. However, the _hex-to-number_ conversion is safe: `hex8 === (Number.fromIEEE754_32(hex8)).toIEEE754_32()` (OK.)
+
 ##### [180710]
   - `core/Ext/$$.string.jsxinc`: Patched `String.prototype.split()` for CS4.
 
