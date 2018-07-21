@@ -17,7 +17,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180715 (YYMMDD)
+		Modified:       180721 (YYMMDD)
 
 *******************************************************************************/
 
@@ -374,14 +374,31 @@
 	// Number.prototype.toSource()
 	//==========================================================================
 
-	Number.prototype.toSource = function toSource()
+	Number.prototype.toSource = function toSource(/*-1=COMPACT|0=SHORT|+1=NATIVE=0*/mode,  x,s,neg)
 	//----------------------------------
-	// [ECMA] If x is any Number value other than -0, then ToNumber(ToString(x))
-	// is exactly the same Number value as x.
-	// [TODO] May be improved to get shorter strings ("1e5" etc)
+	// [CHG180721] Variant of `toString` that supports three modes:
+	//   +1 :: Native toString() output.
+	//    0 :: (Default.) As toString(), except leading zero is removed
+	//         from floating-point number: 0.5 -> ".5" ; -0.75 -> "-.75"
+	//   -1 :: Compact mode [TODO]. Select the shortest literal representation
+	//         of this number: 10000 -> "1e4"
+	// [ECMA] "If x is any Number value other than -0, then ToNumber(ToString(x))
+	// is exactly the same Number value as x." The `toSource()` method offers
+	// the same guarantees: `x===Number(x.toSource())` (unless x be NaN.)
 	// => str
 	{
-		return String(this);
+		s = (x=this.valueOf()).toString();
+		if( 0 < mode ) return s;
+
+		// Remove leading zero from floating value in )-1,1(
+		// ---
+		neg = +(0>x);
+		x && -1 < x && x < 1 && '0'==s.charAt(neg) && (s=(neg?s.charAt(0):'')+s.substr(1+neg));
+		if( !mode ) return s;
+
+		// [TODO] Try to output the most compact result (10000 -> "1e5")
+		// ---
+		return s;
 	};
 
 	//==========================================================================
