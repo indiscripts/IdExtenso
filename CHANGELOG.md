@@ -1,3 +1,6 @@
+##### [180824]
+  - **ModalScript**: small fix in `~._SV_` (the `items` property of a list wasn't properly parsed thru the autosetter algorithm.) Added the method `Window.prototype.getWidgetKey` (cf. `~._GW_`) to mirror **BasicScript**'s API.
+
 ##### [180721]
   - `core/Ext/$$.number.jsxinc`: changed the `toSource()` method so it supports a `mode` argument for _compact_ vs. _short_ vs. _native_ output string. By default (mode=0) the function removes leading zero from floating-point number in )-1,1(. For instance, `(-0.75).toSource() -> "-.75"`.
 
