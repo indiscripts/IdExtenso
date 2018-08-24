@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180531 (YYMMDD)
-		Modified:       180605 (YYMMDD)
+		Modified:       180824 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 #include '$$.Settings.jsxlib'
 
 ;if( $$.BasicScript ){ alert(__("%1 cannot work with the %2 module.",'ModalScript','BasicScript')); exit(); }
-;$$.hasOwnProperty('ModalScript') || eval(__(MODULE, $$, 'ModalScript', 180605, 'run'))
+;$$.hasOwnProperty('ModalScript') || eval(__(MODULE, $$, 'ModalScript', 180824, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -256,7 +256,8 @@
 	*/
 
 	//==========================================================================
-	// SUI EXPANDER -> Window.prototype.setValueKey()/getValueKey()/getStringKey()
+	// SUI EXPANDER -> Window.prototype
+	//              .setValueKey() .getWidgetKey() .getValueKey() .getStringKey()
 	//==========================================================================
 
 	[PRIVATE]
@@ -298,8 +299,11 @@
 					break;
 
 				case 'string' :
-					if( (k='text') in o ) break;
+					// [FIX180824] ('items' in o) test must be performed *before* ('text' in o)
+					// since list widgets support the `text` property!
+					// ---
 					if( ('items' in o) && (t=o.find(v)) ){ k='selection'; v=t.index; break; }
+					if( (k='text') in o ) break;
 					// no break;
 
 				default:
@@ -310,8 +314,19 @@
 
 		},
 		
+		_GW_ : function getWidgetKey(/*key*/k,  o)
+		//----------------------------------
+		// (Get-Widget-by-Key.) [ADD180824]
+		// `this` :: Window
+		// ---
+		// => undefined [KO]  |  Widget [OK]
+		{
+			return ScriptUI.isWidget(o=this[k]) ? o : (void 0);
+		},
+
 		_GV_ : function getValueKey(/*key*/k,  o)
 		//----------------------------------
+		// (Get-Value-by-Key.)
 		// `this` :: Window
 		// => any
 		{
@@ -332,6 +347,7 @@
 		
 		_GS_ : function getStringKey(/*key*/k,  o)
 		//----------------------------------
+		// (Get-String-by-Key.)
 		// `this` :: Window
 		// => str
 		{
@@ -488,11 +504,13 @@
 		onEngine: function onEngine_(  I)
 		// ---------------------------------
 		// Executed once if the script uses a persistent #targetengine.
+		// [ADD180824] `getWidgetKey` added.
 		{
 			I = callee.µ['~'];
 			I.DECL();
 			
 			Window.prototype.setValueKey  = I._SV_;
+			Window.prototype.getWidgetKey = I._GW_;
 			Window.prototype.getValueKey  = I._GV_;
 			Window.prototype.getStringKey = I._GS_;
 		},
