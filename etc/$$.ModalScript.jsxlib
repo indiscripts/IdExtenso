@@ -295,6 +295,10 @@
 						if( 'boolean'==typeof(o[k]) && (0===v || 1===v) ){ v=!!v; break; }
 					}
 					if( (v===v>>>0) && ('items' in o) && v < (o.items||'').length ){ k='selection'; break; }
+					
+					// [ADD180824] Fallback mechanism for edited numbers.
+					// ---
+					if( (k='text') in o ) break;
 					k = void 0;
 					break;
 
