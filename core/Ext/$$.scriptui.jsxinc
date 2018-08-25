@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       180530 (YYMMDD)
+		Modified:       180825 (YYMMDD)
 
 *******************************************************************************/
 
@@ -126,6 +126,7 @@
 
 	//==========================================================================
 	// [180528] ScriptUI.builder() ; [180530] Added event keys.
+	// [180825] Inherits `helpTip` from parent
 	//==========================================================================
 
 	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,u,f,win,pp,k,x,p,t,name,wg,ISWG)
@@ -349,6 +350,13 @@
 			if( name.length || !(name in win) )
 			{
 				win[name] = wg;
+			}
+
+			// [ADD180825] Inherits `helpTip` from parent, if not assigned.
+			// ---
+			if( !wg.helpTip && (t=parent.helpTip) )
+			{
+				wg.helpTip = t;
 			}
 
 			// If wg is a ScriptUI widget, recurse.
