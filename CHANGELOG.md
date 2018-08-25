@@ -1,3 +1,6 @@
+##### [180825]
+  - `core/Ext/$$.scriptui.jsxinc`: If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
+
 ##### [180824]
   - **ModalScript**: small fix in `~._SV_` (the `items` property of a list wasn't properly parsed thru the autosetter algorithm.) Added the method `Window.prototype.getWidgetKey` (cf. `~._GW_`) to mirror **BasicScript**'s API.
 
