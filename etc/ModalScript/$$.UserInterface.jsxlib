@@ -12,12 +12,12 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180601 (YYMMDD)
-		Modified:       180604 (YYMMDD)
+		Modified:       180829 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
-;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 180604))
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 180829))
 
 	[PRIVATE]
 	
@@ -137,7 +137,7 @@
 
 	// beforeShow : function beforeShow_$Dialog$_O_Ï_(/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
 	// ----------------------------------
-	// Would be called once settings have been automatically populated into
+	// To be called once settings have been automatically populated into
 	// the Dialog object through linked keys. Before showing the dialog, you may
 	// use this place to preprocess existing or additional params to be displayed.
 	// ---
@@ -146,9 +146,9 @@
 	// => undefined
 	// {},
 
-	// onClose : function beforeShow_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
+	// onClose : function onClose_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
 	// ----------------------------------
-	// Would be called once the dialog is closed and its values have been
+	// To be called once the dialog is closed and its values have been
 	// automatically populated into Settings through linked keys. You may
 	// use this place to postprocess existing or additional settings to be treated.
 	// `ok` indicates wether the user has validated the dialog. *In most cases*
