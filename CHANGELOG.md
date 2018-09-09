@@ -1,3 +1,6 @@
+##### [180909]
+  - **ModalScript**: still improving default getter/setter mechanisms.
+
 ##### [180825]
   - `core/Ext/$$.scriptui.jsxinc`: If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
 
