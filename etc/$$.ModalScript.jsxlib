@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180531 (YYMMDD)
-		Modified:       180824 (YYMMDD)
+		Modified:       180909 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 #include '$$.Settings.jsxlib'
 
 ;if( $$.BasicScript ){ alert(__("%1 cannot work with the %2 module.",'ModalScript','BasicScript')); exit(); }
-;$$.hasOwnProperty('ModalScript') || eval(__(MODULE, $$, 'ModalScript', 180824, 'run'))
+;$$.hasOwnProperty('ModalScript') || eval(__(MODULE, $$, 'ModalScript', 180909, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -266,6 +266,7 @@
 		_SV_ : function setValueKey(/*key*/k,/*any*/v,  o,t)
 		//----------------------------------
 		// `this` :: Window
+		// [DEL180909] Removed boolean 'enabled' fallback.
 		// => undefined [KO]  |  v-result [OK]
 		{
 			if( !ScriptUI.isWidget(o=this[k]) ) return;
@@ -285,7 +286,8 @@
 				case 'boolean' :
 					if( ((k='value') in o) && 'boolean'==typeof(o[k]) ) break;
 					if( 'ListItem'== o.__class__ ){ k = 'selected'; break; }
-					k = 'enabled';
+					// k = 'enabled'; [DEL180909] Doesn't look like a good idea :-/
+					k = void 0;
 					break;
 				
 				case 'number' :
@@ -328,9 +330,10 @@
 			return ScriptUI.isWidget(o=this[k]) ? o : (void 0);
 		},
 
-		_GV_ : function getValueKey(/*key*/k,  o)
+		_GV_ : function getValueKey(/*key*/k,  o,t)
 		//----------------------------------
 		// (Get-Value-by-Key.)
+		// [FIX180909] Handles widget.value / widget.properties.value.
 		// `this` :: Window
 		// => any
 		{
@@ -345,13 +348,16 @@
 			if( o.hasOwnProperty(k='value') ) return o[k];
 			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.index : -1;
 			if( o.hasOwnProperty(k='text') ) return o[k];
+			// [ADD180909] Fallback mechanism: use the inner properties' value.
+			if( (t=o.properties) && (t.hasOwnProperty(k='value')) ) return t[k];
 
 			return o.enabled;
 		},
 		
-		_GS_ : function getStringKey(/*key*/k,  o)
+		_GS_ : function getStringKey(/*key*/k,  o,v)
 		//----------------------------------
 		// (Get-String-by-Key.)
+		// [FIX180909] Handles widget.value / widget.properties.value.
 		// `this` :: Window
 		// => str
 		{
@@ -363,10 +369,12 @@
 
 			// Default algorithm.
 			// ---
-			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.text : -1;
+			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.text : '';
 			if( o.hasOwnProperty(k='text') || o.hasOwnProperty(k='title') ) return o[k];
 
-			return String(o.value||'');
+			k = 'value';
+			v = o.hasOwnProperty(k) ? o[k] : ((o=o.properties||0).hasOwnProperty(k) ? o[k] : '');
+			return String(v||'');
 		},
 	})
 
