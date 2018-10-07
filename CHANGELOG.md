@@ -1,3 +1,6 @@
+##### [181007]
+  - `core/Ext/$$.string.jsxinc`: added `String.fromUTF8()` and `String.prototype.toUTF8()`.
+  
 ##### [180909]
   - **ModalScript**: still improving default getter/setter mechanisms.
 
