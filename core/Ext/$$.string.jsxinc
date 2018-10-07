@@ -7,8 +7,8 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:  static:   SourceEscapes fromCodePoint()
-		       proto:   codePointAt() toSource() split() [CS4]
+		API:  static:   SourceEscapes fromCodePoint() fromUTF8()
+		       proto:   codePointAt() toUTF8() toSource() split() [CS4]
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                stripSpaces() charSet()
@@ -17,7 +17,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       180710 (YYMMDD)
+		Modified:       181007 (YYMMDD)
 
 *******************************************************************************/
 
@@ -113,7 +113,7 @@
 	// of consumed code units (0:None ; 1:RegularCharCode ; 2:Surrogate.)
 	// ---
 	// E.g  "012".codePointAt(1)                            =>  0x31
-	//      "a\uD863\uDFF0b".codePointAt(1)                 =>  0x28FF0  ; this is "a𨿰b"
+	//      "a\uD863\uDFF0b".codePointAt(1)                 =>  0x28FF0  ; `this` is "a𨿰b"
 	//      "a\uD863\uDFF0b".codePointAt(2)                 =>  0xDFF0   ; inside the surrogate pair
 	//      "".codePointAt(0)                               =>  undefined
 	// ---
@@ -135,6 +135,43 @@
 		return callee.SIZE=2, (0x400*(x-0xD800) + 0x2400 + y);
 	};
 
+	//==========================================================================
+	// [181007] String.fromUTF8()
+	// [181007] String.prototype.toUTF8()
+	//==========================================================================
+
+	String.fromUTF8 = function(/*str|uint8[]*/x)
+	//----------------------------------
+	// Given a sequence of *valid* UTF8 codes (string or array),
+	// reconstruct and output the original UTF16 string.
+	// See `String.prototype.toUTF8` for more detail.
+	// ---
+	// E.g  String.fromUTF8("\xC3\x80\xC3\x89\xC3\x94")  => "ÀÉÔ"
+	//      String.fromUTF8([0xF0,0xA8,0xBF,0xB0])       => "\uD863\uDFF0"  ; i.e "𨿰"
+	// ---
+	// => str
+	{
+		'string' == typeof x || (x=String.fromCharCode.apply(0,x));
+		return decodeURIComponent(escape(x));
+	};
+
+	String.prototype.toUTF8 = function()
+	//----------------------------------
+	// Convert this string (assumed in native UTF16) into UTF8. The result
+	// is then a string formed of characters whose codes are all <= 0xFF.
+	// ---
+	// [REM] Keep in mind that the output string is in a 'transport format'
+	// for encoding purpose; it shouldn't be displayed as such!
+	// [REF] Famous snippet from Johan Sundström at
+	// ecmanaut.blogspot.com/2006/07/encoding-decoding-utf8-in-javascript.html
+	// ---
+	// E.g  "ÀÉÔ".toUTF8()                        => "\xC3\x80\xC3\x89\xC3\x94"
+	//      "a\uD863\uDFF0b".toUTF8()             => "a\xF0\xA8\xBF\xB0b"  ; `this` is "a𨿰b"
+	// ---
+	// => str
+	{
+		return unescape(encodeURIComponent(this));
+	};
 
 	//==========================================================================
 	// String.prototype.toSource()
