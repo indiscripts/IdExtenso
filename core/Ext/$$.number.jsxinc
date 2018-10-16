@@ -17,7 +17,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170307 (YYMMDD)
-		Modified:       180721 (YYMMDD)
+		Modified:       181016 (YYMMDD)
 
 *******************************************************************************/
 
@@ -411,11 +411,12 @@
 	// [FIX171125] isFinite test is better.
 	// [ADD170423] `prefix`   If provided (string), reset the prefix (default is "0x").
 	// [ADD170423] `zeroPad`  If > 0, minimum length of the hexa representation.
+	// [CHG181016] Corrected typo in examples below.
 	// ---
-	// E.g  toHexa(123456)          => "0x1E240"
-	// E.g  toHexa(123456, "U+")    => "U+1E240"
-	// E.g  toHexa(123, "")         => "7B"
-	// E.g  toHexa(123, "", 4)      => "007B"
+	// E.g  (123456).toHexa()        => "0x1E240"
+	// E.g  (123456).toHexa("U+")    => "U+1E240"
+	// E.g  (123).toHexa("")         => "7B"
+	// E.g  (123).toHexa("", 4)      => "007B"
 	// => str
 	{
 		if( !isFinite(this) ) return String(this);
