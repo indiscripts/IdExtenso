@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Refine receiveError ; more tests!
 		Created:        150502 (YYMMDD)
-		Modified:       180318 (YYMMDD)
+		Modified:       181018 (YYMMDD)
 
 *******************************************************************************/
 
@@ -278,7 +278,7 @@
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			
 			if( 'function' != typeof $$.Log ) return;
-			
+
 			if( !($$.Log() || ($$.logErrors && $$.Log.warn(true))) ) return;
 			
 			s = e.managed ? e.stack :
@@ -321,6 +321,7 @@
 		//----------------------------------
 		// Throw a managed exception with additional information.
 		// [CHG171024] Improved stack parsing and file resolver.
+		// [FIX181018] Fixed a typo.
 		// ---
 		// msg :: Nude error message (might be localized.)
 		// src :: (opt.) Module, function or file where the error occured.
@@ -342,9 +343,10 @@
 			// ---
 			a = $.stack.split(RegExp.LINEs); // => [<file>, s1, s2, ..., sN, <here>, '']
 			while( a.length && !a.pop() );   // => [<file>, s1, s2, ..., sN]
+
 			for( fn=fx=jb='', i=a.length ; i-- ; )
 			{
-				if( !(s=a[i]) ){ a.split(i,1); continue; }
+				if( !(s=a[i]) ){ a.splice(i,1); continue; } // [FIX181018] split->splice !!!
 				if( -1 == (p='])'.indexOf(s.substr(-1))) ) continue;
 				if( p ){ fn||(fn=s.substr(0,s.indexOf('('))); continue; }
 				s = s.substr(1,s.length-2);
@@ -513,7 +515,6 @@
 			// [CHG180318] Conditional log error routine. (Code refactoring.)
 			// ---
 			callee.µ['~'].ELOG(e);
-
 			throw e;
 		},
 	
