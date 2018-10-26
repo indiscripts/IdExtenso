@@ -1,0 +1,192 @@
+/*******************************************************************************
+
+		Name:           Progress
+		Desc:           Simple progress bar.
+		Path:           /etc/$$.Progress.jsxlib
+		Require:        Ext/scriptui
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =hit() title() message() hide() close()
+		DOM-access:     NO
+		Todo:           Message pattern ; Mac El Capitan... etc
+		Created:        181022 (YYMMDD)
+		Modified:       181026 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Progress') || eval(__(MODULE, $$, 'Progress', 181026, 'hit'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+		The present module provides a basic progress window to scripts that may perform
+		heavy computations. It is very similar to the original implementation available at
+		<github.com/indiscripts/extendscript/blob/master/scriptui/ProgressBar.jsx>, but
+		the API has been dramatically simplified.
+
+		Just call
+		
+		  $$.Progress( percentValue , message );
+		
+		to show the progress bar at `percentValue` (0..100) associated to any message
+		string. Use the shortcut `$$.Progress()` to increment the value by 1. Use
+		`$$.Progress(false)` to hide the progressbar while keeping its message string.
+
+		Other available methods are:
+
+		  $$.Progress.title( myTitle )       Set the title bar.
+		  $$.Progress.message( myMessage )   Set the message (w/o changing the value.)
+		  $$.Progress.hide()                 Hide the window.
+		  $$.Progress.close()                Close the window.
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		URES:
+		#include 'Progress/ui.jsxres'
+		,
+		
+		_UI_: function(/*-1:hide|0:keep|+1:show*/SHW)
+		//----------------------------------
+		// (User-Interface.) Get the UI palette.
+		// => Window{palette} | undef
+		{
+			if( SHW < 0 )
+			{
+				callee.SHOWN && callee.SUI.hide();
+				callee.SHOWN = 0;
+				return;
+			}
+			if( !callee.BUILT )
+			{
+				(callee.SUI=ScriptUI.builder(this.URES)).center();
+				callee.BUILT = 1;
+				callee.SHOWN = 0;
+			}
+			if( SHW > callee.SHOWN )
+			{
+				callee.SUI.show();
+				callee.SHOWN = 1;
+			}
+			return callee.SUI;
+		}
+		.setup({ BUILT:0, SHOWN:0, SUI:false }),
+		
+		CHGE: function(/*T|M|P*/k,/*any*/v,/*?str*/s,  w,o)
+		//----------------------------------
+		// (Change.)
+		{
+			w = this._UI_( +('T'!='k') );
+			switch( k )
+			{
+				case 'T':
+					w.text = v;
+					return;
+				case 'P':
+					o = w.P;
+					if( 0 > v )
+					{
+						o.value = 0;
+						o.visible && (o.visible=false);
+					}
+					else
+					{
+						o.value = v;
+						o.visible || (o.visible=true);
+					}
+					if( 'string' != typeof s ) break;
+					v = s;
+				default:
+					o = w.M;
+					v.length && (o.location=[(o.size[0]-o.graphics.measureString(v)[0])>>1, o.location[1]]);
+					o.text = v;
+			}
+			w.update();
+		},
+		
+		FRMT: function(/*str|undef*/s,/*uint|false*/v,  pn,u)
+		//----------------------------------
+		// (Format.) Format a message based on (s,v) and the current pattern.
+		// The value `v` corresponds to %9.
+		// [TODO] Add support for complex patterns...
+		// => str | undef
+		{
+			pn = callee.PTN;
+			u = 'undefined' == typeof s;
+			if( u && -1==pn.indexOf('%9') ) return void 0;
+
+			s = u ? callee.LAST_SRC : (callee.LAST_SRC=String(s));
+
+			return __(pn, s, '','','','','','','', false===v ? '' : String(v));
+		}
+		.setup({ PTN:"%1 (%9%%)", LAST_SRC:'' }),
+
+	})
+
+	[PUBLIC]
+	
+	({
+
+		title: function title_s_S(/*?str*/s,  I)
+		//----------------------------------
+		// Set the title of the window.
+		// => str
+		{
+			I = callee.µ['~'];
+			if( 'undefined' == typeof s ) return I._UI_().text;
+			return (s=String(s)), I.CHGE('T',s), s;
+		},
+
+		message: function message_s_S(/*?str*/s,  I)
+		//----------------------------------
+		// Set the message of the window. This method does not
+		// change the progress value and it bypasses the pattern.
+		// => str
+		{
+			I = callee.µ['~'];
+			if( 'undefined' == typeof s ) return I._UI_().M.text;
+			return (s=String(s)), I.CHGE('M',s), s;
+		},
+
+		hit: function hit_BI_s_(/*true|false|uint=true*/v,/*?str*/msg,  I)
+		//----------------------------------
+		// Change the progress value.
+		// `v`   :: If true (default), increment the value.
+		//          If false, reset to zero and hide the progress bar.
+		//          If 0<=v<=100, set the value to v.
+		// `msg` :: Opt. message to be loaded in the pattern.
+		// [REM] If v!==false, the progress bar is shown.
+		// => uint | false (hidden)
+		{
+			I = callee.µ['~'];
+			'undefined' == typeof v && (v=true);
+			true===v && (v=1+I._UI_().P.value);
+			msg = I.FRMT(msg,v);
+			I.CHGE('P', -(false===v)||v, msg);
+			return v;
+		},
+		
+		hide: function hide_()
+		//----------------------------------
+		// Just hide the window (does not remove it.)
+		// => undef
+		{
+			callee.µ['~']._UI_(-1);
+		},
+		
+		close: function close_()
+		//----------------------------------
+		// Hide and unregister the window.
+		// => undef
+		{
+			(I = callee.µ['~'])._UI_(-1);  // Hide.
+			I.BUILT = 0;                   // Remove.
+		},
+
+	})
