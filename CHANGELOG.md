@@ -1,3 +1,6 @@
+##### [181026]
+  - **Progress**, porting the logics of [ProgressBar.jsx](https://github.com/indiscripts/extendscript/blob/master/scriptui/ProgressBar.jsx) in *IdExtenso*.
+
 ##### [181012]
   - **ByteStream**, a class to easily handle binary data stored in files. Deals with strings, characters, hex format, signed and unsigned integers (byte, short, int24, long), float (32bit) and double (64bit) numbers. Supports BE and LE ordering. Goto the [NOTICE](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.ByteStream.jsxlib#L29) for details.
 
