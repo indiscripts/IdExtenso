@@ -1,0 +1,43 @@
+﻿/*******************************************************************************
+
+		Name:           UI resource
+		Desc:           SUI resource of Progress.
+		Path:           /etc/Progress/ui.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource (OBJ)
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        181022 (YYMMDD)
+		Modified:       181026 (YYMMDD)
+
+*******************************************************************************/
+
+	{
+		properties:                     { type:'palette', text:"\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0", resizable:false },
+		margins:                        20,
+		alignChildren:                  ScriptUI.LT,
+
+		Group$0:
+		{
+			orientation:                'column',
+			margins:                    0,
+			spacing:                    20,
+			ProgressBar$P:
+			{
+				properties:             { value:0, maxvalue:100 },
+				minimumSize:            { width:400 },
+				maximumSize:            { width:400, height:8 },
+				visible:                false,
+			},
+
+			StaticText$M:
+			{
+				properties:             { },
+				minimumSize:            { width:400 },
+				maximumSize:            { width:400 },
+			},
+		},
+	}
