@@ -170,6 +170,16 @@ _Demonstrates:_
 
 ---
 
+##### [`UseJsxBlindLib.jsx`](UseJsxBlindLib.jsx)
+
+Scramble a jsxbin file choosen by the user.
+
+_Demonstrates:_
+   
+* Including and invoking the new ***JsxBlindLib*** library from any script project.
+
+---
+
 ##### [`YaltIsGreat.jsx`](YaltIsGreat.jsx)
 
 Basic features of the localization module (**Yalt**.)
