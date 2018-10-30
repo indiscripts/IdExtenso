@@ -12,6 +12,10 @@ From this location, any `.jsx` script can include the core framework using `#inc
 
 Compute and prompt the MD5 hash of the input string. (Based on `etc/$$.MD5.jsxlib`.)
 
+##### [`JsxBlindLib.jsxinc`](JsxBlindLib.jsxinc)
+
+***JsxBlind 2.0 Library*** for ExtendScript Toolkit. A full, smart, and fast `jsxbin` obfuscator.
+
 ##### [`SelToPng.jsx`](SelToPng.jsx)
 
 ![SelToPng anim](SelToPng.gif)
