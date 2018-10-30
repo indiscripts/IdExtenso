@@ -1,3 +1,6 @@
+##### [181030]
+  - **Meta**, added the `parseHeader()`method, which somehow reverses the `header()` function. It recovers (key,value) elements from a header string. (Useful when parsing ***IdExtenso*** files.)
+
 ##### [181026]
   - **Progress**, porting the logics of [ProgressBar.jsx](https://github.com/indiscripts/extendscript/blob/master/scriptui/ProgressBar.jsx) in *IdExtenso*.
 
