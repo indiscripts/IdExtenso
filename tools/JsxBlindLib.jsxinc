@@ -1,0 +1,259 @@
+/*******************************************************************************
+
+		Name:           JsxBlindLib
+		Desc:           JsxBlind 2.0 Library (for ExtendScript Toolkit.)
+		Path:           /tools/JsxBlindLib.jsxinc
+		Require:        IdExtenso
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Library (autoloaded module.)
+		API:            =run() getTiming() getInputURI() getReport()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        181029 (YYMMDD)
+		Modified:       181030 (YYMMDD)
+
+*******************************************************************************/
+
+// IdExtenso entry point for ESTK.
+// ---
+#include '../$$.estk.jsxinc'
+
+// Default progressbar (in case the client use it.)
+// ---
+#include '../etc/$$.Progress.jsxlib'
+
+// $$.JsxBin and $$.JsxBin.Scrambler (encrypted.)
+// ---
+#include 'JsxBlind/$$.JsxBin.bin.jsx'
+#include 'JsxBlind/$$.JsxBin.Scrambler.bin.jsx'
+
+;$$.hasOwnProperty('JsxBlindLib') || eval(__(MODULE, $$, 'JsxBlindLib', 181030, 'run'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	The present script provides a fully redesigned version of our famous JsxBlind
+	library, a JSXBIN obfuscator solution for ExtendScript. For historical detail
+	on JB, see: <indiscripts.com/category/projects/JsxBlind>
+
+	Several reasons led to entirely rewrite the source code of JsxBlind.
+	First, some developers reported that the previous version may throw a
+	`stack overrun` error in complex scripts whose code relies on deeply nested
+	function calls. Indeed, in its primary implementation JsxBlind used a
+	*recursive* parsing strategy, which caused the call stack to overheat while
+	scanning data. Many of my colleagues--just like me!--now use JsxBlind to
+	scramble 500KB jsxbin files, or larger, so removing recursion was a
+	crucial stage. I finally found a way to completely 'flatten' the process
+	while still gaining performance :-)
+
+	Also, since JsxBlind did not previously belong to IdExtenso's ecosystem, I had
+	to keep in parallel many routines that are now much better implemented and
+	structured within the framework, in particular Number conversion and String
+	formatting methods which are highly requested in this project.
+	
+	Finally, although the core algorithm cannot be disclosed, some developers
+	expressed the very legitimate need to take more control over the API. Since
+	IdExtenso has been thought for sharing common scripting tools and features
+	throughout a consistent flow, I decided to redesign JsxBlind so it can fit
+	that global paradigm while keeping its neuralgic process hidden. By 'hidden',
+	I mean of course 'blinded'! That's why the present module includes two
+	submodules, namely `$$.JsxBin` and `$$.JsxBin.Scrambler`, which are entirely
+	JsxBlind-encrypted.
+	
+	It is therefore very difficult to decipher the inner workings of these modules
+	(and I won't document that side), but their public API can be made available to
+	higher-level or customized projects. See their respective notice [TODO] for more
+	detail.
+	
+	*/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	The present library exposes an automatic method, `run()`, which essentially
+	invokes the `$$.JsxBin.Scrambler` module while offering additional I/O options.
+	
+	The Scrambler component is the place where jsxbin identifiers, scanned from
+	your input stream, are transformed into random tokens based on very weird
+	characters that sill perfectly operate at a syntactic level. The Scrambler
+	produces an output string aimed to replace your original jsxbin. It has exactly
+	the same size, the same taste and the same behavior, but you can be confident
+	that it will seriously baffle hackers if they try to decode it back into JSX.
+	
+	Behind the scene the Scrambler actually interacts with a deeper module,
+	`$$.JsxBin`, which just implements the root scanning process (and nothing
+	more.) The JsxBin brick is in fact independent from the Scrambler and might be
+	integrated in other JSXBIN components in the future -- e.g debug tools, code
+	quality validators, etc.
+	
+	[REM] Both `$$.JsxBin` and `$$.JsxBin.Scrambler` are provided in jsxbin form
+	only, and they have been scrambled themselves before public release. Anyway,
+	none of these modules--even in their human-readable form--contain actual clues
+	about *decoding* a JSXBIN file. In other words, `$$.JsxBin` is only enable to
+	extract interesting data segments for the purpose of scanning JSX tokens and
+	identifiers, but it does not extract the *semantics* of the code.
+	
+	USAGE
+	
+	You can #include the present file in any ExtendScript script, with or without
+	InDesign being active. It loads IdExtenso (core features) and makes JsxBlind
+	available from a single functional object: `$$.JsxBlindLib`. As `run()` is
+	automatic, calling `$$.JsxBlindLib(...)` is equivalent to the longhand syntax
+	`$$.JsxBlindLib.run(...)`.
+	
+	The first argument is the jsxbin stream, either provided as a string or a File.
+	(If this argument is missing, the user is invited to select a File.) JsxBlind
+	is smart enough to scan either 'pure' JSXBIN export (from ESTK) or 'embedded'
+	JSXBIN string nested in `eval("...")`. It also takes care of PROLOG and EPILOG
+	parts that may appear in the JSX wrapper.
+	
+	The 2nd argument, optional, is a set of options as detailed in the code. It
+	controls both I/O parameters (preferred folder, progress callback, progress
+	call frequency, report option...) and advanced settings related to the
+	inner process. Mainly:
+
+		.hitFuncNames  Bool    Whether the Scrambler is intended to alter
+		                       FUNCTION NAMES as well as regular identifiers.
+		                       By 'regular identifier' we refer to either a
+		                       variable name, a constant name, or a function
+		                       parameter. (The names of object properties
+		                       or methods are not regular identifiers.)
+	
+		.whiteList     RegExp  Regular expression capturing whitelisted tokens,
+		                       that is, a special set of strings that JsxBlind
+		                       is explicitly allowed to transform even if such
+		                       strings do not reflect a regular identifier.
+		                       For example, a custom object property or method
+		                       name, like `MY_KEY` in the syntax `obj.MY_KEY`.
+		                       Thus, you could send
+		                           `options.whiteList = /^MY_KEY$/`
+
+		.blackList     RegExp  Regular expression capturing blacklisted tokens,
+		                       that is, a set of strings that JsxBlind is
+		                       explicitly told to keep unaltered. For example,
+		                       you may allow the scrambler to alter function
+		                       names EXCEPT "$$" and "MyFunc". Then use:
+		                          `options.blackList = /^\$\$|MyFunc$/`
+
+	[REM] JavaScript *reserved words* always supersede the `whiteList` option
+	(so you cannot allow say `while` of `return` to be changed!), but the
+	`whiteList` option has priority over the `blackList` option in case of
+	conflict. So, use these settings with great caution.
+	
+	Some additional public methods -- getTiming(), getInputURI(), getReport() --
+	are explained in the code. Give a look at `/tests/UseJsxBlindLib.jsx` for
+	a detailed example.
+
+	*/
+
+	[PUBLIC]
+
+	({
+		run: function run_s$File$_o_S(/*?str|File*/input,/*?obj*/options,  $$,ff,fd,r,dt)
+		//----------------------------------
+		// Scramble the jsxbin `input` with respect to the `options`.
+		// The `input` arg may be either a string or a File instance;
+		// if not provided, the user is invited to select a file.
+		// ---
+		// `options`    :: (obj)   Optional parameter object:
+		//   .folder  (Folder|str) Preferred I/O folder.
+		//   .hitFuncNames  (bool) Whether function names must be treated as mutable
+		//                         identifiers (rw=1) instead of immutable tokens (rw=0).
+		//   .whiteList   (RegExp) Unless reserved, any symbol that matches this regex
+		//                         will get forcibly MUTABLE whatever its incoming status.
+		//                         USE WITH CAUTION!
+		//   .blackList ::(RegExp) Unless white-listed, any symbol that matches this regex
+		//                         will get forcibly IMMUTABLE whatever its incoming status.
+		//   .progress     (fct)   Callback progress function.
+		//                         -> progress( uint percent , str message )
+		//                         1: default, 0:bypass.
+		//   .frequency    (1..10) Frequency call of progress function during scanning
+		//                         (default is 5.)
+		//   .report       (bool)  Create a scrambling report?
+		//   .noWrapper    (bool)  If set, return the contained jsxbin code only
+		//                         (without prolog/epilog.)
+		// ---
+		// => str [OK] | false [KO-or-ABORTED]
+		{
+			// Init and aliases.
+			// ---
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			callee.IN_URI = '';
+			input || (input=0);
+			options===Object(options) || (options={});
+
+			if( 'string' != typeof input )
+			{
+				if( !(ff=input) || !(ff instanceof File) )
+				{
+					fd = options.folder ? Folder(options.folder) : callee.DF_FOLD;
+					( fd && fd instanceof Folder && fd.exists )
+					|| (fd = (ff=File($.fileName)).exists ? ff.parent : Folder.desktop);
+					ff = fd.openDlg("Select the JSXBIN file to scramble.");
+					if( !ff || !(ff instanceof File) ) return false;
+				}
+
+				if( ff.open('r') && (ff.encoding='UTF8') )
+				{
+					input = ff.read();
+					ff.close();
+					callee.IN_URI = ff.absoluteURI;
+					callee.DF_FOLD = ff.parent;
+				}
+				else
+				{
+					$$.error(__("Cannot open %1 for reading.",ff), callee.µ);
+				}
+			}
+
+			return [dt=-Date.now(),$$.JsxBin.Scrambler(input,options),callee.TIMING=dt+Date.now()][1];
+		}
+		.setup({ IN_URI:'', DF_FOLD:false, TIMING:0 }),
+		
+		getTiming: function getTiming_I()
+		//----------------------------------
+		// Get the timing of the last run, in milliseconds.
+		{
+			return callee.µ.run.TIMING;
+		},
+		
+		getInputURI: function getInputURI_S()
+		//----------------------------------
+		// Get the URI of the input file (if a file was supplied.)
+		// => str [OK]  |  '' [NONE]
+		{
+			return callee.µ.run.IN_URI;
+		},
+
+		getReport: function getReport_O(  q,o)
+		//----------------------------------
+		// Get the last report (if `options.report` allowed it.) The report
+		// object has the form { count:uint, changes:str[], swaps:str[] }
+		// as detailed below.
+		// ---
+		// `count`   Total number of altered identifiers,
+		//           i.e (changes.length + swaps.length).
+		// `changes` items have the form `"origSymb" ===> [code]`
+		//           where origSymb refers to the original symbol before
+		//           scrambling, `code` being the final jsxbin code.
+		// `swaps`   items have the form `"origSymb" <==> "swapSymb"`
+		//           where origSymb refers to the original symbol before
+		//           permuting it with swapSymb.
+		// ---
+		// => { count:uint, changes:str[], swaps:str[] }
+		{
+			return $.global[callee.µ.__root__].JsxBin.Scrambler.getReport();
+		},
+
+	})
+
+// Load all the required modules right now.
+// ---
+;$$.load();
