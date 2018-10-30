@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =header() NewLine yymmdd() topic()
+		API:            =header() NewLine yymmdd() topic() parseHeader()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180516 (YYMMDD)
-		Modified:       180521 (YYMMDD)
+		Modified:       181030 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Meta') || eval(__(MODULE, $$, 'Meta', 180521, 'header'))
+;$$.hasOwnProperty('Meta') || eval(__(MODULE, $$, 'Meta', 181030, 'header'))
 
 	//==========================================================================
 	// NOTICE
@@ -126,4 +126,33 @@
 				, modf
 				);
 		},
+		
+		parseHeader: function parseHeader_O(/*str*/s,  i,m,q,k)
+		//----------------------------------
+		// Parse the header contained in the string s and return a
+		// { key => val } object (each `val` being a string.)
+		// [REM] `s` must match the minimal <SL>**** . . . ****<SL> scheme,
+		// then data are extracted from the pattern `<TB><TB><Key>:<SP>+<value>`
+		// e.g `Name:    MyModule` or `Path:   /etc/path/to/$$.MyModule.jsxlib`
+		// ---
+		// => obj [VOLATILE]  |  false [KO]
+		{
+			if( 'string' != typeof s ) return false;
+			if( -1 == (i=s.indexOf(String.SL + '****')) ) return false;
+			s = s.substr(i);
+			if( -1 == (i=s.indexOf('****' + String.SL)) ) return false;
+			s = s.slice(0,i);
+			if( !(m=s.match(callee.RE_DATA)) ) return false;
+			
+			$.global[callee.µ.__root__].kill(q=callee.Q);
+			for( i=-1 ; ++i < m.length ; )
+			{
+				s = m[i].trim(); // <key>:<SP>+<value>
+				k = s.slice(0,s.indexOf(':'));
+				q[k] = s.substr(1+k.length).ltrim();
+			}
+			
+			return q;
+		}
+		.setup({ Q:{}, RE_DATA:/\t\t[^:]+: *[^\t\r\n]+/g }),
 	})
