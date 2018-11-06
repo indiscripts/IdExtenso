@@ -7,7 +7,7 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:  static:   SourceEscapes fromCodePoint() fromUTF8()
+		API:  static:   SourceEscapes fromCodePoint() fromUTF8() random()
 		       proto:   codePointAt() toUTF8() toSource() split() [CS4]
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
@@ -17,7 +17,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       181007 (YYMMDD)
+		Modified:       181106 (YYMMDD)
 
 *******************************************************************************/
 
@@ -171,6 +171,37 @@
 	// => str
 	{
 		return unescape(encodeURIComponent(this));
+	};
+
+	//==========================================================================
+	// [181106] String.random(length)
+	//==========================================================================
+
+	String.random = function random(/*uint=4*/len,  s)
+	//----------------------------------
+	// Return a random string of length `len` and matching the
+	// pattern /[a-z][0-9a-z]*/. Useful to generate random IDs.
+	// ---
+	// Examples:
+	//     String.random()   =>  "i1x4"
+	//     String.random(8)  =>  "f34a10w9"
+	//     String.random(16) =>  "gj1duwcgsqk9t8fz"
+	// ---
+	// => str
+	{
+		(len>>>=0) || (len=4);
+
+		s = String.fromCharCode( 0x61 + Math.floor(26*Math.random()) );
+		if( 1 == len ) return s;
+
+		for
+		(
+			s += (0xFFF&(+new Date)).toString(36) ;
+			s.length < len ;
+			s += Math.round(0xFFFF*Math.random()).toString(36)
+		);
+		
+		return s.slice(0,len);
 	};
 
 	//==========================================================================
