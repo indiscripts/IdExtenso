@@ -1,3 +1,6 @@
+##### [181106]
+  - `core/Ext/$$.string.jsxinc`: added `String.random()`, a simple method for randomly generating lowercase, alphanumeric IDs of a determined length. By default, `String.random()` returns a string of 4 characters (e.g `"i1x4"`). Pass in the desired length if needed. The result is guaranteed to match the pattern `/^[a-z][0-9a-z]*$/` (that is, the first character is always alphabetic.)
+
 ##### [181030]
   - **Meta**, added the `parseHeader()`method, which somehow reverses the `header()` function. It recovers (key,value) elements from a header string. (Useful when parsing ***IdExtenso*** files.)
 
