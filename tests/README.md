@@ -107,6 +107,8 @@ Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuff
 
 Run some tests on `$.global.parseInt` once patched by IdExtenso.
 
+![ParseIntFix screenshot](ParseIntFix.png)
+
 _Demonstrates:_
    
 * Fixing a native ExtendScript bug in the `[[global]]` scope.
