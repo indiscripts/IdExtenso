@@ -40,7 +40,7 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 
 3. The script must contain a directive `#include 'path/to/$$.jsxinc'` (which includes the framework.) A global reference `$$` is then available from which you can access any point of the API.
 
-> *Note*. — If InDesign is not involved in your project, you may `#include` the alternate entry point `[$$.estk.jsxinc]($$.estk.jsxinc)` which is intended to make **IdExtenso** available in the ESTK context.
+> *Note*. — If InDesign is not involved in your project, you may `#include` the alternate entry point `[$$.estk.jsxinc](./$$.estk.jsxinc)` which is intended to make **IdExtenso** available in the ESTK context.
 
 4. If relevant, include any additional module(s) you may need—e.g. `#include etc/Web.jsxlib`—so that `$$.Web` will be added too. (All methods and properties are documented in their respective module.)
 
