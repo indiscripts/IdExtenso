@@ -1,18 +1,18 @@
 /*******************************************************************************
 
 		Name:           scriptui
-		Desc:           Extends ScriptUI static properties.
+		Desc:           Minimal ScriptUI extension.
 		Path:           /core/Ext/$$.scriptui.jsxinc
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
-		Kind:           Part of /Ext.
-		API:            FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
-		                isWidget() builder()
-		DOM-access:     ---
+		Kind:           Snippet (part of /Ext.)
+		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
+		                ScriptUI.isWidget() getIndex() builder()
+		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       180825 (YYMMDD)
+		Modified:       181117 (YYMMDD)
 
 *******************************************************************************/
 
@@ -21,6 +21,15 @@
 	//==========================================================================
 
 	/*
+
+	This snippet loads a few static extensions in the native ScriptUI object. It's
+	just a minimal set of features used in basic UI routines shared across the
+	framework. It essentially provides alignment shortcuts (`LT` for 'left-top',
+	etc) and the `builder()` method which makes easier to manage ScriptUI resources.
+	
+	As the code below consumes very little space it is integrated with the `core`
+	directory even if your script does not invoke ScriptUI. A much richer set of
+	additional UI features is to be provided in a separate `etc` branch.
 
 	COMBINED ALIGNMENTS.
 
@@ -31,6 +40,11 @@
 	['left','top'] or ['fill','center'], which creates temporary arrays that
 	could be avoided using static data structures. This is done by
 	globally declaring ScriptUI.LT, .FC, and so on.
+	
+	[REM] Alignment options does not seem to work if the target widget has
+	no custom `preferredSize` when the layout is processed. For Group or
+	Panel instances that would need alignment into their container, it is
+	recommended to set both `preferredSize` and `maximalSize` properties.
 	
 	SCRIPTUI BUILDER.
 	
@@ -46,10 +60,6 @@
 	and external assignment mechanisms that could be implemented in more
 	advanced modules.
 	
-	[REM] There is no sensible cost in having this helper available in the
-	`core` distribution of IdExtenso, even if some particular script does not
-	invoke ScriptUI at all.
-
 	*/
 
 	//==========================================================================
@@ -124,9 +134,21 @@
 		'flashplayer':  { abbr:'F',  name:'FlashPlayer' },  // -,bounds,file,    {name}		
 	}});
 
+	ScriptUI.getIndex = function getIndex(/*any*/x,  a,i)
+	//----------------------------------
+	// [180825] Return the index of x in its parent.children array.
+	// => uint [OK]  |  -1 [KO]
+	{
+		a = ScriptUI.isWidget(x) && !(x instanceof Window) && (x.parent||0).children;
+		if( !a ) return -1;
+		for( i=a.length ; i-- && x!==a[i] ; );
+		return i;
+	},
+
 	//==========================================================================
 	// [180528] ScriptUI.builder() ; [180530] Added event keys.
 	// [180825] Inherits `helpTip` from parent
+	// [181117] Set the `name` property of the widget (if a name is provided.)
 	//==========================================================================
 
 	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,u,f,win,pp,k,x,p,t,name,wg,ISWG)
@@ -208,7 +230,7 @@
 			if( x !== Object(x) ){ parent[k]=x; continue; }
 
 			// Parse k::<WidgType>$<WidgName> -->  k=<WidgType> , name=<WidgName>
-			// If `name` is a numeral, it is considered empty.
+			// If `name` is a numeral, it is considered the empty string.
 			// ---
 			0 < (p=k.indexOf('$')) ? ( t=k.substr(1+p), k=k.substr(0,p).toLowerCase() ) : (t='');
 			name = t.length && isNaN(parseInt(t,10)) ? t : '';
@@ -345,11 +367,19 @@
 			0===wg && ( (wg = parent.add.apply(parent,  q)), ISWG=1 );
 			q.length = 0;
 
-			// If a name is provided, make the widget available from win[name].
+			// If a name is provided, make the widget available from win[<name>].
 			// ---
 			if( name.length || !(name in win) )
 			{
 				win[name] = wg;
+			}
+
+			// [ADD181117] If a name is provided, make it available from the
+			// "name" property (that is, `this.name`).
+			// ---
+			if( name.length || !('name' in wg) )
+			{
+				wg.name = name;
 			}
 
 			// [ADD180825] Inherits `helpTip` from parent, if not assigned.
