@@ -9,13 +9,30 @@
 		Kind:           Snippet (global scope)
 		API:            Object.prototype.setup()
 		                String.prototype.toSource()
+		                [[global]].parseInt()
 		                etc
 		DOM-access:     ---
 		Todo:           ---
 		Created:        160731 (YYMMDD)
-		Modified:       171203 (YYMMDD)
+		Modified:       181117 (YYMMDD)
 
 *******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	All snippets included here belong to the `/core/Ext/` directory. They load
+	important features outside of the `$$` object. In principle, those external
+	bricks are needed for IdExtenso to properly work. Do not rewrite or alter
+	this file without caution. Note also that order matters in the following
+	`#include` directives, as some methods (e.g `Object.prototype.setup`) may
+	be invoked at include time.
+
+	*/
+
 
 	// Add $.summary.diff() feature.
 	// ---
@@ -39,6 +56,10 @@
 	// asPath and toPath methods, and more...
 	// ---
 	#include 'Ext/$$.string.jsxinc'
+
+	// [181117] Fix [[global]] functions.
+	// ---
+	#include 'Ext/$$.global.jsxinc'
 
 	// Redefine Number.prototype.toSource.
 	// ---
