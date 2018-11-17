@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       180516 (YYMMDD)
+		Modified:       181117 (YYMMDD)
 
 *******************************************************************************/
 
@@ -118,18 +118,18 @@
 	the [PROTO] keys are loaded in the `prototype` property so that
 	they have the expected meaning and behavior.
 	
-	From within the body of a function key, whether private,
-	static or prototyped, `callee.µ` always refers to the module
-	itself. In particular, `callee.µ===this.constructor` is
-	true in any prototyped method of a CLASS as long as it is
-	invoked from a regular instance (of that class.)
+	From within the body of a function key, even private, static
+	or prototyped, `callee.µ` always refers to the module itself.
+	In particular, `callee.µ===this.constructor` is true in any
+	prototyped method of a CLASS as long as it is invoked from a
+	regular instance (of that class.)
 
 	*/
 
 	if( (function(){return this}).call(null)!==($||0).global || this!==$.global )
 	//----------------------------------
 	// Check that:
-	// (1) $.global refers to the [[global]] scope;
+	// (1) $.global *does refer* to the [[global]] scope;
 	// (2) the current context *is* the [[global]] scope.
 	// [REM] In ExtendScript both `[[global]].$` and `$.global`
 	// are read-only properties :-)
