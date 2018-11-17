@@ -4,7 +4,7 @@
   - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): now `ScriptUI.builder()` autosets the `name` property of the output widget, provided a name is available and wouldn't override an existing `name` property. This improvement is useful in event handlers that require simple name checking rather than deeper identification steps.
 
 ##### [181106]
-  - `core/Ext/$$.string.jsxinc`: added `String.random()`, a simple method for randomly generating lowercase, alphanumeric IDs of a determined length. By default, `String.random()` returns a string of 4 characters (e.g `"i1x4"`). Pass in the desired length if needed. The result is guaranteed to match the pattern `/^[a-z][0-9a-z]*$/` (that is, the first character is always alphabetic.)
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc): added `String.random()`, a simple method for randomly generating lowercase, alphanumeric IDs of a determined length. By default, `String.random()` returns a string of 4 characters (e.g `"i1x4"`). Pass in the desired length if needed. The result is guaranteed to match the pattern `/^[a-z][0-9a-z]*$/` (that is, the first character is always alphabetic.)
 
 ##### [181030]
   - **Meta**, added the `parseHeader()`method, which somehow reverses the `header()` function. It recovers (key,value) elements from a header string. (Useful when parsing ***IdExtenso*** files.)
@@ -16,40 +16,40 @@
   - **ByteStream**, a class to easily handle binary data stored in files. Deals with strings, characters, hex format, signed and unsigned integers (byte, short, int24, long), float (32bit) and double (64bit) numbers. Supports BE and LE ordering. Goto the [NOTICE](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.ByteStream.jsxlib#L29) for details.
 
 ##### [181007]
-  - `core/Ext/$$.string.jsxinc`: added `String.fromUTF8()` and `String.prototype.toUTF8()`.
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc): added `String.fromUTF8()` and `String.prototype.toUTF8()`.
   
 ##### [180909]
   - **ModalScript**: still improving default getter/setter mechanisms.
 
 ##### [180825]
-  - `core/Ext/$$.scriptui.jsxinc`: If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
+  - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
 
 ##### [180824]
   - **ModalScript**: small fix in `~._SV_` (the `items` property of a list wasn't properly parsed thru the autosetter algorithm.) Added the method `Window.prototype.getWidgetKey` (cf. `~._GW_`) to mirror **BasicScript**'s API.
 
 ##### [180721]
-  - `core/Ext/$$.number.jsxinc`: changed the `toSource()` method so it supports a `mode` argument for _compact_ vs. _short_ vs. _native_ output string. By default (mode=0) the function removes leading zero from floating-point number in )-1,1(. For instance, `(-0.75).toSource() -> "-.75"`.
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): changed the `toSource()` method so it supports a `mode` argument for _compact_ vs. _short_ vs. _native_ output string. By default (mode=0) the function removes leading zero from floating-point number in )-1,1(. For instance, `(-0.75).toSource() -> "-.75"`.
 
 ##### [180715]
-  - `core/Ext/$$.number.jsxinc`: added `Number.fromIEEE754_32(hexStr)` and `Number.prototype.toIEEE754_32()` for decoding from (resp. encoding to) IEEE754 32bit format (single-precision floating-point representation.) Keep in mind that JS numbers are still double (i.e float64), so you cannot assert, in general, that `x === Number.fromIEEE754_32(x.toIEEE754_32())` for any JS number `x`. However, the _hex-to-number_ conversion is safe: `hex8 === (Number.fromIEEE754_32(hex8)).toIEEE754_32()` (OK.)
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): added `Number.fromIEEE754_32(hexStr)` and `Number.prototype.toIEEE754_32()` for decoding from (resp. encoding to) IEEE754 32bit format (single-precision floating-point representation.) Keep in mind that JS numbers are still double (i.e float64), so you cannot assert, in general, that `x === Number.fromIEEE754_32(x.toIEEE754_32())` for any JS number `x`. However, the _hex-to-number_ conversion is safe: `hex8 === (Number.fromIEEE754_32(hex8)).toIEEE754_32()` (OK.)
 
 ##### [180710]
-  - `core/Ext/$$.string.jsxinc`: Patched `String.prototype.split()` for CS4.
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc): Patched `String.prototype.split()` for CS4.
 
 ##### [180705]
-  - `core/Ext/$$.string.jsxinc` now implements `String.prototype.codePointAt()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.prototype.codepointat).
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc) now implements `String.prototype.codePointAt()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.prototype.codepointat).
 
 ##### [180704]
-  - `core/Ext/$$.number.jsxinc`: added `Number.fromIEEE754(hexStr)` and `Number.prototype.toIEEE754()` for decoding from (resp. encoding to) IEEE754 64bit format (double-precision floating-point representation.)
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): added `Number.fromIEEE754(hexStr)` and `Number.prototype.toIEEE754()` for decoding from (resp. encoding to) IEEE754 64bit format (double-precision floating-point representation.)
 
 ##### [180703]
-  - `core/Ext/$$.string.jsxinc` now implements `String.fromCodePoint()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.fromcodepoint), including the ability to supply an `Array` of code points rather than an arg list. The purpose of this function is to allow to build a JS string (sequence of UTF-16 units) from code points that may be greater than 0xFFFF, that is, in the range U+10000-U+10FFFF. This then involves _surrogate pairs_ as defined by the Unicode standard.
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc) now implements `String.fromCodePoint()` as specified in [ECMA-262 9.0](https://www.ecma-international.org/ecma-262/9.0/index.html#sec-string.fromcodepoint), including the ability to supply an `Array` of code points rather than an arg list. The purpose of this function is to allow to build a JS string (sequence of UTF-16 units) from code points that may be greater than 0xFFFF, that is, in the range U+10000-U+10FFFF. This then involves _surrogate pairs_ as defined by the Unicode standard.
 
 ##### [180626]
   - Introducing the **MatrixArray** module, a tool for dealing with transformation matrices throughout `Array.prototype`, without involving DOM objects :-)
 
 ##### [180615]
-  - `$$.estk.jsxinc` added. An alternate _entry point_ for using ***IdExtenso*** from ExtendScript ToolKit--without InDesign. Experimental feature.
+  - [`$$.estk.jsxinc`]($$.estk.jsxinc) added. An alternate _entry point_ for using ***IdExtenso*** from ExtendScript ToolKit--without InDesign. Experimental feature.
 
 ##### [180609]
   - **Dom.Space**:  Added a patch `MasterSpread.prototype.resolve()` for InDesign CS4. (For some reason this method is not available in the CS4 DOM while `Spread.prototype.resolve` is OK. Thanks to `Page`'s API we can implement a fully functional `resolve` method for master spreads. See detail in the COMPATIBILITY PATCHES section.)
@@ -65,7 +65,7 @@
   - Introducing **ModalScript** (`/etc/ModalScript`), a variant of the **BasicScript** module that supports ScriptUI dialogs instead of DOM dialogs. While **BasicScript** relies on the **Dom.Dialog** module, **ModalScript** only involves the `ScriptUI.builder()` routine available in the core branch. Aside from that, **ModalScript** provides the same functionalities based on **Settings** and **Yalt**.
 
 ##### [180531]
-  - Added `$$.yesNo()`. And the whole _messaging_ toolbox (`/core/Root/$$.messaging.jsxinc`) has been re-factored, now using `ScriptUI.builder`'s API--much more secure than the old ScriptUI resource strings!
+  - Added `$$.yesNo()`. And the whole _messaging_ toolbox - [`/core/Root/$$.messaging.jsxinc`](/core/Root/$$.messaging.jsxinc) - has been re-factored, now using `ScriptUI.builder`'s API--much more secure than the old ScriptUI resource strings!
   - Fixed a bug in `Dom.Dialog['~'].XDLG` (XML dialog builder): needed to change `wx.name()` into `String(wx.name())` to prevent the code from handling a QName object. (This bug had undesirable side effects on [InstantDialog.jsx](tests/InstantDialog.jsx) sample script.)
 
 ##### [180530]
@@ -73,12 +73,12 @@
   - `ScriptUI.builder()` now parses event types preceded by an underscore (e.g `_mousedown`) and declares the corresponding event listener if the associated value is a function.
 
 ##### [180528]
-  - `core/Ext/$$.scriptui.jsxinc`: Added the static `ScriptUI.builder()` method. Provides a compact and generic tool for building resource-based user intarfaces (full `Window` or custom components.) Unlike the native 'resource string' mechanism which involves literal strings and therefore leads to issue when dynamic data are to be treated, `ScriptUI.builder()` deals with actual objects whose internal data may still be browsed and refined just before being sent to the builder.
+  - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): Added the static `ScriptUI.builder()` method. Provides a compact and generic tool for building resource-based user intarfaces (full `Window` or custom components.) Unlike the native 'resource string' mechanism which involves literal strings and therefore leads to issue when dynamic data are to be treated, `ScriptUI.builder()` deals with actual objects whose internal data may still be browsed and refined just before being sent to the builder.
   - `ScriptUI.isWidget()` is a companion tool of `ScriptUI.builder`; its internal map might be used in more advanced modules.
   - Also, we have fixed the combined alignment shortcuts (`ScriptUI.LT`, `ScriptUI.RT`, etc) as the numeric values caused problems in recent ScriptUI versions.
 
 ##### [180524]
-  - Added string truncation methods `trunc()`, `rtrunc()`, and `ltrunc()` to `String.prototype` ; cf polyfill in `core/Ext/$$.string.jsxinc`.
+  - Added string truncation methods `trunc()`, `rtrunc()`, and `ltrunc()` to `String.prototype` ; cf polyfill in [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc).
 
 ##### [180521]
   - Introducing the **Meta** module. Will provide tools for building IdExtenso components (file templates, etc.)
@@ -88,7 +88,7 @@
 
 ##### [180516]
   - **Entry Point** (`$$.jsxinc`) now allows up to 9 formal arguments in _automatic_ methods and contructors. Indeed, there are cases where the `__auto__` property of a module may refer to a function that expects many parameters. The previous implementation was using a general `(x,y,z,t)` argument list limited to four parameters. Same thing with constructors built from the `CLASS` macro. (REM. - For technical and performance reasons, ***IdExtenso*** does not invoke the `arguments` property of `Function` instances. This would pollute ExtendScript memory with additional `[Workspace]` objects that puzzle garbage collection.)
-  - Added the method `$$.failure()` in `/core/Root/$$.messaging.jsxinc`.
+  - Added the method `$$.failure()` in [`Root/$$.messaging.jsxinc`](/core/Root/$$.messaging.jsxinc).
 
 ## 1.80515
   - The **Dom.Dialog** module now provides a public property `SmartMeasurementBoxes` (0 or 1) that affects the behavior of getters and setters attached to measurement controls (`MeasurementEditbox` and `MeasurementCombobox` instances.) In summary, `SmartMeasurementBoxes==1` guarantees that numeric values managed through the module interface are understood relative to the control unit (`editUnits`). This is useful when you need to set, get, and compute magnitudes straight into a particular unit (instead of points.) More details in the [NOTICE](etc/%24%24.Dom.Dialog.jsxlib#L207).
@@ -119,21 +119,21 @@
   - **JSON** : In ExtendScript the test `x===null` is not reliable when `x` refers to a `UnitValue` instance whose value is in the range )-1,1(. Indeed, due to an implementation error regarding the `===` operator, `UnitValue(0.5,'pt')===null` is true! The `LAVE` routine has been updated to work around this bug. `$$.JSON(UnitValue(<any>))` now works fine  whatever the magnitude of the `UnitValue`.
 
 ##### [180412]
-  - `core/Ext/number`: static routines `Number.parse()` and `Number.format()` added, with basic localized delimiters `Number.DecimalChar` and `Number.ThousandsChar`.
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): static routines `Number.parse()` and `Number.format()` added, with basic localized delimiters `Number.DecimalChar` and `Number.ThousandsChar`.
 
 ##### [180411]
-  - `core/Ext/number`: Added `Number.prototype.toDecimal()`, a variant of `toFixed` that fixes rounding issues and provides more control over the decimal notation.
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): Added `Number.prototype.toDecimal()`, a variant of `toFixed` that fixes rounding issues and provides more control over the decimal notation.
 
 ##### [180409]
-  - `core/Ext/number`: Added `Number.flatten()` (static) for coercing the exponential representation of a Number into its decimal form. E.g: `Number.flatten(1.234e-8) -> "0.00000001234"`. Also supports string-to-string conversions, e.g: `Number.flatten("12.345678e-15") -> "0.000000000000012345678"`.
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): Added `Number.flatten()` (static) for coercing the exponential representation of a Number into its decimal form. E.g: `Number.flatten(1.234e-8) -> "0.00000001234"`. Also supports string-to-string conversions, e.g: `Number.flatten("12.345678e-15") -> "0.000000000000012345678"`.
 
 ## 1.80406
   - `$$.unload()` (**Root** module) now supports an argument named `KEEP_DORMANT`, falsy by default. The client code can use it to prevent **IdExtenso** from waking up InDesign when the framework is unloading. The main usage of this flag is to keep active an external process launched by your script at the very end of its own procedure, for example `myFile.execute()`, etc.
   - The **BasicScript** module (`etc/$$.BasicScript.jsxlib`) takes into account the previous point. It now conveys the returned value from `Context.onQuit` (hook) to `$$.unload()`.
 
 ##### [180403]
-  - `core/Ext/patterns`: added `RegExp.SPCE` for capturing controls and InDesign specific space caracters.
-  - `core/Ext/string`: added `String.prototype.stripSpaces()` for removing outer and inner spaces from a string. Also, `U+205F` (MEDIUM MATHEMATICAL SPACE) is now seen by the `trim` methods.
+  - [`Ext/$$.patterns.jsxinc`](/core/Ext/$$.patterns.jsxinc): added `RegExp.SPCE` for capturing controls and InDesign specific space caracters.
+  - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc): added `String.prototype.stripSpaces()` for removing outer and inner spaces from a string. Also, `U+205F` (MEDIUM MATHEMATICAL SPACE) is now seen by the `trim` methods.
 
 ##### [180402]
   - **Env** now includes `Env/$$.screen.jsxinc`, a snippet that collects data relative to the current display config (`$.screens`, ScriptUI workspace, active window bounds (if available) and additional information from `app.generalPreferences` (`mainMonitorPpi` etc.) The main goal here is to get more control over issues that involve screen coordinates and HiDpi (4K, Retina.) `$$.Env.summary()` now returns these extra infos.
@@ -174,7 +174,7 @@
 
 ## 1.80225
   - `Ext/number` now performs a polyfill for `Number`'s static members specified in ECMAScript 2015. Namely: `EPSILON`, `MAX_SAFE_INTEGER`, `MIN_SAFE_INTEGER`; and the methods `isInteger()` and `isSafeInteger()`. From now you can use code like `if(Number.isInteger(x)){...}` in your project.
-  - Important fix in the **BigInt** module. In `prototype['<']` and `prototype['<=']` the _reversed_ argument wasn't listened to, so the scheme `number < this` was improperly parsed as `this['<'](number)`, leading to serious problems! For example, `999 < BigInt(1000)` was said false. ([Detail](https://github.com/indiscripts/IdExtenso/blob/master/etc/%24%24.BigInt.jsxlib#L2720).)
+  - Important fix in the **BigInt** module. In `prototype['<']` and `prototype['<=']` the _reversed_ argument wasn't listened to, so the scheme `number < this` was improperly parsed as `this['<'](number)`, leading to serious problems! For example, `999 < BigInt(1000)` was said false. ([Detail](/etc/$$.BigInt.jsxlib#L2720).)
 
 ##### [180221]
   - `Settings` updated. Various bugs fixed. Now supports session-persistent keys :-)
@@ -292,7 +292,7 @@
   - Fixed `Yalt.onLoad()` signature.
 
 ##### [170423]
-  - Added `prefix` and `zeroPad` params to `Number.prototype.toHexa` [*`core/Ext/$$.number.jsxinc`*]
+  - [`Ext/$$.number.jsxinc`](/core/Ext/$$.number.jsxinc): added `prefix` and `zeroPad` params to `Number.prototype.toHexa`.
 
 ##### [170422]
   - Various unnotified changes (*JSON*, *Env*, etc.)
