@@ -103,6 +103,17 @@ Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuff
 
 ---
 
+##### [`ParseIntFix.jsx`](ParseIntFix.jsx)
+
+Run some tests on `$.global.parseInt` once patched by IdExtenso.
+
+_Demonstrates:_
+   
+* Fixing a native ExtendScript bug in the `[[global]]` scope.
+* Using `$$.trace`.
+
+---
+
 ##### [`PlaceWebImage.jsx`](PlaceWebImage.jsx)
 
 Download an image through `http` and place it in the active spread. (This script is a variant of GetWebImage.)
