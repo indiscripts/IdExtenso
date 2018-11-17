@@ -1,0 +1,131 @@
+/*******************************************************************************
+
+		Name:           global
+		Desc:           Fixes some [[global]] functions.
+		Path:           /core/Ext/$$.global.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            parseInt()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        181117 (YYMMDD)
+		Modified:       181117 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	The purpose of this snippet is to repair or improve [[global]] functions which
+	ExtendScript authors didn't properly implement. This area should NOT be used for
+	adding new features in the global scope.
+
+	*/
+
+	//==========================================================================
+	// [181117] $.global.parseInt
+	//==========================================================================
+	
+	/*
+
+	It has been found that the native `parseInt` method has a bug in ExtendScript.
+	If radix > 10, let D be `radix-11`, then character codes in [ 0x3a, 0x3a+D ]
+	were wrongly interpreted as valid digits. For instance, we observed:
+	
+	      parseInt( ":", 11 ) === 10     // Should return NaN
+	      parseInt( "=", 16) === 13      // Should return NaN
+	      parseInt( "a?", 16) === 175    // Should return 10
+	      etc.
+
+	The solution was to rewrite `parseInt` in a way that filters out unwanted
+	characters as specified in ECMAScript. We also provide an implementation
+	that complies with ECMA2018.
+	
+	"The parseInt function produces an integer value dictated by interpretation of
+	the contents of the string argument according to the specified radix. Leading
+	white space in string is ignored. If radix is undefined or 0, it is assumed to
+	be 10 except when the number begins with the code unit pairs 0x or 0X, in which
+	case a radix of 16 is assumed. If radix is 16, the number may also optionally
+	begin with the code unit pairs 0x or 0X."
+
+	[REM] In particular, the '0' prefix is no longer assumed to introduce an octal
+	representation.
+
+	*/
+
+	;$.global.parseInt = function parseInt(/*str*/s,/*2..36=10*/radix,  t,sgn)
+	//----------------------------------
+	// Parse the string `s` and return an integer of the specified radix.
+	// If `s` is not a string, then it is converted to a string. Leading
+	// whitespace is ignored. "If parseInt encounters a character that is
+	// not a numeral in the specified radix, it ignores it and all succeeding
+	// characters and returns the integer value parsed up to that point."
+	// If `radix` is 0, undefined, or falsy, then radix=10 is choosen unless
+	// the prefix "0x" (or "0X") appears in `s`, which then implies radix=16.
+	// (Hence, if `s` just begins with "0" while radix is not specified, it
+	// is no longer assumed that the octal system is to be used.)
+	// If `s` do not contain any valid numeral or if radix is out-of-range,
+	// NaN is returned.
+	// ---
+	// [REM] Fix parseInt() in ExtendScript and make it ECMA2018-compliant.
+	// ecma-international.org/ecma-262/9.0/index.html#sec-parseint-string-radix
+	// ---
+	// => int | NaN
+	{
+		// Validate radix.
+		// ---
+		t = (radix|=0) ? +(16==radix) : 1;
+		radix || (radix=10);
+		if( 2 > radix || 36 < radix ) return NaN;
+
+		// Remove leading white space.
+		// ---
+		s = String(s).ltrim();
+
+		// Sign.
+		// ---
+		sgn = s.length && 0x2D==s.charCodeAt(0) ? -1 : 1;
+		( 0 > sgn || 0x2B==s.charCodeAt(0) ) && (s=s.substr(1));
+		
+		// Strip '0x'|'0X' prefix?
+		// ---
+		t && 2 <= s.length && 0x30==s.charCodeAt(0)
+		&& ('x'==(t=s.charAt(1)) || 'X'==t)
+		&& ( radix=16, s=s.substr(2) );
+		
+		// [ECMA] "If S contains a code unit that is not a radix digit,
+		// let Z be the substring of S consisting of all code units
+		// before the first such code unit; otherwise, let Z be S."
+		// ---
+		t = callee['R'+radix] ||
+		(
+			callee['R'+radix] = 10 < radix
+			? RegExp( '^[0-9a-' + String.fromCharCode(86+radix) + ']+' , 'i' )
+			: RegExp( '^[0-' + (radix-1) + ']+' )
+		);
+
+		// [ECMA] "If Z is empty, return NaN."
+		// ---
+		if( !(t=s.match(t)) ) return NaN;
+		
+		// Now we can invoke the original implementation.
+		// ---
+		t = callee.__parseInt__(t[0],radix);
+		
+		// Make sure negative zero is properly returned.
+		// ---
+		return 0===t && 0 > sgn ? -0 : sgn*t;
+	}
+	.setup
+	({
+		__parseInt__ : $.global.parseInt,
+		R2:            /^[01]+/,
+		R10:           /^[0-9]+/,
+		R11:           /^[0-9a]+/i,
+		R16:           /^[0-9a-f]+/i,
+	});
