@@ -1,10 +1,14 @@
 # *IdExtenso*  1.81117
 
-*ExtendScript Framework for InDesign Ninjas.*
+###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
-### Overview
+-----
 
 ![Overview of IdExtenso's API](screenshot.png)
+
+-----
+
+### Overview
 
 ***IdExtenso*** is a work-in-progress API dedicated to ExtendScript developers looking for a robust solution in the particular field of InDesign scripting. Think of it as a toolbox based on efficient and growing building blocks.
 
@@ -12,9 +16,13 @@ Do you need a clean JSON formatter that *really* supports ExtendScript oddities 
 
 The framework is designed to support ExtendScript from version `3.92` to `4.5` and InDesign from `v.6.0` (CS4) to `14.x` (CC2019) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, and so much more.
 
+-----
+
 ### What *IdExtenso* Is Not
 
 ***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not offer a bunch of _JS sugars_ easily findable in other distributions. So it does not pretend to form a *library* in the narrow sense. It is about building a complete workspace. It wouldn't make sense to use it in small projects that don't involve features like localization, performance testing, user interface, modularity, compatibility, settings management.
+
+-----
 
 ### Key Points
 
@@ -29,6 +37,8 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 - Fixes various compatibility issues regarding ExtendScript and/or InDesign DOM versions.
 
 - Offers a growing number of extra modules that you can plug at wish through `#include`. Among the available modules present in the `/etc` branch, give a look at: **[Yalt](/etc/$$.Yalt.jsxlib)** (localization engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[MD5](/etc/$$.MD5.jsxlib)**, **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, etc.
+
+-----
 
 ### Getting Started
 
@@ -49,6 +59,8 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 Congratulations! You're now ready to use ***IdExtenso*** in your script!
 
 > *Tip*. — Use `$$.help()` at any point of your code to discover and browse the API of the included modules (including core features.) 
+
+-----
 
 ### Quick Example
 
