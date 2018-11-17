@@ -11,7 +11,7 @@
 		DOM-access:     app
 		Todo:           ---
 		Created:        171105 (YYMMDD)
-		Modified:       171105 (YYMMDD)
+		Modified:       181117 (YYMMDD)
 
 *******************************************************************************/
 
@@ -103,52 +103,58 @@ showPng.DRAW_HANDLER = function ondraw()
     this.graphics.drawImage(this.image,callee.X,callee.Y,callee.W,callee.H);
 };
 
-function run(  o,ff,z,b,s)
+function run(  o,ff,z,b,s,KEEP)
 //----------------------------------
 // Main program.
 {
-    if( !app.properties.selection || !app.selection.length ) $$.error(__("Nothing selected."));
-    
-    o = app.selection[0];
-    
-    if( !o.hasOwnProperty('exportFile') ) $$.error(__("Cannot export from a %1.",o));
-    
-    // Export the selection into a temp file.
-    // ---
-    app.hasOwnProperty('pngExportPreferences')
-    &&
-    app.pngExportPreferences.properties = {
-        antiAlias:             true,
-        exportResolution:      72.0,
-        pngColorSpace:        +PNGColorSpaceEnum.RGB,
-        pngQuality:           +PNGQualityEnum.HIGH,
-        transparentBackground: true,
-    };
-
-    ff = File(String(Folder.temp) + '/selToPng.png');
-
-    o.exportFile(
-        +ExportFormat.PNG_FORMAT,
-        ff,
-        false,
-        void 0,
-        void 0,
-        true
-    );
-
-    for( z=100 ; (b=!ff.exists)&&z-- ; )
+    if( !app.properties.selection || !app.selection.length )
     {
-        $.sleep(10);
-        ff = File(ff);
+    	ff = File.openDialog(__("Select a PNG file"),'*.png');
+    	if( !ff ) return;
+    	KEEP = 1;
     }
-    
-    if( b ) $$.error(__("Cannot create the export file."));
+    else
+    {
+        o = app.selection[0];
+        if( !o.hasOwnProperty('exportFile') ) $$.error(__("Cannot export from a %1.",o));
+        
+        // Export the selection into a temp file.
+        // ---
+        app.hasOwnProperty('pngExportPreferences')
+        &&
+        app.pngExportPreferences.properties = {
+            antiAlias:             true,
+            exportResolution:      72.0,
+            pngColorSpace:        +PNGColorSpaceEnum.RGB,
+            pngQuality:           +PNGQualityEnum.HIGH,
+            transparentBackground: true,
+        };
+
+        ff = File(String(Folder.temp) + '/selToPng.png');
+
+        o.exportFile(
+            +ExportFormat.PNG_FORMAT,
+            ff,
+            false,
+            void 0,
+            void 0,
+            true
+        );
+
+        for( z=100 ; (b=!ff.exists)&&z-- ; )
+        {
+            $.sleep(10);
+            ff = File(ff);
+        }
+        
+        if( b ) $$.error(__("Cannot create the export file."));
+    }
 
     // Serialize the contents and show it.
     // ---
     z = ff.length;
     s = $$.File.readBinary(ff);
-    ff.remove();
+    KEEP || ff.remove();
 
     if( 'string' != typeof s ) $$.error(__("Cannot read the PNG file."));
     
