@@ -28,7 +28,7 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 
 - Fixes various compatibility issues regarding ExtendScript and/or InDesign DOM versions.
 
-- Offers a growing number of extra modules that you can plug at wish through `#include`. Among the available modules present in the `/etc` branch, give a look at: **[/etc/$$.Yalt.jsxlib](Yalt)** (localization engine), **[/etc/$$.Web.jsxlib](Web)** (HTTP getter), **[/etc/$$.Settings.jsxlib](Settings)** (multiscope settings manager), **[/etc/$$.MD5.jsxlib](MD5)**, **[/etc/$$.DateFormat.jsxlib](DateFormat)**, **[/etc/$$.BigInt.jsxlib](BigInt)**, **[/etc/$$.ByteStream.jsxlib](ByteStream)**, **[/etc/$$.Unit.jsxlib](Unit)**, etc.
+- Offers a growing number of extra modules that you can plug at wish through `#include`. Among the available modules present in the `/etc` branch, give a look at: **[/etc/%24%24.Yalt.jsxlib](Yalt)** (localization engine), **[/etc/$$.Web.jsxlib](Web)** (HTTP getter), **[/etc/$$.Settings.jsxlib](Settings)** (multiscope settings manager), **[/etc/$$.MD5.jsxlib](MD5)**, **[/etc/$$.DateFormat.jsxlib](DateFormat)**, **[/etc/$$.BigInt.jsxlib](BigInt)**, **[/etc/$$.ByteStream.jsxlib](ByteStream)**, **[/etc/$$.Unit.jsxlib](Unit)**, etc.
 
 ### Getting Started
 
