@@ -1,3 +1,7 @@
+## 1.81117
+  - Stabilized version (Nov. 17, 2018) that integrates various additions from the previous weeks.
+  - [`Ext/$$.global.jsxinc`](/Ext/$$.global.jsxinc) is a new snippet included from `$$.Ext.jsxinc`. It provides an important fix to `$.global.parseInt()` after the discovery of a critical, native bug in ExtendScript.
+
 ##### [181106]
   - `core/Ext/$$.string.jsxinc`: added `String.random()`, a simple method for randomly generating lowercase, alphanumeric IDs of a determined length. By default, `String.random()` returns a string of 4 characters (e.g `"i1x4"`). Pass in the desired length if needed. The result is guaranteed to match the pattern `/^[a-z][0-9a-z]*$/` (that is, the first character is always alphabetic.)
 
