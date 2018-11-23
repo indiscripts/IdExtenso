@@ -8,7 +8,7 @@
 		Core:           NO
 		Kind:           Class.
 		API:            onEngine()
-		       [proto]  create() valueOf() toString()
+		       [proto]  create() valueOf() getSource() toString()
 		                peek() read() jump() write()
 		                + Array.prototype
 		DOM-access:     NO
@@ -569,6 +569,15 @@
 				// ---
 				this.peek = this.read = void 0;
 			}
+		},
+		
+		getSource: function getSource_AS$false$()
+		//----------------------------------
+		// [181123] [INPUT STREAM]  Get the source of this input stream.
+		// [OUTPUT STREAM] Return false.
+		// => byte[]  |  str  |  false
+		{
+			return this.hasOwnProperty('__src__') && this.__src__;
 		},
 		
 		valueOf: function valueOf_X()
