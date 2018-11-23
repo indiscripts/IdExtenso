@@ -1,5 +1,5 @@
 ##### [181123]
-  - [**ByteStream**](/etc/$$.ByteStream.jsxlib): added the optional param `last` (integer) in the `toString()` method. Allows to get only the specified number of trailing characters, from the end of the stream.
+  - [**ByteStream**](/etc/$$.ByteStream.jsxlib): added the optional param `last` (integer) in the `toString()` method. Allows to get only the specified number of trailing characters—i.e, from the end of the stream—rather than the entire string.
 
 ## 1.81117
   - Stabilized version (Nov. 17, 2018) that integrates various additions from the previous weeks.
