@@ -14,11 +14,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180927 (YYMMDD)
-		Modified:       181012 (YYMMDD)
+		Modified:       181123 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 181012))
+;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 181123))
 
 	//==========================================================================
 	// NOTICE
@@ -579,15 +579,18 @@
 			return this.__val__;
 		},
 
-		toString: function toString_S()
+		toString: function toString_i_S(/*uint=auto*/last)
 		//----------------------------------
 		// [INPUT STREAM]  Return String(this.valueOf()).
 		// [OUTPUT STREAM] Return the byte stream as a string.
+		// [181123] If `last` is provided, only return `last` characters from the end.
+		// ---
 		// => str
 		{
-			return this.hasOwnProperty('__pos__') ?
-				String(this.valueOf()) :
-				String.fromCharCode.apply(0,this);
+			last = (last === (last>>>0)) && (-last);
+			return this.hasOwnProperty('__pos__')
+				? ( last ? String(this.valueOf()).slice(last) : String(this.valueOf()) )
+				: ( String.fromCharCode.apply(0, last ? this.slice(last) : this) );
 		},
 
 		peek: function peek_s_oa_$this$(/*str=U08*/fmt,/*obj|arr=this&*/dst,  I,i,src,f,p,re,m,F,dp,LE,n,k,v,o,j)
