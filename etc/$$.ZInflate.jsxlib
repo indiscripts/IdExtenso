@@ -1,0 +1,708 @@
+/*******************************************************************************
+
+		Name:           ZInflate
+		Desc:           Encapsulate the inflate/zlib (decompression) algorithm.
+		Path:           /etc/$$.ZInflate.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =raw() zlib()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180921 (YYMMDD)
+		Modified:       181126 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('ZInflate') || eval(__(MODULE, $$, 'ZInflate', 181126, 'raw'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	ZLIB FORMAT
+
+	A zlib stream has the following structure:
+	
+	Byte 0 :: CMF (Compression Method and flags.)
+	          xxxx xxxx
+	          INFO METH
+
+	      - METH==8 denotes the 'deflate' compression method with a window
+	        size up to 32K; this is the method used by gzip and PNG.
+
+	      - For METH==8, INFO is the base-2 log of the window size, minus 8;
+	        So, winSize = 2^(8+INFO)   ; e.g winSize = 32K if INFO=7
+	        Values of INFO > 7 are not allowed; INFO is undefined if METH!=8.
+
+	Byte 1 :: FLG (Flags.)
+	          xx x xxxxx
+	          LV D CHECK
+
+	      - CHECK: check bits for CMF and FLG.
+
+	      - D: Whether a DICT dictionary identifier is present immediately
+	        after the FLG byte. The dictionary is a sequence of bytes which
+	        are initially fed to the compressor w/o producing any compressed
+	        output. If present, DICT is the Adler32 checksum of this sequence
+	        of bytes. The decompressor can use this id to determine which
+	        dictionary has been used by the compressor.
+
+	      - LV: Compression level. These flags are available for use by
+	        specific compression methods. The 'deflate' method (METH=8) sets
+	        these flags as follows:
+	           LV == 0  ->  compressor used fastest algorithm.
+	           LV == 1  ->  compressor used fast algorithm.
+	           LV == 2  ->  compressor used default algorithm.
+	           LV == 3  ->  compressor used maximum, slowest compression.
+	        LV is not needed for decompression; it is there to indicate if
+	        recompression might be worthwile.
+	
+	Bytes [2,3,4,5] :: [opt] DICT ID, if the `D` flag is set in FLG.
+	
+	Next bytes :: Compressed data.
+	
+	Last 4 bytes :: Adler32 checksum of the uncompressed data (excl. any
+	dictionary data.)
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	[REF] http://www.onicos.com/staff/iz/amuse/javascript/expert/
+	
+	Both the `ZDeflate` and `ZInflate` modules are based on Masanao Izumo's
+	implementation -- www.onicos.com/staff/iz/amuse/javascript/expert/ --
+	ported into ExtendScript. Many tests have been done and many tricks have
+	been applied to get the most efficient inflate/deflate processes in
+	IdExtenso.
+	
+	These modules are fine for processing *small* data streams (say < 50KB)
+	in a decent time; then avoiding the use of external tools, libraries, or
+	DOM methods. If you need to zip/unzip *larger* files from InDesign, turn
+	to the DOM methods `app.packageUCF()` and `app.unpackageUCF()`.
+	
+	`ZDeflate` and `ZInflate` are independent, so if your project only wants
+	to decompress strings, you can include `$$.ZInflate.jsxlib` alone.
+
+	DE-COMPRESSION
+	
+	Use `$$.ZInflate(myCompressedString)` to get the uncompressed string using
+	the default option: window=32KB (i.e wPower=15.) To refine this parameter,
+	cf detail in the `raw` method.
+
+	[REM] The `raw` method is automatic, that is, `$$.ZInflate()` is the
+	shortcut of `$$.ZInflate.raw()`
+	
+	Alternately, call `$$.ZInflate.zlib(myZlibString)` if your input string is
+	surrounded by a zlib wrapper. (See the BACKGROUND section.)
+
+	*/
+
+	//==========================================================================
+	// CONSTANT DATA
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Bit-Length-Order (shared w/ inflate.)
+		//----------------------------------
+		BLOR: Array( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 ),
+		BLSZ: 19,
+
+		// Enums.
+		//----------------------------------
+		ESTO: 0,                                  // Stored block.
+		ESTA: 1,                                  // Static trees.
+		EDYN: 2,                                  // Dynamic trees.
+
+		// Constants.
+		//----------------------------------
+		WMEM: 32768,                              // Updated from params.
+		CPDI: Array(1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577),
+		CPLN: Array(3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0),
+		CPEX: Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99),
+		XDBT: Array(0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13),
+	})
+	
+	//==========================================================================
+	// BASIC TOOLS
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		GETB: function(/*uint*/n,/*fct*/DMP)
+		//----------------------------------
+		// (Get-Bits.)
+		// => int
+		{
+			return DMP.BIT_BUF & callee.MASK_BITS[n];
+		}
+		.setup(
+		{
+			MASK_BITS: Array(0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535),
+		}),
+
+		NEED: function(/*uint*/n,/*fct*/DMP,  s,p,len,b)
+		//----------------------------------
+		// (Need-Bits.)
+		// => undef
+		{
+			for( s=callee.DATA, len=callee.LEN, p=callee.POS, b=DMP.BIT_LEN ; b < n ; b += 8 )
+			{
+				DMP.BIT_BUF |= ((len == p ? -1 : (255&s.charCodeAt(p++))) << b);
+			}
+
+			DMP.BIT_LEN = b;
+			callee.POS = p;
+		}
+		.setup({ DATA:false, LEN:0, POS:0 }),
+
+		DUMP: function(/*uint*/n)
+		//----------------------------------
+		// (Dump.)
+		// => callee
+		{
+			callee.BIT_BUF >>= n;
+			callee.BIT_LEN -= n;
+			return callee;
+		}
+		.setup({ BIT_BUF:-1, BIT_LEN:-1 }),
+	})
+
+	//==========================================================================
+	// INNER PROCESS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		HUFT: function HufTree(/*arr*/nbs,/*uint<=288*/nc,/*uint*/ns,/*arr*/bvs,/*arr*/xbs,/*uint*/mxb,  BL,SB,HN,TS,VO,BO,tail,zc,ne,di,mxc,lvl,bts,ptr,pid,i,j,q,w,xp,dum,zt,k,o)
+		//----------------------------------
+		// (Huffman Tree Constructor.)
+		// nbs ::  code lengths in bits (all assumed <= BMAX=16)
+		// nc  ::  number of codes ; <= 288
+		// ns  ::  number of simple-valued codes
+		// bvs ::  list of base values for non-simple codes
+		// xbs ::  list of extra bits for non-simple codes
+		// mxb ::  maximum lookup bits
+		{
+			this.BMAX = 16;                  // maximum bit length of any code
+			this.status = 0;                 // 0: success, 1: incomplete table, 2: bad input
+			this.root = false;               // {next,list} starting table
+			this.mxLook = 0;                 // maximum lookup bits, returns actual
+
+			BL = new Array(1+this.BMAX);     // bit length count table
+			SB = new Array(1+this.BMAX);     // stack of bits per table
+			HN = { e:0, b:0, n:0, t:false }; // table entry for structure assignment
+			TS = new Array(this.BMAX);       // zip_HuftNode[BMAX][]  table stack
+			VO = new Array(288);             // values in order of bit length
+			BO = new Array(1+this.BMAX);     // bit offsets, then code stack
+
+			for( j=BL.length, i=-1 ; ++i < j ; BL[i] = 0 );
+			for( j=SB.length, i=-1 ; ++i < j ; SB[i] = 0 );
+			for( j=TS.length, i=-1 ; ++i < j ; TS[i] = false );
+			for( j=VO.length, i=-1 ; ++i < j ; VO[i] = 0 );
+			for( j=BO.length, i=-1 ; ++i < j ; BO[i] = 0 );
+
+			ne = nc > 256 ? nbs[256] : this.BMAX;
+
+			for( ptr=nbs, pid=0, i=nc ; i-- ; ++BL[ptr[pid]], ++pid );
+
+			if( BL[0] == nc )
+			{
+				this.root = false;
+				this.mxLook = this.status = 0;
+				return;
+			}
+
+			for( i=this.BMAX, j=0 ; ++j <= i && !BL[j] ; );
+			mxb < (bts=j) && (mxb=j);
+
+			for( i=this.BMAX ; i && !BL[i] ; i-- );
+			mxb > (mxc=i) && (mxb=i);
+
+			for( dum = 1 << j ; j < i ; (++j), dum <<= 1 )
+			{
+				if( (dum -= BL[j]) < 0 )
+				{
+					this.status = 2;
+					this.mxLook = mxb;
+					return;
+				}
+			}
+
+			if( (dum -= BL[i]) < 0 )
+			{
+				this.status = 2;
+				this.mxLook = mxb;
+				return;
+			}
+
+			BL[i] += dum;
+			for( BO[1]=j=0, ptr=BL, pid=1, xp=2 ; 0 < --i ; BO[xp++] = (j+=ptr[pid++]) );
+
+			ptr=nbs;
+			pid=i=0;
+			do{ (j=ptr[pid++])&&(VO[BO[j]++]=i) } while( ++i < nc );
+
+			ptr = VO;
+			nc = BO[mxc];
+			for( tail=false, lvl=-1, BO[0]=SB[0]=i=w=zt=pid=0 ; bts <= mxc ; ++bts )
+			{
+				zc = BL[bts];
+				while( zc-- > 0 )
+				{
+					while( bts > w + SB[1+lvl] )
+					{
+						w += SB[++lvl];
+						zt = (zt = mxc - w) > mxb ? mxb : zt;
+						if( (di = 1 << (j=bts-w)) > 1+zc )
+						{
+							for( di-=(1+zc), xp=bts ; ++j < zt && (di <<= 1) > BL[++xp] ; di -= BL[xp] );
+						}
+						w < ne && ( w + j > ne ) && (j = ne - w);
+
+						SB[1+lvl] = j;
+						for( q=Array(zt = 1 << j), k=-1 ; ++k < zt ; q[k]={ e:0, b:0, n:0, t:false } );
+
+						o = { next:false, list:q };
+						tail = tail ? (tail.next=o) : (this.root=o);
+						
+						TS[lvl] = q;
+						if( 0 >= lvl ) continue;
+
+						BO[lvl] = i;
+						HN.b = SB[lvl];
+						HN.e = 16 + j;
+						HN.t = q;
+						j = (i & (1 << w) - 1) >> (w - SB[lvl]);
+
+						o = TS[-1+lvl][j];
+						o.e = HN.e;
+						o.b = HN.b;
+						o.n = HN.n;
+						o.t = HN.t;
+					}
+
+					HN.b = bts - w;
+					if( pid >= nc )
+					{
+						HN.e = 99
+					}
+					else if( ptr[pid] < ns )
+					{
+						HN.e = 256 > ptr[pid] ? 16 : 15;
+						HN.n = ptr[pid++];
+					}
+					else 
+					{
+						HN.e = xbs[-ns+ptr[pid]];
+						HN.n = bvs[-ns+ptr[pid++]];
+					}
+
+					for( di = 1 << (bts-w), j = i >> w ; j < zt ; j += di )
+					{
+						(o=q[j]).e = HN.e;
+						o.b = HN.b;
+						o.n = HN.n;
+						o.t = HN.t;
+					}
+
+					for( j = 1 << (bts-1) ; (i&j) ; (i^=j),(j >>= 1) );
+					i ^= j;
+
+					for( ; (i&((1 << w)-1)) != BO[lvl] ; (w -= SB[lvl]),--lvl );
+				}
+			}
+
+			this.mxLook = SB[1];
+			this.status = dum && 1 != mxc ? 1 : 0;
+		},
+
+		ICOD: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*arr&*/w,  wm,DMP,NEE,GTB,n,t,e,s)
+		//----------------------------------
+		// Inflate (decompress) the codes in a deflated (compressed) block.
+		{
+			if( !size ) return 0;
+
+			wm = -1+this.WMEM;
+			DMP = this.DUMP;
+			NEE = this.NEED;
+			GTB = this.GETB;
+
+			n = 0;
+			const CHR = String.fromCharCode;
+			while( 1 )
+			{
+				NEE(RF.TABLE_BITS,DMP);
+				for( e=(t=RF.TABLE_DATA.list[GTB(RF.TABLE_BITS,DMP)]).e ; e > 16 ; e=(t=t.t[GTB(e,DMP)]).e )
+				{
+					if( 99 == e ) return -1;
+					NEE(e-=16, DMP(t.b));
+				}
+				DMP(t.b);
+
+				if( 16 == e )
+				{
+					RF.SLIDE_POS &= wm;
+					BUFF.Q += CHR(w[RF.SLIDE_POS++]=t.n); ++n;
+					if( n == size ) return size;
+					continue;
+				}
+
+				if( 15 == e ) break;
+
+				NEE(e,DMP);
+				RF.COPY_SZ = t.n + GTB(e,DMP);
+				NEE(RF.DTABLE_BITS,DMP(e));
+				for( e=(t=RF.DTABLE_DATA.list[GTB(RF.DTABLE_BITS,DMP)]).e ; e > 16 ; e=(t=t.t[GTB(e,DMP)]).e )
+				{
+					if( 99 == e ) return -1;
+					NEE(e-=16,DMP(t.b));
+				}
+
+				NEE(e,DMP(t.b));
+				RF.COPY_DIST = RF.SLIDE_POS - t.n - GTB(e,DMP);
+				DMP(e);
+				for( s='' ; RF.COPY_SZ > 0 && n < size ; )
+				{
+					RF.COPY_SZ--;
+					RF.COPY_DIST &= wm;
+					RF.SLIDE_POS &= wm;
+					s+=CHR(w[RF.SLIDE_POS++]=w[RF.COPY_DIST++]); ++n;
+				}
+				BUFF.Q += s;
+				if( n == size ) return size;
+			}
+
+			RF.METH = -1;
+			return n;
+		},
+
+		ISTO: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*arr&*/w,  wm,DMP,NEE,GTB,n,s)
+		//----------------------------------
+		// Decompress a type 0 (stored) block.
+		// => int
+		{
+			wm = -1+this.WMEM;
+			DMP = this.DUMP;
+			NEE = this.NEED;
+			GTB = this.GETB;
+			
+			NEE(16, DMP(n=7&DMP.BIT_LEN));
+			n = GTB(16, DMP);
+			NEE(16,DMP(16));
+			if( n != (65535 & ~DMP.BIT_BUF) ) return -1;
+
+			DMP(16);
+			RF.COPY_SZ = n;
+			
+			const CHR = String.fromCharCode;
+			for( s='', n=0 ; RF.COPY_SZ > 0 && n < size ; )
+			{
+				RF.COPY_SZ--;
+				RF.SLIDE_POS &= wm;
+				NEE(8,DMP);
+				s+=CHR(w[RF.SLIDE_POS++]=GTB(8,DMP)); ++n;
+				DMP(8);
+			}
+			BUFF.Q += s;
+
+			RF.COPY_SZ || (RF.METH=-1);
+			return n;
+		},
+
+		IFIX: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*unused*/w,  i,a,h)
+		//----------------------------------
+		// Decompress a type 1 (fixed Huffman codes) block.
+		{
+			if( false===callee.FIXED_TABLE )
+			{
+				a = Array(288);
+
+				for( i=0 ; i < 144 ; a[i++]=8 );
+				for(     ; i < 256 ; a[i++]=9 );
+				for(     ; i < 280 ; a[i++]=7 );
+				for(     ; i < 288 ; a[i++]=8 );
+
+				callee.FIXED_BITS = 7;
+				h = new this.HUFT(a, 288, 257, this.CPLN, this.CPEX, callee.FIXED_BITS);
+				if( h.status != 0 ) throw Error("HufBuild error: " + h.status);
+
+				callee.FIXED_TABLE = h.root;
+				callee.FIXED_BITS = h.mxLook;
+				for( i=0 ; i < 30 ; a[i++]=5 );
+				callee.FIXED_DBITS = 5;
+				h = new this.HUFT(a, 30, 0, this.CPDI, this.XDBT, callee.FIXED_DBITS);
+				if( h.status > 1 ) throw Error("HufBuild error: " + h.status);
+
+				callee.FIXED_DTABLE = h.root;
+				callee.FIXED_DBITS = h.mxLook;
+			}
+
+			RF.TABLE_DATA = callee.FIXED_TABLE;
+			RF.DTABLE_DATA = callee.FIXED_DTABLE;
+			RF.TABLE_BITS = callee.FIXED_BITS;
+			RF.DTABLE_BITS = callee.FIXED_DBITS;
+
+			return this.ICOD(BUFF, off, size, RF, w);
+		}
+		.setup(
+		{
+			FIXED_TABLE:  false,
+			FIXED_DTABLE: false,
+			FIXED_BITS:   -1,
+			FIXED_DBITS:  -1,
+		}),
+
+		IDYN: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*unused*/w,  DMP,NEE,GTB,BLO,i,j,l,n,t,nb,nl,nd,a,h,v)
+		//----------------------------------
+		// Decompress a type 2 (dynamic Huffman codes) block.
+		{
+			DMP = this.DUMP;
+			NEE = this.NEED;
+			GTB = this.GETB;
+			BLO = this.BLOR;
+
+			a = Array(316);
+			for( i=0 ; i < 316 ; a[i++]=0 );
+
+			NEE(5,DMP);
+			nl = 257 + GTB(5,DMP);
+			NEE(5,DMP(5));
+			nd = 1 + GTB(5,DMP);
+			NEE(4,DMP(5));
+			nb = 4 + GTB(4,DMP);
+			DMP(4);
+
+			if( nl > 286 || nd > 30 ) return -1;
+
+			for( j=-1 ; ++j < nb ; NEE(3,DMP), (a[BLO[j]]=GTB(3,DMP)), DMP(3) );
+			for(  ; j < 19 ; a[BLO[j++]]=0 );
+
+			RF.TABLE_BITS = 7;
+			h = new this.HUFT(a, 19, 19, false, false, RF.TABLE_BITS);
+			if( h.status != 0 ) return -1;
+
+			RF.TABLE_DATA = h.root;
+			RF.TABLE_BITS = h.mxLook;
+			for( n=nl+nd, i=l=0 ; i < n ; )
+			{
+				NEE(RF.TABLE_BITS,DMP);
+				DMP(j=(t=RF.TABLE_DATA.list[GTB(RF.TABLE_BITS,DMP)]).b);
+				if( 16 > (j=t.n) ){ a[i++]=l=j; continue; }
+				v = 2*(16==j) || 3*(17==j) || 7;
+				NEE(v,DMP);
+				j = 3 + 8*(7==v) + GTB(v,DMP);
+				DMP(v);
+				if( i + j > n ) return -1;
+				2 == v || (l=0);
+				for( ; 0 < j-- ; a[i++]=l );
+			}
+
+			RF.TABLE_BITS = callee.L_BITS;
+			h = new this.HUFT(a, nl, 257, this.CPLN, this.CPEX, RF.TABLE_BITS);
+
+			RF.TABLE_BITS || (h.status=1);
+			if( h.status ) return -1;   // [REM] status == 1 <=> incomplete literal tree
+
+			RF.TABLE_DATA = h.root;
+			RF.TABLE_BITS = h.mxLook;
+			for( i=-1 ; ++i < nd ; a[i]= a[i+nl] );
+
+			RF.DTABLE_BITS = callee.D_BITS;
+			h = new this.HUFT(a, nd, 0, this.CPDI, this.XDBT, RF.DTABLE_BITS);
+			RF.DTABLE_DATA = h.root;
+			RF.DTABLE_BITS = h.mxLook;
+
+			if( 0 == RF.DTABLE_BITS && nl > 257 ) return -1;
+
+			if( h.status ) return -1;
+
+			return this.ICOD(BUFF, off, size, RF, w);
+		}
+		.setup(
+		{
+			L_BITS: 9,
+			D_BITS: 6,
+		}),
+
+		IINT: function(/*fct*/BUFF,/*int*/size,/*arr&*/w,  q,wm,DMP,NEE,GTB,n,i,k,s)
+		//----------------------------------
+		// Decompress an entry.
+		{
+			q = callee;
+			wm = -1+this.WMEM;
+			DMP = this.DUMP;
+			NEE = this.NEED;
+			GTB = this.GETB;
+			
+			const CHR = String.fromCharCode;
+
+			for( n=0 ; n < size ; n+=i )
+			{
+				if( q.EOF && -1 == q.METH ) return n;
+
+				if( q.COPY_SZ > 0 )
+				{
+					s = '';
+					if( q.METH != this.ESTO )
+					{
+						while( q.COPY_SZ > 0 && n < size )
+						{
+							q.COPY_SZ--;
+							q.COPY_DIST &= wm;
+							q.SLIDE_POS &= wm;
+							s+=CHR(w[q.SLIDE_POS++]=w[q.COPY_DIST++]); ++n;
+						}
+					}
+					else 
+					{
+						while( q.COPY_SZ > 0 && n < size )
+						{
+							q.COPY_SZ--;
+							q.SLIDE_POS &= wm;
+							NEE(8,DMP);
+							s+=CHR(w[q.SLIDE_POS++]=GTB(8,DMP)); ++n;
+							DMP(8);
+						}
+						q.COPY_SZ || (q.METH = -1);
+					}
+					BUFF.Q += s;
+					if( n == size ) return n;
+				}
+
+				if( -1 == q.METH )
+				{
+					if( q.EOF ) break;
+					NEE(1,DMP);
+					GTB(1,DMP) && (q.EOF=true);
+					NEE(2,DMP(1));
+					q.METH = GTB(2,DMP);
+					DMP(2);
+					q.TABLE_DATA = false;
+					q.COPY_SZ = 0;
+				}
+
+				k = (this.ESTO==q.METH && 'ISTO')
+				 || (this.ESTA==q.METH && (q.TABLE_DATA ? 'ICOD' : 'IFIX') )
+				 || (this.EDYN==q.METH && (q.TABLE_DATA ? 'ICOD' : 'IDYN') );
+
+				i = k ? this[k](BUFF, n, size-n, q, w) : -1;
+				if( i == -1 ) return q.EOF ? 0 : -1;
+			}
+			return n;
+		}
+		.setup(
+		{
+			EOF:         false,
+			METH:        -1,
+			// ---
+			COPY_SZ:     -1,
+			COPY_DIST:   -1,
+			SLIDE_POS:   -1,
+			// ---
+			TABLE_BITS:  -1,
+			DTABLE_BITS: -1,
+			TABLE_DATA:  false,
+			DTABLE_DATA: false,
+		}),
+
+		INFL: function(/*str*/data,  F,RF,BF,r,w,i)
+		//----------------------------------
+		{
+			// Data string.
+			// ---
+			(F=this.NEED).DATA=data;
+			F.LEN=data.length;
+			F.POS=0;
+
+			// Init.
+			// ---
+			this.DUMP.BIT_BUF = this.DUMP.BIT_LEN = 0;
+			
+			RF = this.IINT;
+			RF.SLIDE_POS = RF.COPY_SZ = RF.COPY_DIST = 0;
+			RF.METH = -1;
+			RF.EOF = false;
+			RF.TABLE_DATA = false;
+
+			for( BF={Q:''}, r='', w=callee.WIN ; 0 < (i=RF.call(this, BF, 512, w)) ; (r+=BF.Q), (BF.Q='') );
+			return r;
+		}
+		.setup({ WIN: Array(0) }),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		raw: function raw_S_S(/*str*/data,/*8..15=15*/wPower,  I,n)
+		//----------------------------------
+		// Raw inflate (decompress) data, using a 2^`wPower` window base size.
+		// [REM] The min. window base size is 2^8=256;
+		// the max. window base size is 2^15=32768.
+		// => str
+		{
+			// Check/set win size.
+			// ---
+			I = callee.µ['~'];
+			8 > (wPower>>>=0) && (wPower=15);
+			
+			15 < wPower
+			&& $.global[callee.µ.__root__].error(__("%1 > This library doesn't support win size greater than 32K.",callee.µ));
+			
+			n = 2*(I.WMEM = 1 << wPower);
+			n === I.INFL.WIN.length || ( (delete I.INFL.WIN),(I.INFL.WIN = Array(n)) );
+
+			'string' == typeof data || (data=String(data));
+
+			return callee.µ['~'].INFL(data);
+		},
+
+		zlib: function zlib_S_S(/*str*/data,  n,x,METH,INFO,D)
+		//----------------------------------
+		// Inflate (decompress) zlib wrapped data.
+		// [REF] tools.ietf.org/html/rfc1950
+		{
+			'string' == typeof data || (data=String(data));
+
+			7 <= (n=data.length)
+			|| $.global[callee.µ.__root__].error(__("%1 > Invalid data length (%2). Should be at least 7.",callee.µ,n));
+			
+			x = data.charCodeAt(0);
+
+			// METH
+			// ---
+			8 == ( METH=(15&x) )
+			|| $.global[callee.µ.__root__].error(__("%1 > Invalid METHOD (%2) in zlib stream.", callee.µ, METH));
+			
+			// INFO
+			// ---
+			7 >= ( INFO=(15&(x>>>4)) )
+			|| $.global[callee.µ.__root__].error(__("%1 > Invalid INFO (%2) in zlib stream.", callee.µ, INFO));
+
+			// Offset
+			// ---
+			x = data.charCodeAt(1);
+			D = (0x20&x) ? 1 : 0;   // DICT ID?
+			
+			return callee.µ.raw( data.slice(2+D,n-4), 8+INFO );
+		},
+	})
+
