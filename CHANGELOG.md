@@ -1,3 +1,6 @@
+##### [181126]
+  - [**ZInflate**](/etc/$$.ZInflate.jsxlib) and [**ZDeflate**](/etc/$$.ZDeflate.jsxlib) modules now available. Port the inflate/deflate algorithms into ExtendScript. Useful for decompressing and/or compressing strings of reasonable size, e.g PNG `IDAT` chunks...
+
 ##### [181123]
   - [**ByteStream**](/etc/$$.ByteStream.jsxlib): added the optional param `last` (integer) in the `toString()` method. Allows to get only the specified number of trailing characters—i.e, from the end of the stream—rather than the entire string. Also added the method `getSource()` that simply returns the source of an input stream; for output stream result is `false`.
 
