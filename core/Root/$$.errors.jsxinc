@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Root module.
-		API:            beep() logErrors error() receiveError()
+		API:            beep() logErrors error()=>[[global]] receiveError()
 		DOM-access:     ---
 		Todo:           Refine receiveError ; more tests!
 		Created:        150502 (YYMMDD)
-		Modified:       181018 (YYMMDD)
+		Modified:       181128 (YYMMDD)
 
 *******************************************************************************/
 
@@ -322,6 +322,7 @@
 		// Throw a managed exception with additional information.
 		// [CHG171024] Improved stack parsing and file resolver.
 		// [FIX181018] Fixed a typo.
+		// [ADD181128] Made [[global]] thanks to copy().
 		// ---
 		// msg :: Nude error message (might be localized.)
 		// src :: (opt.) Module, function or file where the error occured.
@@ -516,7 +517,8 @@
 			// ---
 			callee.µ['~'].ELOG(e);
 			throw e;
-		},
+		}
+		.copy('/error'),
 	
 		receiveError: function receiveError_$Error$_(/*Error*/e)
 		//----------------------------------
