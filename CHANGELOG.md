@@ -1,3 +1,10 @@
+## 1.81128
+  - Stabilized version (Nov. 28, 2018) mostly including cosmetic adjustments.
+  - [`Ext/$$.function.jsxinc`](/core/Ext/$$.function.jsxinc) and [`Ext/$$.object.jsxinc`](/core/Ext/$$.object.jsxinc) now use a special function flag, `$TMP$`, that tells the root cleaner (cf `~.ISCL`) which keys must be deleted from the `[[global]]` space at load-time.
+  - [`$$.estk.jsxinc`]($$.estk.jsxinc) takes advantage of the change mentioned above.
+  - [`$$.Root.jsxinc`](/core/$$.Root.jsxinc) declares `$$.resolve()` and `$$.isModule()` a bit sooner to make those features available when including inner snippets like `errors` or `messaging`.
+  - The method [`$$.error()`](/core/Root/$$.errors.jsxinc) is now available in the `[[global]]` scope as well, due to a frequent usage in so many modules and snippets. Instead of `$$.error()`, just call `error()`.
+
 ##### [181126]
   - [**ZInflate**](/etc/$$.ZInflate.jsxlib) and [**ZDeflate**](/etc/$$.ZDeflate.jsxlib) modules now available. Port the inflate/deflate algorithms into ExtendScript. Useful for decompressing and/or compressing strings of reasonable size, e.g PNG `IDAT` chunks...
 
