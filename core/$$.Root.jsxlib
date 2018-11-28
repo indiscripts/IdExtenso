@@ -8,18 +8,18 @@
 		Core:           YES
 		Kind:           Module.
 		API:            =load() unload() getLoadStamp()
-		                resolve() isLoaded() isBooting() isModule()
+		                resolve() isModule() isLoaded() isBooting()
 		                kill() clone()
 		                uid() beep() error() receiveError() success()
 		                help()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       181117 (YYMMDD)
+		Modified:       181128 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 181117, 'load'))
+;eval(__(MODULE, '$.global', $$, 181128, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -205,52 +205,105 @@
 			return 0;
 		},
 		
-		ISCL: function(  G)
+		ISCL: function(  G,q,i)
 		//----------------------------------
 		// (Include-Stage-Cleaner.) Global cleaner after include stage.
+		// [CHG181128] Delete functions based on the $TMP$ flag.
 		{
+			// Cleanup Function.prototype and Object.prototype.
+			// ---
+			callee.DEL_TEMP(Function.prototype);
+			callee.DEL_TEMP(Object.prototype);
+
+			// Delete temporary [[global]] keys.
+			// ---
 			G = $.global;
-
-			// Counterpart of $$/Ext.
-			// ---
-			delete Function.prototype.copy;
-			delete Function.prototype.self;
-			delete Function.prototype.send; // [ADD171112]
-
-			G.PRIVATE && delete Function.prototype[G.PRIVATE];
-			G.PUBLIC  && delete Function.prototype[G.PUBLIC];
-			G.STATIC  && delete Function.prototype[G.STATIC]; // [ADD170503] Alias of [PUBLIC]()
-			G.PARENT  && delete Function.prototype[G.PARENT];
-			G.PROTO   && delete Function.prototype[G.PROTO];  // [ADD170503] Alias of [PUBLIC](obj,inProto=1)
-
-			delete Object.prototype.setup;
-			delete Object.prototype.keys;
-			
-			delete G.PRIVATE;
-			delete G.PUBLIC;
-			delete G.STATIC;
-			delete G.PARENT;
-			delete G.PROTO;
-			delete G.__path__;
-			
-			delete G.MODULE;
-			delete G.CLASS;
-			delete G.µ;
-			
-			// Live objects cleaner.
-			// [WARN] Do not delete `G.app`!
-			// ---
-			delete G.Locale;
-			delete G.UndoModes;
-			delete G.UserInteractionLevels;
-			delete G.MeasurementUnits;
-		},
+			for( q=callee.GLO_IDEX||0, i=-1 ; ++i < q.length ; delete G[q[i]] );
+			for( q=callee.GLO_DOMK||0, i=-1 ; ++i < q.length ; delete G[q[i]] );
+		}
+		.setup
+		({
+			GLO_IDEX: Array
+			//----------------------------------
+			// Temporary global keys used at include-time.
+			(
+				'PRIVATE', 'PUBLIC', 'STATIC', 'PARENT', 'PROTO',
+				'__path__', 'MODULE', 'CLASS', 'µ'
+			),
+			GLO_DOMK: Array
+			//----------------------------------
+			// DOM live keys awaked at include-time that might be deleted.
+			// [REM] Do not delete [[global]].app!
+			// [REM] The estk entry point inhibits this array.
+			(
+				'Locale', 'UndoModes', 'UserInteractionLevels', 'MeasurementUnits'
+			),
+			DEL_TEMP: function(/*obj*/o,k)
+			//----------------------------------
+			// [ADD181128] Delete temp funcs.
+			{
+				for( k in o ) o.hasOwnProperty(k)
+				&& 'function' == typeof(o[k])
+				&& '$TMP$' == o[k].name
+				&& delete o[k];
+			},
+		}),
 		
 		CSTG:
 		{
 		#include "Root/$$.casting.jsxres"
 		},
 	})
+
+	//==========================================================================
+	// MODULE API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		resolve: function resolve_S_X(/*str*/path)
+		//----------------------------------
+		// Resolve a path--either absolute or relative to $$--into
+		// *whatever* it is referring to.
+		// ---
+		// [REM181128] This public method has been moved upstream
+		// to make it available as soon as possible. It is indirectly
+		// invoked at include-time, e.g from `myFunc.copy()`.
+		// ---
+		// E.g $$.resolve("/$$/Env/")    => the Env module
+		//     $$.resolve("Env/~/OSYS")  => the OSYS private key in Log
+		//     $$.resolve("/test")       => $.global.test, or undefined
+		// => module | method | any | undefined
+		{
+			('string' == typeof path) || path='';
+
+			// If path is not absolute, it is assumed based on '/$$/'
+			// ---
+			'/'==path[0] || (path=callee.µ.__path__+path);
+			'/'==path.substr(-1) || (path+='/');
+
+			return callee.µ['~'].RSLV(path);
+		},
+
+		isModule: function isModule_sf_B(/*?str|fct*/path,  m)
+		//----------------------------------
+		// [ADD171024] Tells whether a path, or a function, refers
+		// to a module.
+		// [REM181128] This public method has been moved upstream
+		// to make it available as soon as possible.
+		// => 0 | 1
+		{
+			( 'function'==typeof path ) &&
+				(path = path.hasOwnProperty('__path__') && path.__path__);
+
+			return ( path && callee.µ['~'].__mods__.hasOwnProperty(path) ) ? 1 : 0;
+		},
+	})
+
+	//==========================================================================
+	// SNIPPETS
+	//==========================================================================
 
 	// Error manager API.
 	// ---
@@ -264,7 +317,12 @@
 	// ---
 	#include "Root/$$.help.jsxinc"
 
+	//==========================================================================
+	// PUBLIC API
+	//==========================================================================
+
 	[PUBLIC]
+
 	({
 		// ---
 		// The root module has no onLoad handler,
@@ -425,25 +483,6 @@
 			return 1-($$.__load__=0);
 		},
 
-		resolve: function resolve_S_X(/*str*/path)
-		//----------------------------------
-		// Resolve a path--either absolute or relative to $$--into
-		// *whatever* it is referring to.
-		// E.g $$.resolve("/$$/Env/")    => the Env module
-		//     $$.resolve("Env/~/OSYS")  => the OSYS private key in Log
-		//     $$.resolve("/test")       => $.global.test, or undefined
-		// => module | method | any | undefined
-		{
-			('string' == typeof path) || path='';
-
-			// If path is not absolute, it is assumed based on '/$$/'
-			// ---
-			'/'==path[0] || (path=callee.µ.__path__+path);
-			'/'==path.substr(-1) || (path+='/');
-
-			return callee.µ['~'].RSLV(path);
-		},
-		
 		isLoaded: function isLoaded_s_B(/*?str*/path,  m)
 		//----------------------------------
 		// Tells whether a module path refers to a loaded module.
@@ -496,18 +535,6 @@
 			return 0===callee.µ.Env.engineState(0) ? 0 : 1;
 		},
 
-		isModule: function isModule_sf_B(/*?str|fct*/path,  m)
-		//----------------------------------
-		// [ADD171024] Tells whether a path, or a function, refers
-		// to a module.
-		// => 0 | 1
-		{
-			( 'function'==typeof path ) &&
-				(path = path.hasOwnProperty('__path__') && path.__path__);
-
-			return ( path && callee.µ['~'].__mods__.hasOwnProperty(path) ) ? 1 : 0;
-		},
-		
 		kill: function kill_x_(/*any&*/x)
 		//----------------------------------
 		// Destroy x and return undefined.
