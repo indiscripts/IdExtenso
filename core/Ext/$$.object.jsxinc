@@ -11,16 +11,22 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       170322 (YYMMDD)
+		Modified:       181128 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
-	// Object.prototype.setup ; Object.prototype.keys
-	// [REM] Autodeleted once the framework has been loaded.
+	// NOTICE
 	//==========================================================================
 
-	Object.prototype.setup = function(/*obj*/o,  k)
+	/*
+
+	A special name, $TMP$, is assigned to temporary functions used only at include-
+	time. They are automatically deleted at load-time.
+
+	*/
+
+	Object.prototype.setup = function $TMP$(/*obj*/o,  k)
 	//----------------------------------
 	// Provide a generic setup utility to any object.
 	// => this
@@ -29,7 +35,7 @@
 		return this;
 	};
 
-	Object.prototype.keys = function(/*str*/sep,  s,k)
+	Object.prototype.keys = function $TMP$(/*str*/sep,  s,k)
 	//----------------------------------
 	// Provide a generic keys utility to any object.
 	// => `<k0><sep><k1>...<sep><kLast>`
