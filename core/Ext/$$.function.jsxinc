@@ -12,31 +12,43 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170322 (YYMMDD)
-		Modified:       171112 (YYMMDD)
+		Modified:       181128 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
-	// Function.prototype.copy()
-	// [REM] Autodeleted once the framework has been loaded.
+	// NOTICE
 	//==========================================================================
 
-	Function.prototype.copy = function(/*str*/newPath)
+	/*
+
+	A special name, $TMP$, is assigned to temporary functions used only at include-
+	time. They are automatically deleted at load-time.
+
+	*/
+
+	//==========================================================================
+	// Function.prototype.copy() self() send()
+	//==========================================================================
+
+	Function.prototype.copy = function $TMP$(/*str*/newPath)
 	//----------------------------------
-	// <this> :: public method of the current module or class.
+	// Prepare the copy of this function reference to make it callable, as
+	// an alias, from another location. The string `newPath` specifies
+	// the destination path. Any valid function path is allowed, either
+	// absolute, or relative to the current module.
+	// If `newPath` ends with a dot '.' or a slash '/', then the current
+	// function key will be used for the alias as well. If newPath is empty,
+	// then '/' ie [[global]] is considered the target location.
+	// [REM]  Path resolution is deferred to Function.prototype[PUBLIC].
+	// [WARN] This method does not deal with copying `this` in the
+	//        `prototype` object of a CLASS.
 	// ---
-	// Temporarily provide a .copy utility to any public method
-	// in order to make it available from any other *existing* module.
-	// newPath :: path of the alias method to be registered. Any valid
-	//            function path, either absolute eg "/$$/myModule/myFuncAlias"
-	//            or relative to the current module eg "../../myFuncAlias"
-	// If newPath ends with a dot '.' or a slash '/', then the current
-	// function key will be used in the specified module location.
-	// If newPath is empty, then '/' ie [global] is considered the target loc.
-	// [REM] Resolving the path is deferred to Function.prototype[PUBLIC].
-	// [REM] Autodeleted once the framework has been loaded.
-	// [REM] This method does not deal with copying <this> into the
-	//       `/prototype` area of a CLASS.
+	// Examples:   myFuncKey: function myFuncName(){...}.copy('..')
+	//             -> copy the func in `parentModule.myFuncKey`
+	//             myFuncKey: function myFuncName(){...}.copy('/test')
+	//             -> copy the func in `[[global]].test`
+	// ---
 	// => this
 	{
 		newPath || (newPath='/');
@@ -46,59 +58,55 @@
 		return this;
 	};
 
-	//==========================================================================
-	// Function.prototype.self()
-	// [REM] Autodeleted once the framework has been loaded.
-	//==========================================================================
-
-	Function.prototype.self = function(/*obj|null*/context,/*any*/x,/*any*/y)
+	Function.prototype.self = function $TMP$(/*obj|null*/cx,/*any...*/_1,_2,_3,_4,_5,_6,_7,_8,_9)
 	//----------------------------------
-	// <this> :: method of the current module or class.
+	// Invoke this function from the `cx` context, passing optional
+	// extra arguments --this.call(cx,args...)-- then return this.
+	// This utility allows to invoke a function that has just been
+	// defined, including from a specific context, while going back
+	// to its own reference.
+	// Example:  `myFunc.self()
+	// [REM] If `this` is designed to return something, `this.self()`
+	// won't take care of such output as it always return `this` itself.
 	// ---
-	// [ADD170417] Temporarily provide a .self utility to any public method
-	// so that it invokes itself with x and y args, and returns itself.
-	// [REM] Autodeleted once the framework has been loaded.
+	// [CHG181128] Added up to 9 args.
+	// ---
 	// => this
 	{
-		this.call(context,x,y);
-		return this;
+		return this.call(cx, _1,_2,_3,_4,_5,_6,_7,_8,_9), this;
+	};
+
+	Function.prototype.send = function $TMP$(/*obj*/cx,/*str*/meth,/*any...*/_1,_2,_3,_4,_5,_6,_7,_8,_9)
+	//----------------------------------
+	// Invoke `cx[meth](this, <args>)` using the `this` function as first
+	// argument, plus optional extra args, then return the `this` function
+	// itself. This utility allows to temporarily switch to a different
+	// context and method taking `this` as a target.
+	// Example: `myFunc.send(myModule,"feedFuncCache",myData).etc()`
+	// ---
+	// [CHG181128] Added up to 9 extra args.
+	// [REM] It is the responsability of the client code to assert that
+	// `cx[meth]` is a function.
+	// ---
+	// => this
+	{
+		return cx[meth](this, _1,_2,_3,_4,_5,_6,_7,_8,_9), this;
 	};
 
 	//==========================================================================
-	// Function.prototype.send()
-	// [REM] Autodeleted once the framework has been loaded.
+	// Function.prototype.PRIVATE() PUBLIC() PARENT() PROTO()
 	//==========================================================================
 
-	Function.prototype.send = function(/*obj*/context,/*str*/meth,/*any*/x,/*any*/y)
-	//----------------------------------
-	// <this> :: method of the current module or class.
-	// ---
-	// [ADD171112] Temporarily provide a .send utility to any public or private
-	// method so that it invokes context[meth](this,x,y), and returns itself.
-	// [REM] Autodeleted once the framework has been loaded.
-	// => this
-	{
-		context[meth](this,x,y);
-		return this;
-	};
-
-	//==========================================================================
-	// Function.prototype.PRIVATE() -- [PRIVATE] zone of both modules and classes
-	// Function.prototype.PUBLIC()  -- [PUBLIC]  zone of both modules and classes
-	// Function.prototype.PARENT()  -- [PARENT]  zone of both modules and classes
-	// [REM] Autodeleted once the framework has been loaded.
-	//==========================================================================
-
-	Function.prototype[PRIVATE] = function(/*obj*/o,  priv,s,k)
+	Function.prototype[PRIVATE] = function $TMP$(/*obj*/o,  I,s,k)
 	//----------------------------------
 	// <this> :: current module or class.
-	// ---
 	// Temporarily provide a generic [PRIVATE] utility to any module
 	// or class, for registering private members in this['~'].
 	// [REM] Autodeleted once the framework has been loaded.
+	// ---
 	// => this
 	{
-		priv = this['~'];
+		I = this['~'];
 		s = this.__path__ + '~/';
 		for( k in o )
 		{
@@ -108,21 +116,19 @@
 				o[k].setup
 				({
 					__path__: s + k,    // eg '/$$/Env/~/FKEY'
-					µ: this,            // every private method can use callee.µ
+					µ: this,            // So every private method can use callee.µ.
 				});
 			}
-			priv[k] = o[k];
+			I[k] = o[k];
 		}
 		return this;
 	};
 
-	Function.prototype[PUBLIC] = function F(/*obj*/o,/*bool=0*/inProto,  path,target,mods,ptp,k,s,t,p,oo)
+	Function.prototype[PUBLIC] = function $TMP$(/*obj*/o,/*bool=0*/inProto,  path,target,mods,ptp,k,s,t,p,oo)
 	//----------------------------------
-	// <this> :: current module or class.
-	// Alias: [STATIC]
-	// Temporarily provide a generic [PUBLIC] (i.e [STATIC] ) utility
+	// <this> :: current module or class ; alias: [STATIC]
+	// Temporarily provide a generic [PUBLIC] --or [STATIC]-- utility
 	// to any module or class, for registering public members in this.
-	// [REM] Autodeleted once the framework has been loaded.
 	// ---
 	// [FIX171110] Changed the way inProto functions register their path.
 	// We no longer set the key `<modPath>/prototype/` in __mods__. Instead,
@@ -131,8 +137,7 @@
 	// ---
 	// => this
 	{
-		// [171110] Here `path` will always refer to
-		// the current module.
+		// [171110] Here `path` will always refer to the current module.
 		// E.g '/$$/Env/' ; '/$$/BigInt/'
 		// ---
 		path = this.__path__;
@@ -241,14 +246,14 @@
 		return this;
 	};
 
-	Function.prototype[PARENT] = function F(/*obj*/o,  parent)
+	Function.prototype[PARENT] = function $TMP$(/*obj*/o,  parent)
 	//----------------------------------
 	// <this> :: current module or class.
-	// ---
 	// Temporarily provide a generic [PARENT] utility to any module or
 	// class for registering PUBLIC members in its *parent*. That's
 	// somehow a shortcut of this.<parent>[PUBLIC](o), returning this.
 	// [REM] Autodeleted once the framework has been loaded.
+	// ---
 	// => this (current module or class)
 	{
 		// this.__path__ :: /$$/SomeModule/SubModule/  =>  $.global['$$']['SomeModule']
@@ -260,16 +265,14 @@
 		return this;
 	};
 
-	Function.prototype[PROTO] = function F(/*obj*/o,  parent)
+	Function.prototype[PROTO] = function $TMP$(/*obj*/o)
 	//----------------------------------
 	// <this> :: current class.
-	// ---
 	// Temporarily provide a generic [PROTO] utility to any class
 	// for registering members in its `prototype` object.
 	// That's a shortcut of this[PUBLIC](o,/*inProto*/1), returning this.
-	// [REM] Autodeleted once the framework has been loaded.
+	// ---
 	// => this (current class)
 	{
-		this[PUBLIC](o,1);
-		return this;
+		return this[PUBLIC](o,1), this;
 	};
