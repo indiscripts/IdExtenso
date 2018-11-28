@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       180615 (YYMMDD)
+		Modified:       181128 (YYMMDD)
 
 *******************************************************************************/
 
@@ -46,7 +46,6 @@
 	will either stop working, or return irrelevant results.
 
 	*/
-
 
 	//==========================================================================
 	// BEFORE INCLUDE
@@ -101,48 +100,10 @@
 	//==========================================================================
 	// AFTER INCLUDE
 	//==========================================================================
+	
+	// Hack ~.ISCL => Preserve dummy Live objects (Locale, UndoModes...)
+	// [181128] Shorter code!
+	// ---
+	;$$['~'].ISCL.GLO_DOMK.length = 0;
 
-	$$['~'].ISCL.HACKED || ($$['~'].ISCL = function(  G)
-	//----------------------------------
-	// [180615] Hack the Include-Stage-Cleaner to preserve
-	// some dummy live objects (Locale, UndoModes...)
-	// [REM] Here we have a bit of 'code redundancy' but
-	// it's the price to pay :-/
-	{
-		callee.HACKED = 1;
 
-		G = $.global;
-
-		// Counterpart of $$/Ext.
-		// ---
-		delete Function.prototype.copy;
-		delete Function.prototype.self;
-		delete Function.prototype.send;
-
-		G.PRIVATE && delete Function.prototype[G.PRIVATE];
-		G.PUBLIC  && delete Function.prototype[G.PUBLIC];
-		G.STATIC  && delete Function.prototype[G.STATIC];
-		G.PARENT  && delete Function.prototype[G.PARENT];
-		G.PROTO   && delete Function.prototype[G.PROTO];
-
-		delete Object.prototype.setup;
-		delete Object.prototype.keys;
-		
-		delete G.PRIVATE;
-		delete G.PUBLIC;
-		delete G.STATIC;
-		delete G.PARENT;
-		delete G.PROTO;
-		delete G.__path__;
-		
-		delete G.MODULE;
-		delete G.CLASS;
-		delete G.µ;
-		
-		// DO NOT DELETE the following objects:
-		// ---
-		// delete G.Locale;
-		// delete G.UndoModes;
-		// delete G.UserInteractionLevels;
-		// delete G.MeasurementUnits;
-	});
