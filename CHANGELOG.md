@@ -1,3 +1,6 @@
+##### [181201]
+  - [ScriptUI.builder()](/core/Ext/$$.scriptui.jsxinc) deeply redesigned. Added `addKeyHandler()` and `removeKeyHandler()` utilities.
+
 ## 1.81128
   - Stabilized version (Nov. 28, 2018) mostly including cosmetic adjustments.
   - [`Ext/$$.function.jsxinc`](/core/Ext/$$.function.jsxinc) and [`Ext/$$.object.jsxinc`](/core/Ext/$$.object.jsxinc) now use a special function flag, `$TMP$`, that tells the root cleaner (cf `~.ISCL`) which keys must be deleted from the `[[global]]` space at load-time.
