@@ -1,18 +1,19 @@
 /*******************************************************************************
 
 		Name:           scriptui
-		Desc:           Minimal ScriptUI extension.
+		Desc:           Minimal ScriptUI extension, including a 'builder' tool.
 		Path:           /core/Ext/$$.scriptui.jsxinc
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Snippet (part of /Ext.)
 		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
-		                ScriptUI.isWidget() getIndex() builder()
+		                ScriptUI.isWidget() getIndex()
+		                builder() addKeyHandler() removeKeyHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       181117 (YYMMDD)
+		Modified:       181201 (YYMMDD)
 
 *******************************************************************************/
 
@@ -30,8 +31,15 @@
 	As the code below consumes very little space it is integrated with the `core`
 	directory even if your script does not invoke ScriptUI. A much richer set of
 	additional UI features is to be provided in a separate `etc` branch.
+	
+	*/
 
-	COMBINED ALIGNMENTS.
+	//==========================================================================
+	// Combined Alignments (ScriptUI.FT, ScriptUI.LT, etc.)
+	// [FIX180528] Use strings instead of numbers (SUI bug.)
+	//==========================================================================
+
+	/*
 
 	In ScriptUI, alignment options (`alignment` and `alignChildren`
 	properties) support the array form [<horizAlign>, <vertAlign>]. This
@@ -46,28 +54,10 @@
 	Panel instances that would need alignment into their container, it is
 	recommended to set both `preferredSize` and `maximalSize` properties.
 	
-	SCRIPTUI BUILDER.
-	
-	The purpose of `ScriptUI.builder()` is to provide a compact and generic
-	tool for building resource-based UI (full Window or custom components).
-	Unlike the native 'resource string' mechanism which involves literal
-	strings and therefore leads to issue when dynamic data are to be treated,
-	`ScriptUI.builder()` deals with actual objects whose internal data may
-	still be browsed and refined just before being sent to the builder.
-	This brings more flexibility to the client code.
-	
-	Another point is that the `builder` function supports custom factories
-	and external assignment mechanisms that could be implemented in more
-	advanced modules.
-	
 	*/
 
-	//==========================================================================
-	// Combined Alignments (ScriptUI.FT, ScriptUI.LT, etc.)
-	// [FIX180528] Use strings instead of numbers (SUI bug.)
-	//==========================================================================
-
-	ScriptUI.setup({
+	ScriptUI.setup
+	({
 		LT : ['left',   'top'],
 		RT : ['right',  'top'],
 		FT : ['fill',   'top'],
@@ -87,7 +77,7 @@
 		RF : ['right',  'fill'],
 		FF : ['fill',   'fill'],
 		CF : ['center', 'fill'],
-		});
+	});
 
 	//==========================================================================
 	// [180527] ScriptUI.isWidget()
@@ -104,34 +94,34 @@
 	.setup({ MAP:
 	{
 		// --- Containers
-		'window':       { abbr:'W' , name:'Window' },       // type,text,bounds ,{name/borderless/resizeable/closeButton/maximizeButton/minimizeButton}
-		'group':        { abbr:'G' , name:'Group'  },       // -,bounds         ,{name}
-		'panel':        { abbr:'P' , name:'Panel'  },       // -,bounds,text    ,{name/borderStyle/su1PanelCoordinates}
+		'window':       { abbr:'W' , name:'Window'      },
+		'group':        { abbr:'G' , name:'Group'       },
+		'panel':        { abbr:'P' , name:'Panel'       },
 		// --- Texts
-		'statictext':   { abbr:'S' , name:'StaticText' },   // -,bounds,text    ,{name/multiline/scrolling}
-		'edittext':     { abbr:'E' , name:'EditText' },     // -,bounds,text    ,{name/multiline/scrolling/borderless/readonly/noecho/enterKeySignalsOnChange}
+		'statictext':   { abbr:'S' , name:'StaticText'  },
+		'edittext':     { abbr:'E' , name:'EditText'    },
 		// --- Buttons
-		'button':       { abbr:'B' , name:'Button' },       // -,bounds,text    ,{name}
-		'iconbutton':   { abbr:'I' , name:'IconButton' },   // -,bounds,image   ,{name/style/toggle}
-		'checkbox':     { abbr:'C' , name:'Checkbox' },     // -,bounds,text    ,{name}
-		'radiobutton':  { abbr:'R' , name:'RadioButton' },  // -,bounds,text    ,{name}
-		// --- Image container
-		'image':        { abbr:'i' , name:'Image' },        // -,bounds,icon    ,{name}
+		'button':       { abbr:'B' , name:'Button'      },
+		'iconbutton':   { abbr:'I' , name:'IconButton'  },
+		'checkbox':     { abbr:'C' , name:'Checkbox'    },
+		'radiobutton':  { abbr:'R' , name:'RadioButton' },
+		// --- Image (container)
+		'image':        { abbr:'i' , name:'Image'       },
 		// --- Lists
-		'listbox':      { abbr:'L' , name:'ListBox' },      // -,bounds,items   ,{name/items/multiselect/numberOfColumns/showHeaders/columnWidths/columnTitles}
-		'dropdownlist': { abbr:'D' , name:'DropDownList' }, // -,bounds,items   ,{name/items}
-		'treeview':     { abbr:'T' , name:'TreeView' },     // -,bounds,items   ,{name/items}
+		'listbox':      { abbr:'L' , name:'ListBox'     },
+		'dropdownlist': { abbr:'D' , name:'DropDownList'},
+		'treeview':     { abbr:'T' , name:'TreeView'    },
 		// --- List item
-		'listitem':     { abbr:'l' , name:'ListItem' },     // type,text
+		'listitem':     { abbr:'l' , name:'ListItem'    },
 		// --- Bars
-		'scrollbar':    { abbr:'b' , name:'Scrollbar' },    // -,bounds,value,minvalue,maxvalue,  {name}
-		'slider':       { abbr:'s' , name:'Slider' },       // -,bounds,value,minvalue,maxvalue,  {name}
-		'progressbar':  { abbr:'p' , name:'Progressbar' },  // -,bounds,value=0,maxvalue=100,     {name}
+		'scrollbar':    { abbr:'b' , name:'Scrollbar'   },
+		'slider':       { abbr:'s' , name:'Slider'      },
+		'progressbar':  { abbr:'p' , name:'Progressbar' },
 		// --- Tabs
-		'tabbedpanel':  { abbr:'X',  name:'TabbedPanel' },  // -,bounds         ,{name}
-		'tab':          { abbr:'x',  name:'Tab' },          // -,bounds,text    ,{name}
-		// --- FlashPlayer (deprecated.)
-		'flashplayer':  { abbr:'F',  name:'FlashPlayer' },  // -,bounds,file,    {name}		
+		'tabbedpanel':  { abbr:'X',  name:'TabbedPanel' },
+		'tab':          { abbr:'x',  name:'Tab'         },
+		// --- FlashPlayer (deprecated)
+		'flashplayer':  { abbr:'F',  name:'FlashPlayer' },
 	}});
 
 	ScriptUI.getIndex = function getIndex(/*any*/x,  a,i)
@@ -146,258 +136,826 @@
 	},
 
 	//==========================================================================
-	// [180528] ScriptUI.builder() ; [180530] Added event keys.
-	// [180825] Inherits `helpTip` from parent
-	// [181117] Set the `name` property of the widget (if a name is provided.)
+	// ScriptUI.builder() -- NOTICE
 	//==========================================================================
 
-	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,u,f,win,pp,k,x,p,t,name,wg,ISWG)
+	/*
+
+	The purpose of `ScriptUI.builder()` is to provide a compact and generic tool
+	for building user interfaces. Unlike the native 'resource string' mechanism
+	which involves literal strings and therefore leads to issue when dynamic data
+	are to be treated, the builder deals with actual objects whose internal data
+	may still be browsed and refined just before being sent to the builder. This
+	brings more flexibility to the client code.
+
+	[REM] Detailed example: /tests/ScriptUIBuilder.jsx
+
+
+	0. Overview.
+	----------------------------------
+
+	`ScriptUI.builder(res,parent)` takes a UI descriptor (`res` object) and turns
+	it into ScriptUI component(s). In most case you'll use this tool to create a
+	Window ('dialog', 'palette', 'window'), but the function allows to insert UI
+	stuff under an existing `parent` too.
+
+	The first argument of the function, `res`, carries and describes all desired
+	attributes, creation properties, as well as nested sub-components (also called
+	'widgets'.) The `res` object has a natural, JSON-like structure. Example:
+
+	      {
+	         properties:                { type:'dialog', text:"Hello" },
+	         margins:                   20,
+	         spacing:                   10,
+	         orientation:               'column',
+	         alignChildren:             ScriptUI.LT,
+
+	         Panel$myPanel:
+	         {
+	            properties:             { text:__("Panel Title") },
+	            minimumSize:            { width: 400 },
+	            margins:                5,
+
+	            StaticText$myInfo:
+	            {
+	               properties:          { multiline:true },
+	               characters:          30,
+	               preferredSize:       { height: 100 },
+	            },
+	         },
+	      }
+
+
+	1. Basic Keys.
+	----------------------------------
+
+	Most `res` keys --e.g `margins`, `spacing`, `characters`-- specify regular
+	attributes of a ScriptUI object once it is available. Also, as you would do
+	with any object instance, you can add arbitrary keys, like `data` or `intent`,
+	which are not part of the ScriptUI spec. The JSON descriptor allows to gather
+	in a compact declaration, per widget, all attributes and settings that your
+	UI supports and handles, including inner objects or functions:
+
+	      StaticText$myInfo:
+	      {
+	         properties:          { multiline:true },
+	         characters:          30,
+	         data:                { foo:1, bar:2 },
+	         processing:          function(){ },
+	      },
+
+	Some special keys are detailed below.
+
+
+	2. The `properties` Key.
+	----------------------------------
+
+	When defined, `properties` has a specific purpose: it loads a set of creation
+	arguments and properties. At any point of the `res` structure, `properties`
+	is parsed first because it's involved in widget creation.
+	
+	[REM] In ScriptUI, a widget is built from a command that looks like
+	`<parent>.add( type, args..., {...} )`, the last parameter being the
+	"creation properties" object. In your descriptor, use the key `properties`
+	to declare and feed that specific object as well as initial arguments.
+	
+	The builder is smart enough to extract relevant arguments (`bounds`, `text`,
+	`value`, etc) from the set of pure creation properties (`name`, `borderless`,
+	`multiline`...) with respect to the widget type. For example, the code
+	
+	      EditText$1:
+	      {
+	         properties:{ name:"ED1", text:"Hi", readonly:true, bounds:[100,20] },
+	      }
+
+	will translate --behind the scenes-- into:
+	
+	      <parent>.add( 'edittext', [100,20], "Hi", {name:"ED1", readonly:true} );
+
+	Note that arbitrary keys are supported within `properties`, not only those
+	labelled "creation properties" in ScriptUI documentation. Just make sure you
+	don't override built-in creation properties.
+
+	   TYPE         ARGS(•=bounds) CREATION PROPERTIES
+	   =================================================================
+	   window       text,•         name borderless resizeable closeButton
+	                               maximizeButton minimizeButton
+	   -----------------------------------------------------------------
+	   group        •              name
+	   panel        •,text         name borderStyle su1PanelCoordinates
+	   =================================================================
+	   statictext   •,text         name multiline scrolling
+	   -----------------------------------------------------------------
+	   edittext     •,text         name multiline scrolling borderless
+	                               readonly noecho enterKeySignalsOnChange
+	   =================================================================
+	   button       •,text         name 
+	   iconbutton   •,image        name style toggle
+	   checkbox     •,text         name 
+	   radiobutton  •,text         name 
+	   =================================================================
+	   image        •,icon         name
+	   =================================================================
+	   listbox      •,(items)      name items multiselect numberOfColumns
+	                               showHeaders columnWidths columnTitles
+	   -----------------------------------------------------------------
+	   dropdownlist •,(items)      name items
+	   treeview     •,(items)      name items
+	   listitem     text           WARNING: no creation properties!
+	   =================================================================
+	   scrollbar    •,value,       name
+	   & slider     minvalue,
+	                maxvalue
+	   -----------------------------------------------------------------
+	   progressbar  •,value,       name
+	                maxvalue
+	   =================================================================
+	   tabbedpanel  •              name
+	   tab          •,text         name
+	   =================================================================
+	   flashplayer  •,file         name
+	   =================================================================
+
+	The `properties` object is optional (and disallowed in ListItem objects)
+	but it is a good practice to use it for storing immutable attributes,
+	like a custom 'index' or 'id' property. Once the widget is created, you
+	can still access its creation properties via `myWidget.properties`.
+	
+	[REM] On the `name` property, see Section 4.
+
+
+	3. Widget Declaration.
+	----------------------------------
+	
+	In the `res` descriptor, ScriptUI widgets are declared using keys of the form
+	`<widgetType>$<widgetName>`, where the <widgetType> prefix denotes any of the
+	existing ScriptUI types, case-insensitive, excluding 'window'. So you can use
+	prefixes like
+	
+	      group, statictext, button, image . . .
+
+	as well as
+
+	      Group, StaticText, TabbedPanel . . .
+
+	The `...$<widgetName>` suffix then specifies a global name for that widget, that
+	is, a key that will refer to it from the Window instance. In the following code,
+
+	            StaticText$myInfo:
+	            {
+	               properties:          { multiline:true },
+	               characters:          30,
+	            },
+
+	the builder produces a StaticText instance which you can reach later on using
+	`myWin.myInfo` (assuming `myWin` refers to the Window instance.)
+	
+	If you don't need to assign a global name to some widget, use numbers in place of
+	<widgetName>, or a string that start with a digit:
+
+	            Group$1:
+	            {
+	               . . .
+	            },
+	            Group$2:
+	            {
+	               . . .
+	            },
+
+	[REM] At a particular level of the descriptor, having *distinct keys* is
+	syntactically required to avoid overwrites. Indeed, `{ group:{}, group:{} }`
+	would create a single key!
+	
+	[REM] If <widgetName> is empty -- as in `Button$` -- the result is the
+	same as using a number.
+
+
+	4. Local vs. Global Name.
+	----------------------------------
+	
+	The formal `name` property (owned by the `properties` object) works as a
+	local key *relative to the parent widget*. If defined, it provides
+	
+	      <myWidget> === <myWidget>.parent[<myWidget>.properties.name]
+
+	Thus, a parent can refer to some child through the internal name of that
+	child. In that context, `<parent>["xyz"]` is just a short way of saying
+	`<parent>.children["xyz"]`.
+
+	But in many cases this is of limited interest. Accessing the widget from
+	the root window is often a better option. Also, as the formal name is loaded
+	in the internal `properties` object, its usage is not as intuitive as in the
+	syntax we suggest to get the name: `myWidget.name`.
+	
+	ScriptUI.builder() automatically improves naming conventions, by considering
+	the <widgetName> tag --see previous Section-- as the actual, global name of
+	the widget. Unlike the local name (which you can still specify through the
+	`properties` object), the global name satisfies the following clauses:
+	
+	      <myWidget> === <myWindow>.<widgetName>
+	and
+	      <myWidget>.name === <widgetName>
+	
+	It's up to you to determine if both local and global name(s) are required
+	in your project. This depends on how components will interact. In this
+	example,
+	
+	      Group$globalName:
+	      {
+	         properties:   { name:"localName", ... },
+	      },
+	
+	the Group (G) has the following properties:
+	
+	              GLOBAL                              LOCAL
+	      -----------------------       ---------------------------------
+	      G === <win>.globalName        G === <parent>.localName
+	      G.name === "globalName"       G.properties.name === "localName"
+
+
+	5. Events.
+	----------------------------------
+	
+	You can use keys like `onShow`, `onChange`, etc, to set usual event managers
+	as you would do in basic ScriptUI code. In addition, you can declare pure
+	listeners using keys of the form `_<evType>`, e.g "_change" or "_click". All
+	native event types are then supported:
+
+	      _move , _moving , _resize , _resizing , _show , _close
+	      _focus, _blur, _change, _changing
+	      _click, _mousedown, _mouseup, _mousemove, _mouseover, _mouseout
+	      _enterKey , _keydown, _keyup
+	
+	For example,
+	
+	      StaticText$myInfo:
+	      {
+	         properties:   { text:"Click me!" },
+	         _mousedown:   function onMouseDown(){ this.text="Done." },
+	      },
+
+	will register the event handler as follows:
+
+	      `<myStaticText>.addEventListener('mousedown', <func>)`
+	
+	(<func> denoting the passed function.)
+
+
+	6. Factories.
+	----------------------------------
+
+	A 'factory' is a special function that creates complex, re-usable ScriptUI
+	components like menus, smart icons, edit fields. You don't want to rewrite
+	the inner implementation of such objects whenever you use them in your UI.
+	Rather, you shall prototype and encapsulate custom objects and behaviors in
+	a function (i.e, the factory), then pass that function to the builder. If
+	a list of arguments <arg1>, <arg2>... are expected, you will pass them too.
+	
+	There are three ways of declaring a custom object based on a factory:
+
+	      (a) FULL SYNTAX.
+	          custom$<name>:     { factory: [<func>, <arg1>, ...] , ... }
+
+	      (b) SHORT SYNTAX.
+	          custom$<name>:     [ <func>, <arg1>, ... ]
+	
+	      (c) SPECIAL SYNTAX.
+	          <keyFactory>$name: [ <arg1>, ... ]
+
+	In schemes (a) and (b), the literal type "custom" indicates a custom object,
+	then the suffix `...$<name>` works as detailed in the syntax of regular
+	widgets.
+	
+	In scheme (a), you have to provide an object exposing at least a "factory"
+	key, pointing to an Array, and additional properties if desired.
+	In scheme (b) you only provide an array, which is then understood as the
+	factory descriptor. That's the only difference between (a) and (b). The full
+	syntax (a) simply allows to add more properties beyond the `factory` key.
+
+	Now, the array [ <func>, <arg1>, ... ] is parsed as follows:
+	
+	      <func>    Function, or key (str) that resolves into a function
+	                from the current context (this), or from the parent
+	                container. These options are explored in that order:
+	                if <func> is not already a function, then look at
+	                `this[<func>]`, and if that's not a function, give a
+	                look at `parent[<func>]`.
+
+	      At the end of the process, <func> points out to your factory.
+
+	      <arg1>... List of parameters to be passed to the factory. If no
+	                parameters are expected, the factory descriptor reduces
+	                to a single element array: [<func>].
+	
+	Every factory function must support at least one formal argument which is
+	automatically set by the builder and passed *before* any parameter:
+	the parent (i.e, container) of your custom component. For example, the
+	following code --using syntax (b)-- declares a custom menu in a Group:
+
+	      Group$myGroup
+	      {
+	         custom$myMenu: [ myMenuFactory, 400, ['Options','Help','Quit'] ],
+	      }
+	
+	The function `myMenuFactory` will then receive three arguments. First, the
+	group container, `myGroup`, then the two parameters (400 and the array
+	of menu items.) The factory is assumed to take these inputs and return a valid
+	object, likely a Group or a Panel, being referred to as `myMenu` in the Window
+	instance.
+	
+	[REM] There is no drastic constraint on what a factory can, in fact, return.
+	If the output is not a ScriptUI widget, or has no connection with its supposed
+	parent, then the window will simply points out to that object or value. However,
+	in case the factory descriptor uses the full syntax (a) and plans to load child
+	widgets within the custom component (considered as a container), it's up to the
+	client code to guarantee that the factory actually returns a valid container.
+	Otherwise, the builder would be forced to break the recursive parsing of the
+	resource object beyond that level.
+	
+	Finally, the builder supports a "special" syntax --scheme (c)--which involves,
+	instead of the 'custom' keyword, a <keyFactory> prefix that MUST satisfy the
+	following rules:
+	
+	      1. The string <keyFactory> must ends with "Factory" (case-sensitive.)
+	         For example, "IconFactory" or "MenuFactory" would be OK,
+	         while "MyFact" or "lowercasefactory" would not.
+
+	      2. `ScriptUI.<keyFactory>` must be a valid function. Therefore, it is
+	         required to extend the ScriptUI object upstream. This can be done
+	         from IdExtenso modules or external processes.
+
+	Then the code
+	
+	      <keyFactory>$name: [ <arg1>, ... ]
+
+	declares a custom component based on the factory `ScriptUI.<keyFactory>`.
+	Note that the above syntax is strictly equivalent, using scheme (b), to:
+	
+	      custom$name: [ ScriptUI.<keyFactory>, <arg1>, ... ]
+
+
+	7. Context.
+	----------------------------------
+	
+	When `ScriptUI.builder()` is called, the `this` context can be adjusted to
+	meet the expectations of factory functions. For example, if your code context
+	(say `cx`) has access to data and/or methods that factories want to invoke,
+	then use `ScriptUI.builder.call(cx,res)` rather than `ScriptUI.builder(res)`.
+	
+	The rule is, every factory is called in the context from which the builder
+	itself is being called.
+	
+	[REM] If you run `ScriptUI.builder(...)` as such, the context is (of course)
+	the ScriptUI object.
+	
+
+	8. Additional Features.
+	----------------------------------
+
+	a) Size-related keys. The properties `size`, `preferredSize`, `maximumSize`,
+	   and `minimumSize` can be set either as an array of two numbers, like
+	   [20,10], or as an object. In the latter case, specify a `width` and/or
+	   a `height` property. If a single dimension is determined, as in the code
+	   `minimumSize: { width:200 }`, then the builder will not alter the other
+	   dimension.
+	
+	b) `helpTip` inheritance. If the current widget has no `helpTip` while
+	    its parent has one, the child automatically inherits the parent key.
+	    This avoid repeating the same string when multiple components share
+	    a common tip within a determined container. This typically concerns
+	    groups based on a label (StaticText) and an edit field (EditText.)
+	
+	c) List items. In the current implementation, the `items` key (available
+	   to Listbox, DropdownList, and Treeview widgets) is treated as a creation
+	   property. That is, the `items` array is registered in the `properties`
+	   object rather than being sent as the 3rd argument of the `parent.add()`
+	   method.
+	   
+	   [REM] According to ScriptUI documentation, the two ways of specifying
+	   items are quite equivalent: “Supply [the items] property, or the items
+	   argument to the add() method, not both. [Using creation properties] is
+	   most useful for elements defined using Resource Specifications.”
+	   But there is a sensible advantage in supplying items as a creation prop:
+	   the input array is not lost, you can still recover it from `myListWidget.
+	   properties.items`, which cannot be done in the other case.
+
+	   Note that `items` MUST be set inside the `properties` object, not outside,
+	   since `<listWidget>.items` is a read-only Collection. So the recommended
+	   syntax for declaring a list looks like:
+
+	      Listbox$myList:
+	      {
+	         properties: { items:['aaa','bbb','ccc'], . . . },
+	         helpTip:    "This is a listbox",
+	         . . .
+	      }
+
+
+	9. Custom Key Handlers
+	----------------------------------
+
+	Finally, the builder supports custom keys entirely managed from the outside
+	thanks to the companion routine `ScriptUI.addKeyHandler()`. Use it to
+	register your own key managers, so that `myKey : myValue` be interpreted
+	through a dedicated function.
+	
+	Here is an example. Say you have implemented a set of functions that make
+	it easier to deal with ScriptUI colors (`backgroundColor` and `foregroundColor`
+	are available in `ScriptUIGraphics` objects, which are quite complicated.)
+	Now you have a `setBackground()` function that assign a color to any widget.
+	
+	What you want is to make this functionality available straight in the `res`
+	object in order to specify a "background" key this way:
+	
+	      `background: 0xRRGGBB`
+
+	As such, the above code simply attaches a `background` property to the
+	host widget, set its value to 0xRRGGBB, and does nothing else.
+	
+	Now, if your color module registers the setBackground function as a key
+	handler:
+
+	      ScriptUI.addKeyHandler( 'background', setBackground );
+
+	then the original `background` assignment (in the `res` object) will translate
+	into `setBackground(<widget>,0xRRGGBB)` at build-time.
+	
+	[REM] By default, no key handler is registered in `ScriptUI.builder` so this
+	feature is fully transparent.
+	
+	An important point about key handlers is that they only take effect during
+	construction, that is, when the builder() function is processing `res` data
+	-- provided `ScriptUI.addKeyHandler()` has been called before.
+
+
+	10. Version history
+	----------------------------------
+
+	[180528] Initial implementation.
+	[180530] Managed event keys.
+	[180825] `helpTip` inheritance.
+	[181117] `name` property (if supplied.)
+	[181201] Full reset:
+	         added the 'special scheme' for factories;
+	         added 'key handler' mechanism;
+	         various fixes, notice...
+
+	*/
+
+	ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,win,pp,s,t,DG,k,x,p,ISWG,wg)
 	//----------------------------------
-	// Basic UI builder. The `res` object has the form { <key>:<value>, <key>:<value>, ... }
-	// where <key> is the name of some property for the current widget and <value> its value,
-	//     E.g  `{ ..., spacing: 5, ... }`  or  `{ ..., minimumSize: [100,50], ... }`
-	// Special syntax:
-	// (1) If <key> has the form `<WidgClass>$<WidgName>` -- e.g `Button$btn1` -- then the
-	//     corresponding widget is created at this point so that window[<WidgName>] refers
-	//     to the object. The associated <value> is then parsed as a `res` object in turn.
-	//     E.g  `{ ..., Button$btn1:{ size:[100,20] }, ... }`
-	//     If <WidgName> is empty or a numeral -- e.g `Button$` or `Button$0` -- then the
-	//     resulting widget has no associated key in the root window.
-	// (2) If `<key>==properties` and <value> is an object, then the parent widget is built
-	//     using the given creation properties, including creation arguments, as detailed in
-	//     `ScriptUI.isWidget.MAP` (see comments.)
-	//     E.g  `{ ..., Checkbox$cb:{ properties:{text:"Hello",name:"innerName"}, ... }, ... }`
-	// (3) If <key> has the form `Custom$<WidgName>` then the function looks after a `factory`
-	//     function to build a custom object. The factory can be supplied in two ways:
-	//     (a) Custom$<WidgName> : [<factory>,<args>...]
-	//     (b) Custom$<WidgName> : { factory:[<factory>,<args>...], ... }
-	//     where `<factory>` is either a function, or the name of a method available in
-	//     the `this` context or in the prototype of the parent widget ;
-	//     and `<args>` additional arguments to pass in to the factory.
-	//     The object will then be created using <factoryFunc>.apply(<cx>,<parent>,<args>)
-	//     using <cx>===this unless <factory> was provided as a method name in the
-	//     parent widget prototype. Note that the <factoryFunc> function must support at
-	//     least one argument (the 1st one) which always refers to the parent widget.
-	// (4) [180530] If <key> has the form `_<evType>` where <evType> is a valid event type
-	//     ('move', 'focus', 'mouseover', ...), and if <value> is a function, then <value>
-	//     is interpreted an event handler declared as follows,
-	//          `parent.addEventListener( <evType>, <value> )`
-	// [REM] When using the `Custom...` syntax it's up to the client code to guarantee that
-	// the factory function returns a valid ScriptUI component if builder recursion is
-	// desired within. If a non-ScriptUI object is returned, the function will not recurse
-	// in that object.
+	// Create a ScriptUI interface (from a simple control to a full Window.)
+	// Return its parent, or the top window. (Read the notice for details.)
 	// ---
-	// If `parent` is not provided, then the builder is expected to build a Window instance,
-	// which usually involves at least a `properties` key as shown below,
-	//    { properties: { type:'dialog', text:"hello", resizable: true, ...}, ... }
-	// When the `properties` key is not provided, default creation properties are used.
+	// `res`    :: Resource object in { <key>:<value>, <key>:<value>, ... } form.
+	//             E.g  `{ spacing:5, minimumSize:[100,50], group$Gp:{...} ...}`
+	// `parent` :: Parent of the object being built. If no parent is supplied, or
+	//             if no window is attached to it, create a new Window instance.
+	// <this>   :: Any context that would require to be sent to factory functions.
 	// ---
-	// The `this` context may be adjusted from the client code to meet the requirements
-	// of factory functions. For example, if your code context `myContext` provides
-	// various data and methods used in the factories, then you likely want to use
-	// `ScriptUI.builder.call(myContext,myRes)` rather than `ScriptUI.builder(myRes)`.
-	// ---
-	// For a detailed example, see /tests/ScriptUIBuilder.jsx.
-	// ---
-	// => Window | Widget  [== the parent component of the objects being built.]
+	// => new Window | parent
 	{
-		(q=callee.Q||callee.Q=[]).length=0;
-		u = void 0;
-		f = callee.F_ASSIGNMENT;
+		// Checkpoint.
+		// ---
+		res===Object(res)
+		|| error(__("%1 > Invalid resource argument (%2). Should be an object.",callee.name,res && typeof res));
+		
+		// Init.
+		// ---
+		(q=callee.Q||callee.Q=[]).length=0;                 // Cache for args array.
 
-		win = parent && parent.window;
-		if( !win )
-		{
-			pp = res.properties||{};
-			t = pp.text||pp.name||'';
-			t && !pp.name && (pp.name=t);
-			win = new Window( pp.type||'dialog', t, pp.bounds||u, pp );
-			parent = win;
-		}
+		// Do we need a new Window?
+		// ---
+		win = parent && (parent.window||parent);
+		( win && (win instanceof Window) )
+		|| ( parent=win=callee.WIND(res.properties) );
 
+		// Parse `res` keys.
+		// ---
+		DG = RegExp.DIGI;
 		for( k in res )
 		{
 			if( !res.hasOwnProperty(k) ) continue;
-
-			// Skip any key already treated upstream.
-			// ---
-			if( callee.RE_UPSTREAM.test(k) ) continue;
-
-			x = res[k];
-
-			// If res[k] is not an object, don't waste time.
-			// ---
-			if( x !== Object(x) ){ parent[k]=x; continue; }
-
-			// Parse k::<WidgType>$<WidgName> -->  k=<WidgType> , name=<WidgName>
-			// If `name` is a numeral, it is considered the empty string.
-			// ---
-			0 < (p=k.indexOf('$')) ? ( t=k.substr(1+p), k=k.substr(0,p).toLowerCase() ) : (t='');
-			name = t.length && isNaN(parseInt(t,10)) ? t : '';
-			
-			// Default scheme.
-			// ---
-			pp = x.properties || 0;
-			q[0] = k;
-			q[1] = pp.bounds||u;
-			ISWG = wg = 0;
-
-			switch( k )
+			if( callee.RE_CREA.test(k) ) continue;          // Skip 'properties' and 'factory' (already seen.)
+			x = res[k];                                     // E.g  k::'size', x::[20,10]
+			if( x!==Object(x) )                             // Don't waste time if x is a scalar.
 			{
-				case 'window':           q.length=0; break;                     // Disable; already done!
-
-				case 'flashplayer':      q.push(pp.file||u);                    // `file` key in pp.
-
-				case 'group':
-				case 'tabbedpanel':      break;                                 // Done.
-
-				case 'panel':
-				case 'statictext':
-				case 'edittext':
-				case 'button':
-				case 'checkbox':
-				case 'radiobutton':
-				case 'tab':              q.push(pp.text||u); break;             // `text` key in pp.
-
-				case 'image':
-				case 'iconbutton':       q.push(pp.image||pp.icon||u); break;   // `image` or `icon` key.
-
-				case 'listbox':
-				case 'dropdownlist':
-				case 'treeview':         q.push(u); break;                      // Do not use pp.items as arg, would duplicate the list.
-
-				case 'listitem':         q[0] = pp.type||'item';
-				                         q[1] = pp.text||'';
-				                         pp=0; break;
-
-				case 'scrollbar':
-				case 'slider':           q.push(pp.value||0, pp.minvalue||0, pp.maxvalue||100); break;
-
-				case 'progressbar':      q.push(pp.value||0, pp.maxvalue||100); break;
-				
-				case 'custom':           q.length = 0;
-				                         t = x.hasOwnProperty('factory') ? x.factory : x;
-				                         if( !(t instanceof Array) || (!t[0]) ) break;
-
-				                         q.push.apply(q,t);
-				                         wg = this;
-				                         'function' == typeof(t=q[0])
-				                         || 'function' == typeof(q[0]=wg[t])
-				                         || 'function' == typeof(q[0]=(wg=parent)[t])
-				                         || (t=wg=q.length=0);
-				                         
-				                         break;
-
-				default:                 q.pop();                               // Make q.length==1.
-			}
-
-			if( !q.length ) continue;
-			
-			// Custom case ; `wg` has been initialized to the func context.
-			// (Might be either `this` or the parent widget.)
-			// ---
-			if( wg )
-			{
-				// Factory function.
-				// ---
-				t = q[0];
-				
-				// Make sure the 1st argument is always the parent widget.
-				// ---
-				q[0] = parent;
-
-				// Create the custom object.
-				// ---
-				wg = t.apply(wg, q);
-				q.length = 0;
-				ISWG = ScriptUI.isWidget(wg);
-			}
-			
-			// Manage non-widget assignments.
-			// ---
-			if( 1 == q.length)
-			{
-				k = q.pop();
-
-				// External assignment process, if set.
-				// ---
-				if( f && f.call(this,parent,k,x) ) continue;
-				
-				// [ADD180530] Convert special event keys into addEventListener statement.
-				// k :: `_move` | `_mouseup` | `_keydown` | etc
-				// ---
-				if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVENTS.test(t=k.substr(1)) )
-				{
-					parent.addEventListener(t,x);
-					continue;
-				}
-				
-				// Default process.
-				// ---
-				switch( k )
-				{
-					case 'preferredSize':
-					case 'minimumSize':
-					case 'maximumSize':
-					case 'size':
-						t = parent[k] || 0;
-						if( (!t) || (x instanceof Array) ){ parent[k]=x; break; }
-						x.hasOwnProperty('width')  && (t.width=x.width);
-						x.hasOwnProperty('height') && (t.height=x.height);
-						break;
-
-					default:
-						parent[k] = x;
-				}
+				callee.SETK(this,parent,k,x);               // `SETK` manages possible key handler!
 				continue;
 			}
-			
-			// Appends the `properties` property.
-			// ---
-			if( pp )
-			{
-				// If not provided, pp.name is defaulted to `name`
-				// ---
-				name.length && ( pp.hasOwnProperty('name') || (pp.name=name) );
-				q.push(pp);
+
+			p = k.indexOf('$');                             // Does `k` contain a `$` separator?
+			pp = callee.ARGS( (0<p?k.slice(0,p):k),x,q);    // Set `pp` and `q` from (k,x).
+			if( false===pp ) continue;                      // Skip critical keys s.t. 'window' (!)
+
+			if( !q.length )                                 // If `q` is empty, we just have to set
+			{                                               // `parent[k]=x` (no widget creation);
+				callee.SETK(this,parent,k,x);               // `SETK` provides improvements for some
+				continue;                                   // props and deals with event listeners.
 			}
 
-			// Create a ScriptUI widget (if not done.)
-			// ---
-			0===wg && ( (wg = parent.add.apply(parent,  q)), ISWG=1 );
-			q.length = 0;
+			s = 0 < p ? k.slice(1+p) : '';                  // Retrieve the name (default='')
+			s.length && DG.test(s.charAt(0)) && (s='');     // unless it starts w/ a digit.
 
-			// If a name is provided, make the widget available from win[<name>].
 			// ---
-			if( name.length || !(name in win) )
-			{
-				win[name] = wg;
+			// At this point, `pp` is 0 or truthy (as read
+			// from x.properties), and `q` is an Array of two
+			// or more arguments, q[0] being a type among
+			// 'group' | 'checkbox' | . . . | 'custom'
+			// ---
+
+			// Create the widget.
+			// ---
+			ISWG = 'custom' == (k=q[0])
+			? ( (wg=callee.CUST(this,parent,q)) && ScriptUI.isWidget(wg) )
+			: ( (wg=callee.WIDG(parent,q,pp,s)) && true );
+
+			if( !wg ) continue;
+
+			// Final touch.
+			// ---
+			if( s.length )                                  // If some name `s` is supplied
+			{                                               // (and not assigned),
+				( s in win )   || (win[s]=wg);              // make `wg` available from `win[s]`
+				('name' in wg) || (wg.name=s);              // and set `wg.name` to `s`.
 			}
-
-			// [ADD181117] If a name is provided, make it available from the
-			// "name" property (that is, `this.name`).
-			// ---
-			if( name.length || !('name' in wg) )
-			{
-				wg.name = name;
-			}
-
-			// [ADD180825] Inherits `helpTip` from parent, if not assigned.
-			// ---
-			if( !wg.helpTip && (t=parent.helpTip) )
-			{
+			if( !wg.helpTip && (t=parent.helpTip) )         // [180825] Inherits `helpTip`
+			{                                               // from `parent`, if not assigned.
 				wg.helpTip = t;
 			}
 
-			// If wg is a ScriptUI widget, recurse.
+			// Recurse ONLY if `wg` is a ScriptUI widget.
 			// ---
-			ISWG && callee.call(this,  x,wg);
+			ISWG && callee.call(this, x, wg);
 		}
 		
 		return parent;
 	}
-	.setup({
-		RE_UPSTREAM:  /^(?:properties|factory)$/,
-		F_ASSIGNMENT: false,
-		RE_EVENTS:    /^(?:move|moving|resize|resizing|show|close|focus|blur|change|changing|click|mousedown|mouseup|mousemove|mouseover|mouseout|enterKey|keyup|keydown)$/,
+	.setup
+	({
+		RE_CREA:      RegExp('^(?:' + 'properties|factory' + ')$'),
+
+		WIND: function(/*obj={}*/pp,  t,s,b)
+		//----------------------------------
+		// Create a Window instance based on `pp` properties.
+		// `pp` may specify the following keys: .type (default is "dialog"),
+		// .text or .name (default is ""), .bounds (default is undefined) and
+		// any creation property (.borderless, .resizeable, etc.)
+		// ---
+		// => new Window
+		{
+			pp===Object(pp) || (pp={});
+
+			t = String(pp.type||'').toLowerCase();          // Win type.
+			'window'===t || 'palette'===t || (t='dialog');  // Default: 'dialog'
+			delete pp.type;
+
+			s = String(pp.text||pp.name||'');               // text or name => title
+			pp.name || (s.length&&(pp.name=s));             // Set the name if non-empty
+			delete pp.text;
+
+			b = pp.bounds||void 0;
+			delete pp.bounds;
+
+			return new Window(t, s, b, pp);                 // Create the Window instance.
+		},
+
+		ARGS: function(/*str*/tpe,/*obj*/x,/*any[]&*/args,  s,pp,u,k,z,t)
+		//----------------------------------
+		// Feed the array `args` :: [tpe, args...] for use in  either
+		// `parent.add(tpe, ...)` or a factory func. If `tpe` is 'window',
+		// return FALSE. Return `x.properties` if it's truthy AND allowed
+		// in the target object, otherwise return 0.
+		// ---
+		// => obj|0 [OK]  |  false [KO]
+		{
+			s = tpe.toLowerCase();                          // Normalize the type.
+			if( 'window'==s ) return false;                 // Disallow 'window'.
+			pp = x.properties || 0;                         // Creation properties?
+			u = void 0;                                     // Alias of undefined.
+			args.length && (args.length=0);                 // Make sure `args` is empty.
+			t = typeof(k=callee.Q[s]);                      // 'string'|'object'|'undefined'
+
+			( 'undefined' == t ) || ( (args[0]=s),(args[1]=pp.bounds||u) );
+			z = args.length;
+			
+			if( 'string' == t )
+			{
+				// Simple widget expecting at most one extra argument.
+				// ''      => noop
+				// 'image' => try 'icon' as an alternate key.
+				// '\x01'  => forcibly push undefined
+				// ---
+				if( !k.length ) return pp;
+				'image'==k && (pp[k]||(k='icon'));
+				args[z++] = ('\x01'!=k&&pp[k]) || u;
+				delete pp[k];
+				return pp;
+			}
+			
+			if( 'object' == t )
+			{
+				// Scrollbar, slider, progressbar, and listitem.
+				// listitem => reset `args` from 0 and disallow `pp`.
+				// ---
+				'listitem'==s && (z=0);
+				for( t in k )
+				{
+					if( !k.hasOwnProperty(t) ) continue;
+					args[z++] = pp[k] || k[t];
+					delete pp[k];
+				}
+				return 'listitem'==s ? 0 : pp;
+			}
+			
+			if( 'Factory' == tpe.slice(-7) && 'function'==typeof(t=ScriptUI[tpe]) )
+			{
+				// CUSTOM FACTORY: SPECIAL SCHEME.
+				// ---
+				( x instanceof Array )
+				&& ( (args[0]='custom'), (args[1]=t), args.push.apply(args,x) );
+			}
+			else
+			{
+				// CUSTOM FACTORY: FULL AND SHORT SCHEMES.
+				// ---
+				// If `x` has a 'factory' property (Array) or is
+				// itself an Array, make sure the 1st elem is truthy and
+				// set `args` :: [ 'custom', <first>, nextElems... ].
+				// The factory specifier, <first>, will be validated next.
+				// ---
+				'custom' == s
+				&& ( t = x.hasOwnProperty('factory') ? x.factory : x )
+				&& ( t instanceof Array )
+				&& ( t[0] )
+				&& ( (args[0]='custom'), args.push.apply(args,t) );
+			}
+			
+			return 0;
+		}
+		.setup
+		({
+			Q:
+			{
+				// --- At most one extra argument.
+				flashplayer: 'file',
+				tabbedpanel: '',         group:    '',
+				statictext:  'text',     edittext: 'text',   panel:   'text',  tab:'text',
+				radiobutton: 'text',     checkbox: 'text',   button:  'text',
+				iconbutton:  'image',    image:    'image',
+				dropdownlist:'\x01',     listbox:  '\x01',   treeview:'\x01', // force undef
+				// --- At least two extra arguments.
+				scrollbar:    { value:0, minvalue:0, maxvalue:100 },
+				slider:       { value:0, minvalue:0, maxvalue:100 },
+				progressbar:  { value:0, maxvalue:100 },
+				listitem:     { type:'item', text:'' },
+			},
+		}),
+		
+		SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t)
+		//----------------------------------
+		// Make the assignment `wg[k] = x` a bit smarter, if desired.
+		// `cx` is the current builder context, it is used for managing the
+		// key `k` in case `callee.EXTERN` has an associated function.
+		// Cf. ScriptUI.addKeyHandler()
+		// ---
+		// => undef
+		{
+			// External assignment process?
+			// ---
+			if( 'function' == typeof(t=callee.EXTERN[k]) )
+			{
+				t.call(cx,wg,x,k);
+				return;
+			}
+				
+			// Convert special event keys into addEventListener statement.
+			// k :: `_move` | `_mouseup` | `_keydown` | etc
+			// ---
+			if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVNS.test(t=k.slice(1)) )
+			{
+				wg.addEventListener(t,x);
+				return;
+			}
+			
+			// Sizing properties (size, preferredSize, maximumSize, minimumSize)
+			// ---
+			if( x && callee.RE_SIZE.test(k) && (t=wg[k]) && !(x instanceof Array) )
+			{
+				x.hasOwnProperty('width')  && (t.width=x.width);
+				x.hasOwnProperty('height') && (t.height=x.height);
+				return;
+			}
+				
+			// Default assignment.
+			// ---
+			wg[k] = x;
+		}
+		.setup
+		({
+			RE_EVNS: RegExp('^(?:'
+				     + 'move|moving|resize|resizing|show|close|'
+				     + 'focus|blur|change|changing|'
+				     + 'click|mousedown|mouseup|mousemove|mouseover|mouseout|'
+				     + 'enterKey|keydown|keyup'
+				     + ')$' ),
+			RE_SIZE: RegExp('^(?:'
+				     + 'preferredSize|minimumSize|maximumSize|size'
+				     + ')$' ),
+			EXTERN:  {},
+		}),
+		
+		CUST: function(/*obj*/cx,/*Widget*/parent,/*any[]&*/args,  t,f)
+		//----------------------------------
+		// Call the custom factory.
+		// `cx`     :: current `ScriptUI.builder` context.
+		// `parent` :: current widget container.
+		// `args`   :: array of custom arguments, still of
+		//             the form ['custom', <factory>, ...]
+		// The 2nd elem in `args` must be either a function, or a
+		// key (in either cx or parent) that refers to a function.
+		// ---
+		// => Widget|any [OK]  |  false [KO]
+		{
+			// Look for the factory function. Can be either `args[1]`,
+			// `cx[args[1]]`, or `parent[args[1]]` (in that order.)
+			// If no function is found, return false.
+			// ---
+			if( 'function' != typeof(f=t=args[1])
+				&& 'function' != typeof(f=cx[t])
+				&& 'function' != typeof(f=(cx=parent)[t])
+			) return false;
+			
+			// Remove the 1st elem (=='custom') from args.
+			// ---
+			args.shift();
+
+			// Make sure args[0] always points out to the parent.
+			// ---
+			args[0] = parent;
+			
+			// Create and return the custom object.
+			// ---
+			return f.apply(cx,args);
+		},
+		
+		WIDG: function(/*Widget*/parent,/*any[]&*/args,/*0|any|obj*/pp,/*str|''*/nm)
+		//----------------------------------
+		// Regular Widget creation.
+		// `parent` :: Current widget container.
+		// `args`   :: [ type, ... ]
+		// `pp`     :: Creation properties, or any. A properties object is forcibly
+		//             created as soon as `pp` is truthy (true, 1, "ok", etc.)
+		// `nm`     :: Name of the widget, or ''.
+		// ---
+		// => Widget
+		{
+			// Appends the `properties` object if !!pp.
+			// (Create a new object if necessary.)
+			// ---
+			if( pp )
+			{
+				pp===Object(pp) || (pp={});
+				nm.length && (!pp.hasOwnProperty('name')) && (pp.name=nm);
+				args[args.length] = pp;
+			}
+			
+			return parent.add.apply(parent,args);
+		},
 	});
+
+	ScriptUI.addKeyHandler = function addKeyHandler(/*key*/k,/*fct*/handler)
+	//----------------------------------
+	// Add a "key handler" to ScriptUI.builder. Whenever the key `k`
+	// is encountered in the resource object (`k : val` assignments),
+	// the code `<widget>[k]=val` is replaced by
+	//    handler.call( <context>, <widget>, val, k ).
+	// The `handler` function must support at least two parameters:
+	// 1. (obj) The target widget or object.
+	// 2. (any) The value to be assigned.
+	// (The key `k` itself is passed to the handler as 3rd parameter.)
+	// [REM] Cf. `ScriptUI.builder.SETK.EXTERN`
+	// ---
+	// => callee
+	{
+		'string'==typeof k
+		|| error(__("%1 > Invalid key (%2). Should be a string.",callee.name,k && typeof k));
+
+		'function'==typeof handler
+		|| error(__("%1 > Invalid handler (%2). Should be a function.",callee.name,handler && typeof handler));
+
+		ScriptUI.builder.SETK.EXTERN[k] = handler;
+		return callee;
+	};
+
+	ScriptUI.removeKeyHandler = function removeKeyHandler(/*key*/k)
+	//----------------------------------
+	// Remove a "key handler" from ScriptUI.builder (in case it is no
+	// longer needed.)
+	// => undefined
+	{
+		'string'==typeof k
+		|| error(__("%1 > Invalid key (%2). Should be a string.",callee.name,k && typeof k));
+
+		delete ScriptUI.builder.SETK.EXTERN[k];
+	};
