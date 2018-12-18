@@ -1,3 +1,6 @@
+##### [181218]
+  - [ScriptUI.forceRedraw()](/core/Ext/$$.scriptui.jsxinc) added. A short function that forces a given widget to invoke its `onDraw` handler (if available.) Useful when a special refresh/repaint mechanism is required on a custom UI component.
+  
 ##### [181201]
   - [ScriptUI.builder()](/core/Ext/$$.scriptui.jsxinc) deeply redesigned. Added `addKeyHandler()` and `removeKeyHandler()` utilities.
 
