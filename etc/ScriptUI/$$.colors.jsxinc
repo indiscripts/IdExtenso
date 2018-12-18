@@ -2,7 +2,7 @@
 
 		Name:           Colors
 		Desc:           Color-related extension for ScriptUI widgets.
-		Path:           /etc/SUI/$$.colors.jsxinc
+		Path:           /etc/ScriptUI/$$.colors.jsxinc
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
