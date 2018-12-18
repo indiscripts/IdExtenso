@@ -1,4 +1,5 @@
 ##### [181218]
+  - [ScriptUI/$$.colors.jsxinc](/etc/ScriptUI/$$.colors.jsxinc) added. This snippet loads various color-related methods in `ScriptUI` to make background/foreground management easier and safer in cross-version scripts. NOTE: This is an optional snippet (`etc` branch) so you have to explictly include it in your project for using those features: `#include './etc/ScriptUI/$$.colors.jsxinc'`
   - [ScriptUI.forceRedraw()](/core/Ext/$$.scriptui.jsxinc) added. A short function that forces a given widget to invoke its `onDraw` handler (if available.) Useful when a special refresh/repaint mechanism is required on a custom UI component.
   
 ##### [181201]
