@@ -10,10 +10,11 @@
 		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
 		                ScriptUI.isWidget() getIndex()
 		                builder() addKeyHandler() removeKeyHandler()
+		                forceRedraw()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       181201 (YYMMDD)
+		Modified:       181218 (YYMMDD)
 
 *******************************************************************************/
 
@@ -212,7 +213,7 @@
 
 	When defined, `properties` has a specific purpose: it loads a set of creation
 	arguments and properties. At any point of the `res` structure, `properties`
-	is parsed first because it's involved in widget creation.
+	is parsed first because it is involved in widget creation.
 	
 	[REM] In ScriptUI, a widget is built from a command that looks like
 	`<parent>.add( type, args..., {...} )`, the last parameter being the
@@ -225,7 +226,7 @@
 	
 	      EditText$1:
 	      {
-	         properties:{ name:"ED1", text:"Hi", readonly:true, bounds:[100,20] },
+	         properties:{ name:"ED1", text:"Hi", readonly:true, bounds:[0,0,100,20] },
 	      }
 
 	will translate --behind the scenes-- into:
@@ -236,7 +237,7 @@
 	labelled "creation properties" in ScriptUI documentation. Just make sure you
 	don't override built-in creation properties.
 
-	   TYPE         ARGS(•=bounds) CREATION PROPERTIES
+	   TYPE         ARGS(•=bounds) NATIVE CREATION PROPERTIES
 	   =================================================================
 	   window       text,•         name borderless resizeable closeButton
 	                               maximizeButton minimizeButton
@@ -310,8 +311,8 @@
 	the builder produces a StaticText instance which you can reach later on using
 	`myWin.myInfo` (assuming `myWin` refers to the Window instance.)
 	
-	If you don't need to assign a global name to some widget, use numbers in place of
-	<widgetName>, or a string that start with a digit:
+	If you don't need to assign a global name to some widget, use distinctive numbers
+	in place of <widgetName>, or a string that starts with a digit:
 
 	            Group$1:
 	            {
@@ -334,7 +335,7 @@
 	----------------------------------
 	
 	The formal `name` property (owned by the `properties` object) works as a
-	local key *relative to the parent widget*. If defined, it provides
+	local key *relative to the parent widget*. If defined, it satisfies
 	
 	      <myWidget> === <myWidget>.parent[<myWidget>.properties.name]
 
@@ -343,9 +344,9 @@
 	`<parent>.children["xyz"]`.
 
 	But in many cases this is of limited interest. Accessing the widget from
-	the root window is often a better option. Also, as the formal name is loaded
-	in the internal `properties` object, its usage is not as intuitive as in the
-	syntax we suggest to get the name: `myWidget.name`.
+	the root window is often the desired option. Also, as the formal name is
+	loaded in the internal `properties` object, its usage is not as intuitive
+	as the syntax we suggest for retrieving the name: `myWidget.name`.
 	
 	ScriptUI.builder() automatically improves naming conventions, by considering
 	the <widgetName> tag --see previous Section-- as the actual, global name of
@@ -398,7 +399,7 @@
 
 	      `<myStaticText>.addEventListener('mousedown', <func>)`
 	
-	(<func> denoting the passed function.)
+	where <func> denotes the passed function.
 
 
 	6. Factories.
@@ -408,8 +409,8 @@
 	components like menus, smart icons, edit fields. You don't want to rewrite
 	the inner implementation of such objects whenever you use them in your UI.
 	Rather, you shall prototype and encapsulate custom objects and behaviors in
-	a function (i.e, the factory), then pass that function to the builder. If
-	a list of arguments <arg1>, <arg2>... are expected, you will pass them too.
+	a function (the 'factory'), then pass that function to the builder. If a list
+	of arguments <arg1>, <arg2>... are expected, you will pass them too.
 	
 	There are three ways of declaring a custom object based on a factory:
 
@@ -441,15 +442,15 @@
 	                `this[<func>]`, and if that's not a function, give a
 	                look at `parent[<func>]`.
 
-	      At the end of the process, <func> points out to your factory.
+	      At the end of the process, <func> points out to the factory.
 
 	      <arg1>... List of parameters to be passed to the factory. If no
 	                parameters are expected, the factory descriptor reduces
 	                to a single element array: [<func>].
 	
 	Every factory function must support at least one formal argument which is
-	automatically set by the builder and passed *before* any parameter:
-	the parent (i.e, container) of your custom component. For example, the
+	automatically set by the builder and passed *before* any parameter: this is
+	the parent (i.e, the container) of your custom component. For example, the
 	following code --using syntax (b)-- declares a custom menu in a Group:
 
 	      Group$myGroup
@@ -520,11 +521,18 @@
 	   dimension.
 	
 	b) `helpTip` inheritance. If the current widget has no `helpTip` while
-	    its parent has one, the child automatically inherits the parent key.
-	    This avoid repeating the same string when multiple components share
-	    a common tip within a determined container. This typically concerns
+	    its parent ALREADY has one, the child automatically inherits the
+	    parent key. This avoid repeating the same string when multiple components
+	    share a common tip within a determined container. This typically concerns
 	    groups based on a label (StaticText) and an edit field (EditText.)
+	    Make sure the `helpTip` property is declared before the child components
+	    that want to inherits it: any child already built will remain unaltered.
 	
+	[REM] The `helpTip` property does not reliably work on Panel and Window
+	      containers. Most of the time the message doesn't popup while the mouse
+	      is standing over an empty area. When possible, use a Group container
+	      instead.
+
 	c) List items. In the current implementation, the `items` key (available
 	   to Listbox, DropdownList, and Treeview widgets) is treated as a creation
 	   property. That is, the `items` array is registered in the `properties`
@@ -535,13 +543,13 @@
 	   items are quite equivalent: “Supply [the items] property, or the items
 	   argument to the add() method, not both. [Using creation properties] is
 	   most useful for elements defined using Resource Specifications.”
-	   But there is a sensible advantage in supplying items as a creation prop:
-	   the input array is not lost, you can still recover it from `myListWidget.
-	   properties.items`, which cannot be done in the other case.
+	   But there is a sensible advantage in supplying items as a creation
+	   property: the input array is not lost, you can still recover it from
+	   `myListWidget.properties.items`, which cannot be done in the other case.
 
 	   Note that `items` MUST be set inside the `properties` object, not outside,
 	   since `<listWidget>.items` is a read-only Collection. So the recommended
-	   syntax for declaring a list looks like:
+	   syntax for declaring a list follows the scheme:
 
 	      Listbox$myList:
 	      {
@@ -578,7 +586,7 @@
 	      ScriptUI.addKeyHandler( 'background', setBackground );
 
 	then the original `background` assignment (in the `res` object) will translate
-	into `setBackground(<widget>,0xRRGGBB)` at build-time.
+	into `setBackground(<widget>,0xRRGGBB)` at build time.
 	
 	[REM] By default, no key handler is registered in `ScriptUI.builder` so this
 	feature is fully transparent.
@@ -599,6 +607,7 @@
 	         added the 'special scheme' for factories;
 	         added 'key handler' mechanism;
 	         various fixes, notice...
+	[181218] Precisions on `helpTip` (notice.)
 
 	*/
 
@@ -684,7 +693,7 @@
 				wg.helpTip = t;
 			}
 
-			// Recurse ONLY if `wg` is a ScriptUI widget.
+			// Recurse ONLY if `wg` is a true SUI widget.
 			// ---
 			ISWG && callee.call(this, x, wg);
 		}
@@ -890,7 +899,7 @@
 			// ---
 			args.shift();
 
-			// Make sure args[0] always points out to the parent.
+			// Make args[0] point out to the parent.
 			// ---
 			args[0] = parent;
 			
@@ -958,4 +967,34 @@
 		|| error(__("%1 > Invalid key (%2). Should be a string.",callee.name,k && typeof k));
 
 		delete ScriptUI.builder.SETK.EXTERN[k];
+	};
+
+	//==========================================================================
+	// [181218] ScriptUI.forceRedraw
+	//==========================================================================
+
+	ScriptUI.forceRedraw = $$.inCC ?
+	//----------------------------------
+	// Force a widget to redraw. The underlying purpose of this routine is
+	// to force the widget to invoke its associated `onDraw` handler, if
+	// defined, which cannot be done by direct call. Use the code
+	// `ScriptUI.forceRedraw(myWidget)` when you need an already drawn
+	// widget to call again its `onDraw` handler. If no handler is available
+	// this function has in principle no visible effect.
+	// ---
+	// [REM] Since forceRedraw is based on a trick that temporarily hits
+	// the size of the widget, it may initiate a `resize` event on containers.
+	// This does not involve the layout manager though.
+	// ---
+	// => undef
+	function forceRedraw(/*Widget*/wg,  a)
+	{
+		// In CC we have to assign a *distinct* size, then reset.
+		(a=wg.size)&&(wg.size=[1+a[0],1+a[1]])&&(wg.size=[a[0],a[1]]);
+	}
+	:
+	function forceRedraw(/*Widget*/wg,  a)
+	{
+		// In CS we just need to re-assign the size.
+		(a=wg.size)&&(wg.size=[a[0],a[1]]);
 	};
