@@ -171,6 +171,21 @@ _Demonstrates:_
 
 ---
 
+##### [`ScriptUIColorTester.jsx`](ScriptUIColorTester.jsx)
+
+Test the ScriptUI/colors snippet.
+
+![ScriptUIColorTester demo](ScriptUIColorTester.gif)
+
+_Demonstrates:_
+   
+* Creation of random background colors.
+* Color assignment via `0xRRGGBB` (hex) or `X|Y` descriptors (normal and disabled state.)
+* Retrieving a color descriptor from `ScriptUI.colorGetter`.
+* Usage of `ScriptUI.builder()` with color keys.
+
+---
+
 ##### [`ShowHelp.jsx`](ShowHelp.jsx)
 
 Get help on core and included modules.
