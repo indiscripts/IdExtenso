@@ -1,0 +1,492 @@
+/*******************************************************************************
+
+		Name:           Colors
+		Desc:           Color-related extension for ScriptUI widgets.
+		Path:           /etc/SUI/$$.colors.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Snippet
+		API:       SUI: colorArray() colorFormat() colorParse() colorMake()
+		                colorGetter() colorSetter() colorHandler()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180829 (YYMMDD)
+		Modified:       181218 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] %Program Files%/Adobe/Adobe InDesign <version>/Presets/UI Color Themes
+
+	In CC, ScriptUI colors tend to be *automatically inherited* by children
+	when modified at a parent level. So, in order to maintain the background
+	color of some component while applying a new background to any parent
+	container, it is needed to manage internal data and prevent change
+	propagation whenever required.
+	
+	Conversely, we may wish that a component keeps--or recovers--its full
+	'transparency' relative to its parent. For that purpose we shall use the
+	special value `false` (or `_` in color descriptors) as internal brush.
+	The way we obtain transparency is different in CC vs. CS:
+
+	      CC does not allow to reset `xyzColor` to default using null:
+	      <widget>.graphics.xyzColor = null;    // => kill InDesign
+	      But as CC seems to implement the `opacity` argument, a
+	      workaround is to interpret `false` as a fully-transparent color.
+
+	      CS does not seriously support `opacity` (not tested on all
+	      platforms but there is a sufficient amount of failures!),
+	      but by chance it allows null-assignment of a `xyzColor`
+	      property, which resets the component to its default state.
+
+	Methods implemented below are intended to hide the complexity of color coding
+	in ScriptUI. They do not invoke `graphics.newBrush()` more often than needed,
+	all created colors being registered in a hidden cache available in the parent
+	Window instance.
+	
+	BACKGROUND COLORS
+
+	Background colors can be assigned to containers (`Window`, `Group`,
+	and `Panel`) via their `graphics` property. Any attempt to apply a
+	background to other widgets will usually trigger a runtime error.
+	Here are some observed results:
+
+	      Widget (Class)      Result of assigning a BG color
+	      ==================================================
+	      Image               RunTimeError
+	      EditText            Allowed (but no effect in CC.)
+	      StaticText          RunTimeError
+	      ListBox             Allowed (no effect in most versions)
+	                          [REM] ListBox is transparent in CC9.
+	      DropDownList        Allowed (no effect in most versions)
+	      TreeView            RunTimeError
+	      Button              RunTimeError
+	      IconButton          RunTimeError
+	      Checkbox            RunTimeError
+	      RadioButton         RunTimeError
+	      Scrollbar           RunTimeError
+	      Progressbar         RunTimeError
+	      Slider              RunTimeError
+
+	FOREGROUND COLORS
+	
+	Foreground colors might be assigned to almost every widget without
+	causing errors, but this simply has no effect on most of them. In CC,
+	StaticText and ListBox seem to be the only components that support a
+	foreground color. Other controls are more or less responsive,
+	depending on too many conditions.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	This extension adds a few static methods to make ScriptUI color management a
+	bit easier AND safer in cross-version scripts.
+	
+	Given a container `myObj` of type `Window` (i.e palette, dialog, window),
+	`Panel`, or `Group`, you can apply to it a BACKGROUND using the scheme:
+
+	      ScriptUI.colorSetter(myObj, myColor, 0)
+	
+	where `myColor` is a descriptor having either the type uint24, string, or
+	false. Here are typical usages:
+	
+	      myColor := 0x336699           // Set the normal BG color to #336699
+	      myColor := "336699"           // Idem, using an hex string.
+	      myColor := false              // Reset the BG color to its default.
+
+	      myColor := "336699|5588AA"    // Set both the normal and the disabled
+	                                    // BG colors to explicit color values.
+	      myColor := "AABBCC|_"         // Set the normal BG color and reset the
+	                                    // disabled BG color to its default.
+	      myColor := "|_"               // Keep the normal BG color as is and reset
+	                                    // the disabled BG color to its default.
+
+	To get the current BACKGROUND, use:
+	
+	      ScriptUI.colorGetter(myObj, DSB, 0)
+
+	where `DSB` might be either:
+	
+	      undefined                     // Get the full descriptor in "X|Y" form.
+	      0                             // Get the normal BG color, as a Number.
+	      1                             // Get the disabled BG color, as a Number.
+
+	FOREGROUND colors can be managed as well (for statictext, panel, and listbox
+	objects.) Just pass in 1 (instead of 0) as the last parameter of `colorSetter`
+	and `colorGetter`.
+	
+	A dedicated handler, `ScriptUI.colorHandler`, is automatically registered
+	through `ScriptUI.addKeyHandler` for the keys "background" and "color". Thus
+	you don't have to manually invoke `colorSetter` while creating an UI from
+	`ScriptUI.builder`. The keys `background` and `color` are mapped to the
+	relevant parameters in the `colorSetter` function, so you can use codes like
+	
+	      {
+	          background: "336699|5588AA",
+	      }
+
+	and/or
+
+	      {
+	          color: 0x336699,
+	      }
+
+	in the resource object of your UI.
+
+	A few utilities are exposed in the ScriptUI object:
+	
+	      ScriptUI.colorArray(...)      // Converts 0xRRGGBB into [r,g,b]
+	                                    // or 0xAARRGGBB into [r,g,b,a]
+
+	      ScriptUI.colorFormat(...)     // Creates a string descriptor (`X|Y` form)
+	                                    // based on two associated colors.
+
+	      ScriptUI.colorParse(...)      // Parses both string descriptors
+	                                    // and simple color values.
+
+	*/
+
+	//==========================================================================
+	// ScriptUI.colorArray() colorFormat() colorParse() colorMake()
+	//==========================================================================
+
+	;ScriptUI.colorArray = function colorArray(/*uint24|uint32*/a_rgb,/*?0..1|-1*/a,  r)
+	//----------------------------------
+	// Return a volatile Array [r,g,b(,a)?] where each value belongs to (0..1).
+	// If provided, `a` refers to the alpha value (i.e, opacity.)
+	// a) If a === -1, extract (a,r,g,b) from `a_rgb` and return [r,g,b,a].
+	// b) Otherwise, extract (r,g,b) from `a_rgb` (skip the highest byte) then
+	//    (b1) If `a` is undefined, return [r,g,b]
+	//    (b2) Otherwise, return [r,g,b,a]
+	// ---
+	// => [r,g,b]  |  [r,g,b,a]  (VOLATILE)
+	{
+		r = callee[ -1===a || 'undefined' != typeof a ? 'RGBA' : 'RGB' ];
+
+		r[0] = (0xFF&(a_rgb >>> 16))/255;
+		r[1] = (0xFF&(a_rgb >>>  8))/255;
+		r[2] = (0xFF&(a_rgb >>>  0))/255;
+
+		if( 3 == r.length ) return r;
+		
+		if( -1===a )
+		{
+			a = (0xFF&(a_rgb >>> 24))/255;
+		}
+		else
+		{
+			1 >= (a>>>=0) || (a=1);
+		}
+		
+		return (r[3]=a), r;
+	}
+	.setup({ RGB:[0,0,0], RGBA:[0,0,0,0] });
+
+
+	ScriptUI.colorFormat = function colorFormat(/*?uint24|false*/v0, /*?uint24|false*/v1)
+	//----------------------------------
+	// Return a normalized color descriptor "X|Y", each part being either
+	// `_` (if `vi` is false or undef) or `RRGGBB` (if `vi` is uint24.)
+	// Examples:  .colorFormat(0x336699)          => "336699|_"
+	//            .colorFormat(0x336699,0xEFEFEF) => "336699|EFEFEF"
+	//            .colorFormat(false,0x3344FF)    => "_|3344FF"
+	// ---
+	// => str
+	{
+		return ( (0|v0)===v0 ? (v0>>>0).toHexa('',6) : '_' )
+			+ '|'
+			+  ( (0|v1)===v1 ? (v1>>>0).toHexa('',6) : '_' );
+	};
+
+	ScriptUI.colorParse = function colorParse(/*uint24|false|str*/x,  q,p,t)
+	//----------------------------------
+	// Given a value or descriptor `x` as specified in `setBrush`,
+	// return a *volatile* array of two elements:
+	//    [0]  =>  uint24|false|true    enabled  color
+	//    [1]  =>  uint24|false|true    disabled color (default: true)
+	// false has the meaning  "reset to default"
+	// true  has the meaning  "keep existing"
+	// ---
+	// Examples:  .colorParse(0x336699)        => [0x336699, true]
+	//            .colorParse(false)           => [false, true]
+	//            .colorParse("336699")        => [0x336699, 0x336699]
+	//            .colorParse("|_")            => [true, false]
+	//            .colorParse("|336699")       => [true, 0x336699]
+	//            .colorParse("0000aa|0033ff") => [0xAA, 0x33FF]
+	//            .colorParse("336699|_")      => [0x336699, false]
+	//            .colorParse("_|_")           => [false, false]
+	//            .colorParse("<invalid>|")    => [0x0, true]
+	// ---
+	// => ( uint24 | false | true )[2]  [VOLATILE]
+	{
+		( q = callee.Q||(callee.Q=Array(2)) )[1]=true;
+
+		// If x is not a string, keep q[1]=true and set q[0] from x.
+		// ---
+		if( 'string' != typeof x )
+		{
+			q[0] = false!==x && (x>>>0);
+			return q;
+		}
+
+		p = x.indexOf('|');
+
+		// If x has the form `Y` or `...|Y` with Y non-empty, set q[1] from Y.
+		// Either "_" or "false" is interpreted as false, any other
+		// string is parsed as a literal hex (0xRRGGBB), fallback=0.
+		// ---
+		(t=x.substr(1+p)).length
+		&& ( q[1] = '_' != t && 'false' != t && (parseInt(t,16)||0) );
+
+		// If x has the form `|...`, set q[0] to true.
+		// If x has the form `X`, set q[0] to q[1] (already parsed above.)
+		// ---
+		// If x has the form `X|...` with X non-empty, set q[0] from X.
+		// Either "_" or "false" is interpreted as false, any other
+		// string is parsed as a literal hex (0xRRGGBB), fallback=0.
+		// ---
+		q[0] = 0 >= p
+		? ( 0===p || q[1] )
+		: ( '_' != (t=x.slice(0,p)) && 'false' != t && (parseInt(t,16)||0) );
+
+		return q;
+	};
+
+	ScriptUI.colorMake = function colorMake(/*ScriptUIGraphics*/gx,/*[r,g,b,a]*/arr,/*bool=0*/PEN,  k,SC)
+	//----------------------------------
+	// (Brush-Or-Pen-Maker.) Return a new Brush (or Pen) for `gx`.
+	// This is a shortcutof gx[newBrush|newPen](<SOLID_COLOR>, arr (,width=1) )
+	{
+		k = PEN ? 'Brush' : 'Pen';
+		SC = callee.hasOwnProperty(SC=k+'SC') ? callee[SC] : ( callee[SC]=gx[k+'Type'].SOLID_COLOR );
+		return PEN ? gx.newPen(SC, arr, 1) : gx.newBrush(SC, arr);
+	};
+
+	//==========================================================================
+	// ScriptUI.colorGetter() colorSetter()
+	//==========================================================================
+
+	ScriptUI.colorGetter = function colorGetter(/*Widget*/wg,/*?0|1*/DSB,/*bool=0*/FOREGROUND,   k,q,r)
+	//----------------------------------
+	// Get the internal color of the widget `wg`. If `FOREGROUND` is truthy,
+	// get the foreground rather than the background color.
+	// ---
+	// DSB undf   => Return the full descriptor (str) in the form "X|Y"
+	//               X and Y being either "_" or "RRGGBB".
+	// DSB == 0   => Ret. the color value (uint24 or false)
+	// DSB == 1   => Ret. the disabled color value (uint24 or false)
+	// ---
+	// => str | uint24 | false
+	{
+		// Normalize DSB --> '' | '0' | '1'
+		// ---
+		DSB = 'undefined' == typeof DSB ? '' : ( DSB ? '1' : '0' );
+
+		// ---
+		// [WARN] If `q[callee[<ki>]]` is undefined,
+		// then it must be interpreted `false`.
+		// ---
+		k = FOREGROUND ? 'KFG' : 'KBG';
+		r = ( q=wg&&wg['~'] )
+			? ( DSB.length ? q[callee[k+DSB]] : ScriptUI.colorFormat(q[callee[k+'0']],q[callee[k+'1']]) )
+			: ( DSB.length ? false : '_|_' );
+
+		return 'undefined' == typeof r ? false : r;
+	}
+	.setup
+	({
+		// Internal keys.
+		// ---
+		KBG0: 'BG_E',  // Enabled background color
+		KBG1: 'BG_D',  // Disabled background color
+		KFG0: 'FG_E',  // Enabled foreground color
+		KFG1: 'FG_D',  // Disabled foreground color
+	});
+
+	ScriptUI.colorSetter = function colorSetter(/*Widget*/wg,/*uint24|false|str*/x,/*bool=0*/FOREGROUND,  v,q,k0,k1,w)
+	//----------------------------------
+	// Let the descriptor `x` specify the internal color of the widget `wg`,
+	// then apply that color if `wg.graphics` is available. By default the
+	// target property is `backgroundColor` (and/or `disabledBackgroundColor`);
+	// the flag `FOREGROUND` allows to target `foregroundColor` (and/or
+	// `disabledForegroundColor`) instead.
+	// ---
+	// (1) If `x` is a uint24 (0xRRGGBB), assign it to the background.
+	// (2) If `x` is false, reset the background to default.
+	// (3) If `x` is a string, it must match one of the following formats:
+	//        "X"    <=>  color = disabledColor = X
+	//        "X|"	 <=>  color = X , disabledColor unchanged
+	//        "|Y"   <=>  color unchanged , disabledColor = Y
+	//        "X|Y"  <=>  color = X , disabledColor = Y
+	//     where X and/or Y are either `RRGGBB` (6-digit hexadecimal)
+	//     or the special character `_` meaning "reset to default."
+	//     E.g "_|336699" <=> reset default color + disabled=#336699
+	// ---
+	// => 1 [OK] | 0 [NOP]
+	{
+		// Parse the descriptor.
+		// -> x :: ( uint24 | false | true )[2]
+		// ---
+		x = ScriptUI.colorParse(x);
+
+		// Update the internal keys (if required.)
+		// ---
+		q = 0;
+		k0 = ScriptUI.colorGetter[FOREGROUND ? 'KFG0' : 'KBG0']; // ENB
+		k1 = ScriptUI.colorGetter[FOREGROUND ? 'KFG1' : 'KBG1']; // DSB
+		true===(v=x[0]) || ( (q=wg['~']||(wg['~']={}))[k0] = v );
+		true===(v=x[1]) || ( (q||(q=wg['~']||(wg['~']={})))[k1] = v );
+
+		// 0===q           means that no update is needed.
+		// !wg.graphics    means that update is not possible yet.
+		// ---
+		if( 0===q || !wg.graphics ) return 0;
+
+		// Make sure we have indeed a root Window.
+		// ---
+		w = wg.parent ? wg.window : wg;
+		if( !(w && (w instanceof Window)) ) return 0;
+
+		return callee.SETC(
+			wg,
+			w,
+			FOREGROUND ? 0 : callee.NEED_RECURS,
+			FOREGROUND ? 1 : 0,
+			callee[ FOREGROUND ? 'MAKP' : 'MAKB' ],
+			callee[ FOREGROUND ? 'CANP' : 'CANB' ],
+		);
+	}
+	.setup
+	({
+		NEED_RECURS: $$.inCC,
+		
+		// Allowed color setting per type.
+		// `B` stands for BRUSH (background), `P` stands for PEN (foreground.)
+		// ---
+		CANB: { 'dialog':1, 'palette':1, 'window':1, 'group':1, 'panel':1 },
+		CANP: { 'statictext':1, 'panel':1, 'listbox':1 },
+
+		SETC: function(/*Widget*/wg,/*Window*/w,/*0|1*/RECURS,/*0|1*/FG,/*fct*/MK,/*obj*/okTypes,  gx,v,a,i)
+		//----------------------------------
+		// (Set-Color.) Apply the color and/or disabled color as internally specified.
+		// `RECURS` :: Ensure children keep their own color (needed in CC.)
+		// `MK`     :: Color maker (function) that returns a valid ScriptUIBrush or Pen.
+		// ---
+		// => 1 [OK] | 0 [NOP]
+		{
+			if( !okTypes[wg.type] ) return 0;
+
+			if( gx=wg.graphics )
+			{
+				v = ScriptUI.colorGetter(wg,1,FG);                           // Peek the disabled color first.
+				if( false!==v && v!==(0xFFFFFF&v) ) return 0;                // Security checkpoint: false | uint24
+
+				gx['disabled'+(FG?'Fore':'Back')+'groundColor'] = MK(w,v,1); // Apply the disabled color.
+				v = ScriptUI.colorGetter(wg,0,FG);                           // Peek the enabled color.
+				gx[(FG?'fore':'back')+'groundColor'] = MK(w,v,0);            // Apply the enabled color.
+			}
+			else
+			{
+				return 0;
+			}
+			
+			// If RECURS is on, loop into children. (This only happens in CC.)
+			// ---
+			for( i=RECURS&&(a=wg.children||0).length ; i-- ; callee(a[i],w,1,FG,MK,okTypes) );
+			
+			return 1;
+		},
+
+		MAKB: $$.inCC ?
+		function(/*Window*/w,/*false|uint24*/cv,/*0|1=0*/DSB,  q,k)
+		//----------------------------------
+		// (CC-MakeBrush.) CC doesn't allow NULL-assignment (crash)
+		// but it supports full transparency, i.e opacity=0, so we
+		// can implement `cv===false` this way :-)
+		// [REM] The DSB flag is not used.
+		// => ScriptUIBrush
+		{
+			return (q=w['~']||(w['~']={})).hasOwnProperty(k='B#'+cv) ? q[k] :
+			( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,false===cv?0:1)) );
+		}
+		:
+		function(/*Window*/w,/*false|uint24*/cv,/*0|1=0*/DSB,  q,k)
+		//----------------------------------
+		// (CS-MakeBrush.) CS doesn't properly manage the opacity but
+		// it allows NULL-assignment (resets the background to default.)
+		// [REM] The DSB flag is not used.
+		// => ScriptUIBrush | null
+		{
+			if( false===cv ) return null;
+			return (q=w['~']||(w['~']={})).hasOwnProperty(k='B#'+cv) ? q[k] :
+			( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,1)) );
+		},
+
+		MAKP: $$.inCC ?
+		function(/*Window*/w,/*false|uint24*/cv,/*0|1=0*/DSB,  q,k)
+		//----------------------------------
+		// (CC-MakePen.) CC doesn't allow NULL-assignment (crash) so we
+		// must make `cv==false` restore a color value close to the default.
+		// `DSB` :: whether the color is assigned to the disabled state.
+		// => ScriptUIPen
+		{
+			false===cv && (cv=callee[DSB?'DSBC':'ENBC']);
+			return (q=w['~']||(w['~']={})).hasOwnProperty(k='P#'+cv) ? q[k] :
+			( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,1), 1) );
+		}
+		.setup
+		({
+			ENBC: $$.isDark ? 0xEEEEEE : 0x1A1A1A, // Default ENABLED foreground.
+			DSBC: $$.isDark ? 0x777777 : 0x939393, // Default DISABLED foreground.
+		})
+		:
+		function(/*Window*/w,/*false|uint24*/cv,/*0|1=0*/DSB,  q,k)
+		//----------------------------------
+		// (CS-MakePen.) CS allows NULL-assignment (which resets the
+		// foreground to default color.)
+		// [REM] The DSB flag is not used.
+		// => ScriptUIPen | null
+		{
+			if( false===cv ) return null;
+			return (q=w['~']||(w['~']={})).hasOwnProperty(k='P#'+cv) ? q[k] :
+			( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,1), 1) );
+		},
+
+	});
+
+	//==========================================================================
+	// ScriptUI.colorHandler() -> `background`, `color`
+	//==========================================================================
+
+	ScriptUI.colorHandler = function colorHandler(/*Widget*/wg,/*uint24|false|str*/x,/*'background'|'color'*/k)
+	//----------------------------------
+	// Handle the keys 'background' and 'color' through `ScriptUI.colorSetter`.
+	// (Cf `ScriptUI.builder`.)
+	// => undef
+	{
+		switch( ('undefined' != typeof x) && k )
+		{
+			case 'background': ScriptUI.colorSetter(wg,x,0); return;
+			case 'color':      ScriptUI.colorSetter(wg,x,1); return;
+			default:;
+		}
+		
+		// Fallback.
+		// ---
+		wg[k] = x;
+	};
+
+	ScriptUI.addKeyHandler
+	('background',ScriptUI.colorHandler)
+	('color',     ScriptUI.colorHandler);
