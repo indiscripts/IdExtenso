@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       181128 (YYMMDD)
+		Modified:       190120 (YYMMDD)
 
 *******************************************************************************/
 
@@ -247,13 +247,15 @@
 		// Core includes (order matters.)
 		// ---
 		#include 'core/$$.Ext.jsxinc'
-		
+		// ---
 		#include 'core/$$.Root.jsxlib'
 		#include 'core/$$.Env.jsxlib'
 		#include 'core/$$.JSON.jsxlib'
 		#include 'core/$$.File.jsxlib'
 		#include 'core/$$.Log.jsxlib'
 		#include 'core/$$.Dom.jsxlib'
+		// --- [190120]
+		#include 'core/$$.SUI.jsxinc'
 		;
 
 		// [ADD171109] Reset `__core__` to 0 from now.
