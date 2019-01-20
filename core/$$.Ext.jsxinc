@@ -14,7 +14,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        160731 (YYMMDD)
-		Modified:       181117 (YYMMDD)
+		Modified:       190120 (YYMMDD)
 
 *******************************************************************************/
 
@@ -30,6 +30,8 @@
 	this file without caution. Note also that order matters in the following
 	`#include` directives, as some methods (e.g `Object.prototype.setup`) may
 	be invoked at include time.
+	
+	[CHG190120] ScriptUI stuff is included from a distinct snippet: SUI.jsxinc
 
 	*/
 
@@ -82,6 +84,5 @@
 	// ---
 	#include 'Ext/$$.file.jsxinc'
 
-	// Extends ScriptUI static properties.
-	// ---
-	#include 'Ext/$$.scriptui.jsxinc'
+	// [DEL190120] Removed ScriptUI static properties
+	// from here, included later from /SUI.
