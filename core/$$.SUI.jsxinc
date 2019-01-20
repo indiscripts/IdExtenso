@@ -1,0 +1,37 @@
+/*******************************************************************************
+
+		Name:           SUI
+		Desc:           Basic ScriptUI features.
+		Path:           /core/$$.SUI.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Snippet.
+		API:            
+		DOM-access:     ---
+		Todo:           ---
+		Created:        190120 (YYMMDD)
+		Modified:       190120 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	Previous IdExtenso versions were including basic ScriptUI features from
+	the `Ext` snippet, that is, before having `$$.Env` available. Since various
+	SUI settings have to fit environment data ($$.inCC, $$.inMac, etc) it is
+	better to include the present snippet *after* $$.Env.jsxinc.
+
+	*/
+
+	// Minimal ScriptUI static properties.
+	// ---
+	#include 'SUI/$$.mini.jsxinc'
+	
+	// `ScriptUI.builder` and dependencies.
+	// ---
+	#include 'SUI/$$.builder.jsxinc'
