@@ -1,9 +1,29 @@
+## 1.90120
+
+This update (Jan. 20, 2019) applies an important change in the directory structure: the minimal ScriptUI stuff is no longer part of the **Ext** dir (reserved to _“external”_ features). The code has been moved into a dedicated **SUI** folder. As a result, `core/Ext/$$.scriptui.jsxinc` is no longer available; and the entry point `$$.jsxinc` reflects new locations and structure:
+
+	#include 'core/$$.Ext.jsxinc'
+	// ---
+	#include 'core/$$.Root.jsxlib'
+	#include 'core/$$.Env.jsxlib'
+	#include 'core/$$.JSON.jsxlib'
+	#include 'core/$$.File.jsxlib'
+	#include 'core/$$.Log.jsxlib'
+	#include 'core/$$.Dom.jsxlib'
+	// --- [190120]
+	#include 'core/$$.SUI.jsxinc'
+
+  - [`SUI/$$.mini.jsxinc`](/core/SUI/$$.mini.jsxinc) contains basic extensions of the `ScriptUI` object: alignment shortcuts, `ScriptUI.isWidget()`, `ScriptUI.forceRedraw()`, etc.
+  - [`SUI/$$.builder.jsxinc`](/core/SUI/$$.builder.jsxinc) specifically provides the `ScriptUI.builder()` function, fully documented. It now deals consistently with `{ orientation:"stack" }` in whatever platform, fixing the well-known incompatibility between *Windows CS* and other environments.
+  - **SUI** needed a special treatment because of those environment issues. The snippet is included _after_ other core modules so that it can invoke `$$.Env` features such that `$$.inCC`, `$$.inWin`, etc.
+  - Other small fixes are included in version 1.90120.
+
 ##### [181218]
   - [ScriptUI/$$.colors.jsxinc](/etc/ScriptUI/$$.colors.jsxinc) added. This snippet loads various color-related methods in `ScriptUI` to make background/foreground management easier and safer in cross-version scripts. NOTE: This is an optional snippet (`etc` branch) so you have to explictly include it in your project for using those features: `#include './etc/ScriptUI/$$.colors.jsxinc'`
-  - [ScriptUI.forceRedraw()](/core/Ext/$$.scriptui.jsxinc) added. A short function that forces a given widget to invoke its `onDraw` handler (if available.) Useful when a special refresh/repaint mechanism is required on a custom UI component.
+  - [ScriptUI.forceRedraw()](/core/SUI/$$.mini.jsxinc) added. A short function that forces a given widget to invoke its `onDraw` handler (if available.) Useful when a special refresh/repaint mechanism is required on a custom UI component.
   
 ##### [181201]
-  - [ScriptUI.builder()](/core/Ext/$$.scriptui.jsxinc) deeply redesigned. Added `addKeyHandler()` and `removeKeyHandler()` utilities.
+  - [ScriptUI.builder()](/core/SUI/$$.builder.jsxinc) deeply redesigned. Added `addKeyHandler()` and `removeKeyHandler()` utilities.
 
 ## 1.81128
   - Stabilized version (Nov. 28, 2018) mostly including cosmetic adjustments.
@@ -21,7 +41,7 @@
 ## 1.81117
   - Stabilized version (Nov. 17, 2018) that integrates various additions from the previous weeks.
   - [`Ext/$$.global.jsxinc`](/core/Ext/$$.global.jsxinc) is a new snippet included from `$$.Ext.jsxinc`. It provides an important fix to `$.global.parseInt()` after the discovery of a critical, native bug in ExtendScript.
-  - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): now `ScriptUI.builder()` autosets the `name` property of the output widget, provided a name is available and wouldn't override an existing `name` property. This improvement is useful in event handlers that require simple name checking rather than deeper identification steps.
+  - [`Ext/$$.scriptui.jsxinc`](/core/SUI/$$.builder.jsxinc): now `ScriptUI.builder()` autosets the `name` property of the output widget, provided a name is available and wouldn't override an existing `name` property. This improvement is useful in event handlers that require simple name checking rather than deeper identification steps.
 
 ##### [181106]
   - [`Ext/$$.string.jsxinc`](/core/Ext/$$.string.jsxinc): added `String.random()`, a simple method for randomly generating lowercase, alphanumeric IDs of a determined length. By default, `String.random()` returns a string of 4 characters (e.g `"i1x4"`). Pass in the desired length if needed. The result is guaranteed to match the pattern `/^[a-z][0-9a-z]*$/` (that is, the first character is always alphabetic.)
@@ -42,7 +62,7 @@
   - [**ModalScript**](/etc/$$.ModalScript.jsxlib): still improving default getter/setter mechanisms.
 
 ##### [180825]
-  - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
+  - [`Ext/$$.scriptui.jsxinc`](/core/SUI/$$.builder.jsxinc): If unassigned, the `helpTip` property inherits from parent's help tip (in `ScriptUI.builder`.) Useful to spread a tip throughout a container.
 
 ##### [180824]
   - [**ModalScript**](/etc/$$.ModalScript.jsxlib): small fix in `~._SV_` (the `items` property of a list wasn't properly parsed thru the autosetter algorithm.) Added the method `Window.prototype.getWidgetKey` (cf. `~._GW_`) to mirror [**BasicScript**](/etc/$$.BasicScript.jsxlib)'s API.
@@ -93,7 +113,7 @@
   - `ScriptUI.builder()` now parses event types preceded by an underscore (e.g `_mousedown`) and declares the corresponding event listener if the associated value is a function.
 
 ##### [180528]
-  - [`Ext/$$.scriptui.jsxinc`](/core/Ext/$$.scriptui.jsxinc): Added the static `ScriptUI.builder()` method. Provides a compact and generic tool for building resource-based user intarfaces (full `Window` or custom components.) Unlike the native 'resource string' mechanism which involves literal strings and therefore leads to issue when dynamic data are to be treated, `ScriptUI.builder()` deals with actual objects whose internal data may still be browsed and refined just before being sent to the builder.
+  - [`Ext/$$.scriptui.jsxinc`](/core/SUI/$$.builder.jsxinc): Added the static `ScriptUI.builder()` method. Provides a compact and generic tool for building resource-based user intarfaces (full `Window` or custom components.) Unlike the native 'resource string' mechanism which involves literal strings and therefore leads to issue when dynamic data are to be treated, `ScriptUI.builder()` deals with actual objects whose internal data may still be browsed and refined just before being sent to the builder.
   - `ScriptUI.isWidget()` is a companion tool of `ScriptUI.builder`; its internal map might be used in more advanced modules.
   - Also, we have fixed the combined alignment shortcuts (`ScriptUI.LT`, `ScriptUI.RT`, etc) as the numeric values caused problems in recent ScriptUI versions.
 
