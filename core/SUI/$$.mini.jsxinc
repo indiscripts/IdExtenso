@@ -1,0 +1,168 @@
+/*******************************************************************************
+
+		Name:           mini
+		Desc:           Minimal ScriptUI extension.
+		Path:           /core/SUI/$$.mini.jsxinc
+		Require:        $$.Env
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Snippet (part of /SUI.)
+		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
+		                ScriptUI.isWidget() getIndex()
+		                forceRedraw()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       190120 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190120] Old path: /core/Ext/$$.scriptui.jsxinc
+
+	This snippet loads a few static extensions in the native ScriptUI object. It's
+	just a minimal set of features used in basic UI routines shared across the
+	framework. It essentially provides alignment shortcuts (`LT` for 'left-top',
+	etc) and the `builder()` method which makes easier to manage ScriptUI resources.
+	
+	As the code below consumes very little space it is integrated with the `core`
+	directory even if your script does not invoke ScriptUI. A much richer set of
+	additional UI features is to be provided in a separate `etc` branch.
+	
+	*/
+
+	//==========================================================================
+	// Combined Alignments (ScriptUI.FT, ScriptUI.LT, etc.)
+	// [FIX180528] Use strings instead of numbers (SUI bug.)
+	//==========================================================================
+
+	/*
+
+	In ScriptUI, alignment options (`alignment` and `alignChildren`
+	properties) support the array form [<horizAlign>, <vertAlign>]. This
+	makes sense in controlling the overall strategy of a container having
+	subcontainers. Thus, we often need to pass arguments such as
+	['left','top'] or ['fill','center'], which creates temporary arrays that
+	could be avoided using static data structures. This is done by
+	globally declaring ScriptUI.LT, .FC, and so on.
+	
+	[REM] Alignment options does not seem to work if the target widget has
+	no custom `preferredSize` when the layout is processed. For Group or
+	Panel instances that would need alignment into their container, it is
+	recommended to set both `preferredSize` and `maximalSize` properties.
+	
+	*/
+
+	;ScriptUI.setup
+	({
+		LT : ['left',   'top'],
+		RT : ['right',  'top'],
+		FT : ['fill',   'top'],
+		CT : ['center', 'top'],
+		// ---
+		LB : ['left',   'bottom'],
+		RB : ['right',  'bottom'],
+		FB : ['fill',   'bottom'],
+		CB : ['center', 'bottom'],
+		// ---
+		LC : ['left',   'center'],
+		RC : ['right',  'center'],
+		FC : ['fill',   'center'],
+		CC : ['center', 'center'],
+		// --- [ADD180528]
+		LF : ['left',   'fill'],
+		RF : ['right',  'fill'],
+		FF : ['fill',   'fill'],
+		CF : ['center', 'fill'],
+	});
+
+	//==========================================================================
+	// ScriptUI.isWidget() .getIndex()
+	//==========================================================================
+
+	ScriptUI.isWidget = function isWidget(/*any*/x)
+	//----------------------------------
+	// [180528] Tell whether x is a ScriptUI control or widget.
+	// x's class name must mach the `name` property in callee.MAP.
+	// => true [OK]  |  false [KO]
+	{
+		return x && (x=x.__class__) ? x===(callee.MAP[x.toLowerCase()]||0).name : false;
+	}
+	.setup({ MAP:
+	{
+		// --- Containers
+		'window':       { abbr:'W' , name:'Window'      },
+		'group':        { abbr:'G' , name:'Group'       },
+		'panel':        { abbr:'P' , name:'Panel'       },
+		// --- Texts
+		'statictext':   { abbr:'S' , name:'StaticText'  },
+		'edittext':     { abbr:'E' , name:'EditText'    },
+		// --- Buttons
+		'button':       { abbr:'B' , name:'Button'      },
+		'iconbutton':   { abbr:'I' , name:'IconButton'  },
+		'checkbox':     { abbr:'C' , name:'Checkbox'    },
+		'radiobutton':  { abbr:'R' , name:'RadioButton' },
+		// --- Image (container)
+		'image':        { abbr:'i' , name:'Image'       },
+		// --- Lists
+		'listbox':      { abbr:'L' , name:'ListBox'     },
+		'dropdownlist': { abbr:'D' , name:'DropDownList'},
+		'treeview':     { abbr:'T' , name:'TreeView'    },
+		// --- List item
+		'listitem':     { abbr:'l' , name:'ListItem'    },
+		// --- Bars
+		'scrollbar':    { abbr:'b' , name:'Scrollbar'   },
+		'slider':       { abbr:'s' , name:'Slider'      },
+		'progressbar':  { abbr:'p' , name:'Progressbar' },
+		// --- Tabs
+		'tabbedpanel':  { abbr:'X',  name:'TabbedPanel' },
+		'tab':          { abbr:'x',  name:'Tab'         },
+		// --- FlashPlayer (deprecated)
+		'flashplayer':  { abbr:'F',  name:'FlashPlayer' },
+	}});
+
+	ScriptUI.getIndex = function getIndex(/*any*/x,  a,i)
+	//----------------------------------
+	// [180825] Return the index of x in its parent.children array.
+	// => uint [OK]  |  -1 [KO]
+	{
+		a = ScriptUI.isWidget(x) && !(x instanceof Window) && (x.parent||0).children;
+		if( !a ) return -1;
+		for( i=a.length ; i-- && x!==a[i] ; );
+		return i;
+	},
+
+	//==========================================================================
+	// [181218] ScriptUI.forceRedraw
+	//==========================================================================
+
+	ScriptUI.forceRedraw = $$.inCC ?
+	//----------------------------------
+	// Force a widget to redraw. The underlying purpose of this routine is
+	// to force the widget to invoke its associated `onDraw` handler, if
+	// defined, which cannot be done by direct call. Use the code
+	// `ScriptUI.forceRedraw(myWidget)` when you need an already drawn
+	// widget to call again its `onDraw` handler. If no handler is available
+	// this function has in principle no visible effect.
+	// ---
+	// [REM] Since forceRedraw is based on a trick that temporarily hits
+	// the size of the widget, it may initiate a `resize` event on containers.
+	// This does not involve the layout manager though.
+	// ---
+	// => undef
+	function forceRedraw(/*Widget*/wg,  a)
+	{
+		// In CC we have to assign a *distinct* size, then reset.
+		(a=wg.size)&&(wg.size=[1+a[0],1+a[1]])&&(wg.size=[a[0],a[1]]);
+	}
+	:
+	function forceRedraw(/*Widget*/wg,  a)
+	{
+		// In CS we just need to re-assign the size.
+		(a=wg.size)&&(wg.size=[a[0],a[1]]);
+	};
