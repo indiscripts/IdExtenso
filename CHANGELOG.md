@@ -1,3 +1,7 @@
+##### [190124]
+  - [ScriptUI/$$.colors.jsxinc](/etc/ScriptUI/$$.colors.jsxinc) required the precondition `if( $$.isBooting() ){ ... }` in order to work fine in persistent engines. As a general rule, any extra snippet should make sure that it loads stuff at include stage under `$$.isBooting()` condition.
+  - [ScriptUI.setFocus()](/core/SUI/$$.mini.jsxinc) added in **SUI/mini**. Forcibly set the focus on a control, as `myControl.active=true` doesn't do the job right.
+
 ## 1.90120
 
 This update (Jan. 20, 2019) applies an important change in the directory structure: the minimal ScriptUI stuff is no longer part of the **Ext** dir (reserved to _“external”_ features). The code has been moved into a dedicated **SUI** folder. As a result, `core/Ext/$$.scriptui.jsxinc` is no longer available; and the entry point `$$.jsxinc` reflects new locations and structure:
