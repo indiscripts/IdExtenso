@@ -9,11 +9,11 @@
 		Kind:           Snippet (part of /SUI.)
 		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
 		                ScriptUI.isWidget() getIndex()
-		                forceRedraw()
+		                forceRedraw() setFocus()
 		DOM-access:     NO
-		Todo:           ---
+		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190124 (YYMMDD)
 
 *******************************************************************************/
 
@@ -165,4 +165,19 @@
 	{
 		// In CS we just need to re-assign the size.
 		(a=wg.size)&&(wg.size=[a[0],a[1]]);
+	};
+
+	ScriptUI.setFocus = function(/*Control*/wg,  w,t)
+	//----------------------------------
+	// [190124] Forcibly set the focus on `wg` (if possible).
+	// [REM] In many circumstances the command `wg.active=true` doesn't
+	// work as expected, in particular if `wg` is already registered as
+	// active although not focused. The trick used here is to create and
+	// activate a temporary control outside wg's area, then remove it.
+	// => 1 [OK]  |  0 [KO]
+	{
+		w = wg && wg.hasOwnProperty('active') && wg.enabled && wg.visible && wg.window;
+		if( !w ) return 0;
+		wg.active = ( (t=w.add('edittext')).active = true );
+		w.remove(t);
 	};
