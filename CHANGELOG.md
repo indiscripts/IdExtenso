@@ -1,3 +1,6 @@
+##### [190125]
+  - [ScriptUI/$$.layout.jsxinc](/etc/ScriptUI/$$.layout.jsxinc) added. This small extension allows to register a _layout handler_, that is, a special function that automatically executes when the attached UI component (a ScriptUI container) is subject to the layout manager. As explained in the NOTICE, “this technique makes it possible to update some attributes (including those of dependent widgets) when the component is laid out, despite the fact that no native event is associated to this particular process. Typically, the layout mechanism takes place just *before* the `show` event of the Window (unless the code explicitly invokes the `layout()` function at some point.) Hence, an interesting use of handling our fake `_layout` event is to perform last-minute adjustments on particular containers before the window shows up.”
+
 ##### [190124]
   - [ScriptUI/$$.colors.jsxinc](/etc/ScriptUI/$$.colors.jsxinc) required the precondition `if( $$.isBooting() ){ ... }` in order to work fine in persistent engines. As a general rule, any extra snippet should make sure that it loads stuff at include stage under `$$.isBooting()` condition.
   - [ScriptUI.setFocus()](/core/SUI/$$.mini.jsxinc) added in **SUI/mini**. Forcibly set the focus on a control, as `myControl.active=true` doesn't do the job right.
