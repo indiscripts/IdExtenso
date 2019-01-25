@@ -1,0 +1,461 @@
+/*******************************************************************************
+
+		Name:           Layout
+		Desc:           Layout handler for ScriptUI containers.
+		Path:           /etc/ScriptUI/$$.layout.jsxinc
+		Require:        $$.ScriptUI
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Snippet
+		API:  ScriptUI. layoutDeclare() layoutHandler()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        171112 (YYMMDD)
+		Modified:       190125 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	Note. - We mainly focus here on fundamental widgets, containers (W/G/P),
+	text controls (S/E), lists (L/D/T) and buttons (B/I/C/R).
+
+	Layout is about how and where widgets are to be sized and positioned
+	in the final UI, with respect to both explicit settings and/or default
+	(implicit) mechanism. In ScriptUI that's a complicate issue due to the
+	interaction of many properties.
+
+	INVOLVED STRUCTURES. ScriptUI provides a basic `Bounds` object
+	mixing two underlying structures: `Dimension` and `Point`.
+
+	Bounds     Boundaries of an element within container's coordinate space.
+	(BND)      Struct.: { x,y,width,height,left,right,top,bottom,length=4 }
+	           All values assumed in pixels. Width and height >=0.
+	           Setters:
+	                  (a)  { x:X,    y:Y,   width:W, height:H }   // obj
+	                  (b)  { left:L, top:T, right:R, bottom:B }   // obj
+	                  (c)* [ L, T, R, B ]                         // arr
+	                  (d)  "x:X, y:Y, width:W, height:H"          // str
+	                  (e)  "left:L, top:T, right:R, bottom:B"     // str
+	           where X, Y, W, H, L, T, B, R refer to numerals.
+	         * ScriptUI bounds are 'LTRB' ordered, unlike InDesign bounds.
+	           Typical properties: bounds, windowBounds, frameBounds.
+
+	Dimension  Size of an element. Struct.: { width,height,length=2 }
+	(DIM)      Corresponds to the (W,H) part of the Bounds structure.
+	           Setters:
+	                  (a)  { width:W, height:H }                  // obj
+	                  (b)  [ W, H ]                               // arr
+	           There are cases where setting W (or H) to -1 is
+	           allowed, with the meaning 'default value.'
+	           Typical properties: size, frameSize, preferredSize,
+	           minimumSize, maximumSize.
+
+	Point      Location of an element, that is, location of its origin
+	(LOC)      "as horizontal and vertical pixel offsets from the origin of
+	           the element's coordinate space." Struct.: { x,y,length=2 }
+	           Corresponds to the (X,Y) part of the Bounds structure.
+	           Setters:
+	                  (a)  { x:X, y:Y }                           // obj
+	                  (b)  [ X, Y ]                               // arr
+	           Typical properties: location, frameLocation.
+
+	LAYOUT-RELATED PROPERTIES. Given a widget X to be created and
+	positioned, we shall discriminate four states:
+
+	      (A) Before-Creation. - The element does not even exist, but
+	          its class (e.g Window, Group, EditText) is already known
+	          and has some predefined properties in its prototype.
+	          For example, `EditText.prototype.preferredSize` is set
+	          to { width:80,height:20 } on some platforms.
+
+	      (B) Before-Layout. - The element X has been created (likely
+	          with custom settings) but ScriptUI's layout processor
+	          hasn't started working yet. Technically, the method
+	          `X.parent.layout` hasn't been invoked yet. At this
+	          point, if no explicit placement was specified, "all the
+	          controls are located at [0, 0] within their containers,
+	          and have default dimensions."
+
+	      (C) After-Layout. - The command `myWin.show()` automatically
+	          invokes `myWin.layout.layout(0)`, but the layout processor
+	          can be triggered upstream. Basically, it guarantees that
+	          all `size` and `location` properties (therefore, `bounds`)
+	          are determined *before* showing the UI.
+
+	      (D) Windowed. - The window UI is now visible to the user,
+	          which happens when the focus event occurs at the
+	          Window target (or on the `onActivate` handler.)
+
+	Here are the Before-Creation values of some properties:
+
+	      CONTAINERS:          W            G        P          
+	      ======================================================
+	(1)   frameBounds   (BND)  undef        ---      ---        
+	      frameLocation (LOC)  undef        ---      ---        
+	      frameSize     (DIM)  undef        ---      ---        
+	      ======================================================
+	(2)   layout        (obj)  [ALM]        [ALM]    [ALM]      
+	      orientation   (str)  column       row      column     
+	      alignment     (var)  undef        undef    undef      
+	      alignChildren (str)  center       center   center     
+	      margins       (obj)  15,15,15,15  0,0,0,0  15,10,15,10
+	      spacing       (int)  15           10       10         
+	      indent        (int)  undef        undef    undef      
+	      ======================================================
+	      windowBounds  (BND)  0,0,50,30    0,0,1,1  0,0,1,1    
+	      bounds        (BND)  undef        undef    undef      
+	      location      (LOC)  undef        undef    undef      
+	      size          (DIM)  undef        undef    undef      
+	      preferredSize (DIM)  50,30        1,1      1,1        
+	      minimumSize   (DIM)  0,0          0,0      0,0        
+	      maximumSize   (DIM)  undef        undef    undef      
+	      =====================================================
+	
+	(1)   `frameBounds`, `frameLocation` and `frameSize` are specific
+	      to the Window object. They remain undefined as long as the
+	      Window is not positioned in the workspace. This both requires
+	      a `win.layout.layout(_)` stage (internal layout) and some
+	      location-related statement, s.t. `win.location=[x,y]` or
+	      `win.center()`.
+
+	(2)   [ALM] refers to the AutoLayoutManager object, which AFAIK
+	      can't be instanciated manually.
+
+	      NON-CONTAINERS:      S/E       L/D/T      B          I          C/R      
+	      =========================================================================
+	      alignment     (var)  undef     undef      undef      undef      undef    
+	      indent        (int)  undef     undef      undef      undef      undef    
+	      =========================================================================
+	(3)   windowBounds  (BND)  0,0,80,20 0,0,80,20  0,0,100,20 0,0,40,40  0,0,80,20
+	      bounds        (BND)  undef     undef      undef      undef      undef    
+	      location      (LOC)  undef     undef      undef      undef      undef    
+	      size          (DIM)  undef     undef      undef      undef      undef    
+	(3)   preferredSize (DIM)  80,20     80,20      100,20     40,40      80,20    
+	      minimumSize   (DIM)  0,0       0,0        0,0        0,0        0,0      
+	      maximumSize   (DIM)  undef     undef      undef      undef      undef    
+	      itemSize      (DIM)  ---       80,20      ---        ---        ---      
+	      =========================================================================
+
+	(3)   Warning: `windowBounds` and `preferredSize` can't be accessed from
+	      DropDownList.prototype in some platforms. Doing so makes ID crash!
+
+	It's worth noting that although the prototyped `windowBounds` property reflects
+	the default preferredSize at location [0,0], it is instanciated to [0,0,0,0]
+	at creation stage* and remains read-only. It will only provide relevant values
+	once the layout is processed.
+	
+	* An exception to this rule is `<myWindow>.windowBounds` being intanciated
+	  with non-zero values at stage (B), e.g [0,0,1434,765].
+	
+	When a component is created --stage (B)-- some properties are made available,
+	or refined, even if the code didn't set their values. These default values
+	depends on the configuration (platform, ScriptUI version.)
+	
+	Mainly, all containers (W/G/P) receive a `maximumSize` -- e.g [3550,1030] ;
+	and the `preferredSize` property is refined for widgets that have an
+	explicit `text` or `characters` property.
+	
+	At this stage, `bounds` (i.e `location` & `size`) are still undefined unless
+	explicitly provided in the code.
+	
+	[WARN] CC9 has critical issues in presetting size or other properties of
+	an `Image` container from within a resource string. In many cases this
+	kills InDesign.
+
+	BOUNDS PROPERTIES
+	
+	   frameBounds (frameLocation/frameSize)
+	   -----------------------------------------------------------------
+	   W  [Reserved to Window objects.] Bounds of the window frame "in screen
+	      coordinates." The frame consists of the title bar and borders that
+	      enclose the content region of a window.
+	      In CS4/CS5 this property may be altered in multi-screen workspaces:
+	      CS4 tends to reposition a bordered dialog inside InDesign's main
+	      window and then `frameBounds` is not always set accordingly. The
+	      `bounds` property remains reliable though. Also, `frameSize`
+	      still reflects the actual size of the frame.
+	      [TIP] In CS4/CS5, use the creation prop { independent:true } to
+	            make the dialog behave as in CS6/CC.
+	
+	   windowBounds
+	   -----------------------------------------------------------------
+	   W  Bounds of this window "relative to the top-level parent window",
+	      that is, relative to itself. Expected result: [0,0,width,height].
+	   X  Bounds of this element relative to the top-level parent window.
+
+	   bounds (location/size)
+	   -----------------------------------------------------------------
+	   W  Bounds of the window's drawable area, excluding the frame, in
+	      screen coordinates.
+	   X  Bounds of this element, in parent-relative coordinates.
+
+	[REM] In CS4/CS5, whether a window is 'bordered' or 'borderless' affects
+	its default positioning. Bordered windows are centered within InDesign
+	app window, while borderless windows are centered in the primary screen.
+	In CS6/CC, all windows are defaultly positioned relative to the primary
+	screen, disregarding the location of the app window. Use the creation
+	property `{ independent:true }` to have an uniform behavior.
+	
+	LAYOUT ALGORITHM.
+
+	"When a script creates a Window object and its elements and shows it
+	the first time, the visible UI-platform window and controls are
+	created. (...) Before the window is made visible, the layout manager's
+	layout method is called to assign locations and sizes for all the
+	elements and their containers."
+
+	Every container (W/G/P) has a layout property which itself embeds
+	a layout method whose default behavior implements the AutoLayoutManager
+	algorithm. It "adjusts sizes and positions of the child elements of
+	this container according to the placement and alignment property values
+	in the parent and children."
+	
+	Investigations have shown that the `layout` method expects an argument
+	(`recalculate`) with three possible values:
+	
+	      recalculate == 0 (default)
+	      If the container bounds (i.e size + location) are already set,
+	      do nothing. Otherwise, let the layout manager operates on
+	      this and any child container, using layout(0) on subcalls.
+	      
+	      recalculate == 1
+	      Forces the layout manager to recalculate the size of sub-
+	      containers, and `this.preferredSize`. Subcalls then invoke
+	      layout(1) as well.
+	      
+	      recalculate == 2
+	      Internal use only. Involved when a child container has a
+	      'fill' alignment.
+
+	In either case, if a container X has no children, X.layout.layout(_)
+	has no effect.
+	
+	This pseudo-code shows how the default layout method operates:
+	
+	      function layout(recalc:=0|1|2)
+	      // ---------------------------
+	      {
+	         // No child => done.
+	         // ---
+	         if( ! this.hasChildren ) return;
+
+	         // No recalc AND bounds already set => done.
+	         // ---
+	         if( recalc==0 && isDefined(this.size,this.location) ) return;
+
+	         // Set the pref size of each child.
+	         // ---
+	         foreach( C in this.children )
+	         {
+	            if( C.isContainer ) C.layout(recalc);
+	            if( recalc != 1 && isDefined(C.size) ) C.preferredSize=C.size;
+	         }
+
+	         // Take or calculate the current size SZ
+	         // ---
+	         if( isDefined(this.size) )
+	         {
+	            SZ = this.size;
+	         }
+	         else
+	         {
+	            SZ = totalAreaBasedOnChildrenPrefSize();
+	            SZ = maxDims(SZ, this.preferredSize, this.minimumSize);
+	            SZ = minDims(SZ, this.maximumSize);
+	         }
+	         
+	         // Position each child and deal with `fill` alignments.
+	         // ---
+	         foreach( C in this.children )
+	         {
+	            C.size = C.preferredSize;
+	            C.location = computeLocationInside(SZ);
+
+	            if( C.hasFillAlignment )
+	            {
+	               C.size = adjustSizeToFill(SZ);
+	               if( C.isContainer ) C.layout(2);
+	            }
+	         }
+	         
+	         this.preferredSize = SZ;
+	      }
+	
+	This algorithm reveals important features and critical issues. Any
+	call to `X.layout.layout(_)`
+
+	      (a)  refines `X.preferredSize` if X is a container (meaning
+	           also that the original setting may be lost.)
+
+	      (b)  makes every `child.size` and `location` fully defined
+	           (while X.size and X.location may still remain undefined.)
+
+	      (c)  involves *much* more calculations (through additional
+	           sub-calls) when `fill` alignments are specified.
+	
+	LAYOUT RESIZING
+
+	The method `<container>.layout.resize()` can be invoked manually
+	when the size of <container> or some subcontainer has changed. It
+	"resizes and moves the child elements of the managed container,
+	according to the alignment values for each child of the container,
+	after the container has been resized by the user or by a script."
+	This routine expects all elements being already sized and positioned
+	before being called. If this condition is not satisfied, it throws
+	a runtime error, e.g
+
+	      "<container> resize failed - cannot get value
+	      of location property for <subcontainer>".
+
+	When a Window is created with the creation property `resizeable:true`
+	its frame can be resized by the user. The script can then manage the
+	events `resizing` and `resize` (or set the handlers `onResizing`
+	`onResize`.) The canonical implementation is:
+
+	     myWin.onResize = function ON_RSZ(){ myWin.layout.resize() };
+
+	As `layout.layout(_)`, `layout.resize()` visits all subcontainers
+	and call their own `layout.resize` method. The default algorithm
+	does not invoke `layout.layout` though, it just reassigns the size
+	and location properties of the underlying components with respect
+	to their alignment and min-max size constraints.
+	
+	[REM] In CC, the Window's `resize` event is always triggered when
+	the windows shows up (even if `resizeable` is false). This event
+	occurs after the `show` event and before the `focus` event.
+
+	      Window event order in CC:
+	      show   <   resize   <   focus             // events
+	    onShow   <  onResize  <   onActivate        // handlers
+	
+	In CS4-CS6, no `resize` event is fired as long as the user does
+	not resize the frame of the window.
+	
+	Also, in whatever version, changing `myWin.size` (or `myContainer.size`)
+	from the code does not trigger any `resize` event and does not invoke
+	`layout.resize()`. This has to be explicitly done whenever needed.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+
+	ScriptUI containers (Window, Group, Panel) have a native `layout` property which
+	refers to a `LayoutManager` instance. The structure of any LayoutManager is
+	`{ layout:function, resize: function }`. The first time a container is made
+	visible, ScriptUI automatically invokes its layout manager by calling its
+	`layout()` function, which is intended to adjust sizes and positions of the
+	child elements according to the placement and alignments of the parent and
+	children. A script can explicitly invoke `<container>.layout.layout()` to update
+	the layout "in case of changes in the size or position of the parent or children."
+
+	By contrast with `layout()`, the `resize()` function of a LayoutManager is not
+	automatically invoked. It allows to explicitly update a layout after the container
+	is resized, based on new dimensions. The purpose of `<container>.layout.resize()`
+	is to resize child elements without affecting their respective location.
+	
+	We can 'hack' the native `layout` property in order to trigger a custom callback
+	function at the specific time the layout algorithm is processed on a particular
+	container. This technique makes it possible to update some attributes (including
+	those of dependent widgets) when the component is laid out, despite the fact that
+	no native event is associated to this particular process. Typically, the layout
+	mechanism takes place just *before* the 'show' event of the Window (unless the
+	code explicitly invokes the `layout()` function at some point.) Hence, an inte-
+	resting use of handling our fake '_layout' event (see the layoutHandler function
+	below) is to perform last-minute adjustments on particular containers before
+	the window showing up.
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+
+		ScriptUI.layoutDeclare = function layoutDeclare(/*Container*/wg,  o)
+		//----------------------------------
+		// Declare a custom layout object for the given container.
+		// [REM] In general you don't have to call this function explicitly,
+		// as it is automatically invoked from the '_layout' handler through
+		// `ScriptUI.builder( {... {_layout:fct} ...} ... )`.
+		// ---
+		// => 1 [OK] | -1 [ALREADY-DECLARED | 0 [KO]
+		{
+			// If no layout object is available, return 0.
+			// ---
+			o = wg.layout||0;
+			if( o!==Object(o) ) return 0;
+			
+			// If the custom layout is already declared, return -1.
+			// ---
+			if( wg===o.widget ) return -1;
+
+			// Backup the original layout object.
+			// ---
+			(wg['~']||(wg['~']={})).__layout__ = o;
+
+			// Create and setup our own layout object. (The original object
+			// is then available at <myWidget>.layout.widget['~'].__layout__)
+			// ---
+			wg.layout = { widget:wg, layout:callee.LAYOUT, resize:callee.RESIZE };
+
+			return 1;
+		}
+		.setup
+		({
+			LAYOUT: function layout(/*0|1|2*/level,  wg,o)
+			//----------------------------------
+			// Here the context is our custom layout object, which has a
+			// `widget` property and then can trigger `onLayout` if defined.
+			{
+				(wg=this.widget||0)                 // Recover the current widget.
+				&& ( o=(wg['~']||0).__layout__ )    // Recover the native layout.
+				&& ( o.layout(level), 1 )           // Call the native function.
+				&& 'function'==typeof(wg.onLayout)  // Is there an `onLayout` function?
+				&& wg.onLayout(level||0);           // Call it from `wg`
+			},
+			RESIZE: function resize(/*0|1|2*/level,  wg,o)
+			//----------------------------------
+			// As in the previous function, except we do not trigger
+			// any extra handler (so far.)
+			{
+				(wg=this.widget||0)
+				&& ( o=(wg['~']||0).__layout__ )
+				&& ( o.resize(level), 1 );
+			},
+		});
+
+		ScriptUI.layoutHandler = function layoutHandler(/*Container*/wg,/*fct*/x,/*'_layout'*/k)
+		//----------------------------------
+		// Handle the key '_layout'. (Cf ScriptUI.builder.)
+		// When you set the `_layout` property to some function, this function is
+		// called whenever the widget undergoes SUI's layout manager. The level
+		// (0,1,2) is then passed as first argument.
+		// ---
+		// => undef
+		{
+			switch( ('function' == typeof x) && k )
+			{
+				case '_layout':    ScriptUI.layoutDeclare(wg); wg.onLayout=x; return;
+				default:;
+			}
+			
+			// Fallback.
+			// ---
+			wg[k] = x;
+		};
+
+		ScriptUI.addKeyHandler
+		('_layout', ScriptUI.layoutHandler);
+
+	}
+
+
