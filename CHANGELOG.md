@@ -1,6 +1,7 @@
 ##### [190201]
   - [Env/$$.screen.jsxinc](/core/Env/$$.screen.jsxinc): the new method `$$.Env.screenIndex()` returns the index of the monitor that contains a point `[x,y]` specified in screen coordinates. Useful to identify the screen in which a window is shown.
-  
+  - The new method `$$.Env.setActiveScreen(index)` allows to register, from any point of your code, the index of the active screen as soon as it can be determined, e.g. when `app.activeWindow` exists. Registering the active screen improves messaging functions and may help you position UI stuff with respect to the application area.
+
 ##### [190125]
   - [ScriptUI/$$.layout.jsxinc](/etc/ScriptUI/$$.layout.jsxinc) added. This small extension allows to register a _layout handler_, that is, a special function that automatically executes when the attached UI component (a ScriptUI container) is subject to the layout manager. As explained in the NOTICE, “this technique makes it possible to update some attributes (including those of dependent widgets) when the component is laid out, despite the fact that no native event is associated to this particular process. Typically, the layout mechanism takes place just *before* the `show` event of the Window (unless the code explicitly invokes the `layout()` function at some point.) Hence, an interesting use of handling our fake `_layout` event is to perform last-minute adjustments on particular containers before the window shows up.”
 
