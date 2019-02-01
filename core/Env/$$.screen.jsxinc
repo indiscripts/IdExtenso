@@ -8,7 +8,7 @@
 		Core:           YES
 		Kind:           Part of the Env module.
 		API:            centerWindow() -> $$
-		                setActiveScreen() screenIndex()
+		                setActiveScreen() getActiveScreen() screenIndex()
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
@@ -235,6 +235,14 @@
 				q.ACTV = idx;
 				return 1;
 			}
+		},
+
+		getActiveScreen: function getActiveScreen_i()
+		//----------------------------------
+		// [ADD190201] Return the active screen index (if known), or undef.
+		// => 0|1|... [OK]  |  undef [KO]
+		{
+			return callee.µ['~'].SCRN.Q.ACTV;
 		},
 		
 		centerWindow: function centerWindow_$SUIWindow$_$Window$_$SUIWindow$(/*SUIWindow*/w,/*?Window*/relWin,  q,xy,wh)
