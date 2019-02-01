@@ -8,10 +8,11 @@
 		Core:           YES
 		Kind:           Part of the Env module.
 		API:            centerWindow() -> $$
+		                screenIndex()
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       180531 (YYMMDD)
+		Modified:       190201 (YYMMDD)
 
 *******************************************************************************/
 
@@ -74,6 +75,7 @@
 
 	[RES] http://thatmichael.com/2014/02/how-to-change-indesigns-default-screen-resolution/
 	[RES] https://forums.adobe.com/thread/744237
+	[RES] Actual size problem: https://forums.adobe.com/thread/832105
 
 	The set `app.generalPreferences` provides useful display parameters.
 
@@ -108,7 +110,7 @@
 	
 	({
 
-		SCRN : function(/*?Window*/w,  x,y,q,a,i,t,tt)
+		SCRN: function(/*?Window*/w,  x,y,q,a,i,t,tt)
 		//----------------------------------
 		// [ADD180401] Backup screen and display info at loading stage.
 		// [CHG180413] Preventing memory dups.
@@ -181,6 +183,26 @@
 		}
 		.setup({ Q:[] })
 		.self(µ['~'],app.properties.activeWindow),
+		
+		ISCR: function(/*int*/x,/*int*/y,  q,r,d,i,t,dx,dy)
+		//----------------------------------
+		// (Screen-Index.) Tell which screen contains the pt [x,y].
+		// If [x,y] is outside of screen bounds, consider the screen
+		// whose center point is closer to [x,y].
+		// => uint
+		{
+			q = this.SCRN.Q;
+
+			for( r=-1, d=1/0, i=q.length ; i-- ; )
+			{
+				t = q[i].center;
+				dx = x - t[0];
+				dy = y - t[1];
+				d > (t=dx*dx + dy*dy) && ( (r=i), (d=t) );
+			}
+
+			return r;
+		},
 
 	})
 
@@ -214,4 +236,17 @@
 			return w;
 		}
 		.copy('..'),
+		
+		screenIndex: function screenIndex_p_I(/*?[x,y]*/xy,  I,q)
+		//----------------------------------
+		// [ADD190201] Return the index (0, 1, ...) of the screen that contains the point `xy`.
+		// If `xy` is not supplied, return the 'active screen' index (if known), or the primary
+		// screen index (fallback.)
+		{
+			q = (I=callee.µ['~']).SCRN.Q;
+			
+			return xy && 'number'==typeof xy[0] && 'number'==typeof xy[1] ?
+				I.ISCR( (0|xy[0]), (0|xy[1]) ) :
+				q[q.hasOwnProperty('ACTV')?'ACTV':'PRIM'];
+		},
 	})
