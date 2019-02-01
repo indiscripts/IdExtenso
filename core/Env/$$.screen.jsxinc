@@ -8,7 +8,7 @@
 		Core:           YES
 		Kind:           Part of the Env module.
 		API:            centerWindow() -> $$
-		                screenIndex()
+		                setActiveScreen() screenIndex()
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
@@ -213,6 +213,30 @@
 	[PUBLIC]
 
 	({
+		setActiveScreen: function setActiveScreen_I_B(/*uint*/idx,  q)
+		//----------------------------------
+		// [ADD190201] Forcibly set the active screen, by its index `idx`.
+		// If `idx` is not a valid screen index, delete the internal `ACTV` key.
+		// [REM] At any point of your script (e.g when an app.activeWindow is valid)
+		// you may get hints about the "active screen", that is, the screen that
+		// addresses the application frame. This function allows to register the
+		// index you have found as the active screen index, which will then improve
+		// other functions like `centerWindow()` etc.
+		// => 1 [OK]  |  0 [KO]
+		{
+			q = callee.µ['~'].SCRN.Q;
+			if( (idx !== idx>>>0) || idx >= q.length )
+			{
+				delete q.ACTV;
+				return 0;
+			}
+			else
+			{
+				q.ACTV = idx;
+				return 1;
+			}
+		},
+		
 		centerWindow: function centerWindow_$SUIWindow$_$Window$_$SUIWindow$(/*SUIWindow*/w,/*?Window*/relWin,  q,xy,wh)
 		//----------------------------------
 		// [CHG180531] Added the `relWin` (optional) argument.
@@ -242,6 +266,8 @@
 		// [ADD190201] Return the index (0, 1, ...) of the screen that contains the point `xy`.
 		// If `xy` is not supplied, return the 'active screen' index (if known), or the primary
 		// screen index (fallback.)
+		// ---
+		// => 0 | 1 | ...
 		{
 			q = (I=callee.µ['~']).SCRN.Q;
 			
