@@ -6,12 +6,12 @@
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
-		Kind:           Resource of the Env module.
+		Kind:           Resource of the Env module (cf. Env/system)
 		API:            ---
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170512 (YYMMDD)
-		Modified:       170512 (YYMMDD)
+		Modified:       190202 (YYMMDD)
 
 *******************************************************************************/
 
