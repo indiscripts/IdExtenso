@@ -9,9 +9,9 @@
 		Kind:           Part of the Root module.
 		API:            success() failure() edit() yesNo()
 		DOM-access:     ---
-		Todo:           Fix dual-screen issues ;
+		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       180531 (YYMMDD)
+		Modified:       190203 (YYMMDD)
 
 *******************************************************************************/
 
@@ -69,9 +69,9 @@
 			return r;
 		},
 		
-		KBTS: function(/*Window|Group|Panel*/parent,/*str*/okStr,/*str*/koStr)
+		KBTS: function(/*Window|Group|Panel*/parent,/*str*/okStr,/*str*/koStr,  r)
 		//----------------------------------
-		// (Buttons-Factory.)
+		// (Buttons-Factory.) [FIX190202]
 		// => Group
 		{
 			r = parent.add('group');
@@ -82,12 +82,12 @@
 			return r;
 		},
 		
-		WRES: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  o)
+		WRES: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  q,o)
 		//----------------------------------
-		// [ADD180531]
+		// [ADD180531] [FIX190202]
 		{
 			q = callee.Q || (callee.Q={
-				properties:             { type:'dialog', text:'', bounds:[0,0,void 0,void 0], borderless:false, closeButton:true },
+				properties:             { type:'dialog', text:'', borderless:false, closeButton:true },
 				alignChildren:          ScriptUI.CT,
 				margins:                20,
 				spacing:                20,
@@ -100,8 +100,10 @@
 			o.text = title;
 			o.borderless = !border;
 			o.closeButton = !ko;
-			
-			o = o.bounds;
+
+			// [FIX190203] o.bounds must be reset from scratch here.
+			// ---
+			o = o.bounds = Array(4);
 			o[0] = w && (w.location.x);
 			o[1] = w && (w.location.y + (w.size.height >>> 1));
 			o[2] = void 0;
@@ -214,7 +216,6 @@
 			title = -1===title ? false : (title ? String(title) : callee.µ['~'].TTLE);
 			( 'number' == typeof seconds && 0 < seconds ) || (seconds=1+msg.length/15);
 			( relWin && relWin instanceof Window ) || (relWin=void 0);
-
 			callee.µ['~'].MSSG(msg, title, 1e3*seconds, 0, relWin);
 		},
 
