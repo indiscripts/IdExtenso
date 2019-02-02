@@ -1,14 +1,13 @@
 ##### [190202]
   - Splitted the [**Env**](/core/$$.Env.jsxlib) module into subparts throughout the `Env/` directory :
 
-	#include 'Env/$$.system.jsxinc'
-	#include 'Env/$$.script.jsxinc'
-	#include 'Env/$$.application.jsxinc'
-
-	#include 'Env/$$.locale.jsxinc'
-	#include 'Env/$$.screen.jsxinc'
-	#include 'Env/$$.unit.jsxinc'
-	#include 'Env/$$.user.jsxinc'
+		#include 'Env/$$.system.jsxinc'
+		#include 'Env/$$.script.jsxinc'
+		#include 'Env/$$.application.jsxinc'
+		#include 'Env/$$.locale.jsxinc'
+		#include 'Env/$$.screen.jsxinc'
+		#include 'Env/$$.unit.jsxinc'
+		#include 'Env/$$.user.jsxinc'
 
   - Fixed problems with active screen detection -- [Env/$$.screen.jsxinc](/core/Env/$$.screen.jsxinc) -- now delayed to `Env.onLoad()` for addressing cases where the active monitor changes within a session.
   - Added `$$.Env.system()` -- cf [Env/$$.system.jsxinc](/core/Env/$$.system.jsxinc)
