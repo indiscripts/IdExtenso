@@ -1,0 +1,107 @@
+/*******************************************************************************
+
+		Name:           Locale
+		Desc:           Localization-related information.
+		Path:           /core/Env/$$.locale.jsxinc
+		Require:        enum.revSource()
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            appLocaleId isValidLocaleId() localeIdToString()
+		DOM-access:     app.translateKeyString(), app.locale
+		Todo:           ---
+		Created:        190202 (YYMMDD)
+		Modified:       190202 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+	
+	({
+		LZ2S : eval(Locale.revSource()),                       // {1279476846:"DANISH_LOCALE", 1279477102:"ENGLISH_LOCALE", etc}
+
+		// App locale ID (conversion required in CS5 and later.)
+		// ---
+		LOCZ : +(app.locale),
+		
+		// ExtendScript locale.
+		// [RES] https://github.com/milligramme/extendscript_snippets/blob/master/env/locale_test.js
+		// ---
+		LANG : String($.locale),                               // e.g "fr_FR"
+
+	})
+
+	[PRIVATE]
+	
+	({
+		// Locale prefix.
+		// E.g 'FRENCH' | 'GERMAN' | 'ENGLISH' ...
+		// [FIX180615] Added `||''` to make sure the below line always work,
+		// even if LZ2S[LOCZ] is broken for some reason.
+		// ---
+		LPFX : (µ['~'].LZ2S[µ['~'].LOCZ]||'').replace('_LOCALE',''),
+
+		ESLZ : function(/*undef|1|0*/BKP,  v)
+		//----------------------------------
+		// Backup $.localize at loading stage.
+		// => 0 | 1
+		// ---
+		// BKP===1          => backup and return +($.localize).
+		// BKP===undefined  => return the backup value.
+		// otherwise        => tell whether the backup value
+		//                     differs from +($.localize).
+		// ---
+		// [CHG170417] Replaces the property ~.LZSS previouly in use.
+		// [REM] $.localize is ENGINE-persistent (not SESSION-persistent)
+		// and its default value is true.
+		{
+			if( 'undefined' == typeof BKP ) return callee.Q;
+
+			v = +($.localize);
+
+			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
+
+		}
+		.self(µ['~'],1),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		// App locale ID (number), e.g 0x4C434569.
+		// ---
+		appLocaleId : µ['~'].LOCZ,
+		
+		isValidLocaleId : function isValidLocaleId_I_B(/*uint*/iLocale)
+		//----------------------------------
+		// Whether the uint `iLocale` is a valid Locale enum number.
+		// [REM] This function allows `iLocale` to be an Enumerator
+		// since the argument is always coerced into a Number.
+		// => 0 | 1
+		{
+			return +(callee.µ['~'].LZ2S.hasOwnProperty(+iLocale));
+		},
+
+		localeIdToString : function localeIdToString_I_S(/*uint*/iLocale,/*0|1=0*/KEEP_LOCALE_SUFFIX,  s)
+		//----------------------------------
+		// Given a Locale enumerator number `iLocale`, return its enum string w/o suffix,
+		// e.g  0x4C434569 => 'INTERNATIONAL_ENGLISH'
+		// ---
+		// If `KEEP_LOCALE_SUFFIX` is 1, do not remove the `_LOCALE` suffix,
+		// e.g  0x4C434569 => 'INTERNATIONAL_ENGLISH_LOCALE'
+		// ---
+		// [REM] This function allows `iLocale` to be an Enumerator
+		// since the argument is always coerced into a Number.
+		// => str | ''
+		{
+			s = callee.µ['~'].LZ2S[+iLocale] || '';
+			return (KEEP_LOCALE_SUFFIX || !s) ? s : s.replace('_LOCALE','');
+		},
+
+	})
