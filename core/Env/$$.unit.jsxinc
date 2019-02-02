@@ -1,0 +1,140 @@
+/*******************************************************************************
+
+		Name:           Unit
+		Desc:           Basic measurement units information.
+		Path:           /core/Env/$$.unit.jsxinc
+		Require:        enum.revSource() ; Env/script
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            isUnit()->$$ toPoints->$$
+		DOM-access:     ---
+		Todo:           ---
+		Created:        190202 (YYMMDD)
+		Modified:       190202 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+	
+	({
+		// {2051106676:"AGATES", etc} + {1635087471:"AUTO_VALUE"} + {'-1':"<No Script Unit>"}
+		// ---
+		MU2S : eval(MeasurementUnits.revSource()).setup
+		({
+			'1635087471' : "AUTO_VALUE",
+			'-1'         : "<No Script Unit>",
+		}),
+
+		SCMU : function(/*undef|1|0*/BKP,  v)
+		//----------------------------------
+		// [ADD170417] Backup scriptPref measurementUnit at loading stage.
+		// The caller is responsible for updating ~.SPRF if needed,
+		// since this function relies on ~.SPRF().measurementUnit.
+		// => uint | 0 | 1 | -1 [CS4]
+		// ---
+		// BKP===1          => backup and return SPRF().measurementUnit.
+		// BKP===undefined  => return the backup value.
+		// otherwise        => tell whether the backup value
+		//                     differs from the current one.
+		// ---
+		// [REM] <ScPrefs>.measurementUnit (not available in INDD 6.x)
+		// is SESSION-persistent (default is AutoEnum.AUTO_VALUE.)
+		// ---
+		// [REM] SCMU() returns a number which, once coerced into a
+		// string, is always a key of the composite set ~.MU2S,
+		// including '-1' (CS4 fallback.)
+		{
+			if( 'undefined' == typeof BKP ) return callee.Q;
+
+			v = this.SPRF().measurementUnit;
+
+			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
+
+		}
+		.self(µ['~'],1),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		isUnit : function isUnit_x_I(/*any*/x,  t)
+		//----------------------------------
+		// [ADD180323] Whether the argument is a valid MeasurementUnits enumerator,
+		// number or key. Returns the MU as a number if valid, 0 otherwise.
+		// [FIX180514] Supports *numeral* input, e.g "2054187384" or "0x7A696E63".
+		// ---
+		// => 0 [KO]  |  >0 [MU number]
+		{
+			if( 'string' == typeof x )
+			{
+				if( isFinite(t=Number(x)) )
+				{
+					x = t;
+				}
+				else
+				{
+					return  +( (x in MeasurementUnits) && MeasurementUnits[x] );
+				}
+			}
+
+			if( 'number' != typeof x )
+			{
+				x = +(x && 'Enumerator' == x.__class__ && x);
+			}
+
+			return 0 < x && callee.µ['~'].MU2S.hasOwnProperty(x) ? x : 0;
+
+		}
+		.copy('..'),
+
+		toPoints : function toPoints_N_$MeasurementUnitsEnum$_N(/*num*/v,/*MU|undef*/mu)
+		//----------------------------------
+		// [ADD180514] Quick unit converter. Converts the number `v`, given in `mu` units,
+		// into points. Supports `mu` either as MU enumerator, MU key, or MU number.
+		// (If `mu` is not recognized, `v` is returned unchanged.)
+		// [REM] If you have to perform advanced unit conversions, consider to
+		//       include the `Unit` module in your project (etc/$$.Unit.jsxlib.)
+		// ---
+		// E.g  toPoints(10, MeasurementUnits.AGATES) => 51.4285714285714   ; 10 ag  ~ 51.4 pt
+		//      toPoints(10, "INCHES_DECIMAL")        => 720                ; 10 ind = 720 pt
+		//      toPoints(10, 0x7A6D6D73)              => 28.3464566929134   ; 10 mm  ~ 28.3 pt
+		// ---
+		// => num
+		{
+			if( !(mu=callee.µ.isUnit(mu)) ) return v;
+
+			switch( callee.µ['~'].MU2S[mu] )
+			{
+				case 'AGATES'          : v/=14;    mu='in';  break;
+				case 'AMERICAN_POINTS' :           mu='tpt'; break;
+				case 'BAI'             : v*=6.336; mu=false; break; // done
+				case 'CENTIMETERS'     :           mu='cm';  break;
+				case 'CICEROS'         :           mu='ci';  break;
+				case 'HA'              : v/=4;     mu='mm';  break;
+				case 'INCHES'          :           mu='in';  break;
+				case 'INCHES_DECIMAL'  :           mu='in';  break;
+				case 'MILLIMETERS'     :           mu='mm';  break;
+				case 'MILS'            : v/=1e3;   mu='in';  break;
+				case 'PICAS'           :           mu='pc';  break;
+				case 'PIXELS'          :           mu='px';  break;
+				case 'Q'               : v/=4;     mu='mm';  break;
+				case 'U'               : v*=.792;  mu=false; break; // done
+
+				// CUSTOM and POINTS do not require conversion.
+				// ---
+				default                : mu=false;
+			}
+			
+			return mu ? UnitValue(v,mu).as('pt') : v;
+
+		}
+		.copy('..'),
+
+	})
