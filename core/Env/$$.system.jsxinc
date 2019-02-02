@@ -1,0 +1,159 @@
+/*******************************************************************************
+
+		Name:           System
+		Desc:           OS information and essentiel file paths.
+		Path:           /core/Env/$$.system.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            system()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        190202 (YYMMDD)
+		Modified:       190202 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+	
+	({
+		// [REM170511] $.os is not reliable in ExSc/Windows, as detailed
+		// at <https://forums.adobe.com/thread/2090192>. See also:
+		// https://weepee.de/forum/indesign/viewtopic.php?f=62&t=130
+		// ---
+		OSYS : String($.os),                                   // e.g "Windows 7/64 6.1 (...)"
+
+		OSMC : +('W'!=File.fs.charAt(0).toUpperCase()),        // 1 (mac) | 0 (win)
+
+		// Computer name (as told by the OS.)
+		// ---
+		OSCP : String($.getenv('COMPUTERNAME')||''),
+	})
+	
+	[PRIVATE]
+	
+	({
+		// URI path to the application folder.
+		// E.g MAC "/Applications/Adobe%20InDesign%20CS<X>"
+		// E.g WIN "/c/Program%20Files/Adobe/Adobe%20InDesign%20CC%202017"
+		// ---
+		IDPK : String(µ['~'].OSMC ? Folder.appPackage.parent : Folder.appPackage),
+
+		CURF : function(/*undef|1|0*/BKP,  v)
+		//----------------------------------
+		// [ADD170419] Backup Folder.current at loading stage.
+		// CURF() reflects the path in URI notation.
+		// => str | 0 | 1
+		// ---
+		// BKP===1          => backup and return
+		//                     String(Folder.current).
+		// BKP===undefined  => return the backup value.
+		// otherwise        => tell whether the backup value
+		//                     differs from String(Folder.current).
+		// ---
+		// [REM] Folder.current is SESSION-persistent,
+		// its default value varies across INDD versions.
+		{
+			if( 'undefined' == typeof BKP ) return callee.Q;
+
+			v = String(Folder.current);
+
+			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
+
+		}
+		.self(µ['~'],1),
+		
+		RSYS : µ['~'].OSMC ?
+		//----------------------------------
+		// [ADD190202] Refine ~.OSYS if needed ; called from onEngine.
+		// => -1 [NOT-NEEDED-OK]  |  +1 [OK]  |  0 [FAILED]
+		function()
+		{
+			// Not needed on Mac.
+			// ---
+			return -1
+		}
+		:
+		function(  $$,s,k,q)
+		{
+			// Windows OS.
+			// <this> :: ~
+
+			// From CC, we shall assume that $.os is correct.
+			// ---
+			if( +(9 <= this.IDNB) ) return -1;
+			
+			// ---
+			// CS case.
+			// ---
+
+			// A wrong OSYS will look like "Windows 7/64 6.2  (32-bit emulation)"
+			// which may also be correct. However, if OSYS contains "Windows 10"
+			// or higher, there is good change that it is OK, so we can skip
+			// further processing in that specific case.
+			// ---
+			if( /Windows 1\d/.test(this.OSYS) ) return -1;
+
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			// ---
+			// [RES] stackoverflow.com/questions/13212033/
+			//       msdn.microsoft.com/en-us/library/ms724832(VS.85).aspx
+			//       security.stackexchange.com/questions/110673/
+			// [REM] Tried `WMIC OS GET caption,osarchitecture,version > %1`
+			// ---
+
+			s = 'VER > %1';
+			if( !(s=$$.File.batchToString(s)).length )
+			{
+				(+$$.trace) && $$.trace(__("%1 > Failed to achieve the batch command.",callee.µ));
+				return 0;
+			}
+			s = s.trim();
+			(+$$.trace) && $$.trace(__("%1 > Parsing the string %2.",callee.µ,s.toSource()));
+
+			// E.g "Microsoft Windows [version 6.1.7601]"
+			// ---
+			if( !(s=s.match(/\d+\.\d+\.\d+(?:\.\d\d?)?/)) ) return 0;
+			k = s = s[0];
+			
+			// Use version map.
+			// ---
+			q = callee.WVER || (callee.WVER=
+			{
+			#include '$$.winver.jsxres'
+			});
+
+			if( q.hasOwnProperty(k) || q.hasOwnProperty(k=k.substr(0,3)) )
+			{
+				k = __(q[k],"Windows") + __(" (%1)",s);
+				(+$$.trace) && $$.trace(__("%1 > Changing OS signature %2 into %3.",callee.µ,this.OSYS.toSource(),k.toSource()));
+				this.OSYS = k;
+				return 1;
+			}
+			
+			return 0;
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		system : function system_S()()
+		//----------------------------------
+		// Return the OS name.
+		// [REM] ~.OSYS may be refined from onEngine().
+		// => str
+		{
+			
+			return callee.µ['~'].OSYS;
+		},
+
+	})
