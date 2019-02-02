@@ -1,3 +1,6 @@
+##### [190203]
+  - [Root/$$.messaging.jsxinc](/core/Root/$$.messaging.jsxinc): bug fixes.
+
 ##### [190202]
   - Splitted the [**Env**](/core/$$.Env.jsxlib) module into subparts throughout the `Env/` directory :
 
