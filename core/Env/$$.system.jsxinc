@@ -146,7 +146,7 @@
 
 	({
 
-		system : function system_S()()
+		system : function system_S()
 		//----------------------------------
 		// Return the OS name.
 		// [REM] ~.OSYS may be refined from onEngine().
