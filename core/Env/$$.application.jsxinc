@@ -1,0 +1,111 @@
+/*******************************************************************************
+
+		Name:           Application
+		Desc:           InDesign-related information.
+		Path:           /core/Env/$$.application.jsxinc
+		Require:        Env/system ; Env/script
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            idVersion() idFullName()
+		DOM-access:     [GET] app.version ; app.fullName ; app.generalPreferences.uiBrightnessPreference
+		Todo:           ---
+		Created:        190202 (YYMMDD)
+		Modified:       190202 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+	
+	({
+		IDVS : String(app.version),                            // e.g "11.1.0.22"
+		IDNB : parseFloat(app.version),                        // e.g  11.1 | 8 [subdigits are ignored.]
+
+		// URI path to the application ('exe' or 'app') file.
+		// E.g MAC "/Applications/Adobe%20InDesign%20CS<X>/Adobe%20InDesign%20CS<X>.app"
+		// E.g WIN "/c/Program%20Files/Adobe/Adobe%20InDesign%20CC%202017/InDesign.exe"
+		// ---
+		INDD : String(app.fullName),
+	})
+
+	[PRIVATE]
+	
+	({
+		// InDesign version name ;  e.g "CS4 (6.x)" ; "CC12 (12.x)"
+		// ---
+		IDNM : __("%1 (%2)"
+			, 9 <= µ['~'].IDNB ? ("CC"+µ['~'].IDNB) : ("CS"+(µ['~'].IDNB-2))
+			, µ['~'].IDVS
+			),
+
+		DARK : function(/*undef|1|0*/BKP,  v)
+		//----------------------------------
+		// Compute the DARK flag at loading stage.
+		// The caller is responsible for updating ~.SPRF if needed,
+		// as this function needs to test whether DOM-version >= 9
+		// => 0 | 1
+		// ---
+		// BKP===1          => backup and return the DARK state.
+		// BKP===undefined  => return the backup value.
+		// otherwise        => tell whether the backup value
+		//                     differs from the current state.
+		// ---
+		// [CHG170417] Replaces the property ~.DARK previouly in use,
+		// and base this flag on the current DOM version and prefs.
+		// [REM] uiBrightnessPreference (available in INDD >= 9)
+		// is APPLICATION-persistent.
+		{
+			if( 'undefined' == typeof BKP ) return callee.Q;
+
+			v = parseFloat(this.SPRF().version);
+			
+			// GeneralPreference.uiBrightnessPreference (0.0 - 1.0)
+			// [CC13] Dark:0.0 ; MidDark:0.50 ; MidBright:0.51 ; Bright:1.0
+			// [CC 9] Dark:0.0 ; MidDark:0.33 ; MidBright:0.67 ; Bright:1.0
+			v = +(9 <= v && .5 >= app.generalPreferences.uiBrightnessPreference);
+
+			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
+
+		}
+		.self(µ['~'],1),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		idVersion : function idVersion_ns_b_SB(/*?|num|str*/ver,/*bit=0*/EQUAL)
+		//----------------------------------
+		// Return, or compare, the current InDesign version number.
+		// 1. If no argument is supplied, return the full INDD version as a
+		//    string, including subdigits, e.g "11.1.0.22".
+		// 2. If `ver` is supplied (String or Number), interpret it as a number
+		//    and return 1 if the current version is greater-or-equal, 0 otherwise.
+		// 3. If EQUAL is truthy, return 1 if the current INDD version matches
+		//    `ver` digits (# or #.# format), 0 otherwise.
+		{
+			return 'undefined' == typeof ver ?
+				callee.µ['~'].IDVS :
+				+(
+					EQUAL ?
+					( (ver=''+parseFloat(''+ver)),(''+callee.µ['~'].IDNB).substr(0,ver.length) == ver ) :
+					( callee.µ['~'].IDNB >= parseFloat(''+ver) )
+				);
+
+		}
+		.copy('..'),
+		
+		idFullName : function idFullName_S()
+		//----------------------------------
+		// Return the INDD full name.
+		// E.g => "Adobe InDesign CS5.5 (7.5.5.xx)"
+		{
+			return "Adobe InDesign " + callee.µ['~'].IDNM;
+		},
+
+	})
