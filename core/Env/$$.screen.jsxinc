@@ -7,12 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Env module.
-		API:            centerWindow() -> $$
-		                setActiveScreen() getActiveScreen() screenIndex()
+		API:            setActiveScreen() getActiveScreen() screenIndex()
+		                centerWindow()->$$
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       190201 (YYMMDD)
+		Modified:       190202 (YYMMDD)
 
 *******************************************************************************/
 
@@ -110,10 +110,13 @@
 	
 	({
 
-		SCRN: function(/*?Window*/w,  x,y,q,a,i,t,tt)
+		SCRN: function(  q,a,i,t,tt)
 		//----------------------------------
 		// [ADD180401] Backup screen and display info at loading stage.
 		// [CHG180413] Preventing memory dups.
+		// [FIX190202] The 'active screen', based on `app.properties.activeWindow`,
+		// MUST be determined from the outside of this function, because if may
+		// be different at each loading stage (it is not 'engine' persistent.)
 		// ---
 		// Cached structure:
 		//   q               ::  Array(screenCount)
@@ -121,7 +124,7 @@
 		//   q[i].center     ::  int[2]       [x,y]
 		//   -----------------------------------------------------------
 		//   q.PRIM          ::  uint         Primary screen index
-		//   q.ACTV          ::  ?uint        Active screen index, or undefined
+		//   q.ACTV          ::  ---          Not defined so far (active screen index)
 		//   q.SUIB          ::  int[4]       [t,l,b,r]
 		//   -----------------------------------------------------------
 		//   q.APP_BAR_SHOWN ::  0|1          Whether the app bar is shown
@@ -135,18 +138,8 @@
 		{
 			q = callee.Q;
 			
-			if( w && (w=w.properties.bounds) )
-			{
-				x = (w[1]+w[3])/2;
-				y = (w[0]+w[2])/2;
-			}
-			else
-			{
-				x = -1/0;
-				y = -1/0;
-			}
-
 			delete q.ACTV;
+
 			for( a=$.screens,i=q.length=a.length ; i-- ; )
 			{
 				t = a[i];
@@ -160,7 +153,6 @@
 				tt[1] = (t.top+t.bottom)>>1;
 
 				t.primary && (q.PRIM=i);
-				t.left <= x && x <= t.right && t.top <= y && y <= t.bottom && (q.ACTV=i);
 			}
 			
 			t = ScriptUI.workspace.bounds;
@@ -182,7 +174,36 @@
 			q.CURRENT_PPI = q.USE_CUSTOM ? q.CUSTOM_PPI : q.MAIN_PPI;
 		}
 		.setup({ Q:[] })
-		.self(µ['~'],app.properties.activeWindow),
+		.self(µ['~']),    // [FIX190202] active screen determined later.
+		
+		W2AC: function(/*?Window=app.properties.activeWindow*/w,  x,y,i,t)
+		//----------------------------------
+		// [190202] Window-to-ActiveScreen (see ~.SCRN fix.)
+		// Called at loading stage.
+		// => 1 [OK]  |  0 [KO]
+		{
+			q = this.SCRN.Q;
+			
+			delete q.ACTV;
+			
+			w || (w=app.properties.activeWindow);
+			if( (!w) || !(w=w.properties.bounds) ) return 0;
+			
+			x = (w[1]+w[3])/2;
+			y = (w[0]+w[2])/2;
+
+			for( i=q.length ; i-- ; )
+			{
+				t = q[i];
+				if( t[1] <= x && x <= t[3] && t[0] <= y && y <= t[2] )
+				{
+					q.ACTV = i;
+					break;
+				}
+			}
+			
+			return 0 > i ? 0 : 1;
+		},
 		
 		ISCR: function(/*int*/x,/*int*/y,  q,r,d,i,t,dx,dy)
 		//----------------------------------
@@ -213,28 +234,23 @@
 	[PUBLIC]
 
 	({
-		setActiveScreen: function setActiveScreen_I_B(/*uint*/idx,  q)
+		setActiveScreen: function setActiveScreen_i$Window$_B(/*uint|Window=auto*/iw,  I,q)
 		//----------------------------------
-		// [ADD190201] Forcibly set the active screen, by its index `idx`.
-		// If `idx` is not a valid screen index, delete the internal `ACTV` key.
+		// [CHG190202] Forcibly set the active screen, by its index `iw`.
+		// If `iw` is not a valid screen index, call `~.W2AC(iw)` which tries
+		// to determine the active screen from iw::Window or app.activeWindow.
+		// ---
 		// [REM] At any point of your script (e.g when an app.activeWindow is valid)
 		// you may get hints about the "active screen", that is, the screen that
 		// addresses the application frame. This function allows to register the
-		// index you have found as the active screen index, which will then improve
-		// other functions like `centerWindow()` etc.
+		// index you have found (or the index associated to a target Window) as
+		// the active screen index, which will then improve other functions like
+		// `centerWindow()` etc.
+		// ---
 		// => 1 [OK]  |  0 [KO]
 		{
-			q = callee.µ['~'].SCRN.Q;
-			if( (idx !== idx>>>0) || idx >= q.length )
-			{
-				delete q.ACTV;
-				return 0;
-			}
-			else
-			{
-				q.ACTV = idx;
-				return 1;
-			}
+			q = (I=callee.µ['~']).SCRN.Q;
+			return ( (iw !== iw>>>0) || iw >= q.length ) ? I.W2AC(iw) : ((q.ACTV=iw),1);
 		},
 
 		getActiveScreen: function getActiveScreen_i()
@@ -245,6 +261,21 @@
 			return callee.µ['~'].SCRN.Q.ACTV;
 		},
 		
+		screenIndex: function screenIndex_p_I(/*?[x,y]*/xy,  I,q)
+		//----------------------------------
+		// [ADD190201] Return the index (0, 1, ...) of the screen that contains the point `xy`.
+		// If `xy` is not supplied, return the 'active screen' index (if known), or the primary
+		// screen index (fallback.)
+		// ---
+		// => 0 | 1 | ...
+		{
+			q = (I=callee.µ['~']).SCRN.Q;
+			
+			return xy && 'number'==typeof xy[0] && 'number'==typeof xy[1] ?
+				I.ISCR( (0|xy[0]), (0|xy[1]) ) :
+				q[q.hasOwnProperty('ACTV')?'ACTV':'PRIM'];
+		},
+
 		centerWindow: function centerWindow_$SUIWindow$_$Window$_$SUIWindow$(/*SUIWindow*/w,/*?Window*/relWin,  q,xy,wh)
 		//----------------------------------
 		// [CHG180531] Added the `relWin` (optional) argument.
@@ -268,19 +299,5 @@
 			return w;
 		}
 		.copy('..'),
-		
-		screenIndex: function screenIndex_p_I(/*?[x,y]*/xy,  I,q)
-		//----------------------------------
-		// [ADD190201] Return the index (0, 1, ...) of the screen that contains the point `xy`.
-		// If `xy` is not supplied, return the 'active screen' index (if known), or the primary
-		// screen index (fallback.)
-		// ---
-		// => 0 | 1 | ...
-		{
-			q = (I=callee.µ['~']).SCRN.Q;
-			
-			return xy && 'number'==typeof xy[0] && 'number'==typeof xy[1] ?
-				I.ISCR( (0|xy[0]), (0|xy[1]) ) :
-				q[q.hasOwnProperty('ACTV')?'ACTV':'PRIM'];
-		},
+
 	})
