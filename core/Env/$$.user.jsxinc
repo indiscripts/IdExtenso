@@ -1,0 +1,53 @@
+/*******************************************************************************
+
+		Name:           User
+		Desc:           User-related information.
+		Path:           /core/Env/$$.user.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Env module.
+		API:            userName()
+		DOM-access:     app.userName ; app.translateKeyString()
+		Todo:           ---
+		Created:        190202 (YYMMDD)
+		Modified:       190202 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+	
+	({
+		// User name (as told by the OS.) [CHG181015] Added 'USER' case (Mac)
+		// ---
+		OSUS : String($.getenv('USERNAME')||$.getenv('USER')||''),
+
+		// User associated to tracked changes. (Might be ~.UNKU, cf Env/locale)
+		// ---
+		IDUS : String(app.userName||''),
+
+		// Localized "Unknown User Name" string.
+		// ---
+		UNKU : app.translateKeyString("$ID/Unknown User Name"), // e.g "Utilisateur inconnu" (in FR), etc
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		userName : function userName_S(  I)
+		//----------------------------------
+		// [ADD180513] Return the user name as documented by `app.userName`
+		// (if known,) otherwise return then environment variable (if set).
+		// => str [OK]  |  '' [KO]
+		{
+			I = callee.µ['~'];
+			return I.IDUS != I.UNKU ? I.IDUS : I.OSUS;
+		},
+
+	})
