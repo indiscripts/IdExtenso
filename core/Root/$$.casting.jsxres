@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       170521 (YYMMDD)
+		Modified:       190203 (YYMMDD)
 
 *******************************************************************************/
 
@@ -69,7 +69,7 @@
 	formal argument and returning an OBJ.
 	
 	You can use the lowercase counterpart of a cast letter to indicate
-	this formal argument is optional. E.g.,
+	an optional formal argument. E.g.,
 	
 	      myFunc_S_i_S(...){...}
 	
@@ -85,8 +85,7 @@
 	
 	Note 1. - Custom casts are helpful because current cast letters do not
 	cover every specific type that JS offers, e.g. native structures such
-	as RegExp, Math, etc. We focus on data types that appear frequently in
-	the present framework.
+	as RegExp, Date, etc.
 	
 	Note 2. - It is encouraged, but not required, that you use those
 	special function signatures in the PUBLIC part of your own modules.
@@ -228,7 +227,7 @@
 	H: {
 		code: 'HEX',
 		name: 'hexa',
-		desc: "String formed only of hexa digits ('0'..'9','A'..'F'|'a'..'f'). The preferred form is uppercase, except in MD5 hashes.",
+		desc: "String formed only of hexa digits ('0'..'9','A'..'F'|'a'..'f'). Preferred form is uppercase, except in MD5 hashes.",
 		test: "+('string'==typeof x && /^[0-9A-F]+$/i.test(x))",
 		},
 	Î: {
@@ -324,4 +323,10 @@
 		name: 'DOM_object',
 		desc: "DOM object (ie specifier) excluding collection.",
 		test: "+(x===Object(x) && ('toSpecifier' in x))",
+		},
+	E: {
+		code: 'EVT',
+		name: 'Event',
+		desc: "DOM or ScriptUI Event",
+		test: "+(x===Object(x) && (x instanceof Event))",
 		},
