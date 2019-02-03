@@ -1,5 +1,7 @@
 ##### [190203]
   - [Root/$$.messaging.jsxinc](/core/Root/$$.messaging.jsxinc): bug fixes.
+  - Added the `Event` entry in [Root/casting](/core/Root/$$.casting.jsxres).
+  - Added `globalEvent()` in [Env/script](/core/Env/$$.script.jsxinc). Returns the global DOM event in case your script is triggered from the app as an event handler (e.g from a `MenuAction` listener.)
 
 ##### [190202]
   - Splitted the [**Env**](/core/$$.Env.jsxlib) module into subparts throughout the `Env/` directory :
