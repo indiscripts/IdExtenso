@@ -9,11 +9,11 @@
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
 		                engineState() runCount() idEngine() inBinStream() scriptsPanel()
-		                domVersion()->$$
+		                domVersion()->$$ globalEvent()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ; app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190202 (YYMMDD)
+		Modified:       190203 (YYMMDD)
 
 *******************************************************************************/
 
@@ -348,6 +348,22 @@
 					( parseFloat(s) >= parseFloat(''+ver) )
 				);
 
+		}
+		.copy('..'),
+		
+		globalEvent : function globalEvent_e()
+		//----------------------------------
+		// [190203] Return the DOM global event (if available), or zero.
+		// [REM] The global variable `evt` is automatically set when the current script
+		// is invoked as an event handler (e.g from a MenuAction listener.)
+		// Typical ret:
+		// { eventType:"onInvoke", target:<ScriptMenuAction>, eventPhase:0x656E4154/*AT_TARGET*/,
+		//   bubbles:false, cancelable:false, timeStamp:<Date>, propagationStopped:false,
+		//   defaultPrevented:false, id:<uint>, parent:<ScriptMenuAction>, index:<uint> }
+		// ---
+		// => Event [OK]  |  0 [KO]
+		{
+			return $.global.evt || 0;
 		}
 		.copy('..'),
 
