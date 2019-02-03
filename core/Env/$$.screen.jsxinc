@@ -12,7 +12,7 @@
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       190202 (YYMMDD)
+		Modified:       190203 (YYMMDD)
 
 *******************************************************************************/
 
@@ -176,7 +176,7 @@
 		.setup({ Q:[] })
 		.self(µ['~']),    // [FIX190202] active screen determined later.
 		
-		W2AC: function(/*?Window=app.properties.activeWindow*/w,  x,y,i,t)
+		W2AC: function(/*?Window=app.properties.activeWindow*/w,  q,x,y,i,t)
 		//----------------------------------
 		// [190202] Window-to-ActiveScreen (see ~.SCRN fix.)
 		// Called at loading stage.
