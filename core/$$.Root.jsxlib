@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190204 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 190120, 'load'))
+;eval(__(MODULE, '$.global', $$, 190204, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -209,11 +209,12 @@
 		//----------------------------------
 		// (Include-Stage-Cleaner.) Global cleaner after include stage.
 		// [CHG181128] Delete functions based on the $TMP$ flag.
+		// [CHG190204] Added KEEP_OBJ_PROTO flag (cf. ESTK entry point.)
 		{
 			// Cleanup Function.prototype and Object.prototype.
 			// ---
 			callee.DEL_TEMP(Function.prototype);
-			callee.DEL_TEMP(Object.prototype);
+			callee.KEEP_OBJ_PROTO || callee.DEL_TEMP(Object.prototype);
 
 			// Delete temporary [[global]] keys.
 			// ---
@@ -223,6 +224,12 @@
 		}
 		.setup
 		({
+			// [ADD190204] Whether to keep Object.prototype $TMP$ functions
+			// on clean stage. Seems needed in ESTK CS4 for unknown reason...
+			// Cf. $$.estk.jsxinc
+			// ---
+			KEEP_OBJ_PROTO: 0,
+
 			GLO_IDEX: Array
 			//----------------------------------
 			// Temporary global keys used at include-time.
@@ -245,7 +252,7 @@
 				for( k in o ) o.hasOwnProperty(k)
 				&& 'function' == typeof(o[k])
 				&& '$TMP$' == o[k].name
-				&& delete o[k];
+				&& (delete o[k]);
 			},
 		}),
 		
