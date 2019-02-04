@@ -1,3 +1,6 @@
+## 1.90204
+  - Stabilized version (Feb. 04, 2019) including latest fixes and additions.
+
 ##### [190203]
   - [Root/$$.messaging.jsxinc](/core/Root/$$.messaging.jsxinc): bug fixes.
   - Added the `Event` entry in [Root/casting](/core/Root/$$.casting.jsxres).
