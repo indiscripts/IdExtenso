@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190204 (YYMMDD)
 
 *******************************************************************************/
 
