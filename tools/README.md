@@ -14,7 +14,9 @@ Compute and prompt the MD5 hash of the input string. (Based on `etc/$$.MD5.jsxli
 
 ##### [`JsxBlindLib.jsxinc`](JsxBlindLib.jsxinc)
 
-***JsxBlind 2.0 Library*** for ExtendScript Toolkit. A full, smart, and fast `jsxbin` obfuscator.
+***JsxBlind 2.1 Library*** for ExtendScript Toolkit. A full, smart, and fast `jsxbin` obfuscator.
+
+  - Version 2.1 (4 Feb, 2019) fixes two critical bugs regarding reserved words.
 
 ##### [`SelToPng.jsx`](SelToPng.jsx)
 
