@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190204 (YYMMDD)
 
 *******************************************************************************/
 
@@ -105,5 +105,9 @@
 	// [181128] Shorter code!
 	// ---
 	;$$['~'].ISCL.GLO_DOMK.length = 0;
+	
+	// [190204] Seems required in ESTK CS4.
+	// ---
+	;$$['~'].ISCL.KEEP_OBJ_PROTO = 1;
 
 
