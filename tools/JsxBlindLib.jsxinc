@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           JsxBlindLib
-		Desc:           JsxBlind 2.0 Library (for ExtendScript Toolkit.)
+		Desc:           JsxBlind 2.1 Library (for ExtendScript Toolkit.)
 		Path:           /tools/JsxBlindLib.jsxinc
 		Require:        IdExtenso
 		Encoding:       ÛȚF8
@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        181029 (YYMMDD)
-		Modified:       181030 (YYMMDD)
+		Modified:       190204 (YYMMDD)
 
 *******************************************************************************/
 
@@ -28,7 +28,7 @@
 #include 'JsxBlind/$$.JsxBin.bin.jsx'
 #include 'JsxBlind/$$.JsxBin.Scrambler.bin.jsx'
 
-;$$.hasOwnProperty('JsxBlindLib') || eval(__(MODULE, $$, 'JsxBlindLib', 181030, 'run'))
+;$$.hasOwnProperty('JsxBlindLib') || eval(__(MODULE, $$, 'JsxBlindLib', 190204, 'run'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -72,7 +72,7 @@
 	*/
 
 	//==========================================================================
-	// BACKGROUND
+	// NOTICE
 	//==========================================================================
 
 	/*
@@ -132,7 +132,7 @@
 		                       strings do not reflect a regular identifier.
 		                       For example, a custom object property or method
 		                       name, like `MY_KEY` in the syntax `obj.MY_KEY`.
-		                       Thus, you could send
+		                       Thus you could send
 		                           `options.whiteList = /^MY_KEY$/`
 
 		.blackList     RegExp  Regular expression capturing blacklisted tokens,
@@ -143,9 +143,9 @@
 		                          `options.blackList = /^\$\$|MyFunc$/`
 
 	[REM] JavaScript *reserved words* always supersede the `whiteList` option
-	(so you cannot allow say `while` of `return` to be changed!), but the
+	(so you cannot allow, say `while` or `return` to be changed!), but the
 	`whiteList` option has priority over the `blackList` option in case of
-	conflict. So, use these settings with great caution.
+	conflict. So, USE THESE SETTINGS WITH GREAT CAUTION.
 	
 	Some additional public methods -- getTiming(), getInputURI(), getReport() --
 	are explained in the code. Give a look at `/tests/UseJsxBlindLib.jsx` for
