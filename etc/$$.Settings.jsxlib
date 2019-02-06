@@ -13,11 +13,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       180605 (YYMMDD)
+		Modified:       190206 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 180605, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 190206, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -142,7 +142,7 @@
 	6. OBJECT-HOSTED KEYS (OBJ keys.) These special keys are intended to be saved
 	in an InDesign DOM object, if supplied. By default they activate to a default
 	value and behave as Engine Keys--so you can still manage default settings from
-	here when no host object is available. But, if $$.Settings is activated with
+	here when no DOM object is available. But, if $$.Settings is activated with
 	a DOM object passed in, then it becomes the actual data provider of Obj Keys.
 	The same object (or another one!) can then be used as the target during the
 	backup stage. Use case: your script build & manages highly data-driven docs and
@@ -319,7 +319,7 @@
 	[PRIVATE]
 	
 	({
-		GOBJ : function(/*dom*/osp,/*any*/defRet)
+		GOBJ : function(/*DOM*/osp,/*any*/defRet)
 		//----------------------------------
 		// (Get-From-Obj.) Get (extract) keys from osp's SUID label.
 		// => new set [OK] | undefined [KO]
@@ -327,7 +327,7 @@
 			return $.global[callee.µ.__root__].Dom.fromLabel(osp, this.SUID, defRet);
 		},
 
-		SOBJ : function(/*dom*/osp,/*any{}*/o)
+		SOBJ : function(/*DOM*/osp,/*any{}*/o)
 		//----------------------------------
 		// (Set-to-Obj.) Set (insert) o keys into osp's SUID label.
 		// => str (json)
@@ -469,7 +469,7 @@
 			}
 		},
 
-		ACRS : function(/*?dom|null*/host,/*bool*/DO_RESET,  o,k,z,v,indd,dobj,zo,za)
+		ACRS : function(/*?DOM|null*/dom,/*bool*/DO_RESET,  o,k,z,v,indd,dobj,zo,za)
 		//----------------------------------
 		// (Activate-Or-Reset.) Activate or Reset the declared keys.
 		// => undefined
@@ -496,17 +496,17 @@
 					if( (z&this.SESS) && null!==(v=this.GENV(k)) ) break;
 
 					// DOBJ | INDD | HYBR
-					// If DO_RESET && host===null, take the default and break.
+					// If DO_RESET && dom===null, take the default and break.
 					// ---
-					if( (z&this.HYBR) && DO_RESET && null===host ){ v=this.KDEF(k); break; }
+					if( (z&this.HYBR) && DO_RESET && null===dom ){ v=this.KDEF(k); break; }
 					
 					// DOBJ | HYBR
 					// ---
 					if( (z&this.DOBJ) )
 					{
-						// If not already done, unserialize data from the host object.
+						// If not already done, unserialize data from the dom object.
 						// ---
-						host && (false===dobj) && (dobj=this.GOBJ(host, void 0));
+						dom && (false===dobj) && (dobj=this.GOBJ(dom, void 0));
 						
 						// Look for the key.
 						// [REM] If not found in a hybrid key, do not break!
@@ -555,15 +555,15 @@
 			indd && $.global[callee.µ.__root__].kill(indd);
 		},
 
-		BCKP : function(/*?dom|null*/host,  indd,dobj,SKIP_HYB,zo,za,o,k,z)
+		BCKP : function(/*?DOM|null*/dom,  indd,dobj,SKIP_HYB,zo,za,o,k,z)
 		//----------------------------------
 		// (Backup.)
 		// => undefined
 		{
 			indd = this.GAPP({});                // Get the existing app keys, or {}, in a new obj
-			dobj = host && this.GOBJ(host,{}),   // Get the existing obj keys, or {}, in a new obj
+			dobj = dom && this.GOBJ(dom,{}),   // Get the existing obj keys, or {}, in a new obj
 	
-			SKIP_HYB = +(null===host);
+			SKIP_HYB = +(null===dom);
 
 			zo = za = 0;
 	
@@ -587,7 +587,7 @@
 				if( z&this.DOBJ )
 				{
 					if( SKIP_HYB ) continue;
-					if( host ){ ++zo; dobj[k]=o[k]; continue; }
+					if( dom ){ ++zo; dobj[k]=o[k]; continue; }
 				}
 	
 				// APP | HYB
@@ -599,7 +599,7 @@
 				}
 			}
 	
-			zo && this.SOBJ(host,dobj);
+			zo && this.SOBJ(dom,dobj);
 			$.global[callee.µ.__root__].kill(dobj);
 			
 			za && this.SAPP(indd);
@@ -743,11 +743,11 @@
 			return I.KEYS.hasOwnProperty(k) ? I.KSCO(k) : 0;
 		},
 
-		activate : function activate_d_Õ(/*?dom*/host,  $$,I,s)
+		activate : function activate_d_Õ(/*?DOM*/dom,  $$,I,s)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
-		// If host is a DOM object, use it as a source for any OBJ or HYB key.
-		// If host is not provided or 'falsy,' OBJ keys will behave at default
+		// If dom is a DOM object, use it as a source for any OBJ or HYB key.
+		// If dom is not provided or 'falsy,' OBJ keys will behave at default
 		// scope and HYB keys will behave at APP scope.
 		// => keys-accessor
 		{
@@ -758,21 +758,21 @@
 				$$.error( __("Settings must be declared before activation."), callee );
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
+			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
 
-			I.ACRS(host, false);
+			I.ACRS(dom, false);
 			return I.KEYS;
 		},
 
-		reset : function reset_d$null$_Õ(/*?dom|null*/host,  $$,I,s)
+		reset : function reset_d$null$_Õ(/*?DOM|null*/dom,  $$,I,s)
 		//----------------------------------
 		// Reset each key to its default or stored value, based on its scope.
 		// ---
-		// If host is a DOM object or is not provided (undefined), every OBJ,
+		// If dom is a DOM object or is not provided (undefined), every OBJ,
 		// APP and HYB key is activated the usual way, while all other
 		// keys are reset to their default value.
 		// ---
-		// If host===NULL, then all keys are reset to their default, including
+		// If dom===NULL, then all keys are reset to their default, including
 		// OBJ, APP and HYB keys.
 		// => keys-accessor
 		{
@@ -783,19 +783,20 @@
 				$$.error( __("Settings must be declared before calling reset."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
+			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
 
-			I.ACRS(host, true);
+			I.ACRS(dom, true);
 			return I.KEYS;
 		},
 
-		backup : function backup_d$null$_(/*?dom|null*/host,  $$,I,s)
+		backup : function backup_d$null$_(/*?DOM|null*/dom,  $$,I,s)
 		//----------------------------------
 		// Backup the current values of label-stored keys.
-		// If host is a DOM object, use it as a target for any I_OBJ or I_HYB key.
-		// If host is undefined, backup I_HYB and I_APP keys in app.
-		// If host is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// If dom is a DOM object, use it as a target for any I_OBJ or I_HYB key.
+		// If dom is undefined, backup I_HYB and I_APP keys in app.
+		// If dom is NULL, only backup strict I_APP keys (ignoring I_HYB.)
 		// [CHG180605] Prevents undo.
+		// [CHG190206] JsxBlind safe.
 		// => undefined
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -805,12 +806,14 @@
 				$$.error( __("Settings must be declared before calling backup."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(host)));
+			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
 
 			// [CHG180605] Calling doScript/autoUndo prevents the backup stage from being undone.
+			// [CHG190206] JsxBlind safe.
 			// ---
-			// I.BCKP(host);
-			app.doScript("I.BCKP(host)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
+			callee.ARG = dom;
+			app.doScript("I.BCKP(callee.ARG)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
+			delete callee.ARG;
 		},
 
 		addLive : function addLive_Õ_Õ(/*any{}*/oLiveKeys,  I,k)
