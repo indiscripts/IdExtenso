@@ -1,3 +1,6 @@
+##### [190206]
+  - [**Settings**](/etc/$$.Settings.jsxlib): made the `backup` method [JsxBlind](/tools/JsxBlindLib.jsxinc)-safe, using the `callee.ARG` trick. More details here: [Indiscripts - “The Case of Nested Variable Names”](http://www.indiscripts.com/post/2019/02/jsxblind-the-case-of-nested-variable-names#hd0sb1)
+
 ## 1.90204
   - Stabilized version (Feb. 04, 2019) including latest fixes and additions.
 
