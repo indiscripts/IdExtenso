@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Make listbox sub items optional to allow exotic apps to run $$.help()
 		Created:        171108 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190215 (YYMMDD)
 
 *******************************************************************************/
 
@@ -61,6 +61,37 @@
 			w.modInfo.text =  (k && w.data['§'+k])||'';
 		},
 
+		RSCW: function(/*ListBox*/lb,/*uint[]*/widths,  o,FK)
+		//----------------------------------
+		// (Reset-Column-Widths.) [190215] This function forcibly
+		// refreshes the listbox and smartly re-adjust column widths.
+		// <this> :: ~
+		// [REM] Thanks to this routine the 'functions' listbox is now
+		// properly updated, preferred widths are no longer locked to
+		// irrelevant widths when the user switches between modules.
+		// => undef
+		{
+			o = lb.columns.preferredWidths;
+
+			// 1. Set preferred widths.
+			// ---
+			for( o=lb.columns.preferredWidths||0, i=o.length ; i-- ; o[i]=widths[i] );
+
+			// 2. In CS, at least one item is needed before unsetting pref. widths.
+			// ---
+			FK = callee.NEED_FAKE && 0===lb.items.length;
+			FK && lb.add('item','test');
+
+			// 3. Unset preferred widths.
+			// ---
+			for( i=o.length ; i-- ; o[i]=void 0 );
+			
+			// 4. Remove fake item.
+			// ---
+			FK && lb.remove(0);
+		}
+		.setup({ NEED_FAKE: 1 }), // refined at load time
+
 		ULST: function(/*ListBox*/lb,/*str[]*/a,  q,n,i,t,s,p,o,j,z)
 		//----------------------------------
 		// (ListBox-Generic-Loader.) <this> :: ~
@@ -71,6 +102,11 @@
 
 			lb.hide();
 			lb.items.length && lb.removeAll();
+
+			// [ADD190215]
+			// ---
+			(t=lb.properties) && (t=t.optimalWidths) && this.RSCW(lb,t);
+			
 			for( n=a.length, i=-1 ; ++i < n ; )
 			{
 				t = a[i].split(RegExp.X2);
@@ -93,13 +129,9 @@
 				t.length = 0;
 			}
 			
-			// Refresh. (Needed in CC.)
-			// ---
 			lb.show();
-			ScriptUI.forceRedraw(lb); // [190120]
-			//if( !(t=lb.size) ) return;
-			//lb.size = [t[0],1+t[1]];
-			//lb.size = [t[0],t[1]];
+
+			// ScriptUI.forceRedraw(lb); // [190120] [DEL190215]
 		},
 
 		UHLP: function(/*str[]*/a,  q,w)
@@ -164,7 +196,9 @@
 
 						ListBox$fctList:
 						{
-							properties:   { numberOfColumns:2, columnWidths:[280,130], showHeaders:false, columnTitles:['Signature','RetVal'] },
+							// properties:   { numberOfColumns:2, columnWidths:[280,130], showHeaders:false, columnTitles:['Signature','RetVal'] },
+							// [CHG190215] New version, based on a custom `optimalWidths` array -- See ~.RSCW()
+							properties:   { numberOfColumns:2, showHeaders:false, optimalWidths:[280,130] },
 							alignment:    ScriptUI.LF,
 							minimumSize:  [ 420,300 ],
 						},
