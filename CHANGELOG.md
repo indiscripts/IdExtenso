@@ -1,3 +1,6 @@
+##### [190215]
+  - Enhanced [**Root/help**](/core/Root/$$.help.jsxinc), based on my recent study of multi-column `ListBox` control in ScriptUI. Improves the refresh mechanism of `$$.help`'s listbox.
+
 ##### [190206]
   - [**Settings**](/etc/$$.Settings.jsxlib): made the `backup` method [JsxBlind](/tools/JsxBlindLib.jsxinc)-safe, using the `callee.ARG` trick. Discussion here: [“The Case of Nested Variable Names”](http://www.indiscripts.com/post/2019/02/jsxblind-the-case-of-nested-variable-names#hd0sb1).
 
