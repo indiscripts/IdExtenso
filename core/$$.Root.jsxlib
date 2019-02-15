@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       190204 (YYMMDD)
+		Modified:       190215 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 190204, 'load'))
+;eval(__(MODULE, '$.global', $$, 190215, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -399,6 +399,10 @@
 			// First snapshot [TODO]
 			// ---
 			// $$.snapshot();
+			
+			// [190215] Inner Help function (listbox manager.)
+			// ---
+			I.RSCW.NEED_FAKE = $$.inCS;
 
 			// Trace loading time.
 			// ---
