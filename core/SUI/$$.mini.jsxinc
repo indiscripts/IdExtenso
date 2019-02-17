@@ -11,9 +11,9 @@
 		                ScriptUI.isWidget() getIndex()
 		                forceRedraw() setFocus()
 		DOM-access:     NO
-		Todo:           More tests on setFocus()/Mac
+		Todo:           More tests on setFocus()/Mac ; listRedraw() idem
 		Created:        170427 (YYMMDD)
-		Modified:       190124 (YYMMDD)
+		Modified:       190217 (YYMMDD)
 
 *******************************************************************************/
 
@@ -51,7 +51,7 @@
 	could be avoided using static data structures. This is done by
 	globally declaring ScriptUI.LT, .FC, and so on.
 	
-	[REM] Alignment options does not seem to work if the target widget has
+	[REM] Alignment options do not seem to work if the target widget has
 	no custom `preferredSize` when the layout is processed. For Group or
 	Panel instances that would need alignment into their container, it is
 	recommended to set both `preferredSize` and `maximalSize` properties.
@@ -139,12 +139,13 @@
 
 	//==========================================================================
 	// [181218] ScriptUI.forceRedraw
+	// [190127] Rewritten; better type checking ; list case.
 	//==========================================================================
-
-	ScriptUI.forceRedraw = $$.inCC ?
+	
+	ScriptUI.forceRedraw = function(/*Widget*/wg,  a,t)
 	//----------------------------------
-	// Force a widget to redraw. The underlying purpose of this routine is
-	// to force the widget to invoke its associated `onDraw` handler, if
+	// Force a widget to redraw. The purpose of this routine is to
+	// force the widget to invoke its associated `onDraw` handler, if
 	// defined, which cannot be done by direct call. Use the code
 	// `ScriptUI.forceRedraw(myWidget)` when you need an already drawn
 	// widget to call again its `onDraw` handler. If no handler is available
@@ -154,26 +155,73 @@
 	// the size of the widget, it may initiate a `resize` event on containers.
 	// This does not involve the layout manager though.
 	// ---
-	// => undef
-	function forceRedraw(/*Widget*/wg,  a)
+	// => 1 [OK]  |  0 [KO]
 	{
-		// In CC we have to assign a *distinct* size, then reset.
-		(a=wg.size)&&(wg.size=[1+a[0],1+a[1]])&&(wg.size=[a[0],a[1]]);
-	}
-	:
-	function forceRedraw(/*Widget*/wg,  a)
-	{
-		// In CS we just need to re-assign the size.
-		(a=wg.size)&&(wg.size=[a[0],a[1]]);
-	};
+		// Checkpoint.
+		// ---
+		if( !(t=wg&&wg.type) ) return 0;
 
-	ScriptUI.setFocus = function(/*Control*/wg,  w,t)
+		// [190127] Special case for ListBox and DropDownList
+		// [190217] Introducing specialized methods.
+		// ---
+		switch( t )
+		{
+			case 'listbox' :      return callee.LBOX(wg) || callee.LIST(wg);
+			case 'dropdownlist' : return callee.LIST(wg);
+			default:;
+		}
+		
+		// In CC we have to assign a *distinct* size, then reset.
+		// In CS we only have to re-assign the size as such.
+		// ---
+		if( !(a=wg.size) ) return 0;
+		t = callee.DT;
+		wg.size = [t+a[0],t+a[1]];
+		t && (wg.size=[a[0],a[1]]);
+		
+		return 1;
+	}
+	.setup
+	({
+		DT: $$.inCC ? 1 : 0,
+		LBOX: function(/*ListBox*/wg,  o,a,i,t)
+		//----------------------------------
+		// [190217] ListBox redraw.
+		{
+			if( !((o=wg.columns)&&(a=o.preferredWidths)) ) return 0;
+			for( i=a.length ; i-- && !((t=a[i]) && (o.preferredWidths[i]=1+t) && (o.preferredWidths[i]=t)) ; );
+			if( 0 <= i ) return 1;
+			if( (o=wg.properties) && (o=o.columnWidths) && (t=o[0]) )
+			{
+				wg.columns.preferredWidths[0] = t;
+				wg.columns.preferredWidths[0] = void 0;
+				return 1;
+			}
+			return 0;
+		},
+		LIST: function(/*DropDownList|ListBox*/wg,  t)
+		//----------------------------------
+		// [190217] Any list redraw (fallback.)
+		{
+			if( !((t=wg.itemSize)&&(t=t[1])) ) return 0;
+			wg.itemSize[1] = 1+t;
+			wg.itemSize[1] = t;
+			return 1;
+		},
+	});
+
+	//==========================================================================
+	// [190124] ScriptUI.forceRedraw
+	//==========================================================================
+
+	ScriptUI.setFocus = function setFocus(/*Control*/wg,  w,t)
 	//----------------------------------
-	// [190124] Forcibly set the focus on `wg` (if possible).
+	// Forcibly set the focus on `wg` (if possible).
 	// [REM] In many circumstances the command `wg.active=true` doesn't
 	// work as expected, in particular if `wg` is already registered as
-	// active although not focused. The trick used here is to create and
-	// activate a temporary control outside wg's area, then remove it.
+	// active although not having the focus. The trick used here is to
+	// create and activate a temporary control outside wg's area, then
+	// remove it.
 	// => 1 [OK]  |  0 [KO]
 	{
 		w = wg && wg.hasOwnProperty('active') && wg.enabled && wg.visible && wg.window;
