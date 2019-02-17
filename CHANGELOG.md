@@ -1,3 +1,6 @@
+##### [190217]
+  - Slight change in `ScriptUI.forceRedraw()` (cf [**SUI/mini**](/core/SUI/$$.mini.jsxinc)) using specialized routines for list controls (`ListBox` and `DropDownList`).
+  
 ##### [190215]
   - Enhanced [**Root/help**](/core/Root/$$.help.jsxinc), based on my recent study of multi-column `ListBox` control in ScriptUI. Improves the refresh mechanism of `$$.help`'s listbox.
 
