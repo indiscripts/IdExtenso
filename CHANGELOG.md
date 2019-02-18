@@ -1,3 +1,6 @@
+##### [190218]
+  - [`ScriptUI.builder()`](/core/SUI/$$.builder.jsxinc) now supports a special type, `"list"`, for declaring either a `ListBox` or a `DropdownList`, depending on the flag `...properties.dropdown`.
+  
 ##### [190217]
   - Slight change in `ScriptUI.forceRedraw()` (cf [**SUI/mini**](/core/SUI/$$.mini.jsxinc)) using specialized routines for list controls (`ListBox` and `DropDownList`).
   
