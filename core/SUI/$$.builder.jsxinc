@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       190218 (YYMMDD)
 
 *******************************************************************************/
 
@@ -171,7 +171,7 @@
 	
 	In the `res` descriptor, ScriptUI widgets are declared using keys of the form
 	`<widgetType>$<widgetName>`, where the <widgetType> prefix denotes any of the
-	existing ScriptUI types, case-insensitive, excluding 'window'. So you can use
+	existing ScriptUI types*, case-insensitive, excluding 'window'. So you can use
 	prefixes like
 	
 	      group, statictext, button, image . . .
@@ -179,6 +179,10 @@
 	as well as
 
 	      Group, StaticText, TabbedPanel . . .
+	
+	* [ADD190218] The special type 'list' (case-insensitive) is interpreted as an
+	  alias for either 'listbox' or 'dropdownlist'. The latter is selected if the
+	  `properties` object has a truthy `dropdown` flag.
 
 	The `...$<widgetName>` suffix then specifies a global name for that widget, that
 	is, a key that will refer to it from the Window instance. In the following code,
@@ -516,6 +520,7 @@
 	         various fixes, notice...
 	[181218] Precisions on `helpTip` (notice.)
 	[190120] Uniform stack manager ; cf. 8.d
+	[190218] `list` alias for either listbox or dropdownlist ; cf. 3.
 
 	*/
 
@@ -648,7 +653,7 @@
 		}
 		.setup({
 			RE_WDGK:RegExp("^(?:group|panel|statictext|edittext|"+
-				"button|iconbutton|checkbox|radiobutton|image|listbox|dropdownlist|"+
+				"button|iconbutton|checkbox|radiobutton|image|list|listbox|dropdownlist|"+
 				"treeview|scrollbar|slider|progressbar|tabbedpanel|tab|flashplayer)\\$",'i'),
 		}),
 
@@ -683,19 +688,22 @@
 		// `parent.add(tpe, ...)` or a factory func. If `tpe` is 'window',
 		// return FALSE. Return `x.properties` if it's truthy AND allowed
 		// in the target object, otherwise return 0.
+		// [ADD190218] Added the alias `tpe=='list'`, which becomes
+		// 'dropdownlist' if x.properties.dropdown,  'listbox' otherwise
 		// ---
 		// => obj|0 [OK]  |  false [KO]
 		{
 			s = tpe.toLowerCase();                          // Normalize the type.
 			if( 'window'==s ) return false;                 // Disallow 'window'.
 			pp = x.properties || 0;                         // Creation properties?
+			'list'==s && (s = pp.dropdown ? 'dropdownlist' : 'listbox'); // [190218]
 			u = void 0;                                     // Alias of undefined.
 			args.length && (args.length=0);                 // Make sure `args` is empty.
 			t = typeof(k=callee.Q[s]);                      // 'string'|'object'|'undefined'
 
 			( 'undefined' == t ) || ( (args[0]=s),(args[1]=pp.bounds||u) );
 			z = args.length;
-			
+
 			if( 'string' == t )
 			{
 				// Simple widget expecting at most one extra argument.
