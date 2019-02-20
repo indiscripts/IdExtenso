@@ -2,7 +2,7 @@
   - [**Ext/patterns**](/core/Ext/$$.patterns.jsxinc): added `RegExp.JSID`, a regex for testing basic JavaScript identifiers of the form `^[\$_A-Za-z][\$_A-Za-z0-9]*$`. Keep in mind that this pattern is for simple checking only, it does not detect reserved tokens.
   
 ##### [190218]
-  - [`ScriptUI.builder()`](/core/SUI/$$.builder.jsxinc) now supports a special type, `"list"`, for declaring either a `ListBox` or a `DropdownList`, depending on the flag `...properties.dropdown`.
+  - [`ScriptUI.builder()`](/core/SUI/$$.builder.jsxinc) now supports a special type, `"list"`, for declaring either a `ListBox` or a `DropDownList`, depending on the flag `...properties.dropdown`.
   
 ##### [190217]
   - Slight change in `ScriptUI.forceRedraw()` (cf [**SUI/mini**](/core/SUI/$$.mini.jsxinc)) using specialized routines for list controls (`ListBox` and `DropDownList`).
