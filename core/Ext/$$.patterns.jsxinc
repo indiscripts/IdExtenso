@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       180508 (YYMMDD)
+		Modified:       190220 (YYMMDD)
 
 *******************************************************************************/
 
@@ -113,7 +113,7 @@
 	-----------------------------------------------------
 	
 	[REM] In ExtendScript the esc "\X99" is parsed as "\x99", while
-	"\U9999" is not "\u9999". That is, only \x is case insensitive.
+	"\U9999" is not "\u9999". That is, only `\x` is case insensitive.
 
 	NOTES ON U+0000 aka <X0>
 
@@ -333,6 +333,8 @@
 	RegExp.NOND = /\D/g;
 	// --- /one-or-more-nondigits/  [180413]
 	RegExp.NONDs= /\D+/g;
+	// --- /basic-javascript-identifier/  [190220]
+	RegExp.JSID= /^(?:[\$_A-Za-z][\$_A-Za-z0-9]*)$/g;           // [REM] Doesn't exclude reserved tokens
 	// --- /adobe-flag-hexa/
 	RegExp.ADBE = /^(?:3[0-9]|[46][1-9A-F]|[57][0-9A]){3}(?:3[0-9]|[46][1-9A-F]|[57][0-9A]|20)$/g;
 	// --- /over-0x7F/
