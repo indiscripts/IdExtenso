@@ -12,7 +12,7 @@
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       190203 (YYMMDD)
+		Modified:       190221 (YYMMDD)
 
 *******************************************************************************/
 
@@ -117,6 +117,7 @@
 		// [FIX190202] The 'active screen', based on `app.properties.activeWindow`,
 		// MUST be determined from the outside of this function, because if may
 		// be different at each loading stage (it is not 'engine' persistent.)
+		// [FIX190221] Bypass ExtendScript `$.screens` (workspace) bug.
 		// ---
 		// Cached structure:
 		//   q               ::  Array(screenCount)
@@ -140,7 +141,13 @@
 			
 			delete q.ACTV;
 
-			for( a=$.screens,i=q.length=a.length ; i-- ; )
+			// [FIX190221] In ExtendScript, accessing `$.screens` from
+			// within a function create a weird `(workspace)` instance
+			// which then alters actual function (workspace) count. My
+			// workaround is to access `$.screens` only from the [[global]]
+			// scope: callee.SCREENS simply refers to $.screens :-)
+			// ---
+			for( a=callee.SCREENS,i=q.length=a.length ; i-- ; )
 			{
 				t = a[i];
 				tt = q[i] || (q[i]=Array(4));
@@ -173,9 +180,9 @@
 			q.USE_CUSTOM = t.useCustomMonitorResolution || false;
 			q.CURRENT_PPI = q.USE_CUSTOM ? q.CUSTOM_PPI : q.MAIN_PPI;
 		}
-		.setup({ Q:[] })
-		.self(µ['~']),    // [FIX190202] active screen determined later.
-		
+		.setup({ Q:[], SCREENS:$.screens })
+		.self(µ['~']),
+
 		W2AC: function(/*?Window=app.properties.activeWindow*/w,  q,x,y,i,t)
 		//----------------------------------
 		// [190202] Window-to-ActiveScreen (see ~.SCRN fix.)
@@ -183,12 +190,18 @@
 		// => 1 [OK]  |  0 [KO]
 		{
 			q = this.SCRN.Q;
-			
 			delete q.ACTV;
-			
-			w || (w=app.properties.activeWindow);
+
+			// [CHG190221] In the present scope it looks like
+			// `app.properties.activeWindow` causes all live
+			// objects to wake up (as revealed by $.summary.diff)
+			// I don't know why, but it seems more reasonable to
+			// use `app.layoutWindows.length && app.activeWindow`
+			// instead!
+			// ---
+			w || (w=app.layoutWindows.length && app.activeWindow);
 			if( (!w) || !(w=w.properties.bounds) ) return 0;
-			
+
 			x = (w[1]+w[3])/2;
 			y = (w[0]+w[2])/2;
 
