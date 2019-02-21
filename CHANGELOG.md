@@ -1,3 +1,6 @@
+##### [190221]
+  - [**Env/screen**](/core/Env/$$.screen.jsxinc): In ExtendScript, accessing `$.screens` from within a function scope create an inexplicable `(workspace)` instance which then alters actual function (workspace) count. A workaround is to access `$.screens` only from the `[[global]]` scope and create a new reference. Functions can then safely read data from that reference. Fixed [here](/core/Env/$$.screen.jsxinc#L144).
+  
 ##### [190220]
   - [**Ext/patterns**](/core/Ext/$$.patterns.jsxinc): added `RegExp.JSID`, a regex for testing basic JavaScript identifiers of the form `^[\$_A-Za-z][\$_A-Za-z0-9]*$`. Keep in mind that this pattern is for simple checking only, it does not detect reserved tokens.
   
