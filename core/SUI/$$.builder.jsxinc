@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190218 (YYMMDD)
+		Modified:       190222 (YYMMDD)
 
 *******************************************************************************/
 
@@ -403,7 +403,7 @@
 	   [20,10], or as an object. In the latter case, specify a `width` and/or
 	   a `height` property. If a single dimension is determined, as in the code
 	   `minimumSize: { width:200 }`, then the builder will not alter the other
-	   dimension.
+	   dimension. If falsy or irrelevant values are sent, no assignment is done.
 	
 	b) `helpTip` inheritance. If the current widget has no `helpTip` while
 	    its parent ALREADY has one, the child automatically inherits the
@@ -521,6 +521,7 @@
 	[181218] Precisions on `helpTip` (notice.)
 	[190120] Uniform stack manager ; cf. 8.d
 	[190218] `list` alias for either listbox or dropdownlist ; cf. 3.
+	[190222] Width/height assignments made safer (skipping falsy cases.)
 
 	*/
 
@@ -777,7 +778,7 @@
 			},
 		}),
 		
-		SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t)
+		SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t,w,h)
 		//----------------------------------
 		// Make the assignment `wg[k] = x` a bit smarter, if desired.
 		// `cx` is the current builder context, it is used for managing the
@@ -804,11 +805,37 @@
 			}
 			
 			// Sizing properties (size, preferredSize, maximumSize, minimumSize)
+			// [FIX190222] Prevent assignment of invalid/falsy values.
 			// ---
-			if( x && callee.RE_SIZE.test(k) && (t=wg[k]) && !(x instanceof Array) )
+			if( callee.RE_SIZE.test(k) )
 			{
-				x.hasOwnProperty('width')  && (t.width=x.width);
-				x.hasOwnProperty('height') && (t.height=x.height);
+				if( !x ) return;
+
+				w = x.hasOwnProperty('width')  ? x.width  : x[0];
+				h = x.hasOwnProperty('height') ? x.height : x[1];
+
+				// If wg[k] already exists, it is sufficient to
+				// update width and/or height.
+				// ---
+				if( t=wg[k] )
+				{
+					(0|w)===w && (t.width=w);
+					(0|h)===h && (t.height=h);
+					return;
+				}
+				
+				// Otherwise, we need both w AND h to be valid.
+				// ---
+				if( (0|w)===w && (0|h)===h )
+				{
+					// Create a fresh array only if necessary.
+					// ---
+					( (x instanceof Array) && (w===x[0]) && (h===x[1]) )
+					|| (x=[w,h]);
+					
+					wg[k] = x;
+				}
+				
 				return;
 			}
 				
