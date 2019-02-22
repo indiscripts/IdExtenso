@@ -1,3 +1,6 @@
+##### [190222]
+  - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): Assigning falsy or invalid dimensions to `size` (resp. `preferredSize`, `minimumSize`, `maximumSize`) could cause runtime errors. Fixed and made safer. See [NOTICE, Section 8](/core/SUI/$$.builder.jsxinc#L398).
+
 ##### [190221]
   - [**Env/screen**](/core/Env/$$.screen.jsxinc): In ExtendScript, accessing `$.screens` from within a function scope create an inexplicable `(workspace)` instance which then alters actual function (workspace) count. A workaround is to access `$.screens` only from the `[[global]]` scope and create a new reference. Functions can then safely read data from that reference. Fixed [here](/core/Env/$$.screen.jsxinc#L144).
   
