@@ -11,9 +11,9 @@
 		                ScriptUI.isWidget() getIndex()
 		                forceRedraw() setFocus()
 		DOM-access:     NO
-		Todo:           More tests on setFocus()/Mac ; listRedraw() idem
+		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       190217 (YYMMDD)
+		Modified:       190225 (YYMMDD)
 
 *******************************************************************************/
 
@@ -222,10 +222,14 @@
 	// active although not having the focus. The trick used here is to
 	// create and activate a temporary control outside wg's area, then
 	// remove it.
+	// [190225] Fixed OK return.
 	// => 1 [OK]  |  0 [KO]
 	{
 		w = wg && wg.hasOwnProperty('active') && wg.enabled && wg.visible && wg.window;
 		if( !w ) return 0;
-		wg.active = ( (t=w.add('edittext')).active = true );
+		(t=w.add('edittext')).active = true;
+		wg.active = true;
 		w.remove(t);
+		return 1;
 	};
+
