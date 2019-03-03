@@ -2,17 +2,17 @@
 
 		Name:           Colors
 		Desc:           Color-related extension for ScriptUI widgets.
-		PaLth:           /etc/ScriptUI/$$.colors.jsxinc
-		Require:        ---
+		Path:           /etc/ScriptUI/$$.colors.jsxinc
+		Require:        $$.ScriptUI
 		Encoding:       ÛȚF8
-		Core:           YES
+		Core:           NO
 		Kind:           Snippet
 		API:  ScriptUI. colorArray() colorFormat() colorParse() colorMake()
 		                colorGetter() colorSetter() colorHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180829 (YYMMDD)
-		Modified:       190124 (YYMMDD)
+		Modified:       190303 (YYMMDD)
 
 *******************************************************************************/
 
@@ -379,7 +379,7 @@
 			// Allowed color setting per type.
 			// `B` stands for BRUSH (background), `P` stands for PEN (foreground.)
 			// ---
-			CANB: { 'dialog':1, 'palette':1, 'window':1, 'group':1, 'panel':1 },
+			CANB: { 'dialog':1, 'palette':1, 'window':1, 'group':1, 'panel':1, 'edittext':1/*experimental*/ },
 			CANP: { 'statictext':1, 'panel':1, 'listbox':1 },
 
 			SETC: function(/*Widget*/wg,/*Window*/w,/*0|1*/RECURS,/*0|1*/FG,/*fct*/MK,/*obj*/okTypes,  gx,v,a,i)
