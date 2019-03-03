@@ -15,11 +15,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       190215 (YYMMDD)
+		Modified:       190303 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 190215, 'load'))
+;eval(__(MODULE, '$.global', $$, 190303, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -483,10 +483,12 @@
 			}
 			else
 			{
-				// [FIX180326] Depending on whether the client code did
-				// use modal SUI dialog, this helps InDesign wake up!
+				// [FIX180326] Depending on whether the client code used modal SUI dialog, helps ID wake up!
 				// [CHG180406] KEEP_DORMANT prevents app.activate().
-				KEEP_DORMANT || app.activate();
+				// [FIX190303] Added `try..catch` to bypass an error that sometimes occurs when multiple
+				//             InDesign versions are running in parallel (e.g. CC 2018 *and* CC 2019.)
+				// ---
+				if( !KEEP_DORMANT ) try{ app.activate(); } catch(_){}
 			}
 			
 			// Unset the __load__ flag and return 1.
