@@ -5,13 +5,13 @@
 		Path:           /etc/ScriptUI/$$.layout.jsxinc
 		Require:        $$.ScriptUI
 		Encoding:       ÛȚF8
-		Core:           YES
+		Core:           NO
 		Kind:           Snippet
 		API:  ScriptUI. layoutDeclare() layoutHandler()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        171112 (YYMMDD)
-		Modified:       190125 (YYMMDD)
+		Modified:       190303 (YYMMDD)
 
 *******************************************************************************/
 
