@@ -1,3 +1,7 @@
+## 1.90303
+  - Stabilized version (March 3, 2019) including latest fixes and additions.
+  - In `[Root](/core/$$.Root.jsxinc).unload`, added a `try..catch` block for nesting `app.activate()`. This bypasses a runtime error that sometimes occurs when multiple InDesign CC versions are running in parallel!
+
 ##### [190222]
   - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): Assigning falsy or invalid dimensions to `size` (resp. `preferredSize`, `minimumSize`, `maximumSize`) could cause runtime errors. Fixed and made safer. See [NOTICE, Section 8](/core/SUI/$$.builder.jsxinc#L398).
 
