@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       190204 (YYMMDD)
+		Modified:       190303 (YYMMDD)
 
 *******************************************************************************/
 
@@ -84,6 +84,7 @@
 		A.locale =                0;
 		A.fullName =              A.name;
 		A.properties =            0;
+		A.layoutWindows =         0; // [FIX190303]
 
 		delete $.global.A;
 		delete $.global.G;
