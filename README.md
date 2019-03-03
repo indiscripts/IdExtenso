@@ -1,4 +1,4 @@
-# *IdExtenso*  1.90204
+# *IdExtenso*  1.90303
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
