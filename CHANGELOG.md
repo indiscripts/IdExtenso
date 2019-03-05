@@ -1,3 +1,6 @@
+##### [190306]
+  - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): the patterns `"custom$..."` and `"...Factory$..."` were missing in the reverse routine `~.RVRS`. Fixed.
+
 ## 1.90303
   - Stabilized version (March 3, 2019) including latest fixes and additions.
   - In `[Root](/core/$$.Root.jsxinc).unload`, added a `try..catch` block for nesting `app.activate()`. This bypasses a runtime error that sometimes occurs when multiple InDesign CC versions are running in parallel!
