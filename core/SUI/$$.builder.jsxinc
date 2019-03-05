@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190222 (YYMMDD)
+		Modified:       190306 (YYMMDD)
 
 *******************************************************************************/
 
@@ -522,6 +522,7 @@
 	[190120] Uniform stack manager ; cf. 8.d
 	[190218] `list` alias for either listbox or dropdownlist ; cf. 3.
 	[190222] Width/height assignments made safer (skipping falsy cases.)
+	[190306] Added 'custom$' and '...Factory$' checking in ~.RVRS.
 
 	*/
 
@@ -647,13 +648,19 @@
 			for( k in res )
 			{
 				if( !res.hasOwnProperty(k) ) continue;
-				re.test(k) ? ((q['_'+z]=k),(q[z++]=res[k])) : (r[k]=res[k]);
+
+				// [FIX190306] 'custom$' and '...Factory$' checking.
+				// ---
+				( re.test(k) || 0 < k.indexOf('Factory$') )
+				? ( (q['_'+z]=k), (q[z++]=res[k]) )
+				: ( r[k]=res[k] );
 			}
 			for( ; z-- ; (k=q['_'+z]),(delete q['_'+z]),(r[k]=q.pop()) );
 			return r;
 		}
-		.setup({
-			RE_WDGK:RegExp("^(?:group|panel|statictext|edittext|"+
+		.setup
+		({
+			RE_WDGK: RegExp("^(?:custom|group|panel|statictext|edittext|"+
 				"button|iconbutton|checkbox|radiobutton|image|list|listbox|dropdownlist|"+
 				"treeview|scrollbar|slider|progressbar|tabbedpanel|tab|flashplayer)\\$",'i'),
 		}),
@@ -796,11 +803,11 @@
 			}
 				
 			// Convert special event keys into addEventListener statement.
-			// k :: `_move` | `_mouseup` | `_keydown` | etc
+			// k :: `_move` | `_mouseup` | `_keydown` | etc       -> no capture phase
 			// ---
 			if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVNS.test(t=k.slice(1)) )
 			{
-				wg.addEventListener(t,x);
+				wg.addEventListener(t,x,w);
 				return;
 			}
 			
