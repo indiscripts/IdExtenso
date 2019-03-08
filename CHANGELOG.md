@@ -6,7 +6,7 @@
 
 ## 1.90303
   - Stabilized version (March 3, 2019) including latest fixes and additions.
-  - In `[Root](/core/$$.Root.jsxinc).unload`, added a `try..catch` block for nesting `app.activate()`. This bypasses a runtime error that sometimes occurs when multiple InDesign CC versions are running in parallel!
+  - In [`Root`](/core/$$.Root.jsxinc)`.unload`, added a `try..catch` block for nesting `app.activate()`. This bypasses a runtime error that sometimes occurs when multiple InDesign CC versions are running in parallel!
   - Due to `app.layoutWindows` access in [`Env/screen`](/core/Env/$$.screen.jsxinc), the `ESTK` entry point wasn't working anymore! Added `A.layoutWindows = 0;` in [`$$.estk`](/$$.estk.jsxinc) to fix that.
 
 ##### [190222]
