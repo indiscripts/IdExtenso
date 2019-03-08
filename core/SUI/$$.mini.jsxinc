@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       190225 (YYMMDD)
+		Modified:       190308 (YYMMDD)
 
 *******************************************************************************/
 
@@ -53,8 +53,8 @@
 	
 	[REM] Alignment options do not seem to work if the target widget has
 	no custom `preferredSize` when the layout is processed. For Group or
-	Panel instances that would need alignment into their container, it is
-	recommended to set both `preferredSize` and `maximalSize` properties.
+	Panel instances that need alignment into their container, it is reco-
+	mmended to set both `preferredSize` and `maximalSize` properties.
 	
 	*/
 
@@ -87,7 +87,7 @@
 
 	ScriptUI.isWidget = function isWidget(/*any*/x)
 	//----------------------------------
-	// [180528] Tell whether x is a ScriptUI control or widget.
+	// [180528] Tell whether x is a ScriptUI control or widget (incl. Window.)
 	// x's class name must mach the `name` property in callee.MAP.
 	// => true [OK]  |  false [KO]
 	{
@@ -138,7 +138,7 @@
 	},
 
 	//==========================================================================
-	// [181218] ScriptUI.forceRedraw
+	// [181218] ScriptUI.forceRedraw()
 	// [190127] Rewritten; better type checking ; list case.
 	//==========================================================================
 	
@@ -211,25 +211,69 @@
 	});
 
 	//==========================================================================
-	// [190124] ScriptUI.forceRedraw
+	// [190124] ScriptUI.setFocus()
+	// [190308] Improved ; new type of returned value.
 	//==========================================================================
 
-	ScriptUI.setFocus = function setFocus(/*Control*/wg,  w,t)
+	ScriptUI.setFocus = function setFocus(/*Widget*/wg,  w,t)
 	//----------------------------------
-	// Forcibly set the focus on `wg` (if possible).
+	// Forcibly set the focus on `wg`, if possible.
+	// - Returns 0 if no focus change could be achieved due to either
+	//   invalid, disabled, or hidden `wg` input.
+	// - Otherwise, returns the control which is finally active: usually
+	//   `wg` itself, or one of its children. The Window instance is
+	//   returned in case the focus has changed *but* no activable
+	//   control has been found in wg's scope.
 	// [REM] In many circumstances the command `wg.active=true` doesn't
 	// work as expected, in particular if `wg` is already registered as
 	// active although not having the focus. The trick used here is to
 	// create and activate a temporary control outside wg's area, then
 	// remove it.
-	// [190225] Fixed OK return.
-	// => 1 [OK]  |  0 [KO]
+	// [FIX190225] Fixed OK return.
+	// [CHG190308] Group and Panel objects don't provide the `active`
+	// property natively, which makes it difficult to implicity activate
+	// the main or the first control within a `wg` container. To bypass
+	// this limitation, I've removed the ('active' in wg) condition ;
+	// instead, a generic algorithm deals with containers that don't own
+	// an `active` property. Note that you can still declare, set and
+	// watch the `active` key for advanced components that provide a
+	// specific activation strategy in response to `me.active = true`.
+	// ---
+	// => Widget [OK-ACTIVE-WIDGET]  |  0 [KO]
 	{
-		w = wg && wg.hasOwnProperty('active') && wg.enabled && wg.visible && wg.window;
+		w = ScriptUI.isWidget(wg) && wg.enabled && wg.visible && wg.window;
 		if( !w ) return 0;
+
 		(t=w.add('edittext')).active = true;
-		wg.active = true;
+
+		// [CHG190307] Added ACTIVE_CHILD algo.
+		// ---
+		wg.hasOwnProperty('active')
+			? ( wg.active = true )
+			: ( wg = callee.ACTIVE_CHILD(wg)||w );
+
 		w.remove(t);
-		return 1;
-	};
+		return wg;
+	}
+	.setup
+	({
+		ACTIVE_CHILD: function(/*Container*/wg,  a,re,n,i,c)
+		//----------------------------------
+		// [190308] Recursive child-focusing algo.
+		// [REM] The input MUST be a container in the state:
+		// enabled AND visible AND not-activable.
+		// => Widget [OK-ACTIVE]  |  0 [KO]
+		{
+			if( !(a=wg.children) ) return 0;
+			for( re=callee.RE_EXCL_TYPES, n=a.length, i=-1 ; ++i < n ; )
+			{
+				c = a[i];
+				if( (!c.enabled) || (!c.visible) || (re.test(c.type)) ) continue;
+				if( c.hasOwnProperty('active') ){ c.active = true; return c; }
+				if( c=callee(c) ) return c;
+			}
+			return 0;
+		}
+		.setup({ RE_EXCL_TYPES: /^(?:progressbar|scrollbar|slider|statictext)$/i }),
+	});
 
