@@ -1,0 +1,226 @@
+/*******************************************************************************
+
+		Name:           WSTA (watchState)
+		Desc:           Manage visible/enabled states in ScriptUI.builder.
+		Path:           /core/SUI/builder/$$.WSTA.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190310 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	A general issue affects ScriptUI regarding the states `visible` and
+	`enabled`. Consider the scheme:
+	
+	      child.visible = false;
+	      parent.visible = false;
+	      . . .
+	      parent.visible = true;
+	
+	As expected the child remains non-visible (while its parent is visible.)
+	But with assignments ordered as follows:
+
+	      parent.visible = false;
+	      child.visible = false;
+	      . . .
+	      parent.visible = true;
+	
+	we get a *visible* child. We conclude that the statement
+	`child.visible=false` has no internal effect since the child is
+	already considered non-visible due to non-visibility of its parent.
+	
+	The problem is the same with `enabled`. An additional complication
+	arises in CS4-CS6:
+	
+	      parent.enabled = false;
+	      child.enabled = true;
+	
+	makes the child looking enabled (although non activable) while
+	its parent is disabled.
+	
+	A critical problem is, the `watch` method does not work as expected
+	with native state properties `enabled` or `visible`. More precisely,
+	the watch callback is invoked BUT the returned value cannot
+	supersede the actual assignment. E.g,
+	
+	      myCheckbox.visible = true;
+	
+	always ends with a TRUE assignment even if the `visible` property
+	had a watch callback returning `false`!
+
+
+	The present resource is invoked from `ScriptUI.builder` to refine
+	state management. It relies on the following rules:
+	
+	      1. For every non-Window widget `wg`, create a `__state__`
+	         property whose value is 4-bit encoded: `DdHh`.
+	      
+	      2. `h` and `d` are called explicit flags, they are based on
+	          the properties 'visible' and 'enabled' available in `wg`:
+	         - `h` (hidden)   tells that `wg` is explicitly non-visible
+	         - `d` (disabled) tells that `wg` is explicitly non-enabled
+	      
+	      3. `H` and `D` are inherited flags, they are updated when any
+	         parent widget change its own state in a way that affect `wg`:
+	         - `H` (Hidden)   tells that some parent is explicitly hidden
+	         - `D` (Disabled) tells that some parent is explicitly disabled
+	      
+	      4. A watch method captures changes for the keys `visible` and
+	         `enabled`. It performs the following operations:
+	         (a) Update explicit flags (`h` or `d`) w/ respect to new value.
+	         (b) If the widget is to become unavailable (h==1 or d==1),
+	             make any active object (`this` or child) dispatch a fake
+	             'blur' event.
+	         (c) Update inherited flags in children (descending recursion.)
+	
+	[REM] 4(b) solves the problem of controls being hidden or disabled while
+	      having the focus. As they do not natively notify 'blur', your UI
+	      would remain unable to perform actions related to focus losing.
+	
+	Note that visibility flags rely on the assumption that the client code
+	uses explicit assignments of the form
+	
+	      `wg.visible = <boolean>`
+
+	rather than `wg.show()` or `wg.hide()`. The latter form SHOULD be
+	reserved to temporary changes which are not supposed to alter the
+	`__state__` property.
+
+	As long as `__state__` is managed throughout the above process, it
+	is more precise than reading direct properties. See the functions
+	`ScriptUI.isHidden()` and `ScriptUI.isDisabled()` in SUI/builder.
+
+	*/
+
+	WSTA: function watchState(k,ov,nv)
+	//----------------------------------
+	// k :: visible | enabled
+	{
+		var s = 0|this.__state__;
+
+		switch( k )
+		{
+			case 'visible':
+				// Getting explicitly visible (DdH1 -> DdH0)
+				// or hidden (DdH0 -> DdH1)
+				// ---
+				this.__state__ = nv ? (s&=14) : (s|=1);      // AND(1110) | OR(0001)
+				
+				// 01===Hh  =>  Detect active and dispatch blur.
+				// ---
+				1===(3&s) && callee.BLUR_ACTV(this);
+				
+				// If the widget *does not* inherit invisibility (H==0)
+				// the state of children must be updated whatever h.
+				// ---
+				0===(2&s) && callee.CHLD_HID( this, (3&s) ? 1 : 0 );
+				break;
+
+			case 'enabled':
+				// Getting explicitly enabled (D1Hh -> D0Hh)
+				// or disabled (D0Hh -> D1Hh)
+				// ---
+				this.__state__ = nv ? (s&=11) : (s|=4);      // AND(1011) | OR(0100)
+
+				// 01===Dd  =>  Detect active and dispatch blur.
+				// ---
+				4===(12&s) && callee.BLUR_ACTV(this);
+
+				// If the widget does not inherit disability (D==0)
+				// the state of children must be updated whatever d.
+				// ---
+				0===(8&s) && callee.CHLD_DSB( this, (12&s) ? 1 : 0 );
+
+			default:;
+		}
+
+		return nv;
+	}
+	.setup
+	({
+		INIT: function(/*Widget*/wg,  p,s)
+		//----------------------------------
+		// Register this state watcher (this===WSTA) for the keys `visible` and
+		// `enabled`, and *initialize* wg.__state__ based on wg properties and
+		// wg.parent.__state__.
+		// `wg` :: any widget excl. Window.
+		// => undef
+		{
+			wg.watch('visible', this);
+			wg.watch('enabled', this);
+
+			// 4bit state -> __state__ property
+			// ---
+			((p=wg.parent) instanceof Window) && (p=0);
+			s = (wg.enabled?0:4) | (wg.visible?0:1);     // _d_h  -- d:disabled ; h:hidden
+			if( p && (p=p.__state__) )
+			{
+				( 3&p ) && ( s|=2 );                     // _dHh  -- H: inherited HID
+				(12&p ) && ( s|=8 );                     // DdHh  -- D: inherited DSB
+			}
+			wg.__state__ = s;
+		},
+
+		BLUR_ACTV: function(/*Widget*/wg,  a,i,t)
+		//----------------------------------
+		// If `wg` is or contains the `active` control, make that control
+		// dispatch a fake 'blur' event. (This function is called when
+		// `wg` is about to lose its visibility or enability.)
+		// `wg` :: any widget
+		// => 1 [OK-DONE] | 0 [NO-ACTIVE-FOUND]
+		{
+			a = ('group'==(t=wg.type) || 'panel'==t) && wg.children;
+
+			if( !a && wg.active )
+			{
+				wg.active = false; // for the record
+				wg.dispatchEvent(new UIEvent('blur',true,true));
+				return 1;
+			}
+
+			for( t=0, i=a?a.length:0 ; i-- && !(t=callee(a[i])) ; );
+			return t;
+		},
+
+		CHLD_HID: function(/*Widget*/wg,/*0|1*/H,  a,i,t,s)
+		//----------------------------------
+		// Update the `H` flag of wg children __state__ (DdHh)
+		// The routine recurses until the `h` flag is 1.
+		// => undef
+		{
+			a = ('group'==(t=wg.type) || 'panel'==t) && wg.children;
+			for( i=a?a.length:0 ; i-- ; )
+			{
+				s = (t=a[i]).__state__;
+				t.__state__ = H ? (2|s) : (13&s);  // OR(0010) | AND(1101)
+				(1&s) || callee(t,H);
+			}
+		},
+
+		CHLD_DSB: function(/*Widget*/wg,/*0|1*/D,  a,i,t,s)
+		//----------------------------------
+		// Update the `D` flag of wg children __state__ (DdHh)
+		// The routine recurses until the `d` flag is 1.
+		// => undef
+		{
+			a = ('group'==(t=wg.type) || 'panel'==t) && wg.children;
+			for( i=a?a.length:0 ; i-- ; )
+			{
+				s = (t=a[i]).__state__;
+				t.__state__ = D ? (8|s) : (7&s);   // OR(1000) | AND(0111)
+				(4&s) || callee(t,D);
+			}
+		},
+	}),
