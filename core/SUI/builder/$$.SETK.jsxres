@@ -1,0 +1,119 @@
+/*******************************************************************************
+
+		Name:           SETK (setKey)
+		Desc:           Smart key-value setter.
+		Path:           /core/SUI/builder/$$.SETK.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` during key-value
+	assignment. It both manages 'scalar assignments', like in
+	
+	      <widget>[<key>] = <someScalarValue> ;   // E.g  `wg.text = "Hello"`
+	
+	and more complex assignments like
+	
+	      <widget>.preferredSize = { width:100 };
+	
+	or
+	      <widget>._mouseDown = <someFunction>;   // Event handler
+	
+	It also takes care of external key handlers ; cf. ScriptUI.addKeyHandler().
+
+	*/
+
+	SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t,w,h)
+	//----------------------------------
+	// Make the assignment `wg[k] = x` a bit smarter, if desired.
+	// `cx` is the current builder context, it is used for managing the
+	// key `k` in case `callee.EXTERN` has an associated function.
+	// Cf. ScriptUI.addKeyHandler()
+	// ---
+	// => undef
+	{
+		// External assignment process?
+		// ---
+		if( 'function' == typeof(t=callee.EXTERN[k]) )
+		{
+			t.call(cx,wg,x,k);
+			return;
+		}
+			
+		// Convert special event keys into addEventListener statement.
+		// k :: `_move` | `_mouseup` | `_keydown` | etc       -> no capture phase
+		// ---
+		if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVNS.test(t=k.slice(1)) )
+		{
+			wg.addEventListener(t,x,w);
+			return;
+		}
+		
+		// Sizing properties (size, preferredSize, maximumSize, minimumSize)
+		// [FIX190222] Prevent assignment of invalid/falsy values.
+		// ---
+		if( callee.RE_SIZE.test(k) )
+		{
+			if( !x ) return;
+
+			w = x.hasOwnProperty('width')  ? x.width  : x[0];
+			h = x.hasOwnProperty('height') ? x.height : x[1];
+
+			// If wg[k] already exists, it is sufficient to
+			// update width and/or height.
+			// ---
+			if( t=wg[k] )
+			{
+				(0|w)===w && (t.width=w);
+				(0|h)===h && (t.height=h);
+				return;
+			}
+			
+			// Otherwise, we need both w AND h to be valid.
+			// ---
+			if( (0|w)===w && (0|h)===h )
+			{
+				// Create a fresh array only if necessary.
+				// ---
+				( (x instanceof Array) && (w===x[0]) && (h===x[1]) )
+				|| (x=[w,h]);
+				
+				wg[k] = x;
+			}
+			
+			return;
+		}
+			
+		// Default assignment.
+		// ---
+		wg[k] = x;
+	}
+	.setup
+	({
+		RE_EVNS: RegExp('^(?:'
+			     + 'move|moving|resize|resizing|show|close|'
+			     + 'focus|blur|change|changing|'
+			     + 'click|mousedown|mouseup|mousemove|mouseover|mouseout|'
+			     + 'enterKey|keydown|keyup'
+			     + ')$' ),
+		RE_SIZE: RegExp('^(?:'
+			     + 'preferredSize|minimumSize|maximumSize|size'
+			     + ')$' ),
+		EXTERN:  {},
+	}),
