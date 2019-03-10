@@ -7,11 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Snippet (part of /SUI.)
-		API:            ScriptUI.builder() addKeyHandler() removeKeyHandler()
+		API:            ScriptUI.builder()
+		                isHidden() isDisabled() addKeyHandler() removeKeyHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190306 (YYMMDD)
+		Modified:       190310 (YYMMDD)
 
 *******************************************************************************/
 
@@ -523,6 +524,8 @@
 	[190218] `list` alias for either listbox or dropdownlist ; cf. 3.
 	[190222] Width/height assignments made safer (skipping falsy cases.)
 	[190306] Added 'custom$' and '...Factory$' checking in ~.RVRS.
+	[190310] Made inner functions distinct resources for readability;
+	         added state watching and management --> ~.WSTA.
 
 	*/
 
@@ -565,7 +568,7 @@
 		for( k in res )
 		{
 			if( !res.hasOwnProperty(k) ) continue;
-			if( callee.RE_CREA.test(k) ) continue;          // Skip 'properties' and 'factory' (already parsed.)
+			if( callee.RE_CREA.test(k) ) continue;          // Skip 'properties' and 'factory'
 			x = res[k];                                     // E.g  k::'size', x::[20,10]
 			if( x!==Object(x) )                             // Don't waste time if x is a scalar.
 			{
@@ -613,9 +616,9 @@
 				wg.helpTip = t;
 			}
 
-			// Recurse ONLY if `wg` is a true SUI widget.
-			// ---
-			ISWG && callee.call(this, x, wg);
+			if( !ISWG ) continue;                           // If `wg` is a true SUI widget:
+			callee.call(this,x,wg);                         // 1. Recurse (must be done first.)
+			callee.WSTA.INIT(wg);                           // 2. Watch states (visible,enabled) [190310]
 		}
 		
 		// [190120] Cleanup `res` keys?
@@ -626,302 +629,69 @@
 	}
 	.setup
 	({
+		// Properties inspected at creation time.
+		// ---
 		RE_CREA:      RegExp('^(?:' + 'properties|factory' + ')$'),
 
-		REV_STACK:    $$.inCC ? 0 : $$.inWin, // Reverse 'stack' in Win < CC
-		
-		RVRS: function(/*obj*/res,  q,z,re,r,k)
-		//----------------------------------
-		// (Reverse.) [190120] Create a proxy object containing `res` widget
-		// keys in reverse order ; non-widget keys being moved up.
-		// E.g     { ... button$ok:{...} ... custom$my:{...} ... }
-		// becomes { ... ... ... custom$my:{...} button$ok:{...} }
-		// [REM] This function only duplicates references, it does not
-		// perform a deep clone. The caller is responsible for deleting
-		// those top keys once the proxy object has been used.
+		// Reverse 'stack' in Win < CC.
 		// ---
-		// => new Object
-		{
-			(q=callee.Q||(callee.Q=[])).length = z = 0;
-			re = callee.RE_WDGK;
-			r = {};
-			for( k in res )
-			{
-				if( !res.hasOwnProperty(k) ) continue;
+		REV_STACK:    $$.inCC ? 0 : $$.inWin,
+		#include 'builder/$$.RVRS.jsxres'
 
-				// [FIX190306] 'custom$' and '...Factory$' checking.
-				// ---
-				( re.test(k) || 0 < k.indexOf('Factory$') )
-				? ( (q['_'+z]=k), (q[z++]=res[k]) )
-				: ( r[k]=res[k] );
-			}
-			for( ; z-- ; (k=q['_'+z]),(delete q['_'+z]),(r[k]=q.pop()) );
-			return r;
-		}
-		.setup
-		({
-			RE_WDGK: RegExp("^(?:custom|group|panel|statictext|edittext|"+
-				"button|iconbutton|checkbox|radiobutton|image|list|listbox|dropdownlist|"+
-				"treeview|scrollbar|slider|progressbar|tabbedpanel|tab|flashplayer)\\$",'i'),
-		}),
-
-		WIND: function(/*obj={}*/pp,  t,s,b)
-		//----------------------------------
-		// Create a Window instance based on `pp` properties.
-		// `pp` may specify the following keys: .type (default is "dialog"),
-		// .text or .name (default is ""), .bounds (default is undefined) and
-		// any creation property (.borderless, .resizeable, etc.)
+		// Internal routines.
 		// ---
-		// => new Window
-		{
-			pp===Object(pp) || (pp={});
-
-			t = String(pp.type||'').toLowerCase();          // Win type.
-			'window'===t || 'palette'===t || (t='dialog');  // Default: 'dialog'
-			delete pp.type;
-
-			s = String(pp.text||pp.name||'');               // text or name => title
-			pp.name || (s.length&&(pp.name=s));             // Set the name if non-empty
-			delete pp.text;
-
-			b = pp.bounds||void 0;
-			delete pp.bounds;
-
-			return new Window(t, s, b, pp);                 // Create the Window instance.
-		},
-
-		ARGS: function(/*str*/tpe,/*obj*/x,/*any[]&*/args,  s,pp,u,k,z,t)
-		//----------------------------------
-		// Feed the array `args` :: [tpe, args...] for use in  either
-		// `parent.add(tpe, ...)` or a factory func. If `tpe` is 'window',
-		// return FALSE. Return `x.properties` if it's truthy AND allowed
-		// in the target object, otherwise return 0.
-		// [ADD190218] Added the alias `tpe=='list'`, which becomes
-		// 'dropdownlist' if x.properties.dropdown,  'listbox' otherwise
-		// ---
-		// => obj|0 [OK]  |  false [KO]
-		{
-			s = tpe.toLowerCase();                          // Normalize the type.
-			if( 'window'==s ) return false;                 // Disallow 'window'.
-			pp = x.properties || 0;                         // Creation properties?
-			'list'==s && (s = pp.dropdown ? 'dropdownlist' : 'listbox'); // [190218]
-			u = void 0;                                     // Alias of undefined.
-			args.length && (args.length=0);                 // Make sure `args` is empty.
-			t = typeof(k=callee.Q[s]);                      // 'string'|'object'|'undefined'
-
-			( 'undefined' == t ) || ( (args[0]=s),(args[1]=pp.bounds||u) );
-			z = args.length;
-
-			if( 'string' == t )
-			{
-				// Simple widget expecting at most one extra argument.
-				// ''      => noop
-				// 'image' => try 'icon' as an alternate key.
-				// '\x01'  => forcibly push undefined
-				// ---
-				if( !k.length ) return pp;
-				'image'==k && (pp[k]||(k='icon'));
-				args[z++] = ('\x01'!=k&&pp[k]) || u;
-				delete pp[k];
-				return pp;
-			}
-			
-			if( 'object' == t )
-			{
-				// Scrollbar, slider, progressbar, and listitem.
-				// listitem => reset `args` from 0 and disallow `pp`.
-				// ---
-				'listitem'==s && (z=0);
-				for( t in k )
-				{
-					if( !k.hasOwnProperty(t) ) continue;
-					args[z++] = pp[k] || k[t];
-					delete pp[k];
-				}
-				return 'listitem'==s ? 0 : pp;
-			}
-			
-			if( 'Factory' == tpe.slice(-7) && 'function'==typeof(t=ScriptUI[tpe]) )
-			{
-				// CUSTOM FACTORY: SPECIAL SCHEME.
-				// ---
-				( x instanceof Array )
-				&& ( (args[0]='custom'), (args[1]=t), args.push.apply(args,x) );
-			}
-			else
-			{
-				// CUSTOM FACTORY: FULL AND SHORT SCHEMES.
-				// ---
-				// If `x` has a 'factory' property (Array) or is
-				// itself an Array, make sure the 1st elem is truthy and
-				// set `args` :: [ 'custom', <first>, nextElems... ].
-				// The factory specifier, <first>, will be validated next.
-				// ---
-				'custom' == s
-				&& ( t = x.hasOwnProperty('factory') ? x.factory : x )
-				&& ( t instanceof Array )
-				&& ( t[0] )
-				&& ( (args[0]='custom'), args.push.apply(args,t) );
-			}
-			
-			return 0;
-		}
-		.setup
-		({
-			Q:
-			{
-				// --- At most one extra argument.
-				flashplayer: 'file',
-				tabbedpanel: '',         group:    '',
-				statictext:  'text',     edittext: 'text',   panel:   'text',  tab:'text',
-				radiobutton: 'text',     checkbox: 'text',   button:  'text',
-				iconbutton:  'image',    image:    'image',
-				dropdownlist:'\x01',     listbox:  '\x01',   treeview:'\x01', // force undef
-				// --- At least two extra arguments.
-				scrollbar:    { value:0, minvalue:0, maxvalue:100 },
-				slider:       { value:0, minvalue:0, maxvalue:100 },
-				progressbar:  { value:0, maxvalue:100 },
-				listitem:     { type:'item', text:'' },
-			},
-		}),
-		
-		SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t,w,h)
-		//----------------------------------
-		// Make the assignment `wg[k] = x` a bit smarter, if desired.
-		// `cx` is the current builder context, it is used for managing the
-		// key `k` in case `callee.EXTERN` has an associated function.
-		// Cf. ScriptUI.addKeyHandler()
-		// ---
-		// => undef
-		{
-			// External assignment process?
-			// ---
-			if( 'function' == typeof(t=callee.EXTERN[k]) )
-			{
-				t.call(cx,wg,x,k);
-				return;
-			}
-				
-			// Convert special event keys into addEventListener statement.
-			// k :: `_move` | `_mouseup` | `_keydown` | etc       -> no capture phase
-			// ---
-			if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVNS.test(t=k.slice(1)) )
-			{
-				wg.addEventListener(t,x,w);
-				return;
-			}
-			
-			// Sizing properties (size, preferredSize, maximumSize, minimumSize)
-			// [FIX190222] Prevent assignment of invalid/falsy values.
-			// ---
-			if( callee.RE_SIZE.test(k) )
-			{
-				if( !x ) return;
-
-				w = x.hasOwnProperty('width')  ? x.width  : x[0];
-				h = x.hasOwnProperty('height') ? x.height : x[1];
-
-				// If wg[k] already exists, it is sufficient to
-				// update width and/or height.
-				// ---
-				if( t=wg[k] )
-				{
-					(0|w)===w && (t.width=w);
-					(0|h)===h && (t.height=h);
-					return;
-				}
-				
-				// Otherwise, we need both w AND h to be valid.
-				// ---
-				if( (0|w)===w && (0|h)===h )
-				{
-					// Create a fresh array only if necessary.
-					// ---
-					( (x instanceof Array) && (w===x[0]) && (h===x[1]) )
-					|| (x=[w,h]);
-					
-					wg[k] = x;
-				}
-				
-				return;
-			}
-				
-			// Default assignment.
-			// ---
-			wg[k] = x;
-		}
-		.setup
-		({
-			RE_EVNS: RegExp('^(?:'
-				     + 'move|moving|resize|resizing|show|close|'
-				     + 'focus|blur|change|changing|'
-				     + 'click|mousedown|mouseup|mousemove|mouseover|mouseout|'
-				     + 'enterKey|keydown|keyup'
-				     + ')$' ),
-			RE_SIZE: RegExp('^(?:'
-				     + 'preferredSize|minimumSize|maximumSize|size'
-				     + ')$' ),
-			EXTERN:  {},
-		}),
-		
-		CUST: function(/*obj*/cx,/*Widget*/parent,/*any[]&*/args,  t,f)
-		//----------------------------------
-		// Call the custom factory.
-		// `cx`     :: current `ScriptUI.builder` context.
-		// `parent` :: current widget container.
-		// `args`   :: array of custom arguments, still of
-		//             the form ['custom', <factory>, ...]
-		// The 2nd elem in `args` must be either a function, or a
-		// key (in either cx or parent) that refers to a function.
-		// ---
-		// => Widget|any [OK]  |  false [KO]
-		{
-			// Look for the factory function. Can be either `args[1]`,
-			// `cx[args[1]]`, or `parent[args[1]]` (in that order.)
-			// If no function is found, return false.
-			// ---
-			if( 'function' != typeof(f=t=args[1])
-				&& 'function' != typeof(f=cx[t])
-				&& 'function' != typeof(f=(cx=parent)[t])
-			) return false;
-			
-			// Remove the 1st elem (=='custom') from args.
-			// ---
-			args.shift();
-
-			// Make args[0] point out to the parent.
-			// ---
-			args[0] = parent;
-			
-			// Create and return the custom object.
-			// ---
-			return f.apply(cx,args);
-		},
-		
-		WIDG: function(/*Widget*/parent,/*any[]&*/args,/*0|any|obj*/pp,/*str|''*/nm)
-		//----------------------------------
-		// Regular Widget creation.
-		// `parent` :: Current widget container.
-		// `args`   :: [ type, ... ]
-		// `pp`     :: Creation properties, or any. A properties object is forcibly
-		//             created as soon as `pp` is truthy (true, 1, "ok", etc.)
-		// `nm`     :: Name of the widget, or ''.
-		// ---
-		// => Widget
-		{
-			// Appends the `properties` object if !!pp.
-			// (Create a new object if necessary.)
-			// ---
-			if( pp )
-			{
-				pp===Object(pp) || (pp={});
-				nm.length && (!pp.hasOwnProperty('name')) && (pp.name=nm);
-				args[args.length] = pp;
-			}
-			
-			return parent.add.apply(parent,args);
-		},
+		#include 'builder/$$.WIND.jsxres'
+		#include 'builder/$$.ARGS.jsxres'
+		#include 'builder/$$.SETK.jsxres'
+		// --- Widget creation
+		#include 'builder/$$.CUST.jsxres'
+		#include 'builder/$$.WIDG.jsxres'
+		// --- States
+		#include 'builder/$$.WSTA.jsxres'
 	});
+
+	//==========================================================================
+	// [190310] ScriptUI.isHidden() .isDisabled()
+	//==========================================================================
+
+	ScriptUI.isHidden = function isHidden(/*Widget*/wg,/*bool=0*/explicit)
+	//----------------------------------
+	// Whether the widget state matches HIDDEN, assuming `wg` has a `__state__`
+	// property. By default, non-visibility is asserted from both explicit flag
+	// or inherited state. Make `explicit` truthy to request the `h` flag alone.
+	// - explicit==0  =>  Whether the widget is hidden for whatever reason ; `Hh!=0`
+	// - explicit!=0  =>  Whether the widget is hidden in person           ; `h==1`
+	// ---
+	// If `wg` has no __state__ property, use +(!wg.visible) as a fallback.
+	// ---
+	// => 1 [HIDDEN]  |  0 [NOT-HIDDEN]
+	{
+		return wg.hasOwnProperty('__state__') ?
+			( ((explicit?1:3)&wg.__state__) && 1 ) :
+			+(!wg.visible);
+	};
+
+	ScriptUI.isDisabled = function isDisabled(/*Widget*/wg,/*bool=0*/explicit)
+	//----------------------------------
+	// Whether the widget state matches DISABLED, assuming `wg` has a `__state__`
+	// property. By default, non-enability is asserted from both explicit flag
+	// or implied/inherited state. Make `explicit` truthy to request the `d` flag alone.
+	// - explicit==0  =>  Whether the widget is disabled for whatever reason ; `DdHh!=0`
+	//                    Note that HIDDEN implies DISABLED!
+	// - explicit!=0  =>  Whether the widget is disabled in person           ; `d==1`
+	// ---
+	// If `wg` has no __state__ property, use +(!wg.enabled) as a fallback.
+	// ---
+	// => 1 [HIDDEN]  |  0 [NOT-HIDDEN]
+	{
+		return wg.hasOwnProperty('__state__') ?
+			( ((explicit?4:15)&wg.__state__) && 1 ) :
+			+(!wg.enabled);
+	};
+
+	//==========================================================================
+	// [181201] ScriptUI.addKeyHandler() .removeKeyHandler()
+	//==========================================================================
 
 	ScriptUI.addKeyHandler = function addKeyHandler(/*key*/k,/*fct*/handler)
 	//----------------------------------
