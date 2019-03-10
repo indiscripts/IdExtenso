@@ -1,0 +1,67 @@
+/*******************************************************************************
+
+		Name:           CUST (custom)
+		Desc:           Create a custom component based on a factory.
+		Path:           /core/SUI/builder/$$.CUST.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        181201 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` when it comes to
+	create a custom component through a factory. It checks the input `args`
+	array, makes it fit the factory scheme and call the function.
+	
+	[REM] It's up to the caller to check whether the factory actually
+	      returns a ScriptUI widget.
+
+	*/
+
+	CUST: function(/*obj*/cx,/*Widget*/parent,/*any[]&*/args,  t,f)
+	//----------------------------------
+	// Call the custom factory.
+	// `cx`     :: current `ScriptUI.builder` context.
+	// `parent` :: current widget container.
+	// `args`   :: array of custom arguments, still of
+	//             the form ['custom', <factory>, ...]
+	// The 2nd elem in `args` must be either a function, or a
+	// key (in either cx or parent) that refers to a function.
+	// ---
+	// => Widget|any [OK]  |  false [KO]
+	{
+		// Look for the factory function. Can be either `args[1]`,
+		// `cx[args[1]]`, or `parent[args[1]]` (in that order.)
+		// If no function is found, return false.
+		// ---
+		if( 'function' != typeof(f=t=args[1])
+			&& 'function' != typeof(f=cx[t])
+			&& 'function' != typeof(f=(cx=parent)[t])
+		) return false;
+		
+		// Remove the 1st elem (=='custom') from args.
+		// ---
+		args.shift();
+
+		// Make args[0] point out to the parent.
+		// ---
+		args[0] = parent;
+		
+		// Create and return the custom object.
+		// ---
+		return f.apply(cx,args);
+	},
