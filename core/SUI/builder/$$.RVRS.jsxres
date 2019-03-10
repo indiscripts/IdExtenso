@@ -1,0 +1,67 @@
+/*******************************************************************************
+
+		Name:           RVRS (reverseStack)
+		Desc:           Reverse widget declaration order (if needed in a stack.)
+		Path:           /core/SUI/builder/$$.RVRS.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190120 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` in the specific case
+	of CS&Windows environment (REV_STACK flag). When a container has a 'stack'
+	orientation, widget declarations are reversed in the resource object to get
+	a clean, CS&Win-compliant object. This mechanism allows the client to use,
+	from the outside, a uniform scheme for declaring stacks.
+
+	*/
+
+	RVRS: function(/*obj*/res,  q,z,re,r,k)
+	//----------------------------------
+	// (Reverse.) Create a proxy object containing `res` widget
+	// keys in reverse order ; non-widget keys being moved up.
+	// E.g     { ... button$ok:{...} ... custom$my:{...} ... }
+	// becomes { ... ... ... custom$my:{...} button$ok:{...} }
+	// [REM] This function only duplicates references, it does not
+	// perform a deep clone. The caller is responsible for deleting
+	// those top keys once the proxy object has been used.
+	// ---
+	// => new Object
+	{
+		(q=callee.Q||(callee.Q=[])).length = z = 0;
+		re = callee.RE_WDGK;
+		r = {};
+		for( k in res )
+		{
+			if( !res.hasOwnProperty(k) ) continue;
+
+			// [FIX190306] 'custom$' and '...Factory$' checking.
+			// ---
+			( re.test(k) || 0 < k.indexOf('Factory$') )
+			? ( (q['_'+z]=k), (q[z++]=res[k]) )
+			: ( r[k]=res[k] );
+		}
+		for( ; z-- ; (k=q['_'+z]),(delete q['_'+z]),(r[k]=q.pop()) );
+		return r;
+	}
+	.setup
+	({
+		RE_WDGK: RegExp("^(?:custom|group|panel|statictext|edittext|"+
+			"button|iconbutton|checkbox|radiobutton|image|list|listbox|dropdownlist|"+
+			"treeview|scrollbar|slider|progressbar|tabbedpanel|tab|flashplayer)\\$",'i'),
+	}),
