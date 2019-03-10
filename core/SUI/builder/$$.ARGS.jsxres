@@ -1,0 +1,127 @@
+/*******************************************************************************
+
+		Name:           ARGS
+		Desc:           Manage an array of arguments.
+		Path:           /core/SUI/builder/$$.ARGS.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` for the specific
+	purpose of parsing and formatting widget creation arguments, depending
+	on the type under consideration. It both feeds the incoming `args`
+	array to get it compliant with the ScriptUI `add(...)` method, and
+	returns a safe reference to a creation properties object if available.
+
+	*/
+
+	ARGS: function(/*str*/tpe,/*obj*/x,/*any[]&*/args,  s,pp,u,k,z,t)
+	//----------------------------------
+	// Feed the array `args` :: [tpe, args...] for use in  either
+	// `parent.add(tpe, ...)` or a factory func. If `tpe` is 'window',
+	// return FALSE. Return `x.properties` if it's truthy AND allowed
+	// in the target object, otherwise return 0.
+	// [ADD190218] Added the alias `tpe=='list'`, which becomes
+	// 'dropdownlist' if x.properties.dropdown,  'listbox' otherwise
+	// ---
+	// => obj|0 [OK]  |  false [KO]
+	{
+		s = tpe.toLowerCase();                          // Normalize the type.
+		if( 'window'==s ) return false;                 // Disallow 'window'.
+		pp = x.properties || 0;                         // Creation properties?
+		'list'==s && (s = pp.dropdown ? 'dropdownlist' : 'listbox'); // [190218]
+		u = void 0;                                     // Alias of undefined.
+		args.length && (args.length=0);                 // Make sure `args` is empty.
+		t = typeof(k=callee.Q[s]);                      // 'string'|'object'|'undefined'
+
+		( 'undefined' == t ) || ( (args[0]=s),(args[1]=pp.bounds||u) );
+		z = args.length;
+
+		if( 'string' == t )
+		{
+			// Simple widget expecting at most one extra argument.
+			// ''      => noop
+			// 'image' => try 'icon' as an alternate key.
+			// '\x01'  => forcibly push undefined
+			// ---
+			if( !k.length ) return pp;
+			'image'==k && (pp[k]||(k='icon'));
+			args[z++] = ('\x01'!=k&&pp[k]) || u;
+			delete pp[k];
+			return pp;
+		}
+		
+		if( 'object' == t )
+		{
+			// Scrollbar, slider, progressbar, and listitem.
+			// listitem => reset `args` from 0 and disallow `pp`.
+			// ---
+			'listitem'==s && (z=0);
+			for( t in k )
+			{
+				if( !k.hasOwnProperty(t) ) continue;
+				args[z++] = pp[k] || k[t];
+				delete pp[k];
+			}
+			return 'listitem'==s ? 0 : pp;
+		}
+		
+		if( 'Factory' == tpe.slice(-7) && 'function'==typeof(t=ScriptUI[tpe]) )
+		{
+			// CUSTOM FACTORY: SPECIAL SCHEME.
+			// ---
+			( x instanceof Array )
+			&& ( (args[0]='custom'), (args[1]=t), args.push.apply(args,x) );
+		}
+		else
+		{
+			// CUSTOM FACTORY: FULL AND SHORT SCHEMES.
+			// ---
+			// If `x` has a 'factory' property (Array) or is
+			// itself an Array, make sure the 1st elem is truthy and
+			// set `args` :: [ 'custom', <first>, nextElems... ].
+			// The factory specifier, <first>, will be validated next.
+			// ---
+			'custom' == s
+			&& ( t = x.hasOwnProperty('factory') ? x.factory : x )
+			&& ( t instanceof Array )
+			&& ( t[0] )
+			&& ( (args[0]='custom'), args.push.apply(args,t) );
+		}
+		
+		return 0;
+	}
+	.setup
+	({
+		Q:
+		{
+			// --- At most one extra argument.
+			flashplayer: 'file',
+			tabbedpanel: '',         group:    '',
+			statictext:  'text',     edittext: 'text',   panel:   'text',  tab:'text',
+			radiobutton: 'text',     checkbox: 'text',   button:  'text',
+			iconbutton:  'image',    image:    'image',
+			dropdownlist:'\x01',     listbox:  '\x01',   treeview:'\x01', // force undef
+			// --- At least two extra arguments.
+			scrollbar:    { value:0, minvalue:0, maxvalue:100 },
+			slider:       { value:0, minvalue:0, maxvalue:100 },
+			progressbar:  { value:0, maxvalue:100 },
+			listitem:     { type:'item', text:'' },
+		},
+	}),
