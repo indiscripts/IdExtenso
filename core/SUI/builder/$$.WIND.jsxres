@@ -1,0 +1,54 @@
+/*******************************************************************************
+
+		Name:           WIND (windowCreator)
+		Desc:           Window instance maker.
+		Path:           /core/SUI/builder/$$.WIND.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` when it comes to
+	create a `Window` instance (type: 'window', 'palette', or 'dialog'.)
+
+	*/
+
+	WIND: function(/*obj={}*/pp,  t,s,b)
+	//----------------------------------
+	// Intantiate a Window based on `pp` properties.
+	// `pp` may specify the following keys: .type (default is "dialog"),
+	// .text or .name (default is ""), .bounds (default is undefined) and
+	// any creation property (.borderless, .resizeable, etc.)
+	// ---
+	// => new Window
+	{
+		pp===Object(pp) || (pp={});
+
+		t = String(pp.type||'').toLowerCase();          // Win type.
+		'window'===t || 'palette'===t || (t='dialog');  // Default: 'dialog'
+		delete pp.type;
+
+		s = String(pp.text||pp.name||'');               // text or name => title
+		pp.name || (s.length&&(pp.name=s));             // Set the name if non-empty
+		delete pp.text;
+
+		b = pp.bounds||void 0;
+		delete pp.bounds;
+
+		return new Window(t, s, b, pp);                 // Create the Window instance.
+	},
