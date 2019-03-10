@@ -1,0 +1,55 @@
+/*******************************************************************************
+
+		Name:           WIDG (widget)
+		Desc:           Create a regular ScriptUI widget.
+		Path:           /core/SUI/builder/$$.WIDG.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Resource of SUI/builder
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170427 (YYMMDD)
+		Modified:       190310 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[CHG190310] Extracted from /core/SUI/$$.builder.jsxinc
+
+	This inner function is called from `ScriptUI.builder` when it comes to
+	create a regular ScriptUI widget, based on `args` (type and params),
+	creation properties object, and optional name. Basically, it executes
+	and returns `<parent>.add(...)`
+
+	*/
+
+	WIDG: function(/*Widget*/parent,/*any[]&*/args,/*0|any|obj*/pp,/*str|''*/nm)
+	//----------------------------------
+	// Regular Widget creation.
+	// `parent` :: Current widget container.
+	// `args`   :: [ type, ... ]
+	// `pp`     :: Creation properties, or any. A properties object is forcibly
+	//             created as soon as `pp` is truthy (true, 1, "ok", etc.)
+	// `nm`     :: Name of the widget, or ''.
+	// ---
+	// => Widget
+	{
+		// Appends the `properties` object if !!pp.
+		// (Create a new object if necessary.)
+		// ---
+		if( pp )
+		{
+			pp===Object(pp) || (pp={});
+			nm.length && (!pp.hasOwnProperty('name')) && (pp.name=nm);
+			args[args.length] = pp;
+		}
+		
+		return parent.add.apply(parent,args);
+	},
