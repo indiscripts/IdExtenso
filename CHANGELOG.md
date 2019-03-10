@@ -1,3 +1,6 @@
+##### [190310]
+  - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): Splitted inner functions into separate resources (`core/SUI/builder/...`). Added [state watching and management](/core/SUI/builder/$$.WSTA.jsxres).
+
 ##### [190308]
   - [`ScriptUI.setFocus`](/core/SUI/$$.mini.jsxinc) improved and made smarter. Since `Group` and `Panel` objects don't provide the `active` property natively, it's not easy to implicitly activate the main control within a container. To bypass this limitation, we now provide a generic algorithm dealing with containers although they don't own an `active` property.
   
