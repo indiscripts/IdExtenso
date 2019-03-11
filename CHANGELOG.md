@@ -1,3 +1,6 @@
+##### [190311]
+  - [`SUI/builder/SETK`](/core/SUI/builder/$$.SETK.jsxres): the special key `optimalSize` can be used to set both `preferredSize` AND `minimumSize` in one step. This is a useful shortcut, since many ScriptUI controls require both a `preferredSize` and a `minimumSize` to get properly aligned.
+  
 ##### [190310]
   - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): Splitted inner functions into separate resources (`core/SUI/builder/...`). Added [state watching and management](/core/SUI/builder/$$.WSTA.jsxres).
 
