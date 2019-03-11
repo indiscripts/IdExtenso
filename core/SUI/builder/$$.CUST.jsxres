@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        181201 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190311 (YYMMDD)
 
 *******************************************************************************/
 
@@ -29,6 +29,8 @@
 	
 	[REM] It's up to the caller to check whether the factory actually
 	      returns a ScriptUI widget.
+	
+	[ADD190311] Added ScriptUI[<factoryKey>] option.
 
 	*/
 
@@ -45,12 +47,14 @@
 	// => Widget|any [OK]  |  false [KO]
 	{
 		// Look for the factory function. Can be either `args[1]`,
-		// `cx[args[1]]`, or `parent[args[1]]` (in that order.)
+		// `cx[args[1]]`, `parent[args[1]]`, or ScriptUI[args[1]]`
+		// (in that order.)
 		// If no function is found, return false.
 		// ---
-		if( 'function' != typeof(f=t=args[1])
+		if(    'function' != typeof(f=t=args[1])
 			&& 'function' != typeof(f=cx[t])
 			&& 'function' != typeof(f=(cx=parent)[t])
+			&& 'function' != typeof(f=(cx=ScriptUI)[t])
 		) return false;
 		
 		// Remove the 1st elem (=='custom') from args.
