@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190311 (YYMMDD)
 
 *******************************************************************************/
 
@@ -36,10 +36,19 @@
 	      <widget>._mouseDown = <someFunction>;   // Event handler
 	
 	It also takes care of external key handlers ; cf. ScriptUI.addKeyHandler().
+	
+	[ADD190311] Now supports the key `optimalSize`, which is a shortcut for
+	`preferredSize` AND `minimumSize`. `optimalSize` may have the form
+	`{ width:uint, height:uint }` or `[width, height]`. It also supports
+	the partial specs `{ width:uint }` or { height:uint }`.
+	
+	The `optimalSize` dimensions are then loaded in both `preferredSize` and
+	`minimumSize`. (The property `optimalSize` is not created in the resulting
+	UI component.)
 
 	*/
 
-	SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t,w,h)
+	SETK: function(/*obj*/cx,/*Widget*/wg,/*str*/k,/*any*/x,  t,w,h,q,i)
 	//----------------------------------
 	// Make the assignment `wg[k] = x` a bit smarter, if desired.
 	// `cx` is the current builder context, it is used for managing the
@@ -67,6 +76,7 @@
 		
 		// Sizing properties (size, preferredSize, maximumSize, minimumSize)
 		// [FIX190222] Prevent assignment of invalid/falsy values.
+		// [ADD190311] Added 'optimalSize' shortcut (preferred+minimum.)
 		// ---
 		if( callee.RE_SIZE.test(k) )
 		{
@@ -74,29 +84,37 @@
 
 			w = x.hasOwnProperty('width')  ? x.width  : x[0];
 			h = x.hasOwnProperty('height') ? x.height : x[1];
+			
+			// Manage optimalSize.
+			// ---
+			i = +('optimalSize'==k);
+			(q=callee.Q_SIZE)[0] = i ? 'minimumSize' : k;
 
-			// If wg[k] already exists, it is sufficient to
-			// update width and/or height.
-			// ---
-			if( t=wg[k] )
+			while( k=q[i--] )
 			{
-				(0|w)===w && (t.width=w);
-				(0|h)===h && (t.height=h);
-				return;
-			}
-			
-			// Otherwise, we need both w AND h to be valid.
-			// ---
-			if( (0|w)===w && (0|h)===h )
-			{
-				// Create a fresh array only if necessary.
+				// If wg[k] already exists, it is sufficient to
+				// update width and/or height.
 				// ---
-				( (x instanceof Array) && (w===x[0]) && (h===x[1]) )
-				|| (x=[w,h]);
-				
-				wg[k] = x;
+				if( t=wg[k] )
+				{
+					(0|w)===w && (t.width=w);
+					(0|h)===h && (t.height=h);
+					continue;
+				}
+
+				// Otherwise, we need both w AND h to be valid.
+				// ---
+				if( (0|w)===w && (0|h)===h )
+				{
+					// Create a fresh array only if necessary.
+					// ---
+					( (x instanceof Array) && (w===x[0]) && (h===x[1]) )
+					|| (x=[w,h]);
+					
+					wg[k] = x;
+				}
 			}
-			
+
 			return;
 		}
 			
@@ -106,14 +124,13 @@
 	}
 	.setup
 	({
+		Q_SIZE:  [ '', 'preferredSize' ], // Manage `optimalSize`
 		RE_EVNS: RegExp('^(?:'
 			     + 'move|moving|resize|resizing|show|close|'
 			     + 'focus|blur|change|changing|'
 			     + 'click|mousedown|mouseup|mousemove|mouseover|mouseout|'
 			     + 'enterKey|keydown|keyup'
 			     + ')$' ),
-		RE_SIZE: RegExp('^(?:'
-			     + 'preferredSize|minimumSize|maximumSize|size'
-			     + ')$' ),
+		RE_SIZE: RegExp('^(?:preferredS|minimumS|maximumS|optimalS|s)ize$'),
 		EXTERN:  {},
 	}),
