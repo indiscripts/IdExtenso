@@ -13,17 +13,13 @@
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ; app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190203 (YYMMDD)
+		Modified:       190311 (YYMMDD)
 
 *******************************************************************************/
 
 	[PRIVATE]
 	
 	({
-		// [190202] RegExp that matches the current included file name.
-		// ---
-		REGF: /\$\$\.script\.jsxinc$/,
-		
 		// Set of undo modes :: {1699963221:"AUTO_UNDO", 1699963733:"ENTIRE_SCRIPT", etc}
 		// ---
 		UM2S: eval(UndoModes.revSource()),
@@ -132,12 +128,6 @@
 		// ---
 		SCUM : µ['~'].UM2S[Number(app.properties.activeScriptUndoMode||UndoModes.SCRIPT_REQUEST)],
 
-		// [ADD180513] Full path to IdExtenso's Entry Point, if available ; false otherwise.
-		// [REM190202] Still works if an alternate entry point is used, since __jsxinc__ is
-		// set from within the $$.jsxinc file. (Other entry points MUST include that file.)
-		// ---
-		IDEX : [ (/\$\$\.jsxinc$/.test(__jsxinc__) && µ['~'].REGF.test($.fileName) && __jsxinc__) , (delete $.global.__jsxinc__) ][0],
-
 		// Engine state.
 		// ---
 		// -1 :: non-persistent engine
@@ -240,7 +230,7 @@
 		usrScriptsPath : String(Folder(µ['~'].SCPU).parent),
 		
 		// URI path to IdExtenso Entry Folder, if available ; false otherwise.
-		// [ADD180513]
+		// [ADD180513] [REM190311] Wrong IDEX test fixed in $$.Env.
 		// ---
 		idexEntryPath : µ['~'].IDEX && String(File(µ['~'].IDEX).parent),
 		
