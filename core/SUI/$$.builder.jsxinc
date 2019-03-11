@@ -12,7 +12,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190311 (YYMMDD)
 
 *******************************************************************************/
 
@@ -405,6 +405,10 @@
 	   a `height` property. If a single dimension is determined, as in the code
 	   `minimumSize: { width:200 }`, then the builder will not alter the other
 	   dimension. If falsy or irrelevant values are sent, no assignment is done.
+	   
+	   [190311] In addition, the special key `optimalSize` can be used to both
+	   assign `preferredSize` AND `minimumSize` in one step. Cf builder/SETK.
+	   `optimalSize` is a shortcut, not an actual property of the final object.
 	
 	b) `helpTip` inheritance. If the current widget has no `helpTip` while
 	    its parent ALREADY has one, the child automatically inherits the
@@ -526,6 +530,7 @@
 	[190306] Added 'custom$' and '...Factory$' checking in ~.RVRS.
 	[190310] Made inner functions distinct resources for readability;
 	         added state watching and management --> ~.WSTA.
+	[190311] Added the `optimalSize` shortcut.
 
 	*/
 
