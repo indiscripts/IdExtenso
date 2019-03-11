@@ -1,6 +1,6 @@
 ##### [190311]
   - [`SUI/builder/SETK`](/core/SUI/builder/$$.SETK.jsxres): the special key `optimalSize` can be used to set both `preferredSize` AND `minimumSize` in one step. This is a useful shortcut, since many ScriptUI controls require both a `preferredSize` and a `minimumSize` to get properly aligned.
-  - [**Env**][/core/$$.Env.jsxlib]: fixed a bug regarding `~.IDEX` and the public property `idexEntryPath` (“URI path to ***IdExtenso*** Entry Folder, if available”). There was a mistake on the location `$.fileName` refers to in the context of included subfiles. Interesting (and no so obvious) conclusions can be found [here](/core/$$.Env.jsxlib#L291).
+  - [**Env**](/core/$$.Env.jsxlib) module: fixed a bug regarding `~.IDEX` and the public property `idexEntryPath` (“URI path to ***IdExtenso*** Entry Folder, if available”). There was a mistake on the location `$.fileName` refers to in the context of included subfiles. Interesting (and no so obvious) conclusions can be found [here](/core/$$.Env.jsxlib#L291).
   
 ##### [190310]
   - [`ScriptUI.builder`](/core/SUI/$$.builder.jsxinc): Splitted inner functions into separate resources (`core/SUI/builder/...`). Added [state watching and management](/core/SUI/builder/$$.WSTA.jsxres).
