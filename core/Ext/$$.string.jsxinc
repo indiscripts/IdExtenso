@@ -181,6 +181,7 @@
 	//----------------------------------
 	// Return a random string of length `len` and matching the
 	// pattern /[a-z][0-9a-z]*/. Useful to generate random IDs.
+	// [CHG190312] No longer uses `Date` timestamp.
 	// ---
 	// Examples:
 	//     String.random()   =>  "i1x4"
@@ -190,13 +191,9 @@
 	// => str
 	{
 		(len>>>=0) || (len=4);
-
-		s = String.fromCharCode( 0x61 + Math.floor(26*Math.random()) );
-		if( 1 == len ) return s;
-
 		for
 		(
-			s += (0xFFF&(+new Date)).toString(36) ;
+			s = String.fromCharCode( 0x61 + Math.floor(26*Math.random()) );
 			s.length < len ;
 			s += Math.round(0xFFFF*Math.random()).toString(36)
 		);
@@ -240,7 +237,6 @@
 		}
 		return r;
 	};
-
 
 	//==========================================================================
 	// String.prototype.toSource()
