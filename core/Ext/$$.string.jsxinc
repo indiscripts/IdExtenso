@@ -17,7 +17,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       181106 (YYMMDD)
+		Modified:       190312 (YYMMDD)
 
 *******************************************************************************/
 
@@ -203,6 +203,44 @@
 		
 		return s.slice(0,len);
 	};
+
+	//==========================================================================
+	// [190312] String.levenDist(a,b)
+	//==========================================================================
+
+	String.levenDist = function levenDist(/*str*/a,/*str*/b,  x,y,t,p,Q,i,j,c,r,q)
+	//----------------------------------
+	// Measure the difference between two strings `a` and `b`
+	// using the Levenshtein distance algorithm.
+	// [REF] en.wikipedia.org/wiki/Levenshtein_distance
+	// [171207] First version (not published.)
+	// [190312] Released.
+	// => uint
+	{
+		if( a === b ) return 0;
+		x = a.length||0;
+		y = b.length||0;
+		if( !(x&&y) ) return x||y;
+
+		while( a.charAt(--x)===b.charAt(--y) );                  // R-trim => (x,y)::maxIds
+		(t=x) <= y || (x=y,y=t, t=a,a=b,b=t);                    // Symm.  => x <= y
+		for( p=-1 ; ++p <= x && a.charAt(p)===b.charAt(p) ; );   // L-trim => p::startId
+		if( p >= x ) return 1+y-p;
+
+		// Loop.
+		// ---
+		for( Q=Array(1+x), j=p ; j <= y ; ++j )
+		for( c=b.charAt(j), r=1+(t=j-p), i=p ; i <= x ; t=q, Q[i++]=r )
+		{
+			c!==a.charAt(i) && ++t;
+			q = Q[i]||(Q[i]=1+i-p);
+			r = (q=Q[i]) > r
+				? ( t > r ? (1+r) : t)
+				: ( t > q ? (1+q) : t);
+		}
+		return r;
+	};
+
 
 	//==========================================================================
 	// String.prototype.toSource()
@@ -823,7 +861,7 @@
 
 
 	//==========================================================================
-	// String.prototype.trim() ; ...ltrim() ; ...rtrim()
+	// String.prototype.trim() ltrim() rtrim()
 	//==========================================================================
 
 	String.prototype.trim = function trim(  i,j,cc)
@@ -885,7 +923,7 @@
 	};
 
 	//==========================================================================
-	// String.prototype.rtrunc() ; ...ltrunc() ; ...trunc()
+	// String.prototype.rtrunc() ltrunc() trunc()
 	//==========================================================================
 	
 	String.prototype.rtrunc = function rtrunc(/*uint>0*/maxSize,/*str='...'*/ellipsis,/*bool=0*/wordBound,  p,s,c)
