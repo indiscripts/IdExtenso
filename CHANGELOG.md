@@ -1,5 +1,6 @@
 ##### [190312]
   - [**Ext/string**](/core/Ext/$$.string.jsxinc): added `String.levenDist(stringA,stringB)`. Returns the [Levenshtein distance](http://en.wikipedia.org/wiki/Levenshtein_distance) between two input strings.
+  - `String.random()` no longer uses `Date` timestamp, as this caused biases.
 
 ##### [190311]
   - [`SUI/builder/SETK`](/core/SUI/builder/$$.SETK.jsxres): the special key `optimalSize` can be used to set both `preferredSize` AND `minimumSize` in one step. This is a useful shortcut, since many ScriptUI controls require both a `preferredSize` and a `minimumSize` to get properly aligned.
