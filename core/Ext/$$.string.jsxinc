@@ -7,7 +7,8 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:  static:   SourceEscapes fromCodePoint() fromUTF8() random()
+		API:  static:   SourceEscapes fromCodePoint() fromUTF8()
+		                random() levenDist() levenFilter()
 		       proto:   codePointAt() toUTF8() toSource() split() [CS4]
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
@@ -17,7 +18,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       190312 (YYMMDD)
+		Modified:       190313 (YYMMDD)
 
 *******************************************************************************/
 
@@ -202,7 +203,7 @@
 	};
 
 	//==========================================================================
-	// [190312] String.levenDist(a,b)
+	// [190312] String.levenDist(a,b) ; String.levenFilter(arr,str)
 	//==========================================================================
 
 	String.levenDist = function levenDist(/*str*/a,/*str*/b,  x,y,t,p,Q,i,j,c,r,q)
@@ -235,6 +236,43 @@
 				? ( t > r ? (1+r) : t)
 				: ( t > q ? (1+q) : t);
 		}
+		return r;
+	};
+
+	String.levenFilter = function levenFilter(/*str[]*/strings,/*str*/s,/*uint=auto*/maxDist,/*bool=0*/CASE_SENSITIVE,  n,TOS,D,C,r,i,z,d)
+	//----------------------------------
+	// [190313] Return the subset of `strings` that match the string `s` with respect to
+	// a maximum Levenshtein distance `maxDist`. The output is a new Array, where strings
+	// are sorted by decreasing similarity relative to `s`. If `maxDist` is not supplied,
+	// its default value is the half length of `s`. If no item satisfies `maxDist` condition,
+	// an empty array is returned.
+	// `CASE_SENSITIVE` :: Whether the algorithm is case sensitive. Default is 0, meaning
+	// that distances are computed disregarding upper/lower case letters.
+	// ---
+	// Example:
+	//    String.levenFilter( ["Sunday","Monday","Saturday"], "sondage", 3 )
+	//    => ["Monday", "Sunday"]
+	// ---
+	// => new str[]  [MAY BE EMPTY]
+	{
+		if( !(n=(strings||0).length) || !(strings instanceof Array) ) return [];
+		
+		TOS = CASE_SENSITIVE ? 'toString' : 'toLowerCase';
+		
+		s = String(s||'')[TOS]();
+		maxDist !== (maxDist>>>0) && (maxDist=s.length>>>1);
+
+		D = String.levenDist;
+		C = String.fromCharCode;
+		for
+		(
+			r=[], z=0, i=-1 ;
+			++i < n ;
+			maxDist >= (d=D(s,(t=strings[i])[TOS]())) && (r[z++]=C(1+d)+t)
+		);
+		r.sort();
+		
+		while( z-- ) r[z]=r[z].slice(1);
 		return r;
 	};
 
