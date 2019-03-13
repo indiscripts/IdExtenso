@@ -90,6 +90,19 @@ _Demonstrates:_
 
 ---
 
+##### [`LevenFilterList.jsx`](LevenFilterList.jsx)
+
+Dynamic listbox filter based on [Levenshteim distance](https://en.wikipedia.org/wiki/Levenshtein_distance).
+
+![LevenFilterList animation](LevenFilterList.gif)
+
+_Demonstrates:_
+   
+* Using `String.levenFilter()`.
+* Using `ScriptUI.builder()` with event handlers.
+
+---
+
 ##### [`MarkovShuffle.jsx`](MarkovShuffle.jsx)
 
 Text scrambler based on Markov chains.
