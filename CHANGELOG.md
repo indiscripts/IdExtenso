@@ -1,3 +1,6 @@
+##### [190313]
+  - [**Ext/string**](/core/Ext/$$.string.jsxinc): added `String.levenFilter(arr,str,max)`. Returns a subset of `arr` (string array) whose items are the most similar to `str` with respect to the maximum distance `max`. Based on `String.levenDist()`. A 4th argument allows to make this function case-sensitive, by default it is not.
+
 ##### [190312]
   - [**Ext/string**](/core/Ext/$$.string.jsxinc): added `String.levenDist(stringA,stringB)`. Returns the [Levenshtein distance](http://en.wikipedia.org/wiki/Levenshtein_distance) between two input strings.
   - `String.random()` no longer uses `Date` timestamp, as this caused biases.
