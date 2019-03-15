@@ -11,11 +11,11 @@
 		DOM-access:     YES (as far as app.doScript may be involved.)
 		Todo:           Tests!
 		Created:        170403 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       190315 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 171024, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 190315, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -27,9 +27,13 @@
 	with any 1.x answer.
 	
 	[CHG170609] The protocol https is now supported on Win platforms.
+
 	[CHG170611] The protocol https is now supported on Mac platforms.
 	If the server emits a 301 redirection to 'https' the function will try to
 	get contents using `~.ALTG`.
+
+	[FIX190315] Important fix for Windows: `responseBody` now properly escaped
+	in VBS and parsed in JS.
 
 	*/
 
@@ -482,15 +486,14 @@
 		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  $$,q,resType,vbs,k,s,a,args)
 		// -------------------------------------
 		// [ADD170609] Alternate HTTP(S) getter *for Win platforms*.
-		// Try to get `uri` contents using VBS' MSXML2.XMLHTTP object,
-		// which should support https.
+		// Try to get `uri` contents using VBS' MSXML2.XMLHTTP object.
 		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
 		// `uri` must provide a `source` property.
 		// ---
-		// If isBin is OFF, use `responseText` and return a plaintext.
-		// If isBin is ON,  use `responseBody` and return a byte sequence
-		// as a JS String, e.g "\u1234\u9abc" means 0x12,0x34,0x9a,0xbc.
-		// (Big vs. Little Endian has to be checked though.)
+		// [TODO] If isBin is OFF, should we use `responseText` and return plaintext??
+		// [FIX190315] If isBin is ON,  use `responseBody` and return a byte sequence
+		// properly unescaped. (I finally found how to `Escape` the bytes from VBS.)
+		// ---
 		// => -2 [any-error] | +1 [OK]
 		{
 			// Default output.
@@ -507,11 +510,9 @@
 				headers    : 'ALTG_headers',
 				});
 
-			resType = isBin ? 'responseBody' : 'responseText';
-
-			// VBScript.
+			// VBScript, based on `MSXML2.XMLHTTP` or `MSXML2.XMLHTTP.3.0`
 			// ---
-			// [RES] A client computer can use the XMLHTTP object (MSXML2.XMLHTTP)
+			// [M$] A client computer can use the XMLHTTP object (MSXML2.XMLHTTP)
 			// to send an arbitrary HTTP request, receive the response, and have
 			// the XML Document Object Model parse that response.
 			// This object is integrated with XML Core Services (MSXML) to support
@@ -523,15 +524,30 @@
 			// method, set any custom header information through the setRequestHeader
 			// method followed by the send method, and then to check one of the four
 			// different response properties.
+			// ---
+			// responseBody :: Represents the response entity body as an array of
+			// unsigned bytes, namely a SAFEARRAY of type VT_ARRAY | VT_UI1. This
+			// contains the raw undecoded bytes as received directly from the server.
+			// Therefore, depending on what the server sent, this may appear as
+			// binary-encoded data (UTF-8, UCS-2, UCS-4, Shift_JIS, and so on).
+			// ---
+			// responseText :: Represents only one of several forms in which the
+			// HTTP response can be returned. IXMLHTTP attempts to decode the
+			// response into a Unicode string. It assumes the default encoding is
+			// UTF-8, but can decode any type of UCS-2 (big or little endian) or
+			// UCS-4 encoding as long as the server sends the appropriate Unicode
+			// byte-order mark. It does not process the <? XML coding declaration.
+			// If you know the response is going to be XML, use the responseXML
+			// property for full XML encoding support.
+			// ---
 			// Requires: msxml3.dll (MSXML 3.0), or msxml6.dll (MSXML 6.0).
 			// https://msdn.microsoft.com/en-us/library/ms760305(v=vs.85).aspx
-			// ---
 
+			resType = 'responseBody';  // or responseText?
 			vbs = __(
 			"""
-				Dim wsh, args, http, sc
+				Dim args, http, sc
 				'---
-				Set wsh =  CreateObject("WScript.Shell")
 				Set args = CreateObject("InDesign.Application").ScriptArgs
 				Set http = CreateObject("MSXML2.XMLHTTP")
 				'---
@@ -542,13 +558,13 @@
 					args.SetValue "%3", CStr(http.StatusText)
 					args.SetValue "%4", CStr(sc)
 					If sc = 200 Then
-						args.SetValue "%5", CStr(http.%2)
+						args.SetValue "%5", Escape(http.%2)
 					End If
 					args.SetValue "%6", CStr(http.getAllResponseHeaders())
 				End If
 				'---
 				Set http = Nothing
-				Set wsh = Nothing
+				Set args = Nothing
 			"""
 			, /*1*/uri.source,/*2*/resType
 			, /*3*/q.status,  /*4*/q.statusCode
@@ -557,6 +573,7 @@
 
 			// Run script.
 			// ---
+			app.scriptArgs.clear(); // [ADD190315]
 			app.doScript(vbs, ScriptLanguage.VISUAL_BASIC);
 
 			// Retrieve and parse script args.
@@ -581,13 +598,40 @@
 							(+$$.trace) && $$.trace(__("%1 > HTTP Header %2: %3.",callee.µ,k,s.toSource()));
 						}
 						break;
+					case 'data':
+						s.length && (s=callee.RBDY(s));
+						R[k] = s;
+						break;
 					default:
 						R[k] = s;
 				}
 			}
 			
-			return R.statusCode ? 1 : ((R.error="No result from XMLHTTP."),-2);
-		},
+			return R.statusCode ? 1 : ((R.error="No result from XMLHTTP. The access may be protected."),-2);
+		}
+		.setup
+		({
+			RBDY: function(/*str*/data)
+			//----------------------------------
+			// Unescape responseBody
+			// => str
+			{
+				return data.replace(callee.RE, callee.RP);
+			}
+			.setup
+			({
+				RE: /%u[\dA-F]{4}|%[\dA-F]{2}|./gi,
+
+				RP: function(/*str*/m)
+				//----------------------------------
+				{
+					return 6==m.length ?
+						String.fromCharCode(Number('0x'+m.slice(4)),Number('0x'+m.slice(2,4))) :
+						( 3==m.length ? String.fromCharCode(Number('0x'+m.slice(1,3)),0) : (m+'\0') );
+					
+				},
+			}),
+		}),
 	})
 
 	//==========================================================================
@@ -810,5 +854,4 @@
 			$.sleep(500);
 			return 1;
 		},
-
 	})
