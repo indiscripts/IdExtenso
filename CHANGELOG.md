@@ -1,3 +1,6 @@
+##### [190315]
+  - [**Web**](/etc/$$.Web.jsxlib): finally found a way to _escape_ XMLHTTP `responseBody` in VBS and parse the returned string in JS. Should significantly reduce failures of your `https` requests (in Windows.)
+  
 ##### [190313]
   - [**Ext/string**](/core/Ext/$$.string.jsxinc): added `String.levenFilter(arr,str,max)`. Returns a subset of `arr` (string array) whose items are the most similar to `str` with respect to the maximum distance `max`. Based on `String.levenDist()`. A 4th argument allows to make this function case-sensitive, by default it is not.
 
