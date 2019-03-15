@@ -118,7 +118,7 @@ Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuff
 
 ##### [`ParseIntFix.jsx`](ParseIntFix.jsx)
 
-Run some tests on `$.global.parseInt` once patched by IdExtenso.
+Run some tests on `$.global.parseInt` once patched by IdExtenso. (More detail [here](http://indiscripts.com/post/2019/01/how-to-get-parseint-fixed-in-extendscript).)
 
 ![ParseIntFix screenshot](ParseIntFix.png)
 
