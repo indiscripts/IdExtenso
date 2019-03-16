@@ -12,12 +12,12 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180601 (YYMMDD)
-		Modified:       180829 (YYMMDD)
+		Modified:       190317 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
-;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 180829))
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 190317))
 
 	[PRIVATE]
 	
@@ -33,6 +33,7 @@
 		_DS_ : function(/*key[]*/a,/*SUIWindow*/dlg,/*settings&*/ss,  i,k,v)
 		//----------------------------------
 		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
+		// [ADD190317] Added `getString` test.
 		// => undefined
 		{
 			// Manages smart list strings.
@@ -42,7 +43,7 @@
 			for( i=a.length ; i-- ; )
 			{
 				k = a[i];
-				v = SLIG && 'string'==typeof ss[k] && (dlg[k]||0).hasOwnProperty('items') ?
+				v = SLIG && 'string'==typeof ss[k] && ((dlg[k]||0).hasOwnProperty('items') || 'function'==typeof (dlg[k]||0).getString) ?
 					dlg.getStringKey( k ) :  // List item as a string.
 					dlg.getValueKey ( k );   // Raw ui value.
 				ss[k] = v;
