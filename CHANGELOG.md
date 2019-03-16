@@ -1,3 +1,6 @@
+##### [190317]
+  - [**ModalScript**](/etc/$$.ModalScript.jsxlib): Improved get-string-key mechanism (`~._GS_`). If the widget under consideration provides a `getString` method, invoke it. Otherwise, stringify the value.
+  
 ##### [190315]
   - [**Web**](/etc/$$.Web.jsxlib): finally found a way to _escape_ XMLHTTP `responseBody` in VBS and parse the returned string in JS. Should significantly reduce failures of your `https` requests (in Windows.)
   
