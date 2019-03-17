@@ -1,5 +1,6 @@
 ##### [190317]
   - [**ModalScript**](/etc/$$.ModalScript.jsxlib): Improved get-string-key mechanism (`~._GS_`). If the widget under consideration provides a `getString` method, invoke it. Otherwise, stringify the value.
+  - [`BasicScript/UserInterface`](/etc/BasicScript/$$.UserInterface.jsxlib): The `~._GO_` method wasn't supposed to return `true` in case the user validates the dialog while no `onClose` callback is available. Indeed, `true` has the meaning “Skip the server”. This tiny bug had no critical impact in practice, because the `onClose` callback is almost always implemented!
   
 ##### [190315]
   - [**Web**](/etc/$$.Web.jsxlib): finally found a way to _escape_ XMLHTTP `responseBody` in VBS and parse the returned string in JS. Should significantly reduce failures of your `https` requests (in Windows.)
