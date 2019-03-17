@@ -12,12 +12,12 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       180515 (YYMMDD)
+		Modified:       190317 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.BasicScript ){ alert(__("%1 requires the %2 module.",'UserInterface','BasicScript')); exit(); }
-;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 180515))
+;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 190317))
 
 	[PRIVATE]
 	
@@ -131,7 +131,8 @@
 			// ---
 			return 'function' == typeof µ.onClose ?
 				µ.onClose(r,dlg,ss,runMode) :
-				r;
+				// [FIX190317] Not supposed to return true.
+				( r ? void 0 : false );
 		},
 	})
 	
@@ -152,17 +153,15 @@
 	})
 
 	//==========================================================================
-	// HOOKS TO COME NEXT?
-	//==========================================================================
 	// From a distinct `jsxinc` (included later,) you may provide
 	// a [PUBLIC] cluster for implementing the below HOOKS.
 	//==========================================================================
 
 	// beforeShow : function beforeShow_$Dialog$_O_Ï_(/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
 	// ----------------------------------
-	// Would be called once settings have been automatically populated into
-	// the Dialog object through linked keys. Before showing the dialog, you may
-	// use this place to preprocess existing or additional params to be displayed.
+	// Called once settings have been automatically populated into the Dialog
+	// object through linked keys. Implement this function to preprocess, before
+	// showing the dialog, existing or additional settings.
 	// ---
 	// `runMode` represents the script run flag (signed integer.)
 	// ---
@@ -171,10 +170,10 @@
 
 	// onClose : function beforeShow_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
 	// ----------------------------------
-	// Would be called once the dialog is closed and its values have been
-	// automatically populated into Settings through linked keys. You may
-	// use this place to postprocess existing or additional settings to be treated.
-	// `ok` indicates wether the user has validated the dialog. *In most cases*
+	// Called once the dialog is closed and its values have been automatically
+	// populated into Settings through linked keys. Implement this function
+	// to postprocess existing or additional settings.
+	// `ok` indicates wether the user has validated the dialog. In most cases
 	// `false==ok` should lead to stop the process (that is, return false.)
 	// You can also return true to skip the Server while allowing backup.
 	// ---
