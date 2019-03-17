@@ -113,7 +113,7 @@
 
 	will translate --behind the scenes-- into:
 	
-	      <parent>.add( 'edittext', [100,20], "Hi", {name:"ED1", readonly:true} );
+	      <parent>.add( 'edittext', [0,0,100,20], "Hi", {name:"ED1", readonly:true} );
 
 	Note that arbitrary keys are supported within `properties`, not only those
 	labelled "creation properties" in ScriptUI documentation. Just make sure you
@@ -131,6 +131,7 @@
 	   -----------------------------------------------------------------
 	   edittext     •,text         name multiline scrolling borderless
 	                               readonly noecho enterKeySignalsOnChange
+	                               wantReturn [from ScriptUI 6.0]
 	   =================================================================
 	   button       •,text         name 
 	   iconbutton   •,image        name style toggle
@@ -323,10 +324,11 @@
 	
 	      <func>    Function, or key (str) that resolves into a function
 	                from the current context (this), or from the parent
-	                container. These options are explored in that order:
-	                if <func> is not already a function, then look at
-	                `this[<func>]`, and if that's not a function, give a
-	                look at `parent[<func>]`.
+	                container, or from `ScriptUI`. These options are
+	                explored in that order: if <func> is not already a
+	                function, then look at `this[<func>]`, and if that's
+	                not a function, give a look at `parent[<func>]`. Fi-
+	                nally, try with `ScriptUI[<func>]`.
 
 	      At the end of the process, <func> points out to the factory.
 
@@ -486,7 +488,7 @@
 	Here is an example. Say you have implemented a set of functions that make
 	it easier to deal with ScriptUI colors (`backgroundColor` and `foregroundColor`
 	are available in `ScriptUIGraphics` objects, which are quite complicated.)
-	Now you have a `setBackground()` function that assign a color to any widget.
+	Now you have a `setBackground()` function that assigns a color to any widget.
 	
 	What you want is to make this functionality available straight in the `res`
 	object in order to specify a "background" key this way:
