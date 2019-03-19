@@ -42,6 +42,8 @@ _How to use it?_ Give a look at the sample code [`UseJsxBlindLib.jsx`](../tests/
 
 _Note._ The only difference between option 1. and option 2. is, the former still belongs to IdExtenso's directory structure and keeps up-to-date when something changes in the framework. By contrast, option 2. is detached from any change in the framework: it reflects the API at a particular time.
 
+![JsxBlindLib Dependencies](JsxBlindLib.png)
+
 3. In either case, including the library makes available the root object `$$`, its core modules (`$$.JSON`, `$$.Log`, etc) and two important modules: `$$.Progress` and `$$.JsxBlindLib`.
 
 * [`$$.Progress`](/etc/$$.Progress.jsxlib) just provides the API of a basic progress bar. It is required if you tell JsxBlind to show the progression of its process.
