@@ -93,19 +93,19 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 		frequency     (1..10) Reflects the rate at which the `progress` function, if
 		              available, is called. Use a high frequency to make your progress
-		              bar very responsive. Use a low frequency to make it react less
-		              quickly. The default `frequency` is 5.
+		              bar very responsive. Use a low frequency to make it react slowly.
+		              The default `frequency` is 5.
 
-		report        (Boolean) Tell the `run` function to create a list of altered
-		              symbols. -> See `$$.JsxBinLib.getReport()`
+		report        (Boolean) Tells the `run` function to create a list of altered
+		              symbols. -> See `$$.JsxBinLib.getReport()` below
 		              By default, no report is created, which speeds up the process.
 
 		noWrapper     (Boolean) If TRUE, does not care of leading/trailing instructions
 		              of the `input` stream and strictly returns the JSXBIN string. By
 		              default, both prolog and epilog parts are restored in the output.
 		              You may turn on `noWrapper`, for example, if the JSXBIN result is
-		              to be post-processed as such from your script, re-injected into a
-		              custom template, etc.
+		              to be post-processed from your script, re-injected into a custom
+		              template, etc.
 
 5. The `JsxBlindLib` module offers three additional static methods:
 
