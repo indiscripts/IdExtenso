@@ -113,7 +113,7 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 * `getInputURI()`: returns the URI (_string_) of the input file, if a file was supplied; otherwise returns the empty string.
 
-* `getReport()`: if the `report` options was turned on, returns an `Object` that reflects how symbols have been changed during the last `run()` execution. The report object is structured as follows:
+* `getReport()`: provided the `report` option was turned on, returns an `Object` that reflects how symbols have been altered during the last `run()` execution. The report object is structured as follows:
 
 		{
 		count:        (uint) Total number of altered identifiers (changed+swapped.)
