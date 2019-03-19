@@ -84,7 +84,7 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 		progress      (1 or Function) If supplied, callback function invoked during
 		              the process. The `progress` function is assumed to support two
 		              arguments, `percent` (unsigned int) and `message` (string), in
-		              that order. At regular time intervals, the scrambler calls the
+		              that order. At regular time intervals, the scanner calls the
 		              progress function with `percent` set to the current scanning
 		              location coerced into an integral percentage, and `message` set
 		              to the string: "Scanning JSXBIN: <location>/<length>."
