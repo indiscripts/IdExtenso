@@ -32,9 +32,9 @@ _How to use it?_ Give a look at the sample code [`UseJsxBlindLib.jsx`](../tests/
 		var result = $$.JsxBlindLib(myBinFile, myOptions);
 		// etc
 
-2. Alternately, if you need to keep your project independent from IdExtenso's source files, use the “includable JSXBIN image” `JsxBlindLib.bin.jsx`. It provides a fully compiled version of the library with all nested dependencies. The you can put it anywhere and use:
+2. Alternately, if you need to keep your project independent from IdExtenso's source files, use the “includable JSXBIN image” `JsxBlindLib.bin.jsx`. It provides a fully compiled version of the library with all nested dependencies. Then you can put it anywhere and use:
 
-		#include any/path/to/JsxBlindLib.bin.jsx
+		#include my/own/path/to/JsxBlindLib.bin.jsx
 		
 		// Your ESTK code goes here, e.g:
 		var result = $$.JsxBlindLib(myBinFile, myOptions);
