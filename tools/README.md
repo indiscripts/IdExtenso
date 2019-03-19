@@ -93,7 +93,7 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 		frequency     (1..10) Reflects the rate at which the `progress` function, if
 		              available, is called. Use a high frequency to make your progress
-		              report very responsive. Use a low frequency to make it react less
+		              bar very responsive. Use a low frequency to make it react less
 		              quickly. The default `frequency` is 5.
 
 		report        (Boolean) Tell the `run` function to create a list of altered
