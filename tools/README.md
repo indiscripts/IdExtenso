@@ -66,46 +66,46 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 		folder        (Folder or String) Preferred I/O folder in case no valid
 		              input argument is provided. If this option is missing or
-					  invalid, use the Desktop folder.
+		              invalid, use the Desktop folder.
 		
 		hitFuncNames  (Boolean) Whether function names must be treated as mutable
 		              identifiers instead of immutable tokens. Default is FALSE,
-					  meaning that all function names are to be preserved.
+		              meaning that all function names are to be preserved.
 
 		whiteList     (RegExp) Unless reserved, any symbol that matches this regular
 		              expression will be regarded as mutable (whatever its context.)
-					  By default, no whitelist is created. [Use with great caution!]
+		              By default, no whitelist is created. [Use with great caution!]
 
 		blackList     (RegExp) Unless white-listed, any symbol that matches this
 		              regular expression will be regarded as immutable, i.e, the
-					  scrambler will keep it unchanged. By default, no blacklist is
-					  created.
+		              scrambler will keep it unchanged. By default, no blacklist is
+		              created.
 
 		progress      (1 or Function) If supplied, callback function invoked during
 		              the process. The `progress` function is assumed to support two
-					  arguments, `percent` (unsigned int) and `message` (string), in
-					  that order. At regular time intervals, the scrambler calls the
-					  progress function with `percent` set to the current scanning
-					  location coerced into an integral percentage, and `message` set
-					  to the string: "Scanning JSXBIN: <location>/<length>."
-					  Set `progress` to 1 to use the $$.Progress module. By default,
-					  no progress function is invoked.
+		              arguments, `percent` (unsigned int) and `message` (string), in
+		              that order. At regular time intervals, the scrambler calls the
+		              progress function with `percent` set to the current scanning
+		              location coerced into an integral percentage, and `message` set
+		              to the string: "Scanning JSXBIN: <location>/<length>."
+		              Set `progress` to 1 to use the $$.Progress module. By default,
+		              no progress function is invoked.
 
 		frequency     (1..10) Reflects the rate at which the `progress` function, if
 		              available, is called. Use a high frequency to make your progress
-					  report very responsive. Use a low frequency to make it react less
-					  quickly. The default `frequency` is 5.
+		              report very responsive. Use a low frequency to make it react less
+		              quickly. The default `frequency` is 5.
 
 		report        (Boolean) Tell the `run` function to create a list of altered
 		              symbols. -> See `$$.JsxBinLib.getReport()`
-					  By default, no report is created, which speeds up the process.
+		              By default, no report is created, which speeds up the process.
 
 		noWrapper     (Boolean) If TRUE, does not care of leading/trailing instructions
 		              of the `input` stream and strictly returns the JSXBIN string. By
-					  default, both prolog and epilog parts are restored in the output.
-					  You may turn on `noWrapper`, for example, if the JSXBIN result is
-					  to be post-processed as such from your script, re-injected into a
-					  custom template, etc.
+		              default, both prolog and epilog parts are restored in the output.
+		              You may turn on `noWrapper`, for example, if the JSXBIN result is
+		              to be post-processed as such from your script, re-injected into a
+		              custom template, etc.
 
 5. The `JsxBlindLib` module offers three additional static methods:
 
@@ -120,13 +120,13 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 		changes:      (Array) Changed symbols. Array of strings of the form
 		                 `"OrigSymb" ===> [Code]`
-					  where OrigSymb denotes the original symbol before scrambling
-					  and Code denotes the final JSXBIN encoding of that symbol.
+		              where OrigSymb denotes the original symbol before scrambling
+		              and Code denotes the final JSXBIN encoding of that symbol.
 
 		swaps:        (Array) Permuted symbols. Array of strings of the form
 		                 `"OrigSymb" ===> "FinalSymb"`
 		              where OrigSymb denotes the original symbol before permutation
-					  and FinalSymb the symbol finally used.
+		              and FinalSymb the symbol finally used.
 		}
 
 _Note._ When no better option is available, the scrambler performs _swaps_ rather than _changes_. This typically happens with short symbols of one or two characters that have a tiny range of _exotic_ substitutions. For example, the identifier `x` cannot be changed into say `隰` due to encoding constraints. But it can be exchanged with another symbol used in the program, e.g `y` or `p`, which still contributes in obfuscating the code.
