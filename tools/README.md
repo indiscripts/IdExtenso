@@ -26,19 +26,19 @@ _How to use it?_ Give a look at the sample code [`UseJsxBlindLib.jsx`](../tests/
 
 1. The file `./tools/JsxBlindLib.jsxinc` is an “IdExtenso library”, that is, a regular _module_ which invokes `$$.load()`. Therefore you just have to `#include` that library at the beginning of your project and its API is instantly loaded and ready to use.
 
-    #include path/to/tools/JsxBlindLib.jsxinc
-	
-	// Your ESTK code goes here, e.g:
-	var result = $$.JsxBlindLib(myBinFile, myOptions);
-	// etc
+     #include path/to/tools/JsxBlindLib.jsxinc
+	 
+	 // Your ESTK code goes here, e.g:
+	 var result = $$.JsxBlindLib(myBinFile, myOptions);
+	 // etc
 
 2. Alternately, if you need to keep your project independent from IdExtenso's source files, use the “includable JSXBIN image” `JsxBlindLib.bin.jsx`. It provides a fully compiled version of the library with all nested dependencies. The you can put it anywhere and use:
 
-    #include any/path/to/JsxBlindLib.bin.jsx
-	
-	// Your ESTK code goes here, e.g:
-	var result = $$.JsxBlindLib(myBinFile, myOptions);
-	// etc
+     #include any/path/to/JsxBlindLib.bin.jsx
+	 
+	 // Your ESTK code goes here, e.g:
+	 var result = $$.JsxBlindLib(myBinFile, myOptions);
+	 // etc
 
 _Note._ The only difference between option 1. and option 2. is, the former still belongs to IdExtenso's directory structure and keeps up-to-date when something changes in the framework. By contrast, option 2. is detached from any change in the framework: it reflects the API at a particular time.
 
