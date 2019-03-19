@@ -109,7 +109,7 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 5. The `JsxBlindLib` module offers three additional static methods:
 
-* `getTiming()`: returns the whole timing (_uint_) of the last `run()` execution, in milliseconds.
+* `getTiming()`: returns the whole duration (_uint_) of the last `run()` execution, in milliseconds.
 
 * `getInputURI()`: returns the URI (_string_) of the input file, if a file was supplied; otherwise returns the empty string.
 
