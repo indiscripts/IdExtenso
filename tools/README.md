@@ -44,9 +44,9 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 
 3. In either case, including the library makes available the root object `$$`, its core modules (`$$.JSON`, `$$.Log`, etc) and two important modules: `$$.Progress` and `$$.JsxBlindLib`.
 
-* `[$$.Progress](/etc/$$.Progress.jsxlib)` just provides the API of a basic progress bar. It is required if you tell JsxBlind to show the progression of its process.
+* [`$$.Progress`](/etc/$$.Progress.jsxlib) just provides the API of a basic progress bar. It is required if you tell JsxBlind to show the progression of its process.
 
-* `[$$.JsxBlindLib](/tools/JsxBlindLib.jsxinc)` implements the specific API of the library, which itself relies on two encrypted modules (`$$.JsxBin` and `$$.JsxBin.Scrambler`) that you don't have to worry about.
+* [`$$.JsxBlindLib`](/tools/JsxBlindLib.jsxinc) implements the specific API of the library, which itself relies on two encrypted modules (`$$.JsxBin` and `$$.JsxBin.Scrambler`) that you don't have to worry about.
 
 ---
 
