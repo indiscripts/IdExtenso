@@ -70,7 +70,7 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 		
 		hitFuncNames  (Boolean) Whether function names must be treated as mutable
 		              identifiers instead of immutable tokens. Default is FALSE,
-		              meaning that all function names are to be preserved.
+		              meaning that all function names must be preserved.
 
 		whiteList     (RegExp) Unless reserved, any symbol that matches this regular
 		              expression will be regarded as mutable (whatever its context.)
