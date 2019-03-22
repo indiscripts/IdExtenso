@@ -10,27 +10,28 @@
 // ---
 #include '../etc/$$.Web.jsxlib'
 
-// Load the framework in TRACE mode (you may use -1 instead.)
-// -1 == trace-level ; 0 == mute ; +1 == warn-level
+// Load the framework in TRACE mode
 // ---
-$$.load('TRACE');
+$$.load(-1);
 
 // =============================================================================
-// GetWebImage [171024]
+// GetWebImage [171024] [190322]
 // Download a remote PNG (through http) and load it in a ScriptUI dialog.
+// The user can now click the image to open the URL in a navigator.
 // ---
 // Demonstrates:
 // - `$$.Web(url)`, shortcut of `$$.Web.get(url)`
 // - Using toSource() with binary strings is more compact with IdExtenso
 // - Tracing script steps thru `$$.trace()`
 // - Details on log levels and associated behaviors
+// - Using ScriptUI.builder :-)
 // =============================================================================
 
 try
 {
 	const url = "http://indiscripts.com/blog/public/IndiscriptsLogo.png";
 	
-	// GET url (via HTTP/1.0 transaction.)
+	// GET url (via HTTP/1.x transaction.)
 	// ---
 	var img = $$.Web(url);
 	
@@ -47,21 +48,42 @@ try
 	// the current log level implies tracing, which is the case for both
 	// TRACE and WARN mode --while trace() does nothing in MUTE mode.
 	// ---
+	$$.trace( __("PNG data: %1", img.data.toSource()) );
+
+	// Push the downloaded PNG in a ScriptUI dialog :-)
+	// ---
 	$$.trace(__(
 		"PNG data: %1",
 		img.data.toSource()
 		));
 
-	// Push the downloaded PNG in a ScriptUI dialog
-	// (just because we can!)
-	// ---
-	var dlg = new Window('dialog');
-	dlg.add('panel')
-		.add('statictext', void 0, "Here is my Great logo:").parent
-		.add('image', void 0, img.data).parent
-		.add('button',void 0, "OK", {name:'OK'});
+	var dlg = ScriptUI.builder
+	({
+		properties:           { type:'dialog' },
+		Panel$:
+		{
+			helpTip:          "Click the image to open the original link in your navigator.",
+			StaticText$:
+			{
+				properties:   { text:"Here is my great logo:" },
+			},
+			Image$:
+			{
+				properties:   { image: img.data, link:url },
+				maximumSize:  [500,500],
+				_mousedown:   function(ev){ $$.Web.browse(this.properties.link) },
+			},
+			Button$:
+			{
+				properties:   { text: 'OK' },
+				helpTip:      "Close the dialog.",
+			},
+		}
+	});
+	
 	dlg.show();
 }
+
 catch(e)
 {
 	// Just in case something goes wrong.
