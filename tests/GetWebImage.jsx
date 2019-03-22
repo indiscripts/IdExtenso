@@ -52,10 +52,7 @@ try
 
 	// Push the downloaded PNG in a ScriptUI dialog :-)
 	// ---
-	$$.trace(__(
-		"PNG data: %1",
-		img.data.toSource()
-		));
+	$$.trace( __("Call ScriptUI.builder and run the dialog.") );
 
 	var dlg = ScriptUI.builder
 	({
