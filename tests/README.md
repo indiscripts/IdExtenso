@@ -63,7 +63,8 @@ _Demonstrates:_
 
 ##### [`GetWebImage.jsx`](GetWebImage.jsx)
 
-Download a PNG through `http` and load it in a ScriptUI dialog.
+Download a PNG through `http` and load it in a ScriptUI dialog.   
+_The user can now click the image to open the URL in the navigator!_
 
 ![GetWebImage animation](GetWebImage.gif)
 
@@ -72,6 +73,7 @@ _Demonstrates:_
 * `$$.Web(url)`, shortcut of `$$.Web.get(url)`.
 * Using `toSource()` with binary strings is more compact w/ IdExtenso.
 * Tracing steps thru `$$.trace()`, and more details on Log levels.
+* [190322] Use ScriptUI.builder(); call `$$.Web.browse()` on click.
 
 ---
 
