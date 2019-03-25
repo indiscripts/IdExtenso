@@ -1,0 +1,78 @@
+/*******************************************************************************
+
+		Name:           Browser
+		Desc:           Opens an URI in the client browser.
+		Path:           /etc/Web/$$.Browser.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the Web module.)
+		API:            browse()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190321 (YYMMDD)
+		Modified:       190322 (YYMMDD)
+
+*******************************************************************************/
+
+	[PUBLIC]
+	
+	({
+
+		browse : function browse_S(/*str*/uri,  $$,ff)
+		//----------------------------------
+		// Try to open the `uri` address in the client-side browser.
+		// [REM] This routine does not check the uri. Make sure it is
+		// valid and has an explicit protocol (http, ftp, etc.)
+		// => 1 [OK]  |  0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			if( 'string' != typeof uri )
+			{
+				$$.error(__("Invalid uri type (%1). Should be a string.", typeof uri),callee);
+			}
+
+			ff = $$.File.temp( __(callee.OSTP, uri), callee.OSSX, 0, 1);
+	
+			if( !ff )
+			{
+				$$.warn( __("%1 > Unable to create the temporary url file based on %2.",callee.µ, uri) );
+				return 0;
+			}
+	
+			ff.execute();
+
+			$.sleep(500);
+			ff.remove();
+
+			return 1;
+		}
+		.setup
+		({
+			// OS suffix and templates for url shortcuts.
+			// ---
+			OSSX: $$.inMac ? 'webloc' : 'url',
+
+			OSTP: $$.inMac ?
+			[
+				'<?xml version="1.0" encoding="UTF-8"?>',
+				'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+				'<plist version="1.0">',
+					'<dict>',
+						'\t<key>URL</key>',
+						'\t<string>%1</string>',
+					'</dict>',
+				'</plist>',
+			].join(String.LF)
+			:
+			[
+				'[InternetShortcut]',
+				'URL=%1',
+				''
+			].join(String.CRLF),
+
+		}),
+
+	})
+
