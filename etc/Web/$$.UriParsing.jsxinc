@@ -1,0 +1,316 @@
+/*******************************************************************************
+
+		Name:           URI Parsing
+		Desc:           URI and parsing utilities.
+		Path:           /etc/Web/$$.UriParsing.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the Web module.)
+		API:            parseURI()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190321 (YYMMDD)
+		Modified:       190322 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	TERMINOLOGY AND SYNTAX
+
+	[RES] tools.ietf.org/html/rfc3986
+	[RES] en.wikipedia.org/wiki/Uniform_Resource_Identifier
+	[RES] blog.stevenlevithan.com/archives/parseuri
+	[RES] github.com/kevva/url-regex/blob/master/index.js
+	[RES] github.com/garycourt/uri-js
+
+	"A Uniform Resource Identifier (URI) is a string of characters that
+	unambiguously identifies a particular resource. (...)
+	Such identification enables interaction with representations of the resource
+	over a network, typically the World Wide Web, using specific protocols. Schemes
+	specifying a concrete syntax and associated protocols define each URI. The most
+	common form of URI is the Uniform Resource Locator (URL). (...)
+	A Uniform Resource Locator (URL) is a URI that specifies the means of acting
+	upon or obtaining the representation of a resource, i.e. specifying both its
+	primary access mechanism and network location. (...)
+	A URL is simply a URI that happens to point to a resource over a network."
+	
+	The URI generic syntax consists of a hierarchical sequence of five components:
+
+	      URI       :=   scheme:[//authority]path[?query][#fragment]
+
+	where the authority component divides into three subcomponents:
+
+	      authority :=  [userinfo@]host[:port]
+
+	The scheme and path components are required, though the path may be
+	empty (no characters).  When authority is present, the path must
+	either be empty or begin with a slash ("/") character.  When
+	authority is not present, the path cannot begin with two slash
+	characters ("//").
+
+	The host subcomponent consists of either a registered name (including but not
+	limited to a hostname), or an IP address. IPv4 addresses must be in dot-decimal
+	notation, and IPv6 addresses must be enclosed in brackets ([...]).
+
+	EXAMPLES
+
+	          userinfo     host        port
+	            ┌─┴────┐ ┌────┴────────┐ ┌┴┐ 
+	    https://john.doe@www.server.com:123/forum/quest/?tag=net&order=new#top
+	    └─┬─┘ └───────┬───────────────────┘└─┬─────────┘└──┬─────────────┘└┬─┘  
+	    scheme     authority                path          query            fragm.
+
+	    ldap://[2001:db8::7]/c=GB?objectClass?one
+	    └─┬┘ └───────┬─────┘└─┬─┘ └──────┬──────┘
+	   scheme    authority  path       query
+
+	    mailto:John.Doe@example.com
+	    └──┬─┘ └─────────┬────────┘
+	    scheme         path
+
+	    news:comp.infosystems.www.servers.unix
+	    └─┬┘ └───────────────┬───────────────┘
+	   scheme              path
+
+	    tel:+1-816-555-1212
+	    └┬┘ └──────┬──────┘
+	  scheme     path
+
+	    telnet://192.0.2.16:80/
+	    └──┬─┘ └──────┬──────┘│
+	    scheme    authority  path
+
+	    urn:oasis:names:specification:docbook:dtd:xml:4.1.2
+	    └┬┘ └──────────────────────┬──────────────────────┘
+	  scheme                     path
+
+	*/
+
+	[PRIVATE]
+
+	({
+		PRSE : function(/*obj&*/r,/*str*/uri,  m,a,i,t,p)
+		//----------------------------------
+		// Parse `uri` and set keys in `r`.
+		// => undef
+		{
+			m = callee.UREG.exec(uri);
+
+			// Backup the source (=uri) if the regex fails.
+			// ---
+			r.source      = m ? m[0] : uri;
+			r.protocol    = '';
+			r.authority   = '';
+			r.userInfo    = '';
+			r.user        = '';
+			r.password    = '';
+			r.host        = '';
+			r.port        = '';
+			r.location    = '';
+			r.path        = '';
+			r.directory   = '';
+			r.file        = '';
+			r.query       = '';
+			r.anchor      = '';
+			if( !m ) return;
+
+			// Checkpoint.
+			// if(  AUTH ) => PATH must be either '' or start with '/'
+			// if( !AUTH ) => PATH cannot begin with '//'
+			// ---
+			t = m[3]||'';
+			t = m[2] ? ( (!t) || '/'===t.charAt(0) ) : '//'!==t.slice(0,2)
+			if( !t ) return;
+
+			// ---
+			// Extract data and set keys.
+			// 1 (PRTO)  =>  protocol
+			// 2 (AUTH)  =>  authority
+			// 3 (PATH)  =>  path
+			// 4 (QURY)  =>  query
+			// 5 (ANCH)  =>  anchor
+			// ---
+
+			r.protocol = (m[1]||'');
+			
+			if( t = r.authority = (m[2]||'') )
+			{
+				//  authority [2]   ; e.g Jum-Bo:XY9Z@server.com:80
+				//    userInfo      ; e.g Jum-Bo:XY9Z
+				//      user        ; e.g Jum-Bo
+				//      password    ; e.g        XY9Z
+				//    host          ; e.g             server.com
+				//    port          ; e.g                        80
+
+				i = t.lastIndexOf('@');
+				r.host = t.slice(1+i);
+
+				// UserInfo  => (user,password)
+				// ---
+				if( 0 < i )
+				{
+					t = r.userInfo = t.slice(0,i);
+
+					0 <= (i=t.lastIndexOf(':') )
+					? ( r.user = t.slice(0,i), r.password=t.slice(1+i) )
+					: ( r.user = t );
+				}
+				
+				// Is there a port?
+				// ---
+				i = (t=r.host).lastIndexOf(':');
+				if( 0 < i && 5 >= (p=t.slice(1+i)).length && !RegExp.NOND.test(p) )
+				{
+					r.port = p;
+					r.host = t.slice(0,i);
+				}
+			}
+
+			// location        ; e.g /a/b/test.php?x=1&y=2#c1
+			//   path  [3]     ; e.g /a/b/test.php
+			//     directory   ; e.g /a/b/
+			//     file        ; e.g      test.php
+			//   query [4]     ; e.g               x=1&y=2
+			//   anchor[5]     ; e.g                       c1
+			// ---
+			if( t = r.path = (m[3]||'') )
+			{
+				r.location = t;
+				0 <= (i=t.lastIndexOf('/') )
+				? ( r.directory = t.slice(0,1+i), r.file=t.slice(1+i) )
+				: ( r.directory = t );
+			}
+			(t=r.query =(m[4]||'')) && (r.location+='?'+t);
+			(t=r.anchor=(m[5]||'')) && (r.location+='#'+t);
+		}
+		.setup
+		({
+			// As suggested in [RFC 3986], 2005, p.50
+			// ---
+			UREG : RegExp(
+			__(
+				"^(?:%1:)?(?://%2)?%3(?:\\?%4)?(?:#%5)?"
+				, /*1*/ "([^:/?#]+)"                     // PRTO
+				, /*2*/ "([^/?#]*)"                      // AUTH
+				, /*3*/ "([^?#]*)"                       // PATH
+				, /*4*/ "([^#]*)"                        // QURY
+				, /*5*/ "(.*)"                           // ANCH
+			)),
+		}),
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		parseURI : function parseURI_S_b_O(/*str*/uri,/*0|1=0*/VOLATILE,/*0|1=0*/RAW_KEYS,  o,p,t)
+		//----------------------------------
+		// Split the input URI into its distinct components (strings):
+		// { protocol, authority, userInfo, user, password, host, port,
+		//   location, path, directory, file, query, anchor,  source }
+		// (See detailed example below.)
+		// [CHG190321] This function always returns an obj which at
+		// least has its `source` property set to `uri.trim()`. To test
+		// the validity of the `uri`, check `ret.protocol`. An empty
+		// protocol tells that the `uri` is not compliant.
+		// [REM] `mailto` is not a true protocol, although reported
+		// so. In fact, that's a 'scheme' and the implied protocols
+		// vary (smtp...) Also, note that `mailto:Bob.Doe@serv.com`
+		// just specifies a `path` component, not a `host`; there
+		// is no `port` issue in such URI.
+		// ---
+		// By default, the extracted keys are normalized as follows:
+		//   1. `protocol` is lowercased (e.g HTTP => http)
+		//   2. If `port` is missing or invalid while `host` is non-empty,
+		//      set `port` to a default number if the protocol has a
+		//      default port number, then update `authority` accordingly.
+		// [190321] You can prevent normalization by setting RAW_KEYS to 1.
+		// ---
+		// E.g, `uri` being set to
+		// "http://Jum-Bo:XY9Z@server.com:80/a/b/test.php?x=1&y=2#c1"
+		// =>  source:       <as uri>
+		//     protocol:     "http"
+		//     --------------------------------------------------
+		//     authority:         "Jum-Bo:XY9Z@server.com:80"
+		//         userInfo:      "Jum-Bo:XY9Z"
+		//             user:      "Jum-Bo"
+		//             password:         "XY9Z"
+		//         host:                      "server.com"
+		//         port:                                 "80"
+		//     --------------------------------------------------
+		//     location:          "/a/b/test.php?x=1&y=2#c1"
+		//         path:          "/a/b/test.php"
+		//             directory: "/a/b/"
+		//             file:           "test.php"
+		//         query:                       "x=1&y=2"
+		//         anchor:                              "c1"
+		// ---
+		// If VOLATILE is on, put the result in a temporary cache
+		// instead of creating a new object. (By default, VOLATILE=0.)
+		// => obj
+		{
+			o = VOLATILE ? (callee.Q||(callee.Q={})) : {};
+
+			callee.µ['~'].PRSE( o, String(uri||'').trim() );
+
+			p = o.protocol;
+
+			if( (!p) || RAW_KEYS ) return o;
+
+			// Normalize `protocol` => http | ftp ...
+			// ---
+			o.protocol = p = p.toLowerCase();
+
+			// If `host` is present, normalize `port`
+			// (then rewrite `authority` accordingly.)
+			// ---
+			while( o.host )
+			{
+
+				t = parseInt(o.port, 10) || 0;
+				if( 0 < t && t < 0xFFFF ) break;
+
+				if( !(t=callee.DEF_PORTS[p]) ) break;
+
+				o.port = String(t);
+				o.authority = __("%1%2%3"
+					, o.userInfo
+					, (o.userInfo?'@':'')
+					, o.host+':'+o.port
+					);
+				break;
+			}
+
+			// Rewrite source.
+			// protocol ':' [ //authority ] location
+			// ---
+			(t=o.authority) && (t='//'+t);
+			o.source = o.protocol + ':' + t + o.location;
+
+			return o;
+		}
+		.setup
+		({
+			DEF_PORTS:
+			{
+				http:   80,
+				https:  443,    // HTTP Secure over SSL
+				wss:    443,    // WebSocket Secure
+				ftp:    21,     // File Transfer Protocol
+				ssh:    22,     // Secure Shell
+				telnet: 23,     // Telnet
+				sftp:   22,     // SSH File Transfer Protocol
+				rfb:    5900,   // Remote Framebuffer
+			},
+		}),
+
+	})
