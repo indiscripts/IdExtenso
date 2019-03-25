@@ -247,17 +247,6 @@
 				// "HTTP/1.1" in their messages, and MUST do so for any message that is
 				// not compatible with HTTP/1.0.
 
-				// Startline -> `resp.status` and `resp.statusCode`
-				// -------------------------------------------------------------
-				r = 0;
-				if( !(line=sx.readln().trim()) ){ resp.error = "No response"; break; }
-				resp.status = line;
-				T && T( __("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()) );
-
-				if( 0 !== line.indexOf('HTTP/1.') ){ resp.error = __("Invalid Status-Line: %1",line.toSource()); break; }
-
-				sc = resp.statusCode = parseInt(line.slice(9),10);  // 200, 301, etc
-
 				// ---
 				// [Socket] During `readln()`, line feeds are recognized as LF (\r) or
 				// CRLF (\r\n). *CR characters are ignored*, that is, removed from the
@@ -267,8 +256,21 @@
 				//   (1) "AAA"
 				//   (2) "BBB"
 				//   (3) "\nCCC"      ;  we would have expected (3) "" and (4) "CCC"
-				// So the secure way to detect the end-of-headers blank line is to
-				// check whether (3)==="" or (3).charAt(0)==="\n".
+				// So the secure way to get line-by-line data and to detect
+				// end-of-headers is to use a buffer, as implemented in READLINE.
+				// ---
+
+				// Startline -> `resp.status` and `resp.statusCode`
+				// -------------------------------------------------------------
+				r = 0;
+				if( !(line=callee.READLINE(sx).trim()) ){ resp.error = "No response"; break; }
+				resp.status = line;
+				T && T( __("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()) );
+
+				if( 0 !== line.indexOf('HTTP/1.') ){ resp.error = __("Invalid Status-Line: %1",line.toSource()); break; }
+
+				sc = resp.statusCode = parseInt(line.slice(9),10);  // 200, 301, etc
+
 				// ---
 				// HTTP/1.1 header field values can be folded onto multiple lines if the
 				// continuation line begins with a space or horizontal tab. All linear
@@ -281,14 +283,10 @@
 				// Headers -> `resp.headers`
 				// -------------------------------------------------------------
 				hd = ''; // current header (key.)
-				for( hd='' ; line=sx.readln() ; )
+				for( hd='' ; line=callee.READLINE(sx) ; )
 				{
 					c = line.charAt(0);
 
-					// Detect end-of-headers followed by body-start.
-					// ---
-					if( '\n'===c ){ line = line.slice(1); break; }
-					
 					// Detect HTTP/1.1 folding.
 					// ---
 					if( ' '===c || '\t'===c )
@@ -366,7 +364,7 @@
 
 				// Body.
 				// -------------------------------------------------------------
-				resp.data = line||'';
+				resp.data = callee.READLINE.DATA;
 				
 				// If Content-Length has been returned, we can only consider it
 				// a hint for scaling (due to many invalid content lengths.) Using
@@ -413,6 +411,20 @@
 				ff.remove();
 				return r;
 			},
+			
+			READLINE: function(/*BinarySocket*/sx,  s,p)
+			//----------------------------------
+			// => str
+			{
+				for( s=callee.DATA ; -1==(p=s.indexOf('\r\n')) && !sx.eof ; s+=sx.read(64) );
+				
+				callee.DATA = 0 <= p ? s.slice(2+p) : s;
+				return 0 <= p ? s.slice(0,p) : '';
+			}
+			.setup
+			({
+				DATA: '',
+			}),
 		}),
 	})
 
