@@ -1,0 +1,351 @@
+/*******************************************************************************
+
+		Name:           HTTP Secure
+		Desc:           Invokes curl via AppleScript
+		Path:           /etc/Web/$$.HttpSecure.Mac.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the HttpSecure snippet.)
+		API:            ---
+		DOM-access:     YES (app.doScript)
+		Todo:           Integrates exit codes? Get and parse headers?
+		Created:        190321 (YYMMDD)
+		Modified:       190325 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	RESOURCES
+	
+	- osxdaily.com/2014/02/13/download-with-curl/
+	- developer.apple.com/library/archive/technotes/tn2065/
+	- curl.haxx.se/docs/manpage.html
+	- stackoverflow.com/questions/48573045/
+	  applescript-do-shell-script-curl-command-for-amazon-s3
+	- macinchem.org/applescript/curl_script.php
+	- mikeboylan.com/2013/07/11/parsing-curl-installer-output-applescript/
+	- macworld.com/article/2105200/
+	  bad-applescript-safari-and-curling-urls.html
+
+
+	MAIN CURL OPTIONS
+	
+	1. Used in the script.
+
+	 -s, --silent.
+	     Silent or quiet mode. Don't show progress meter or error messages.
+
+	 -f, --fail
+	    (HTTP) Fail silently (no output at all) on server errors. This is
+	    mostly done to better enable scripts etc to better deal with failed
+	    attempts. In normal cases when an HTTP server fails to deliver a
+	    document, it returns an HTML document stating so (which often also
+	    describes why and more). This flag will prevent curl from outputting
+	    that and return error 22.
+	    [REM] This method is not fail-safe and there are occasions where
+	    non-successful response codes will slip through, especially when
+	    authentication is involved (response codes 401 and 407).
+
+	 -L, --location
+	     If the server reports the requested page has moved to a different
+	     location, this option makes curl redo the request on the new place.
+
+	 --connect-timeout <seconds>
+	 -o, --output <file>
+	    Write output to <file> instead of stdout. If you are using {} or []
+	    to fetch multiple documents, you can use '#' followed by a number in
+	    the <file> specifier. That variable will be replaced with the current
+	    string for the URL being fetched. Like in:
+	    curl http://{one,two}.example.com -o "file_#1.txt"
+
+	 2. Other interesting options (FYI)
+
+	 --raw
+	     Disables all internal HTTP decoding of content or transfer encodings
+	     and instead makes them passed on unaltered, raw. (Added in 7.16.2.)
+
+	 -g, --globoff
+	    This option switches off the "URL globbing parser". When you set
+	    this option, you can specify URLs that contain the letters {}[]
+	    without having them being interpreted by curl itself. Note that
+	    these letters are not normal legal URL contents but they should be
+	    encoded according to the URI standard.
+
+	 -N, --no-buffer
+	    Disables the buffering of the output stream. In normal work situations,
+	    curl will use a standard buffered output stream that will have the
+	    effect that it will output the data in chunks, not necessarily exactly
+	    when the data arrives. Using this option will disable that buffering.
+
+	 -O, --remote-name
+	    Write output to a local file named like the remote file we get. (Only
+	    the file part of the remote file is used, the path is cut off.)
+	    The file will be saved in the current working directory. If you want
+	    the file saved in a different directory, make sure you change the current
+	    working directory before invoking curl with this option.
+	    The remote file name to use for saving is extracted from the given URL, nothing
+	    else, and if it already exists it will be overwritten. If you want the server to
+	    be able to choose the file name refer to -J, --remote-header-name which can be
+	    used in addition to this option. If the server chooses a file name and that name
+	    already exists it will not be overwritten.
+	    There is no URL decoding done on the file name. If it has %20 or other URL
+	    encoded parts of the name, they will end up as-is as file name.
+
+	 -A, --user-agent <name>
+	    (HTTP) Specify the User-Agent string to send to the HTTP server. To encode
+	    blanks in the string, surround the string with single quote marks. This header
+	    can also be set with the -H, --header or the --proxy-header options.
+
+
+	MAIN CURL EXIT CODES
+
+	There are a bunch of different error codes and their corresponding error
+	messages that may appear during bad conditions. HTTP-related exit codes are:
+
+	1  Unsupported protocol. This build of curl has no support for this protocol.
+	2  Failed to initialize.
+	3  URL malformed. The syntax was not correct.
+	4  A feature or option that was needed to perform the desired request was not
+	   enabled or was explicitly disabled at build-time. To make curl able to do this,
+	   you probably need another build of libcurl!
+	5  Couldn't resolve proxy. The given proxy host could not be resolved.
+	6  Couldn't resolve host. The given remote host was not resolved.
+	7  Failed to connect to host.
+	8  Weird server reply. The server sent data curl couldn't parse.
+	16 HTTP/2 error. A problem was detected in the HTTP2 framing layer. This is
+	   somewhat generic and can be one out of several problems, see the error message
+	   for details.
+	18 Partial file. Only a part of the file was transferred.
+	22 HTTP page not retrieved. The requested url was not found or returned another
+	   error with the HTTP error code being 400 or above. This return code only appears
+	   if -f, --fail is used.
+	23 Write error. Curl couldn't write data to a local filesystem or similar.
+	26 Read error. Various reading problems.
+	27 Out of memory. A memory allocation request failed.
+	28 Operation timeout. The specified time-out period was reached according to the
+	   conditions.
+	33 HTTP range error. The range "command" didn't work.
+	34 HTTP post error. Internal post-request generation error.
+	35 SSL connect error. The SSL handshaking failed.
+	36 Bad download resume. Couldn't continue an earlier aborted download.
+	37 FILE couldn't read file. Failed to open the file. Permissions?
+	42 Aborted by callback. An application told curl to abort the operation.
+	43 Internal error. A function was called with a bad parameter.
+	45 Interface error. A specified outgoing interface could not be used.
+	47 Too many redirects. When following redirects, curl hit the maximum amount.
+	48 Unknown option specified to libcurl. This indicates that you passed a weird
+	   option to curl that was passed on to libcurl and rejected.
+	51 The peer's SSL certificate or SSH MD5 fingerprint was not OK.
+	52 The server didn't reply anything, which here is considered an error.
+	53 SSL crypto engine not found.
+	54 Cannot set SSL crypto engine as default.
+	55 Failed sending network data.
+	56 Failure in receiving network data.
+	58 Problem with the local certificate.
+	59 Couldn't use specified SSL cipher.
+	60 Peer certificate cannot be authenticated with known CA certificates.
+	61 Unrecognized transfer encoding.
+	63 Maximum file size exceeded.
+	65 Sending the data requires a rewind that failed.
+	66 Failed to initialise SSL Engine.
+	67 The user name, password, or similar was not accepted and curl failed to log in.
+	75 Character conversion failed.
+	76 Character conversion functions required.
+	77 Problem with reading the SSL CA cert (path? access rights?).
+	78 The resource referenced in the URL does not exist.
+	79 An unspecified error occurred during the SSH session.
+	80 Failed to shut down the SSL connection.
+	82 Could not load CRL file, missing or wrong format (added in 7.19.0).
+	83 Issuer check failed (added in 7.19.0).
+	89 No connection available, the session will be queued
+	90 SSL public key does not matched pinned public key
+	91 Invalid SSL certificate status.
+	92 Stream error in HTTP/2 framing layer.
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	The present function will run on Mac platforms. It executes an AppleScript
+	from `app.doScript()` in order to send a `curl` command through `do shell
+	script...`. It takes care of escaping issues that may arise from complex
+	URI sequences, thanks to the AS command `quoted form of`.
+	
+	*/
+
+	function HSEC_MAC(/*{status,statusCode,headers,data,?error}&*/resp,/*{source,wantText,delay}*/target,/*?$$.Log.trace*/T,  $$,ff,ARGS,S,r,errDetail,sa)
+	// -------------------------------------
+	// (Http-Secure-Getter-Mac.) Access the `target` via HTTPS and save the results
+	// in the object `resp`. This getter for Mac OS tries to access the target using
+	// a `cur` command, sent from AppleScript. Data are stored in a temporary file
+	// and finally retrieved in JS.
+	// ---
+	// `resp`   :: Reference that will receive the results (reset by the caller.)
+	//             Structure: { status:str, statusCode:uint, data:str,
+	//                          headers:{}, ?error:str }
+	// `target` :: Object that provides the following keys:
+	//             - source    :: (str)  Full valid uri.
+	//             - wantText  :: (0|1)  Whether text/* is expected.
+	//             - delay     :: (uint) Timeout, in sec.
+	//             - host      :: (str)  Not used here.
+	//             - port      :: (str)  Not used here.
+	//             - location  :: (str)  Not used here.
+	// ---
+	// => +1 [OK]  |  -2 [any-error]
+	{
+		$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+		// Names of scriptArgs to feed and retrieve.
+		// { key => internalName }
+		// ---
+		ARGS = callee.Q||(callee.Q=
+		{
+			errMsg     : 'hsecErrMsg',
+		});
+
+		// ---
+		// Regarding the recovery of the data (output) from
+		// AS to JS, no practical solution has been found
+		// based on string manipulation. AS and app.doScript
+		// are not smart enough to exchange, say, binary data.
+		// So, the best option is to tell AS to tell `curl`
+		// to write a temp file (`ff` path), then to read
+		// that file when `app.doScript` succeeds.
+		// [REM] As `ff` is an URI, it is managed in AS as
+		// the target URI. More detail on this topic in SCPT.
+		// ---
+		// ff :: '/path/to/temp/web_a3y5z.tmp'
+		// ---
+		ff = __("%1/web_%2.tmp"
+			, /*1*/ String(Folder.temp)
+			, /*2*/ Date.now().toString(26).slice(-5)
+			);
+
+		// Create the script (code string.)
+		// ---
+		S = callee.SCPT(target, ARGS, ff);
+
+		// Run it.
+		// ---
+		T && T( __("%1 > About to run from app.doScript the following AppleScript:\r%2", 'Web', S) );
+		app.scriptArgs.clear();
+		app.doScript(S, callee.LANG);
+		
+		// If the ret file exists, all is fine!
+		// ---
+		$.sleep(100); // safer to wait a bit...
+		if( (ff=File(ff)).exists )
+		{
+			r = $$.File.readBinary(ff);
+			ff.remove();
+			resp.data = (r||0).length ? r : '';
+			errDetail = '';
+		}
+		// Otherwise, determine whether we received
+		// an error message from AS.
+		// ---
+		else
+		{
+			resp.data = '';
+			sa = app.scriptArgs;
+			errDetail = sa.getValue(ARGS.errMsg)||'';
+			sa.setValue(ARGS.errMsg, ''); // cleanup
+		}
+		
+		// Return.
+		// ---
+		if( (!errDetail) && resp.data.length ) return 1;
+		resp.error = __("No result from curl%1%2"
+			, /*1*/ errDetail ? ': ' : '.  The access may be protected.'
+			, /*2*/ errDetail
+			);
+		return -2;
+	}
+	.setup
+	({
+		LANG: +ScriptLanguage.applescriptLanguage,
+
+		SCPT: function(/*{source,wantText,delay}*/target,/*{}*/ARGS,/*str*/ff,  uri,t,tmo)
+		//----------------------------------
+		// Build and return the script ready to run.
+		// `ff` is a temporary file path.
+		// => str  [AppleScript-Code]
+		{
+			// Looks like it wasn't a good idea to work with the
+			// `--raw` flag. So, for testing purposes only:
+			// RAW_FLAG = '--raw '
+			// ---
+			const RAW_FLAG = '';
+			
+			// Because of the `.."curl ..'uri'..'path'"` string,
+			// we would have to both escape <SQ> and <DQ> from
+			// `uri` and `path`. Better is to use ".." & ".."
+			// scheme and `quoted form of "uri"`
+			// [RES] bit.ly/2HGMS0l
+			// Here is the deal:
+			// (1) From JS to AS, we can pass complex URI strings
+			//     using IdExtenso's `myString.toSource()`, since
+			//     AS should properly parse sequences like `\"`
+			//     or `\\`, nested in `". . ."`. (It is assumed,
+			//     however, that the URIs will not make toSource
+			//     produce codes like `\uHHHH` or `\xHH`, which
+			//     AS couldn't interpret. If so, the parent code 
+			//     should probably sanitize the strings using
+			//     `encodeURI()`, should it?)
+			// (2) From AS to the embedded shell script,
+			//       do shell script "curl... 'my://uri' ..."
+			//     we want to make sure that the 'my://uri' part
+			//     can be parsed from the shell itself, which
+			//     is a different question. Experts suggest to put
+			//     the 'quoted form' of "my://uri" in a variable,
+			//     then to concatenate the whole command:
+			//       set quotedUri to quoted form of "my://uri"
+			//       do shell script "curl..." & quotedUri & etc
+			// That's what we do below.
+			// ---
+			uri = target.source.toSource();
+			ff  = ff.toSource();
+			
+			tmo = (t=target.delay)
+			? ( '--connect-timeout ' + t + ' ')
+			: '';
+
+			return __(
+			//----------------------------------
+			// AS Pattern.
+			//----------------------------------
+			"""
+			try
+				set qUri to quoted form of %1
+				set qTmp to quoted form of %2
+				do shell script "curl -s -f -L %4%3" & qUri & " -o " & qTmp
+			on error errMsg
+				tell application id "com.adobe.InDesign"
+					tell script args
+						set %5 to errMsg
+					end tell
+				end tell
+			end try
+			"""
+			//----------------------------------
+			// Placeholders %1 to %4.
+			//----------------------------------
+			, /*1*/ uri
+			, /*2*/ ff
+			, /*3*/ tmo
+			, /*4*/ RAW_FLAG     // For the time being, this remains empty!
+			, /*5*/ ARGS.errMsg
+			).trim();
+		},
+
+	})
