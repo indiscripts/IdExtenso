@@ -1,0 +1,48 @@
+/*******************************************************************************
+
+		Name:           HTTP Secure
+		Desc:           Alternate https getter based on the OS.
+		Path:           /etc/Web/$$.HttpSecure.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the Web module.)
+		API:            ---
+		DOM-access:     YES (app.doScript)
+		Todo:           ---
+		Created:        190321 (YYMMDD)
+		Modified:       190325 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	This snippet wraps two alternate `https` getters for either Mac or Windows.
+	As both solutions rely on `app.doScript()`, they cannot work if the app
+	is in 'modal state'. The caller is responsible for checking that the inner
+	script will be executed in a safe context.
+	
+	The implementation is based on:
+	- the `curl` command, accessed from AppleScript, on Mac.
+	- the `XMLHTTP` interface, accessed from VBScript, on Win.
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		HSEC : $$.inMac ?
+		//----------------------------------
+		// function HSEC(resp&,target): Access the `target` via HTTPS and save the
+		// results in `resp`. The abstract contract of HSEC is to provide exactly the
+		// interface that HGET already implements. See sub-snippets for more detail.
+		//----------------------------------
+		#include '$$.HttpSecure.Mac.jsxinc'
+		:
+		#include '$$.HttpSecure.Win.jsxinc'
+		,
+	})
