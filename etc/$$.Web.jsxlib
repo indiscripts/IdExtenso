@@ -1,21 +1,21 @@
 /*******************************************************************************
 
 		Name:           Web
-		Desc:           Basic HTTP/1.x client and Web-related features.
+		Desc:           Basic HTTP/1.x client and other WWW features.
 		Path:           /etc/$$.Web.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
 		API:            =get() parseURI() browse()
-		DOM-access:     YES (as far as app.doScript may be involved.)
-		Todo:           Tests!
+		DOM-access:     YES (if https involved.)
+		Todo:           make `wantText` automatic if not supplied
 		Created:        170403 (YYMMDD)
-		Modified:       190315 (YYMMDD)
+		Modified:       190325 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 190315, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 190322, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -23,616 +23,43 @@
 
 	/*
 
-	The current version of get() sends `HTTP/1.0 GET` requests but should deal
-	with any 1.x answer.
+	This module offers HTTP and Web-related functionalities.
+	Use
+	- `$$.Web.parseURI(str)` to split an URI in its inner components ;
+	- `$$.Web.browse(validURI)` to open the navigator at this location ;
+	- `$$.Web.get(httpURI)` -- or simply `$$.Web(httpURI)` -- to download
+	   the target.
+
+	RELEASE NOTES
 	
-	[CHG170609] The protocol https is now supported on Win platforms.
-
-	[CHG170611] The protocol https is now supported on Mac platforms.
-	If the server emits a 301 redirection to 'https' the function will try to
-	get contents using `~.ALTG`.
-
-	[FIX190315] Important fix for Windows: `responseBody` now properly escaped
-	in VBS and parsed in JS.
-
+	[170609] 'https' supported on Win platforms.
+	[170611] 'https' partially supported on Mac platforms. If the server emits
+	         a 301 redirection to 'https', the function tries to get contents
+	         using the dedicated solution.
+	[190315] Important fix for Windows, `responseBody` now properly escaped
+	         in VBS and parsed in JS.
+	[190322] Full rewrite; splitted parts into snippets.
+	
 	*/
 
-	//==========================================================================
-	// CONSTANTS AND URI PARSING.
-	//==========================================================================
+	// Uri parsing -> public `parseURI()`method.
+	//---
+	#include 'Web/$$.UriParsing.jsxinc'
 
-	[PRIVATE]
+	// Public `browse()` method.
+	//---
+	#include 'Web/$$.Browser.jsxinc'
 
-	({
-		SERR: false,                            // No-Socket flag. Must be falsy (0|false|null|undefined.)
+	// Socket-based HTTP 1.x process.
+	// -> ~.HGET()
+	// ---
+	#include 'Web/$$.HttpSocket.jsxinc'
 
-		// [ADD170428] OS suffix and templates for url shortcuts.
-		// ---
-		OSSX: $$.inMac ? 'webloc' : 'url',
+	// Specific HTTPS solution.
+	// -> ~.HSEC()
+	// ---
+	#include 'Web/$$.HttpSecure.jsxinc'
 
-		OSTP: $$.inMac ?
-			[
-			'<?xml version="1.0" encoding="UTF-8"?>',
-			'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
-			'<plist version="1.0">',
-				'<dict>',
-					'\t<key>URL</key>',
-					'\t<string>%1</string>',
-				'</dict>',
-			'</plist>',
-			].join(String.LF) :
-			[
-			'[InternetShortcut]',
-			'URL=%1',
-			''
-			].join(String.CRLF),
-
-		UREG : RegExp(__( "^%1%2%3",            //  0 SRCE :: PRTO + AUTH + LOCN
-				"(?:([^:\\/?#]+):)?",           //  1 PRTO
-				__( "(?:\\/\\/(%1%2%3))?",      //  2 AUTH :: USPW + HOST + PORT
-					__( "(?:(%1%2)?@)?",        //  3 USPW :: USER + PASS
-						"([^:@]*)",             //  4 USER
-						"(?::([^:@]*))?"        //  5 PASS
-						),
-					"([^:\\/?#]*)",             //  6 HOST
-					"(?::(\\d*))?"              //  7 PORT
-					),
-				__( "(%1%2%3)",                 //  8 LOCN :: PATH + QURY + ANCH
-					__( "(%1%2)",               //  9 PATH :: DIRS + FILE
-						"((?:[^?#\\/]*\\/)*)",  // 10 DIRS
-						"([^?#]*)"              // 11 FILE
-						),
-					"(?:\\?([^#]*))?",          // 12 QURY
-					"(?:#(.*))?"                // 13 ANCH
-					)
-				)),
-
-		ELMS : ['source',                       //  0  e.g `http://Jum-Bo:XY9Z@server.com:80/a/b/test.php?x=1&y=2#c1`
-			        'protocol',                 //  1  e.g `http`
-			        'authority',                //  2  e.g `Jum-Bo:XY9Z@server.com:80`
-			            'userInfo',             //  3  e.g `Jum-Bo:XY9Z`
-			                'user',             //  4  e.g `Jum-Bo`
-			                'password',         //  5  e.g `XY9Z`
-			            'host',                 //  6  e.g `server.com`
-			            'port',                 //  7  e.g `80`
-			        'location',                 //  8  e.g `/a/b/test.php?x=1&y=2#c1`
-			            'path',                 //  9  e.g `/a/b/test.php`
-			                'directory',        // 10  e.g `/a/b/`
-			                'file',             // 11  e.g `test.php`
-			            'query',                // 12  e.g `x=1&y=2`
-			            'anchor'                // 13  e.g `c1`
-				],
-
-
-		PRSE : function(/*obj&*/r,/*str*/uri,  m,a,i,n)
-		//----------------------------------
-		// Parse `uri` and set keys in `r` according to ELMS.
-		// [RES] blog.stevenlevithan.com/archives/parseuri
-		// => undefined
-		{
-			(m = callee.Q||(callee.Q=[])).length = 0;
-			m.push.apply(m,this.UREG.exec(uri));
-			
-			// [FIX170405] `userInfo` bug in ExtendScript.
-			// ---
-			if( m[3] && 0!==m[2].indexOf(m[3]+'@') )
-			{
-				m[3] = m[4] = m[5] = void 0;
-			}
-			
-			// Extract keys.
-			// ---
-			for( n=(a=this.ELMS).length, i=-1 ; ++i < n ; r[a[i]]=m[i]||'' );
-		},
-	})
-
-	//==========================================================================
-	// SOCKET-BASED PROCESS (HTTP 1.x)
-	//==========================================================================
-
-	[PRIVATE]
-
-	({
-		PTNS : {
-			GET_TXT : [
-				"GET %1 HTTP/1.0",
-				"Host: %2",
-				__("User-Agent: %1",$$.Env.userAgent()),
-				"Accept: text/xml,text/*,*/*",
-				"Accept-Encoding:",
-				"Connection: keep-alive",
-				"Accept-Language: *",
-				"Accept-Charset: utf-8",
-				"","" ].join(String.CRLF),
-			GET_BIN : [
-				"GET %1 HTTP/1.0",
-				"Host: %2",
-				__("User-Agent: %1",$$.Env.userAgent()),
-				"Accept: */*",
-				"Connection: keep-alive",
-				"","" ].join(String.CRLF),
-		},
-
-		GSOK : function(/*obj*/o,/*0|1*/BIN_TARGET,/*uint*/tmo,  sx,q)
-		//----------------------------------
-		// GET socket query.
-		// o        :: { host, port, location }
-		// BIN_RES  :: whether the target is binary (1), or text-like (0)
-		// tmo      :: timeout (in seconds.)
-		// => Socket [OK] | SERR [KO]
-		{
-			(sx=new Socket).timeout = tmo;
-			
-			if( !sx.open(o.host+":"+o.port, 'BINARY') )
-			{
-				$.global[callee.µ.__root__].warn(__("%1 > Cannot open a socket at %2:%3.", callee.µ, o.host, o.port));
-				return this.SERR;
-			}
-			
-			q = __(this.PTNS[BIN_TARGET?'GET_BIN':'GET_TXT'],o.location,o.host);
-
-			if( !sx.write(q) )
-			{
-				$.global[callee.µ.__root__].warn(__("%1 > Failure while sending the query %2 to the current socket.", callee.µ, q.toSource()));
-				sx.close();
-				return this.SERR;
-			}
-			else
-			{
-				$.global[callee.µ.__root__].trace(__("%1 > Has sent the query %2 to the current socket.", callee.µ, q.toSource()));
-			}
-			
-			return sx;
-		},
-
-		READ : function(/*obj&*/q,/*?obj&*/binTarget,  $$)
-		//----------------------------------
-		// Read cnx data into the buffer. (If binTarget is supplied,
-		// transfer immediately the buffer into binTarget.data
-		// and clear the buffer.) Return the new buffer length.
-		// q :: HGET cache object.
-		// => uint [OK] | -1 [KO]
-		{
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-			
-			if( q.dial != q.BDY )
-			{
-				q.buff += q.cnx.read(1);
-				return q.buff.length;
-			}
-
-			if( isNaN(q.pending) )
-			{
-				(+$$.trace) && $$.trace(__("%1 > About to read %2 bytes from the socket... (BufferSize=%3.)",callee.µ,'some',q.buff.length));
-				q.buff += q.cnx.read();
-				q.buff.length || (q.buff += q.cnx.read(1));
-				return q.buff.length;
-			}
-
-			// ---
-			// [REM] One might receive less bytes than
-			// demanded, so checking length is needed.
-			// ---
-
-			(+$$.trace) && $$.trace(__("%1 > About to read %2 bytes from the socket... (BufferSize=%3.)",callee.µ,q.pending,q.buff.length));
-			q.buff = q.cnx.read(q.pending);
-			q.pending -= q.buff.length;
-
-			if( binTarget )
-			{
-				// Bin data -> direct transfer into binTarget.data.
-				// as there is no UTF8 stuff to cleanup.
-				// ---
-				binTarget.data += q.buff;
-				q.buff = '';
-				q.seek = 0;
-			}
-
-			// [FIX170426] Buffer wasn't transferred!
-			// Needed to replace `0 < ...` by `0 <= ...` (!)
-			// ---
-			return 0 <= q.pending ? q.buff.length : -1;
-		},
-
-		DOUT : function(/*obj&*/R)
-		//----------------------------------
-		// (Default-Output.) [ADD170609] Helper function.
-		// => R&
-		{
-			R.status = '';
-			R.statusCode = 0;
-			R.headers ? $.global[callee.µ.__root__].kill(R.headers) : (R.headers={});
-			R.data = '';
-			delete R.error;
-		},
-
-		HGET : function(/*obj&*/R,/*obj*/uri,/*bool*/isBin,/*uint*/tmo,  q,cs,cc,nl,okLine,line,wip,z,x)
-		//----------------------------------
-		// Get the uri contents thru HTTP 1.0.
-		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
-		// `uri` must provide { host, port, location }
-		// ---
-		// [RES] https://jmarshall.com/easy/http/
-		// [RES] http://rorohiko.blogspot.fr/2008_07_01_archive.html
-		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_header_fields
-		// [RES] https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
-		// [FIX170408] Supports `HTTP/1.1` responses as well.
-		// => -1 [socket-KO] | 0 [timeout] | +1 [OK]
-		{
-			q = (callee.Q||callee.Q={
-				BEG  : 1,          // Starting point.
-				HEA  : 2,          // Head stage.
-				BDY  : 3,          // Body stage.
-				END  : 4,          // Normal termination.
-				BRK  : 5,          // Timeout or break.
-				UMSK : [0xFF,0x1F,0x0F,0x07],
-				// ---
-				cnx  : null,       // Socket object, or NULL
-				dial : NaN,        // State of the transaction (among BEG | HEA | BDY | END | BRK.)
-				buff : '',         // Buffer
-				seek : 0,          // Position in the buffer
-				pending : NaN,     // Remaining byte count
-				noop : false,      // Whether no data were read yet (init to FALSE.)
-				});
-			
-			const CHR = String.fromCharCode;
-
-			// Default output.
-			// ---
-			callee.µ['~'].DOUT(R);
-
-			// Init the cache.
-			// ---
-			if( !(q.cnx=this.GSOK(uri,isBin,tmo)) ) return -1;
-			q.dial = q.BEG;
-			q.buff = '';
-			q.seek = 0;
-			q.pending = NaN;
-			q.noop = false;
-
-			// Init vars.
-			// ---
-			cs = isBin ? -1 : 0;
-			cc = 0;
-			nl = okLine = 0;
-			line = wip = "";
-
-			// Main loop.
-			// ---
-			for( z=0 ; q.dial != q.BRK && (q.dial != q.END || z > q.seek) ; z=q.buff.length )
-			{
-				z && z==q.seek && ((q.buff=''),(z=q.seek=0));
-
-				// Read from the socket.
-				// ---
-				if( !z && (q.dial != q.END) )
-				{
-					if( q.noop && !q.cnx.connected )
-					{
-						q.dial = (q.dial==q.BDY && !q.pending) ? q.END : q.BRK;
-						q.cnx = null;
-						break;
-					}
-
-					if( 0 > (z=this.READ(q,isBin&&R)) )
-					{
-						q.dial = q.END;
-						break;
-					}
-					
-					q.noop = !z;
-				}
-
-				// Read from the buffer.
-				// z :: q.buff.length
-				// ---
-				if( z <= q.seek ) continue;
-				
-				if( 0 > cs && q.dial == q.BDY )
-				{
-					// Binary stream shortcut.
-					// ---
-					R.data += q.buff;
-					q.seek = z;
-					continue;
-				}
-
-				// Next character.
-				// ---
-				x = q.buff.charCodeAt(q.seek++);
-				switch( cs )
-				{
-					case 0 :
-						if( x > 127 )
-						{
-							cs = (1*(0xC0==(0xE0&x)))||(2*(0xE0==(0xF0&x)))||(3*(0xF0==(0xF8&x)));
-							cc = x & q.UMSK[cs];
-							break;
-						}
-						// [no-break]
-					case -1 :
-						cc = x;
-						break;
-
-					default :
-						if( 0x80 != (0xC0&x) ){ cc=x; cs=0; break; }
-						cc = (cc<<6) | (0x3F&x);
-						cs--;
-				}
-				if( 0 < cs ) continue; // Need next char.
-
-				// ---
-				// Manage output (R.data, R.status, R.headers.)
-				// ---
-
-				x = cc;
-				if( q.dial == q.BDY || q.dial == q.END ){ R.data += CHR(x); continue; }
-
-				// Line manager.
-				// ---
-				(okLine=+(nl||10==x)) && ((line=wip),(wip=''));
-				nl = 13==x ? 1 : ( ( 10==x || (wip+=CHR(x)) ), 0 );
-				if( !okLine ) continue;
-
-				if( q.dial == q.BEG )
-				{
-					// 1xx Informational     (not used in HTTP/1.0)
-					// 2xx Success           E.g  `HTTP/1.0 200 OK`
-					// 3xx Redirection       E.g  `HTTP/1.0 301 Moved Permanently`
-					// 4xx Client errors     E.g  `HTTP/1.0 404 Not Found`
-					// 5xx Server error      E.g  `HTTP/1.0 500 Internal Server Error`
-					// ---
-					(+$$.trace) && $$.trace(__("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()));
-					R.status=line;
-					if( 0 !== line.indexOf('HTTP/1.') )
-					{
-						(+$$.warn) && $$.warn(__("%1 > Invalid Status-Line: 'HTTP/1.x' is missing!",callee.µ));
-						q.dial==q.BRK;
-						break;
-					}
-					R.statusCode = parseInt(line.substr(9),10);
-					q.dial=q.HEA;
-					continue;
-				}
-
-				if( q.dial != q.HEA ) continue;
-				if( !line.length )
-				{
-					// Headers done, body coming next. However, if statusCode
-					// is 404 or any error code, there is no reason to waste
-					// time downloading more data.
-					// ---
-					x = R.statusCode;
-					if( x < 200 || x >= 300 )
-					{
-						(+$$.warn) && $$.warn(__("%1 > Breaking connection due to status code %2.",callee.µ,x));
-						q.dial==q.BRK;
-						break;
-					}
-					q.dial=q.BDY;
-					continue;
-				}
-
-				// Head zone.
-				// ---
-				x = (line=line.split(':')).shift().trim();
-				R.headers[x] = (line=line.join(":").trim());
-
-				(+$$.trace) && $$.trace(__("%1 > HTTP Header %2: %3.",callee.µ,x,line.toSource()));
-
-				if( 'Content-Length' == x )
-				{
-					x = parseInt(line,10);
-					isNaN(x) || 0 >= x || (q.pending=x-z-q.seek);
-				}
-			}
-
-			q.cnx && (q.cnx=(q.cnx.close(),null));
-			return q.dial==q.BRK ? 0 : 1;
-		},
-
-	})
-
-	//==========================================================================
-	// ALTERNATE METHODS (HTTPS)
-	//==========================================================================
-
-	[PRIVATE]
-	
-	({
-		// [WARN] As this routine requires app.doScript() it can't work
-		// in a modal context (and has to hit the DOM.) The caller is
-		// responsible for checking that modalState is 0.
-		// ---
-		ALTG : $$.inMac ?
-		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  aps)
-		// -------------------------------------
-		// [ADD170611] Alternate HTTP(S) getter *for Mac platforms* (experimental.)
-		// Try to get `uri` contents using AppleScript curl method, and
-		// feed `R` :: { data:str }  -- headers and status are not supported :-/
-		// `uri` must provide a `source` property.
-		// [RES] http://www.macinchem.org/applescript/curl_script.php
-		// [RES] https://curl.haxx.se/docs/manpage.html
-		// => -2 [any-error] | +1 [OK]
-		{
-			// Default output.
-			// ---
-			callee.µ['~'].DOUT(R);
-			
-			// Used Options:
-			// -s, --silent.
-			//     Silent or quiet mode. Don't show progress meter or error messages.
-			// -L, --location
-			//     If the server reports the requested page has moved to a different
-			//     location, this option makes curl redo the request on the new place.
-			// --raw
-			//     Disables all internal HTTP decoding of content or transfer encodings
-			//     and instead makes them passed on unaltered, raw. (Added in 7.16.2.)
-			// --connect-timeout <seconds>
-			// ---
-			aps = __('do shell script "curl -s -L %1--connect-timeout %2 %3"'
-			, (isBin ? '--raw ' : '')
-			, tmo
-			, uri.source
-			);
-
-			R.data = app.doScript(aps, ScriptLanguage.applescriptLanguage);
-
-			return R.data.length ?
-				( 1 ) :
-				( (R.error="No result from curl."),-2 );
-		}
-		:
-		function(/*obj&*/R,/*{source:str}*/uri,/*bool*/isBin,/*uint*/tmo,  $$,q,resType,vbs,k,s,a,args)
-		// -------------------------------------
-		// [ADD170609] Alternate HTTP(S) getter *for Win platforms*.
-		// Try to get `uri` contents using VBS' MSXML2.XMLHTTP object.
-		// Feed `R` :: { status:str, statusCode:uint, data:str, headers:{} }
-		// `uri` must provide a `source` property.
-		// ---
-		// [TODO] If isBin is OFF, should we use `responseText` and return plaintext??
-		// [FIX190315] If isBin is ON,  use `responseBody` and return a byte sequence
-		// properly unescaped. (I finally found how to `Escape` the bytes from VBS.)
-		// ---
-		// => -2 [any-error] | +1 [OK]
-		{
-			// Default output.
-			// ---
-			callee.µ['~'].DOUT(R);
-
-			// Aliases.
-			// ---
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-			q = callee.Q||(callee.Q={
-				status     : 'ALTG_status',
-				statusCode : 'ALTG_statusCode',
-				data       : 'ALTG_data',
-				headers    : 'ALTG_headers',
-				});
-
-			// VBScript, based on `MSXML2.XMLHTTP` or `MSXML2.XMLHTTP.3.0`
-			// ---
-			// [M$] A client computer can use the XMLHTTP object (MSXML2.XMLHTTP)
-			// to send an arbitrary HTTP request, receive the response, and have
-			// the XML Document Object Model parse that response.
-			// This object is integrated with XML Core Services (MSXML) to support
-			// sending the request body directly from, and parsing the response
-			// directly into, the MSXML DOM objects. When combined with the support
-			// for Extensible Stylesheet Language (XSL), XMLHTTP provides an easy
-			// way to send structured queries to HTTP servers and display results
-			// with a variety of presentations. Usual sequence is to call the open
-			// method, set any custom header information through the setRequestHeader
-			// method followed by the send method, and then to check one of the four
-			// different response properties.
-			// ---
-			// responseBody :: Represents the response entity body as an array of
-			// unsigned bytes, namely a SAFEARRAY of type VT_ARRAY | VT_UI1. This
-			// contains the raw undecoded bytes as received directly from the server.
-			// Therefore, depending on what the server sent, this may appear as
-			// binary-encoded data (UTF-8, UCS-2, UCS-4, Shift_JIS, and so on).
-			// ---
-			// responseText :: Represents only one of several forms in which the
-			// HTTP response can be returned. IXMLHTTP attempts to decode the
-			// response into a Unicode string. It assumes the default encoding is
-			// UTF-8, but can decode any type of UCS-2 (big or little endian) or
-			// UCS-4 encoding as long as the server sends the appropriate Unicode
-			// byte-order mark. It does not process the <? XML coding declaration.
-			// If you know the response is going to be XML, use the responseXML
-			// property for full XML encoding support.
-			// ---
-			// Requires: msxml3.dll (MSXML 3.0), or msxml6.dll (MSXML 6.0).
-			// https://msdn.microsoft.com/en-us/library/ms760305(v=vs.85).aspx
-
-			resType = 'responseBody';  // or responseText?
-			vbs = __(
-			"""
-				Dim args, http, sc
-				'---
-				Set args = CreateObject("InDesign.Application").ScriptArgs
-				Set http = CreateObject("MSXML2.XMLHTTP")
-				'---
-				If Not IsEmpty( http ) Then
-					http.Open "GET", "%1", False
-					http.Send
-					sc = http.Status
-					args.SetValue "%3", CStr(http.StatusText)
-					args.SetValue "%4", CStr(sc)
-					If sc = 200 Then
-						args.SetValue "%5", Escape(http.%2)
-					End If
-					args.SetValue "%6", CStr(http.getAllResponseHeaders())
-				End If
-				'---
-				Set http = Nothing
-				Set args = Nothing
-			"""
-			, /*1*/uri.source,/*2*/resType
-			, /*3*/q.status,  /*4*/q.statusCode
-			, /*5*/q.data,    /*6*/q.headers
-			);
-
-			// Run script.
-			// ---
-			app.scriptArgs.clear(); // [ADD190315]
-			app.doScript(vbs, ScriptLanguage.VISUAL_BASIC);
-
-			// Retrieve and parse script args.
-			// ---
-			args = app.scriptArgs;
-			for( k in q )
-			{
-				if( !q.hasOwnProperty(k) ) continue;
-				s = args.getValue(q[k]);
-				args.setValue(q[k],'');
-				switch(k)
-				{
-					case 'statusCode':
-						R[k] = parseInt(s,10)||0;
-						break;
-					case 'headers':
-						a = s.trim().split(RegExp.LINEs);
-						while( s=a.shift() )
-						{
-							k = (s=s.split(':')).shift().trim();
-							R.headers[k] = (s=s.join(":").trim());
-							(+$$.trace) && $$.trace(__("%1 > HTTP Header %2: %3.",callee.µ,k,s.toSource()));
-						}
-						break;
-					case 'data':
-						s.length && (s=callee.RBDY(s));
-						R[k] = s;
-						break;
-					default:
-						R[k] = s;
-				}
-			}
-			
-			return R.statusCode ? 1 : ((R.error="No result from XMLHTTP. The access may be protected."),-2);
-		}
-		.setup
-		({
-			RBDY: function(/*str*/data)
-			//----------------------------------
-			// Unescape responseBody
-			// => str
-			{
-				return data.replace(callee.RE, callee.RP);
-			}
-			.setup
-			({
-				RE: /%u[\dA-F]{4}|%[\dA-F]{2}|./gi,
-
-				RP: function(/*str*/m)
-				//----------------------------------
-				{
-					return 6==m.length ?
-						String.fromCharCode(Number('0x'+m.slice(4)),Number('0x'+m.slice(2,4))) :
-						( 3==m.length ? String.fromCharCode(Number('0x'+m.slice(1,3)),0) : (m+'\0') );
-					
-				},
-			}),
-		}),
-	})
 
 	//==========================================================================
 	// API
@@ -641,63 +68,29 @@
 	[PUBLIC]
 	
 	({
-		parseURI : function parseURI_S_b_O(/*str*/uri,/*0|1=0*/VOLATILE,  o,p)
+		
+		get : function get_S_b_y_b_y_Õ(/*str*/uri,/*0|1=0*/wantText,/*uint=120*/timeOut,/*0|1=0*/VOLATILE,/*uint=10*/R301,  µ,$$,tg,ret,hSec,code,errKind)
 		//----------------------------------
-		// Parse the input uri into the { protocol, authority... } structure
-		// as specified in ~.ELEMS.
+		// Download a HTTP resource using a GET request and return the result
+		// in the form { status:str, statusCode:uint, headers:{}, data:str }.
+		// (See example below.)
+		// If something goes wrong (invalid URI, cannot connect to server,
+		// target unavailable, etc.), an `error` key is added to the result
+		// and describes the issue. An actual (fatal) error is thrown if you
+		// don't send `uri` as a string, or if https is invoked in modal state.
 		// ---
+		// `wantText` :: Whether the target is expected in text type.
 		// If VOLATILE is on, put the result in a temporary cache
 		// instead of creating a new object. (By default, VOLATILE=0.)
-		// => obj
-		{
-			o = VOLATILE ? (callee.Q||(callee.Q={})) : {};
-
-			callee.µ['~'].PRSE(o,uri);
-
-			// Normalize `protocol`.
-			// ---
-			o.protocol = o.protocol.toLowerCase(); // `http` | `ftp` ...
-
-			// Normalize `port` and rewrite `authority` accordingly.
-			// ---
-			if( o.host )
-			{
-				p = parseInt(o.port, 10) || 0;
-				
-				// [ADD170611] Default port per protocol.
-				// ---
-				if( 0 >= p || 0xFFFF < p )
-				{
-					p = o.protocol;
-					p = (443*('https'==p)) || (21*('ftp'==p)) || 80;
-				}
-				
-				o.port = p;
-				o.authority = __("%1%2%3", o.userInfo, (o.userInfo?'@':''), o.host+':'+o.port );
-			}
-
-			// Normalize `directory` and update accordingly.
-			// ---
-			if( '/' !== o.directory.charAt(0) )
-			{
-				o.directory = '/' + o.directory;
-				o.path = '/' + o.path;
-				o.location = '/' + o.location;
-			}
-
-			return o;
-		},
-		
-		get : function get_S_b_y_b_y_Õ(/*str*/uri,/*0|1=0*/isText,/*uint=120*/timeOut,/*0|1=0*/VOLATILE,/*?uint*/R301,  $$,r,kGet)
-		//----------------------------------
-		// Download a resource thru an HTTP/1.0 GET request and return the result
-		// in the form {status:str, statusCode:uint, headers:{}, data:str}.
-		// If something goes wrong an `error` key is added to the result
-		// and describes the issue, e.g "HTTP error or timeout."
-		// [CHG170611] In case an alternate get method is used (see ~.ALTG),
-		// only the data and the error properties are reliable on Mac platforms.
 		// ---
-		// E.g :
+		// `R301` :: Number of attempts in case of 301-redirection.
+		// The HTTP response status code 301 Moved Permanently is used for
+		// permanent URL redirection, meaning current links or records
+		// using the URL that the response is received for should be
+		// updated. The new URL should be provided in the `Location` field
+		// included with the response.
+		// ---
+		// Example :
 		// $$.Web('indiscripts.com/blog/public/IndiscriptsLogo.png')
 		// => {
 		//    status: "HTTP/1.0 200 OK",
@@ -716,142 +109,192 @@
 		//    data : "\x89PNG\r\n\x1A\n\0\0\0\ (...) 0IEND\xAEB",
 		//    }
 		// ---
-		// If VOLATILE is on, put the result in a temporary cache
-		// instead of creating a new object. (By default, VOLATILE=0.)
-		// ---
-		// `R301` :: Number of attempts in case of 301-redirection.
-		// The HTTP response status code 301 Moved Permanently is used for
-		// permanent URL redirection, meaning current links or records
-		// using the URL that the response is received for should be
-		// updated. The new URL should be provided in the `Location` field
-		// included with the response.
-		// ---
-		// [FIX170428] Fixed typos left in `$$.warn()` calls.
-		// => obj
+		// => { status, statusCode, headers, data, ?error }
 		{
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-
+			// Initialization.
+			// ---
+			$$ = $.global[(µ=callee.µ).__root__];
 			('undefined' == typeof R301) && (R301=10);
-
-			timeOut = ('number' == typeof timeOut) ? Math.max(timeOut>>>0,1) : 120;
-
 			if( 'string' != typeof uri )
 			{
-				$$.error(__("Invalid uri type (%1). Should be a string.", typeof uri),callee);
+				$$.error(__("Invalid URI type (%1). Should be a string.", typeof uri),callee);
 			}
+			ret = callee.RESP( VOLATILE ? (callee.Q||(callee.Q={})) : {} );
 			
-			if( 0 !== uri.indexOf('http') )
+			while( 1 )
 			{
-				$$.trace(__("%1 > Prepend 'http://' to the uri %2.",callee.µ,uri.toSource()));
-				uri = 'http://' + uri;
-			}
+				code = -4; // URI stage.
 
-			uri = callee.µ.parseURI(uri,1);
-
-			// [CHG170609] Added https case.
-			// |CHG170611] Force ~.ALTG under https (make sure modal state if off.)
-			// ---
-			switch( uri.protocol )
-			{
-				case 'http':
-					kGet = 'HGET';
+				if( !(uri=uri.trim()).length )
+				{
+					ret.error = "Empty URI";
 					break;
-				case 'https':
-					$$.trace(__("%1 > https required for uri %2.",callee.µ,uri.source.toSource()));
-					if( app.modalState )
-						$$.error(__("Cannot run alternate https get method in a modal state."),callee);
-					kGet = 'ALTG';
+				}
+
+				// Need to prepend 'http:'?
+				// ---
+				if( !callee.HPFX.test(uri) )
+				{
+					$$.trace(__("%1 > Prepend 'http://' to the URI %2.",µ, uri.toSource()));
+					uri = 'http://' + uri;
+				}
+
+				// Parse the URI.
+				// ---
+				tg = µ.parseURI(uri,1);
+				if( !tg.protocol )
+				{
+					ret.error = __("Invalid URI: %1",uri.toSource());
 					break;
-				default:
-					$$.error(__("The http protocol is missing in %1.", uri.source.toSource()),callee);
-			}
-
-			if( !uri.host )
-			{
-				$$.error(__("The host is missing in %1.", uri.source.toSource()),callee);
-			}
-
-			if( '/' != uri.location.charAt(0) )
-			{
-				$$.error(__("Invalid location %1 in the uri %2.", uri.location.toSource(), uri.source.toSource()),callee);
-			}
-
-			r = VOLATILE ? (callee.Q||(callee.Q={})) : {};
-			
-			switch( callee.µ['~'][kGet](r,uri,!isText,timeOut) )
-			{
-				case -2 :
-					// Alternate error.
-					// ---
-					$$.warn( __("%1 > %2",callee.µ,r.error) );
-					break;
-
-				case -1 :
-					// Socket error.
-					// ---
-					r.error = __("Cannot open the HTTP socket.");
-					$$.warn( __("%1 > %2",callee.µ,r.error) );
-					break;
-
-				case 0 :
-					// Any http error incl. timeout.
-					// ---
-					r.error = __("HTTP error or timeout.");
-					$$.warn( __("%1 > %2",callee.µ,r.error) );
-					break;
+				}
 				
-				default :
-					if( r.data.length + r.status.length <= 0 )
+				// Host?
+				// ---
+				uri = tg.source;
+				if( !tg.host )
+				{
+					ret.error = __("No host provided in %1",uri.toSource());
+					break;
+				}
+
+				// Valid location?
+				// ---
+				tg.location || (tg.location='/');
+				if( '/' != tg.location.charAt(0) )
+				{
+					ret.error = __("Invalid location %1 in %2", tg.location.toSource(), uri.toSource());
+					break;
+				}
+
+				// https needed? allowed?
+				// ---
+				hSec = 'https'==tg.protocol;
+				if( hSec && app.modalState )
+				{
+					$$.error(__("Cannot access https target in app modal state."),callee);
+				}
+
+				// Add extra keys to the target.
+				// ---
+				tg.wantText = wantText ? 1 : 0;
+				tg.delay = timeOut = ('number' == typeof timeOut) ? Math.max(timeOut>>>0,1) : 120;
+
+				// Call the getter.
+				// ---
+				code = µ['~'][hSec?'HSEC':'HGET'](ret, tg, (+$$.trace)&&$$.Log.trace);
+				if( 1!==code ) break;
+
+				// Status?
+				// ---
+				if( !ret.status )
+				{
+					ret.error = "Missing status";
+					code = -3;
+					break;
+				}
+
+				// Redirection?
+				// ---
+				if( 0 <= ret.status.indexOf('301') )
+				{
+					$$.warn( __("%1 > HTTP 301 Redirection required.", µ, uri) );
+					
+					if( 0 >= R301 )
 					{
-						r.error = __("No data received from the HTTP connection.");
-						$$.warn( __("%1 > %2",callee.µ,r.error) );
+						ret.error = "Too many redirections";
+						code = -3;
 						break;
 					}
-					if( 0 <= r.status.indexOf('301') && 0 < R301-- )
+					
+					if( !(ret.headers||0).Location )
 					{
-						uri = r.headers.Location;
-						$$.warn( __("%1 > HTTP 301 Redirection to %2.",callee.µ, uri) );
-						VOLATILE || $$.kill(r);
-						r = callee(uri,isText,timeOut,VOLATILE,R301); // [FIX170609]
+						ret.error = "Missing location during redirection";
+						code = -3;
+						break;
 					}
+					
+					code = 301;
+					break;
+				}
+
+				if( !ret.data.length )
+				{
+					ret.error = "No data received";
+					code = -3;
+					break;
+				}
+				
+				break;
 			}
 
-			// [ADD171024] Better is to consider empty data an error!
+			// Error exit.
 			// ---
-			if( (!r.error) && !r.data )
+			if( 0 >= code )
 			{
-				r.error = __("No data available.");
-				$$.warn( __("%1 > %2",callee.µ,r.error) );
+				// Just to be sure
+				// ---
+				ret.data = '';
+				
+				// Format and warn error.
+				// ---
+				errKind = callee.ERRK[-code]||'';
+				ret.error = ( errKind ? ('['+errKind+'] ') : '' ) + (ret.error || "Undetermined error");
+				$$.warn( __("%1 > %2",µ,ret.error) );
 			}
 
-			return r;
-		},
-
-		browse : function browse_S(/*str*/uri,  $$,I,ff)
-		//----------------------------------
-		// [ADD170428] Try to open this uri in the client-side browser.
-		// [REM] This routine does not check the uri. Make sure it is
-		// valid and has an explicit protocol (http, ftp, etc.)
-		// => 1 [OK] | 0 [KO]
-		{
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-			I = callee.µ['~'];
-
-			if( 'string' != typeof uri )
+			// Redirection.
+			// ---
+			if( 301==code )
 			{
-				$$.error(__("Invalid uri type (%1). Should be a string.", typeof uri),callee);
+				uri = ret.headers.Location;
+				$$.warn( __("%1 > HTTP 301 Redirection to %2.",µ, uri) );
+				VOLATILE || $$.kill(ret);
+				ret = callee(uri,wantText,timeOut,VOLATILE,--R301);
 			}
 
-			ff = $$.File.temp(__(I.OSTP, uri),I.OSSX,0,1);
-	
-			if( !ff )
+			return ret;
+		}
+		.setup
+		({
+			// http(s) prefix.
+			// ---
+			HPFX : RegExp('^https?://','i'),
+			
+			// Error kinds.
+			// ---
+			ERRK : Array
+			(
+				/*-0*/  'HTTP',
+				/*-1*/  'CNX',
+				/*-2*/  'HTTPS',
+				/*-3*/  'EXIT',
+				/*-4*/  'URI',
+			),
+
+			RESP : function(/*{ status,statusCode,headers,data,?error }&*/r,  o,k)
+			//----------------------------------
+			// (Reset-Response.) Initialize the set `r` and return it. If it
+			// contains old data, all keys are reset to their empty value.
+			// ---
+			// => r&
 			{
-				$$.warn( __("%1 > Unable to create the temporary url file based on %2.",callee.µ, uri) );
-				return 0;
-			}
-	
-			ff.execute();
-			$.sleep(500);
-			return 1;
-		},
+				r.status = '';
+				r.statusCode = 0;
+				
+				if( (o=r.headers) && o===Object(o) )
+				{
+					for( k in o ) o.hasOwnProperty(k) && delete o[k];
+				}
+				else
+				{
+					r.headers = {};
+				}
+
+				r.data = '';
+				delete r.error;
+				
+				return r;
+			},
+		}),
+
 	})
