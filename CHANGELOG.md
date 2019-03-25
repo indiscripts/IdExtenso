@@ -1,3 +1,7 @@
+
+##### [190325]
+  - [**Web**](/etc/$$.Web.jsxlib) module fully rewritten, with clear dependencies, improved code, etc. Should work much better now, on both Mac and Win platforms!
+  
 ##### [190317]
   - [**ModalScript**](/etc/$$.ModalScript.jsxlib): Improved get-string-key mechanism (`~._GS_`). If the widget under consideration provides a `getString` method, invoke it. Otherwise, stringify the value.
   - [`ModalScript/UserInterface`](/etc/ModalScript/$$.UserInterface.jsxlib): Added the `CancelValue` attribute (_uint_, default:2) and fixed the treatment of the value returned from the SUI dialog. The `onClose` hook can now handle the dialog retval as such: the `ok` argument is `false` only if _retval_`===µ.CancelValue`.
