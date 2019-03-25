@@ -1,0 +1,304 @@
+/*******************************************************************************
+
+		Name:           HTTP Secure (Win)
+		Desc:           Invokes MSXML2.XMLHTTP via VBS
+		Path:           /etc/Web/$$.HttpSecure.Win.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the HttpSecure snippet.)
+		API:            ---
+		DOM-access:     YES (app.doScript)
+		Todo:           should we read `responseText` in certain cases?
+		                how to deal w/ wantText?
+		                how to speed up invalid/missing target detection?
+		Created:        190321 (YYMMDD)
+		Modified:       190325 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	[RES] https://msdn.microsoft.com/en-us/library/ms760305(v=vs.85).aspx
+
+	[M$] A client computer can use the XMLHTTP object (MSXML2.XMLHTTP) to send an
+	arbitrary HTTP request, receive the response, and have the XML Document Object
+	Model parse that response. This object is integrated with XML Core Services
+	(MSXML) to support sending the request body directly from, and parsing the
+	response directly into, the MSXML DOM objects. When combined with the support
+	for Extensible Stylesheet Language (XSL), XMLHTTP provides an easy way to send
+	structured queries to HTTP servers and display results with a variety of
+	presentations. Usual sequence is to call the open method, set any custom header
+	information through the setRequestHeader method followed by the send method, and
+	then to check one of the four different response properties.
+
+	responseBody :: Represents the response entity body as an array of unsigned
+	bytes, namely a SAFEARRAY of type VT_ARRAY | VT_UI1. This contains the raw
+	undecoded bytes as received directly from the server. Therefore, depending on
+	what the server sent, this may appear as binary-encoded data (UTF-8, UCS-2,
+	UCS-4, Shift_JIS, and so on).
+
+	responseText :: Represents only one of several forms in which the HTTP response
+	can be returned. IXMLHTTP attempts to decode the response into a Unicode string.
+	It assumes the default encoding is UTF-8, but can decode any type of UCS-2 (big
+	or little endian) or UCS-4 encoding as long as the server sends the appropriate
+	Unicode byte-order mark. It does not process the <? XML coding declaration. If
+	you know the response is going to be XML, use the responseXML property for full
+	XML encoding support.
+	
+	OTHER IMPORTANT RESOURCES
+	
+	- web.archive.org/web/20130813141732/
+	  http://miskun.com/javascript/internet-explorer-and-binary-files-data-access/
+
+	- stackoverflow.com/questions/24863986/vbscript-msxml12-xmlhttp-error-handling
+	
+	- https://ss64.com/vb/onerror.html
+	
+	- microsoft.public.scripting.vbscript.narkive.com/oM8TRLwB/running-wscript-in-html
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+
+	/*
+
+	The present function will run on Win platforms. It executes a VBScript from
+	`app.doScript()` in order to invoke XMLHTTP. This object is available in
+	`MSXML2.XMLHTTP` or `MSXML2.XMLHTTP.3.0` (among many other locations!)
+	
+	[REM] MSXML 3.0 requires msxml3.dll ; MSXML 6.0 requires msxml6.dll.
+	
+	The inner script has a specific error handler and should be verbose enough
+	on failing request.
+	
+	*/
+
+	function HSEC_WIN(/*{status,statusCode,headers,data,?error}&*/resp,/*{host,port,location,wantText,delay}*/target,/*?$$.Log.trace*/T,  ARGS,S,sa,errDetail,k,v,a)
+	// -------------------------------------
+	// (Http-Secure-Getter-Win.) Access the `target` via HTTPS and save the results
+	// in the object `resp`. This getter for Win OS tries to access the target using
+	// the `MSXML2.XMLHTTP` object, via VBScript.
+	// ---
+	// `resp`   :: Reference that will receive the results (reset by the caller.)
+	//             Structure: { status:str, statusCode:uint, data:str,
+	//                          headers:{}, ?error:str }
+	// `target` :: Object that provides the following keys:
+	//             - source    :: (str)  Full valid uri.
+	//             - wantText  :: (0|1)  Whether text/* is expected.
+	//             - delay     :: (uint) Timeout, in sec.
+	//             - host      :: (str)  Not used here.
+	//             - port      :: (str)  Not used here.
+	//             - location  :: (str)  Not used here.
+	// ---
+	// => +1 [OK]  |  -2 [any-error]
+	{
+		// Names of scriptArgs to feed and retrieve.
+		// { key => internalName }
+		// ---
+		ARGS = callee.Q||(callee.Q=
+		{
+			status     : 'hsecStatus',
+			statusCode : 'hsecStatusCode',
+			data       : 'hsecData',
+			headers    : 'hsecHeaders',
+			// ---
+			errMsg     : 'hsecErrMsg',
+		});
+
+		// Create the script (code string.)
+		// ---
+		S = callee.SCPT(target, ARGS);
+
+		// Run it.
+		// ---
+		T && T( __("%1 > About to run from app.doScript the following VBScript:\r%2", 'Web', S) );
+		app.scriptArgs.clear();
+		app.doScript(S, callee.LANG);
+
+		// Retrieve and parse script args.
+		// ---
+		sa = app.scriptArgs;
+		errDetail = '';
+		for( k in ARGS )
+		{
+			if( !ARGS.hasOwnProperty(k) ) continue;
+
+			v = sa.getValue(ARGS[k]);
+			sa.setValue(ARGS[k],'');  // cleanup
+			
+			switch( k )
+			{
+				case 'statusCode':
+					resp[k] = parseInt(v,10)||0;
+					break;
+
+				case 'headers':
+					a = v.trim().split(RegExp.LINEs);
+					while( v=a.shift() )
+					{
+						k = (v=v.split(':')).shift().trim();
+						resp.headers[k] = (v=v.join(':').trim());
+						T && T(__("%1 > HTTP Header %2: %3.",callee.µ,k,v.toSource()));
+					}
+					break;
+
+				case 'data':
+					v.length && (v=callee.UESC(v));
+					resp[k] = v;
+					break;
+				
+				case 'errMsg':
+					errDetail = v;
+					break;
+
+				default:
+					resp[k] = v;
+			}
+		}
+
+		// Return.
+		// ---
+		if( (!errDetail) && resp.data.length ) return 1;
+		resp.error = __("No result from XMLHTTP%1%2"
+			, /*1*/ errDetail ? ': ' : '.  Access is probably not allowed.'
+			, /*2*/ errDetail
+			);
+		return -2;
+	}
+	.setup
+	({
+		LANG: +ScriptLanguage.VISUAL_BASIC,
+		
+		SCPT: function(/*{source,wantText,delay}*/target,/*{}*/ARGS,  uri,errBlock)
+		//----------------------------------
+		// Build and return the script ready to run.
+		// => str  [VBScript-Code]
+		{
+			// 'MSXML2.XMLHTTP' works fine, but 'MSXML2.XMLHTTP.3.0'
+			// might work even better. Need to investigate... [TODO]
+			// ---
+			const XMLHTTP = 'MSXML2.XMLHTTP';
+			
+			// `responseBody` is an array of "undecoded bytes as received
+			// directly from the server." The trick is to Escape it from
+			// within the script. In VBS, Escape() converts all Unicode
+			// characters (and below) to %HH or %uHHHH, except for A-Z,
+			// a-z, 0-9, and _ * - . + / @.
+			// ---
+			const ResType = 'responseBody';
+
+			// In case `uri` would contain a <DQ> (the only char that
+			// requires caution here), we need to escape it as VBS would
+			// do: <DQ> => <DQ><DQ>
+			// (Never use `uri.toSource()` in a VBS context!!)
+			// ---
+			uri = target.source;
+			0 <= uri.indexOf('"') && (uri=uri.replace(RegExp.DQ, '""'));
+
+			// Preset the error block as needed
+			// by `On Error Resume Next`
+			// ---
+			errBlock = __("""If Err.Number <> 0 Then
+					args.SetValue "%1", Err.Description
+					Err.Clear
+					Exit Do
+				End If"""
+				, ARGS.errMsg
+				);
+
+			// ---
+			// The script uses a fake `Do While Loop` to make
+			// `Exit Do` available on error handling. Indeed,
+			// the `WScript` object is likely NOT AVAILABLE from
+			// InDesign's VBScript, hence `WScript.Quit` would
+			// cause a runtime error!
+			// The %8 placeholder stands for `errBlock`, our
+			// custom _error listener_ which both captures the
+			// error description and exit the script.
+			// ---
+
+			return __(
+			//----------------------------------
+			// VBS Pattern.
+			//----------------------------------
+			"""
+			Dim args, http, sc
+			'---
+			Set args = CreateObject("InDesign.Application").ScriptArgs
+			Set http = CreateObject("%7")
+			'---
+			On Error Resume Next
+			Do While Not IsEmpty( http )
+				http.Open "GET", "%1", False
+				%8
+				http.Send
+				%8
+				sc = http.Status
+				%8
+				args.SetValue "%3", CStr(http.StatusText)
+				%8
+				args.SetValue "%4", CStr(sc)
+				%8
+				If sc = 200 Then args.SetValue "%5", Escape(http.%2)
+				%8
+				args.SetValue "%6", CStr(http.getAllResponseHeaders())
+				%8
+				'Dont forget to exit!!!
+				Exit Do
+			Loop
+			'---
+			Set http = Nothing
+			Set args = Nothing
+			"""
+			//----------------------------------
+			// Placeholders %1 to %6.
+			//----------------------------------
+			, /*1*/ uri
+			, /*2*/ ResType
+			, /*3*/ ARGS.status
+			, /*4*/ ARGS.statusCode
+			, /*5*/ ARGS.data
+			, /*6*/ ARGS.headers
+			, /*7*/ XMLHTTP
+			, /*8*/ errBlock
+			).trim();
+		},
+
+		UESC: function(/*str*/data)
+		//----------------------------------
+		// Unescape the result of `Escape(responseBody)` as stored
+		// in ARGS.data, noting that:
+		//     "%uAABB"  encodes  "\xBB\xAA"
+		//     "%AA"     encodes  "\x00\xAA"
+		//     "X"       encodes  "\x00X"
+		// => str
+		{
+			return data.replace(callee.RE, callee.RP);
+		}
+		.setup
+		({
+			// Captures all Escaped entities:
+			// %uHHHH , %HH, and safe simple chars.
+			//----------------------------------
+			RE: /%u[\dA-F]{4}|%[\dA-F]{2}|./gi,
+
+			RP: function(/*str*/m)
+			//----------------------------------
+			// "%uAABB"  =>  "\xBB\xAA"
+			// "%AA"     =>  "\x00\xAA"
+			// "X"       =>  "\x00X"
+			{
+				return 6==m.length ?
+					String.fromCharCode(Number('0x'+m.slice(4)),Number('0x'+m.slice(2,4))) :
+					( 3==m.length ? String.fromCharCode(Number('0x'+m.slice(1,3)),0) : (m+'\0') );
+				
+			},
+		}),
+	})
