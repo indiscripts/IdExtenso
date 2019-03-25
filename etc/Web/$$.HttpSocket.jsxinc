@@ -1,0 +1,418 @@
+/*******************************************************************************
+
+		Name:           HTTP Socket
+		Desc:           Implements a basic HTTP 1.x Socket client.
+		Path:           /etc/Web/$$.HttpSocket.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet (part of the Web module.)
+		API:            [PRIVATE] ~.HGET()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190321 (YYMMDD)
+		Modified:       190325 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	RESOURCES:
+
+	- jmarshall.com/easy/http/
+	- tools.ietf.org/html/rfc2616
+	- tools.ietf.org/html/rfc7230#section-3.3.2
+	- developer.mozilla.org/en-US/docs/Web/HTTP/Headers
+	- developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation
+	- codeburst.io/why-you-don-t-need-socket-io-6848f1c871cd
+	- rorohiko.blogspot.fr/2008_07_01_archive.html
+	- en.wikipedia.org/wiki/List_of_HTTP_header_fields
+	- en.wikipedia.org/wiki/List_of_HTTP_status_codes
+	- www.oreilly.com/library/view/http-the-definitive/1565925092/ch04s07.html
+	- blog.insightdatascience.com/learning-about-the-http-connection-keep-alive-header-7ebe0efa209d
+
+	*/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+	
+	/*
+	
+	The present implementation relies on a simple idea: use HTTP/1.0 as long as
+	servers can reply to HTTP/1.0 requests. In case a server answers with `1.1`
+	version flag (which it shouldn't!), still try to grab the content if no
+	`Transfer-Encoding` field is present.
+	
+	[REM] We shall open the option to gradually implement HTTP/1.1 features
+	(essentially, 'chunked' transfer-coding) and then switch to actual HTTP/1.1
+	requests. One could also query for a `deflate` transfer and use
+	`app.unpackageUCF()` for decompressing (not tested), etc. But there is
+	no reason to do so for the time being. Also, `HttpSecure` snippets do a
+	good job if alternate methods are needed...
+	
+	Regarding content encoding:
+
+	- On the Socket side, the BINARY flag is always used, which makes `read()`
+	  fully transparent --but not `readln()`!-- whatever the target type.
+
+	- The request accepts `text/xml,text/*` when `wantText` is specified, just
+	  in case a text/xml variant of the resource exists. And, of course, no
+	  content-encoding is allowed (`Accept:identity`.)
+	
+	- Finally, the data (i.e 8-bit bytes) are translated into the media
+	  type charset if the following conditions are ALL satisfied:
+	  (1) `wantText` is specified.
+	  (2) The server has delivered a `Content-Type` header including "text/..."
+	      and "...charset=XYZ"
+	  (3) `File.isEncodingAvailable("XYZ")` is true
+	
+	*/
+
+	[PRIVATE]
+
+	({
+		// Socket-Error flag. Must be falsy (0|false|null|undefined.)
+		// ---
+		SERR: false,
+
+		GSOK : function(/*{ host:str, port:str, location:str, wantText:0|1, delay:uint }*/target,  $$,sx,hopo,err,req)
+		//----------------------------------
+		// (GET-Socket-Query.) Initiate and return a new connected Socket based on
+		// the `target` object. Format and send a HTTP 1.0 GET query in keep-alive
+		// mode. If `target.wantText`, send a `Accept: text/xml,text/*,*/*` querying
+		// the server to return the most appropriate text representation of the
+		// resource when variants exist. In either case, the socket is opened in
+		// BINARY mode because we want a transparent transaction regarding newlines
+		// (and I didn't manage to understand what TEXT or UTF8 modes actually do.)
+		// If an error occurs, set callee.ERRO to the error message and return
+		// the Socket-Error flag (~.SERR).
+		// [REM] `target` keys are detailed in ~.HGET.
+		// ---
+		// => new Socket [OK]  |  ~.SERR [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			// Create the socket and set the timeout.
+			// ---
+			err = callee.ERRO = '';
+			(sx=new Socket).timeout = target.delay||10;
+			
+			// Connecting.
+			// ---
+			while( 1 )
+			{
+				hopo = target.host + ":" + (target.port|'80');
+
+				$$.trace(__("%1 > Connecting to %2 with timeout=%3s.", callee.µ, hopo,sx.timeout));
+				if( !sx.open(hopo, 'BINARY') )
+				{
+					err = sx.error || __("Cannot open a socket to %1", hopo);
+					break;
+				}
+				if( (!sx.connected) || sx.error )
+				{
+					// This should in fact never happen, since sx.open
+					// would have returned false, but you never know...
+					// ---
+					err = sx.error || __("Cannot actually connect to %1", hopo);
+					break;
+				}
+				$$.trace(__("%1 > Successfully connected to %2.", callee.µ, hopo));
+
+				// Format the request. Something like:
+				//    GET /some/resource.txt HTTP/1.0<CRLF>
+				//    Host: www.example.com<CRLF>
+				//    Accept: text/xml,text/*,*/*<CRLF>
+				//    Connection: keep-alive
+				// ---
+				req = __(callee.PTNS[target.wantText?'GET_TXT':'GET_BIN']
+					, /*1*/target.location||'/'
+					, /*2*/target.host
+					);
+
+				$$.trace(__("%1 > Sending the request %2 ...", callee.µ, req.toSource()));
+				if( !sx.write(req) )
+				{
+					err = sx.error || __("Cannot send the request %1 to %2", req.toSource(), hopo);
+					break;
+				}
+				$$.trace(__("%1 > Managed to send the request.", callee.µ));
+				
+				break;
+			}
+			
+			return err ?
+				( (sx&&sx.close()), (callee.ERRO=err), this.SERR ) :
+				sx;
+		}
+		.setup
+		({
+			// Last error message.
+			// ---
+			ERRO: '',
+
+			// Query patterns.  %1 :: uri  ;  %2 :: host
+			// ---
+			PTNS:
+			{
+				// HTTP/1.0 GET query => text/xml, etc. + charset UTF8
+				// ---
+				GET_TXT :
+				[
+					"GET %1 HTTP/1.0",
+					"Host: %2",
+					"Connection: keep-alive",
+					"Accept: text/xml,text/*,*/*",
+					"Accept-Encoding:",  // means identity only
+					__("User-Agent: %1",$$.Env.userAgent()),
+					"","" 
+				].join(String.CRLF),
+
+				// HTTP/1.0 GET query => binaries.
+				// ---
+				GET_BIN :
+				[
+					"GET %1 HTTP/1.0",
+					"Host: %2",
+					"Connection: keep-alive",
+					"Accept: */*",
+					"Accept-Encoding:",  // means identity only
+					__("User-Agent: %1",$$.Env.userAgent()),
+					"",""
+				].join(String.CRLF),
+			},
+		}),
+
+		HGET : function HGET(/*{status,statusCode,headers,data,?error}&*/resp,/*{host,port,location,wantText,delay}*/target,/*?$$.Log.trace*/T,  r,sx,line,c,hd,sc,sz,x,t)
+		//----------------------------------
+		// (Http-Getter.) Access the `target` using HTTP GET and save the resource in
+		// `resp.data` with additional infos (status, headers...)
+		// ---
+		// This getter uses the `Socket` object so it doesn't depend on the environment,
+		// doesn't hit the DOM, and should deal with basic, regular 'http' downloads.
+		// However, it cannot manage 'https' requests (a separate strategy is implemen-
+		// ted in the HttpSecure snippet.)
+		// ---
+		// `resp`   :: Clean initialized object prepared to receive the results.
+		//             Structure: { status:str, statusCode:uint, data:str,
+		//                          headers:{}, ?error:str }
+		// `target` :: Object exposing the following keys:
+		//             - host      :: (str)  `host` part of the uri   ; e.g  'hello.com'
+		//             - port      :: (str)  port number as a string  ; e.g  '80'
+		//             - location  :: (str)  Full URI location        ; e.g  '/path/file?req'
+		//             - wantText  :: (0|1)  Whether text/* is expected.
+		//             - delay     :: (uint) Connection timeout, in sec.
+		//             - source    :: (str)  Not used here. (Required in HSEC methods.)
+		// ---
+		// => -1 [socket-KO] | |  0 [http-KO]  |  +1 [OK]
+		{
+			const CHR = String.fromCharCode;
+
+			// Let's arbitrarily assume TEXT/XML needs on average 50K while BINARY needs ~200K.
+			// According to my tests successive calls to sx.read(SZ_REQ) has no runtime impact,
+			// that is, `sx.read(X)` N times is equivalent to `sx.read(N*X)`. Anyway, having a
+			// kind of slicing window may be used later in buffering `resp.data`.
+			// ---
+			const SZ_REQ = 1024*(target.wantText ? 50 : 200);
+
+			while( r=-1 )
+			{
+				// Connection?
+				// -------------------------------------------------------------
+				if( !(sx=this.GSOK(target)) ){ resp.error = this.GSOK.ERRO; break; }
+
+				// ---
+				// Start line of an HTTP response:
+				// - Protocol version, usually 'HTTP/1.0' or 'HTTP/1.1'.
+				// - Status code: e.g '200', '404', or '302'
+				// - Status text.
+				// Typical status line: "HTTP/1.1 404 Not Found".
+				// ---
+				// 1xx Informational     (not used in HTTP/1.0)
+				// 2xx Success           E.g  `HTTP/1.0 200 OK`
+				// 3xx Redirection       E.g  `HTTP/1.0 301 Moved Permanently`
+				// 4xx Client errors     E.g  `HTTP/1.0 404 Not Found`
+				// 5xx Server error      E.g  `HTTP/1.0 500 Internal Server Error`
+				// ---
+				// [RFC2616] A server MUST NOT send transfer-codings to an HTTP/1.0 client.
+				// An application that sends a request or response message that includes
+				// HTTP-Version of "HTTP/1.1" MUST be at least conditionally compliant
+				// with this specification. Applications that are at least conditionally
+				// compliant with this specification SHOULD use an HTTP-Version of
+				// "HTTP/1.1" in their messages, and MUST do so for any message that is
+				// not compatible with HTTP/1.0.
+
+				// Startline -> `resp.status` and `resp.statusCode`
+				// -------------------------------------------------------------
+				r = 0;
+				if( !(line=sx.readln().trim()) ){ resp.error = "No response"; break; }
+				resp.status = line;
+				T && T( __("%1 > HTTP Status-Line: %2.",callee.µ,line.toSource()) );
+
+				if( 0 !== line.indexOf('HTTP/1.') ){ resp.error = __("Invalid Status-Line: %1",line.toSource()); break; }
+
+				sc = resp.statusCode = parseInt(line.slice(9),10);  // 200, 301, etc
+
+				// ---
+				// [Socket] During `readln()`, line feeds are recognized as LF (\r) or
+				// CRLF (\r\n). *CR characters are ignored*, that is, removed from the
+				// result, even in BINARY mode. So, if the server streams
+				//       "AAA\r\nBBB\r\n\r\nCCC\r\n"
+				// then consecutive `readln()` calls return:
+				//   (1) "AAA"
+				//   (2) "BBB"
+				//   (3) "\nCCC"      ;  we would have expected (3) "" and (4) "CCC"
+				// So the secure way to detect the end-of-headers blank line is to
+				// check whether (3)==="" or (3).charAt(0)==="\n".
+				// ---
+				// HTTP/1.1 header field values can be folded onto multiple lines if the
+				// continuation line begins with a space or horizontal tab. All linear
+				// white space, including folding, has the same semantics as SP. A
+				// recipient MAY replace any linear white space with a single SP before
+				// interpreting the field value or forwarding the message downstream.
+				//   LWS            = [CRLF] 1*( SP | HT )
+				// ---
+
+				// Headers -> `resp.headers`
+				// -------------------------------------------------------------
+				hd = ''; // current header (key.)
+				for( hd='' ; line=sx.readln() ; )
+				{
+					c = line.charAt(0);
+
+					// Detect end-of-headers followed by body-start.
+					// ---
+					if( '\n'===c ){ line = line.slice(1); break; }
+					
+					// Detect HTTP/1.1 folding.
+					// ---
+					if( ' '===c || '\t'===c )
+					{
+						// Add to previous header if possible
+						// ---
+						line = ' '+line.trim();
+						hd && (resp.headers[hd]+=line);
+						hd && T && T( __("%1 > HTTP Header %2: %3.",callee.µ,hd,line.toSource()) );
+					}
+					else
+					{
+						if( -1 == (x=line.indexOf(':')) ) continue; // shouldn't happen
+						hd = line.slice(0,x).trim();
+						line = line.slice(1+x).trim();
+
+						// Multiple message-header fields with the same field-name MAY be
+						// present in a message if and only if the entire field-value for that
+						// header field is defined as a comma-separated list [i.e., #(values)].
+						// It MUST be possible to combine the multiple header fields into one
+						// "field-name: field-value" pair, without changing the semantics of the
+						// message, by appending each subsequent field-value to the first, each
+						// separated by a comma.
+						// ---
+						resp.hasOwnProperty(hd)
+						? ( resp.headers[hd] += ','+line )
+						: ( resp.headers[hd] = line );
+						T && T( __("%1 > HTTP Header %2: %3.",callee.µ,hd,line.toSource()) );
+					}
+				}
+
+				// HTTP/1.1 defines the `Connection: close` message for the sender to
+				// signal that the connection *will be closed* after completion of the
+				// response.
+				// ---
+				sz = ( resp.headers.hasOwnProperty(x='Content-Length') && parseInt(resp.headers[x],10) )||0;
+
+				// For unknown reason (!) `sx` may have a wrong and confusing "I/O Timeout
+				// error" from this stage, so we shall use `sx.eof` test only and regard
+				// `Timeout` message as irrelevant.
+				// ---
+				sx.error = '';
+
+				// Checkpoint. If statusCode `sc` is 404 or any error code, no need to go further.
+				// "All 1xx (informational), 204 (no content), and 304 (not modified) responses
+				// MUST NOT include a message-body. All other responses do include a message-body,
+				// although it MAY be of zero length."
+				// ---
+				if( sc < 200 || 204==sc || sc >= 300 )
+				{
+					resp.error = __("Closing connection due to status code %1",sc);
+					break;
+				}
+
+				// "Whenever a transfer-coding is applied to a message-body, the set of
+				// transfer-codings MUST include "chunked", unless the message is
+				// terminated by closing the connection. When the "chunked" transfer-
+				// coding is used, it MUST be the last transfer-coding applied to the
+				// message-body. The "chunked" transfer-coding MUST NOT be applied more
+				// than once to a message-body. These rules allow the recipient to
+				// determine the transfer-length of the message."
+				// ---
+				if( x=resp.headers['Transfer-Encoding'] )
+				{
+					resp.error = __("The transfer-coding '%1' is not implemented yet.", x);
+					break;
+				}
+
+				// ---
+				// [Socket] read() : "reads up to the specified number of characters
+				// from the connection. CR ('\r') characters are ignored unless the
+				// encoding is set to 'BINARY'. Returns a string that contains up to
+				// the number of characters that were supposed to be read."
+				// ---
+
+				// Body.
+				// -------------------------------------------------------------
+				resp.data = line||'';
+				
+				// If Content-Length has been returned, we can only consider it
+				// a hint for scaling (due to many invalid content lengths.) Using
+				// `10+sz` should then make us grab the content in one gobbet.
+				// ---
+				sz = sz ? (10+sz) : SZ_REQ;
+				for( x=t=resp.data.length ; !sx.eof ; t=x )
+				{
+					T && T( __("%1 > Reading at most %2 bytes...",callee.µ,sz) );
+					resp.data += sx.read(sz);
+					if( t >= (x=resp.data.length) ) break;
+				}
+				T && T( __("%1 > Finished with %2 bytes.",callee.µ,x) );
+
+				// Apply encoding to binary?
+				// ---
+				target.wantText
+				&& resp.data.length
+				&& resp.headers.hasOwnProperty(x='Content-Type')
+				&& ( x=resp.headers[x].match(callee.RE_CHARSET) )
+				&& ( x=x[1].toUpperCase() )
+				&& File.isEncodingAvailable(x)
+				&& callee.ENCODE($.global[callee.µ.__root__],resp,x)
+				&& T( __("%1 > Converted into %2 characters.",callee.µ,x) );
+
+				r = 1;
+				break;
+			}
+
+			return (sx&&sx.close()), r;
+		}
+		.setup
+		({
+			RE_CHARSET: RegExp("^text/[a-z]+; ?charset=([\\w:-]+)",'i'),
+			
+			ENCODE: function(/*IdEx*/$$,/*{data:bin}&*/resp,/*str*/enc,  ff,r)
+			//----------------------------------
+			// 0 [KO] | 1 [OK]
+			{
+				ff = $$.File.temp(resp.data,'tmp',0,1); // Temporary binary file
+				if( !ff ) return 0;
+				ff.encoding = enc;
+				r = ff.open('r') && (resp.data=ff.read(), ff.close());
+				ff.remove();
+				return r;
+			},
+		}),
+	})
+
