@@ -1,6 +1,7 @@
 
 ##### [190326]
   - [`Web/HttpSocket`](/etc/Web/$$.HttpSocket.jsxinc): The request header `Connection: keep-alive` was not a good idea. It makes ExtendScript Socket _much_ slower. During a single http GET, there is no reason to require a persistent connection.
+    - [`SUI/builder/WSTA`](/core/SUI/builder/$$.WSTA.jsxres): On Mac OS, changing the `enabled` property may not update the appearence of a visible widget (in particular, the background color of inner components.) The hide-show technique seems to fix that. It is implemented in the `HARD_REFRESH` subfunction of `WSTA`.
 
 ##### [190325]
   - [**Web**](/etc/$$.Web.jsxlib) module fully rewritten, with clear dependencies, improved code, etc. Should work much better now, on both Mac and Win platforms!
