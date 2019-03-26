@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190321 (YYMMDD)
-		Modified:       190325 (YYMMDD)
+		Modified:       190326 (YYMMDD)
 
 *******************************************************************************/
 
@@ -83,8 +83,8 @@
 		GSOK : function(/*{ host:str, port:str, location:str, wantText:0|1, delay:uint }*/target,  $$,sx,hopo,err,req)
 		//----------------------------------
 		// (GET-Socket-Query.) Initiate and return a new connected Socket based on
-		// the `target` object. Format and send a HTTP 1.0 GET query in keep-alive
-		// mode. If `target.wantText`, send a `Accept: text/xml,text/*,*/*` querying
+		// the `target` object. Format and send a HTTP 1.0 GET query mode. If
+		// `target.wantText`, send a `Accept: text/xml,text/*,*/*` querying
 		// the server to return the most appropriate text representation of the
 		// resource when variants exist. In either case, the socket is opened in
 		// BINARY mode because we want a transparent transaction regarding newlines
@@ -92,6 +92,8 @@
 		// If an error occurs, set callee.ERRO to the error message and return
 		// the Socket-Error flag (~.SERR).
 		// [REM] `target` keys are detailed in ~.HGET.
+		// [CHG190326] Removed `Connection: keep-alive` which made socket reads
+		// 10X slower!
 		// ---
 		// => new Socket [OK]  |  ~.SERR [KO]
 		{
@@ -166,7 +168,7 @@
 				[
 					"GET %1 HTTP/1.0",
 					"Host: %2",
-					"Connection: keep-alive",
+					//"Connection: keep-alive",  // Too slow!
 					"Accept: text/xml,text/*,*/*",
 					"Accept-Encoding:",  // means identity only
 					__("User-Agent: %1",$$.Env.userAgent()),
@@ -179,7 +181,7 @@
 				[
 					"GET %1 HTTP/1.0",
 					"Host: %2",
-					"Connection: keep-alive",
+					//"Connection: keep-alive",  // Too slow!
 					"Accept: */*",
 					"Accept-Encoding:",  // means identity only
 					__("User-Agent: %1",$$.Env.userAgent()),
@@ -379,7 +381,7 @@
 				}
 				T && T( __("%1 > Finished with %2 bytes.",callee.µ,x) );
 
-				// Apply encoding to binary?
+				// Apply encoding?
 				// ---
 				target.wantText
 				&& resp.data.length
