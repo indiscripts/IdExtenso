@@ -221,6 +221,10 @@
 			// kind of slicing window may be used later in buffering `resp.data`.
 			// ---
 			const SZ_REQ = 1024*(target.wantText ? 50 : 200);
+			
+			// [190326] Always clear the READLINE buffer at the beginning!
+			// ---
+			callee.READLINE.DATA = '';
 
 			while( r=-1 )
 			{
