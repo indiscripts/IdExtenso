@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190310 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190321 (YYMMDD)
 
 *******************************************************************************/
 
@@ -49,6 +49,19 @@
 	
 	makes the child looking enabled (although non activable) while
 	its parent is disabled.
+	
+	On Mac OS (at least in CS6), a enabled-switch command like
+	
+	      group.enabled = !group.enabled;
+	
+	does not refresh the UI state of the children (although `enabled`
+	flags are properly changed.) A workaround in CS is to execute
+	
+	      // Mac CS patch ; assuming the group is visible
+	      // ---
+	      group.hide(); groupe.show();
+	
+	just after toggling the `enabled` property. [Not tested in CC.]
 	
 	A critical problem is, the `watch` method does not work as expected
 	with native state properties `enabled` or `visible`. More precisely,
@@ -108,6 +121,10 @@
 	//----------------------------------
 	// k :: visible | enabled
 	{
+		// [190326] Added to allow safe mode.
+		// ---
+		if( callee.SAFE ) return nv;
+
 		var s = 0|this.__state__;
 
 		switch( k )
@@ -142,6 +159,10 @@
 				// the state of children must be updated whatever d.
 				// ---
 				0===(8&s) && callee.CHLD_DSB( this, (12&s) ? 1 : 0 );
+				
+				// [ADD190326]
+				// ---
+				callee.HARD_REFRESH && callee.HARD_REFRESH(this,nv);
 
 			default:;
 		}
@@ -150,6 +171,28 @@
 	}
 	.setup
 	({
+		HARD_REFRESH: $$.inMac ?
+		function(/*Widget*/wg,/*true|false*/nv)
+		//----------------------------------
+		// [ADD190326] On Mac, changing the `enabled` property may not
+		// properly update the apperance of a a visible widget. This
+		// function uses the hide-show workaround to fix that. As it is
+		// called from within the watcher (i.e *before* effective assi-
+		// gnment) it's necessary to temporarily deactivate the watcher.
+		// ---
+		// this :: WSTA
+		// => undef
+		{
+			if( ScriptUI.isHidden(wg) ) return;
+			this.SAFE = 1;
+			// ---
+			wg.enabled = nv;
+			wg.hide();
+			wg.show();
+			// ---
+			delete this.SAFE;
+		} : 0,
+
 		INIT: function(/*Widget*/wg,  p,s)
 		//----------------------------------
 		// Register this state watcher (this===WSTA) for the keys `visible` and
