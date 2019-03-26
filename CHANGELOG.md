@@ -1,4 +1,7 @@
 
+##### [190326]
+  - [`Web/HttpSocket`](/etc/Web/$$.HttpSocket.jsxinc): The request header `Connection: keep-alive` was not a good idea. It makes ExtendScript Socket _much_ slower. During a single http GET, there is no reason to require a persistent connection.
+
 ##### [190325]
   - [**Web**](/etc/$$.Web.jsxlib) module fully rewritten, with clear dependencies, improved code, etc. Should work much better now, on both Mac and Win platforms!
   
