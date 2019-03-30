@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190330 (YYMMDD)
 
 *******************************************************************************/
 
@@ -34,6 +34,8 @@
 	// `pp` may specify the following keys: .type (default is "dialog"),
 	// .text or .name (default is ""), .bounds (default is undefined) and
 	// any creation property (.borderless, .resizeable, etc.)
+	// [FIX190330] There was no need to delete type/text/bounds properties,
+	// this was breaking `pp` integrity in persistent engines.
 	// ---
 	// => new Window
 	{
@@ -41,14 +43,14 @@
 
 		t = String(pp.type||'').toLowerCase();          // Win type.
 		'window'===t || 'palette'===t || (t='dialog');  // Default: 'dialog'
-		delete pp.type;
+		//delete pp.type;                               // [DEL190330]
 
 		s = String(pp.text||pp.name||'');               // text or name => title
 		pp.name || (s.length&&(pp.name=s));             // Set the name if non-empty
-		delete pp.text;
+		//delete pp.text;                               // [DEL190330]
 
 		b = pp.bounds||void 0;
-		delete pp.bounds;
+		//delete pp.bounds;                             // [DEL190330]
 
 		return new Window(t, s, b, pp);                 // Create the Window instance.
 	},
