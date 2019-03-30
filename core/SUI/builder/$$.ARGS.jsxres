@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190310 (YYMMDD)
+		Modified:       190330 (YYMMDD)
 
 *******************************************************************************/
 
@@ -35,19 +35,29 @@
 	//----------------------------------
 	// Feed the array `args` :: [tpe, args...] for use in  either
 	// `parent.add(tpe, ...)` or a factory func. If `tpe` is 'window',
-	// return FALSE. Return `x.properties` if it's truthy AND allowed
-	// in the target object, otherwise return 0.
+	// return FALSE. Return a fresh set of properties if expected AND
+	// allowed in the target object, otherwise return 0.
 	// [ADD190218] Added the alias `tpe=='list'`, which becomes
 	// 'dropdownlist' if x.properties.dropdown,  'listbox' otherwise
+	// [FIX190330] Previous code had bug in persistent engines as we
+	// didn't prevent `x.properties` from being changed. We now work
+	// on a duplicate object to keep intact the input resource.
 	// ---
 	// => obj|0 [OK]  |  false [KO]
 	{
 		s = tpe.toLowerCase();                          // Normalize the type.
 		if( 'window'==s ) return false;                 // Disallow 'window'.
-		pp = x.properties || 0;                         // Creation properties?
+
+		// [FIX190330] Since some properties are to
+		// be parsed and deleted, we need to work on
+		// a clone of `x.properties` to keep x unchanged.
+		// ---
+		pp = callee.DUPL(x.properties);                 // Creation properties or 0.
+
 		'list'==s && (s = pp.dropdown ? 'dropdownlist' : 'listbox'); // [190218]
 		u = void 0;                                     // Alias of undefined.
 		args.length && (args.length=0);                 // Make sure `args` is empty.
+
 		t = typeof(k=callee.Q[s]);                      // 'string'|'object'|'undefined'
 
 		( 'undefined' == t ) || ( (args[0]=s),(args[1]=pp.bounds||u) );
@@ -109,6 +119,18 @@
 	}
 	.setup
 	({
+		DUPL: function(/*?obj*/o,  q,k)
+		//----------------------------------
+		// [ADD190330] Duplicate o keys into a fresh object.
+		{
+			if( o !== Object(o) ) return 0;
+
+			q = callee.Q||(callee.Q={});
+			for( k in q ) delete q[k];
+			for( k in o ) o.hasOwnProperty(k) && (q[k]=o[k]);
+			return q;
+		},
+
 		Q:
 		{
 			// --- At most one extra argument.
