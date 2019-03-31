@@ -1,3 +1,5 @@
+##### [190331]
+  - Refactored both [**BasicScript**](/etc/$$.BasicScript.jsxlib) and [**ModalScript**](/etc/$$.ModalScript.jsxlib) to get all shared code at a single place. Cf `/etc/AnyScript/`. These changes do not impact the API, so existing scripts based on either BasicScript or ModalScript infrastructure should still work as expected.
 
 ##### [190330]
   - [`SUI/builder`](/core/SUI/builder/): Fixed a problem in `ARGS.jsxres` and `WIND.jsxres` snippets. The previous code was changing the input descriptor to adjust the `properties` object to its needs. Worked fine unless the client script used a cached object from within a persistent engine! Solved.
