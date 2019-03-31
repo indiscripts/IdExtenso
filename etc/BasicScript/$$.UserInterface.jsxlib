@@ -6,23 +6,57 @@
 		Require:        $$.BasicScript
 		Encoding:       ÛȚF8
 		Core:           NO
-		Kind:           Module (within $$.BasicScript)
+		Kind:           Child module of $$.BasicScript
 		API:            SmartListItemGetter
-		                ?beforeShow() ?onClose()
+		        Hooks:  ?beforeShow() ?onClose()
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       190317 (YYMMDD)
+		Modified:       190331 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.BasicScript ){ alert(__("%1 requires the %2 module.",'UserInterface','BasicScript')); exit(); }
-;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 190317))
+;$$.BasicScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.BasicScript.toSource(), 'UserInterface', 190331))
+
+	//==========================================================================
+	// HOOKS
+	//==========================================================================
+
+	/*
+
+	beforeShow : function beforeShow(DOMDialog, settings, runMode)
+	----------------------------------------------------------------------------
+	`DOMDialog`:: DOM Dialog instance.
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> undefined
+	----------------------------------------------------------------------------
+	Called once settings have been automatically populated into the SUI dialog
+	through linked keys. Implement this function to preprocess, before showing
+	the dialog, existing or additional settings.
+
+
+	onClose : function onClose(ok, DOMDialog, settings, runMode)
+	----------------------------------------------------------------------------
+	`ok`       :: (bool) Whether the user has validated the dialog.
+	`DOMDialog`:: DOM Dialog instance.
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
+	----------------------------------------------------------------------------
+	Called once the SUI dialog is closed and its values have been automatically
+	populated into Settings through linked keys. Implement this function to
+	normalize existing or additional settings. This function may return `true`
+	to skip the Server while allowing backup. In most cases, `ok===false` should
+	lead to return false, telling BasicScript to stop the process.
+
+	*/
 
 	[PRIVATE]
 	
 	({
-		S2DG : function(/*{ssKey=>prefix}*/o,/*settings*/ss,/*Dialog&*/dlg,  k,p,v)
+		_SD_ : function(/*{ssKey=>prefix}*/o,/*settings*/ss,/*Dialog&*/dlg,  k,p,v)
 		//----------------------------------
 		// (Settings-to-Dialog-Keys.) Update Dialog keys from settings.
 		// => undefined
@@ -54,7 +88,7 @@
 			}
 		},
 
-		DG2S : function(/*{ssKey=>prefix}*/o,/*Dialog*/dlg,/*settings&*/ss,  k,p,v)
+		_DS_ : function(/*{ssKey=>prefix}*/o,/*Dialog*/dlg,/*settings&*/ss,  k,p,v)
 		//----------------------------------
 		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
 		// => undefined
@@ -93,7 +127,7 @@
 			}
 		},
 
-		_GO_: function(/*{ DXML:xml|false, SPEC:str|false, PRFX:'%', KEYS:{ss-Key=>prefix|''} }*/uiCache,/*int*/runMode,  $$,µ,dlg,ss,r)
+		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,µ,uiCache,dlg,ss,r)
 		//----------------------------------
 		// (Go.) Show the dialog (if any) with applied settings ; call the
 		// `beforeShow` and `onClose` hooks if available.
@@ -110,13 +144,14 @@
 
 			// Check that the dialog exists.
 			// ---
+			uiCache = PM['~'].DIAL; // { DXML:xml|false, SPEC:str|false, PRFX:'%', KEYS:{ss-Key=>prefix|''} }
 			(dlg=uiCache.SPEC) && ( (dlg=resolve(dlg)).isValid || (dlg=false) );
 			if( !dlg ) return;
 			
 			// ss -> dlg keys.
 			// ---
 			ss = $$.Settings();
-			this.S2DG(uiCache.KEYS, ss, dlg);
+			this._SD_(uiCache.KEYS, ss, dlg);
 
 			// `beforeShow` hook.
 			// ---
@@ -125,7 +160,7 @@
 			// Show the dialog.
 			// ( If not canceled, dlg -> ss keys. )
 			// ---
-			(r=dlg.show()) && this.DG2S(uiCache.KEYS, dlg, ss);
+			(r=dlg.show()) && this._DS_(uiCache.KEYS, dlg, ss);
 			
 			// onClose hook?
 			// ---
@@ -135,7 +170,7 @@
 				( r ? void 0 : false );
 		},
 	})
-	
+
 	[PUBLIC]
 	
 	({
@@ -144,40 +179,10 @@
 		// index in the stringList.) If the flag SmartListItemGetter
 		// is ON, any settings key that has been declared as a *string*
 		// will be returned as the corresponding string in the list.
-		// See ~.DG2S for detail.
-		// [REM] This flag does not affect the setter (~.S2DG) since
+		// See ~._DS_ for detail.
+		// [REM] This flag does not affect the setter (~._SD_) since
 		// `dlg.setValueKey` is smart enough to route, either a number
 		// to a list index, or a string to a list item.
 		// ---
 		SmartListItemGetter : 0,
 	})
-
-	//==========================================================================
-	// From a distinct `jsxinc` (included later,) you may provide
-	// a [PUBLIC] cluster for implementing the below HOOKS.
-	//==========================================================================
-
-	// beforeShow : function beforeShow_$Dialog$_O_Ï_(/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
-	// ----------------------------------
-	// Called once settings have been automatically populated into the Dialog
-	// object through linked keys. Implement this function to preprocess, before
-	// showing the dialog, existing or additional settings.
-	// ---
-	// `runMode` represents the script run flag (signed integer.)
-	// ---
-	// => undefined
-	// {},
-
-	// onClose : function beforeShow_B_$Dialog$_O_Ï_x$Boolean$(/*bool*/ok,/*Dialog*/dlg,/*settings*/ss,/*int*/runMode)
-	// ----------------------------------
-	// Called once the dialog is closed and its values have been automatically
-	// populated into Settings through linked keys. Implement this function
-	// to postprocess existing or additional settings.
-	// `ok` indicates wether the user has validated the dialog. In most cases
-	// `false==ok` should lead to stop the process (that is, return false.)
-	// You can also return true to skip the Server while allowing backup.
-	// ---
-	// `runMode` represents the script run flag (signed integer.)
-	// ---
-	// => any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
-	// {},
