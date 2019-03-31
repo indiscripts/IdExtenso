@@ -20,7 +20,7 @@ Compute and prompt the MD5 hash of the input string. (Based on `etc/$$.MD5.jsxli
 
 _How to use it?_ Give a look at the sample code [`UseJsxBlindLib.jsx`](../tests/UseJsxBlindLib.jsx) in the `/tests` directory.
 
-  - Version 2.1 (4 Feb, 2019) fixes two critical bugs regarding reserved words.
+  - Version 2.1 (Feb 4, 2019) fixes two critical bugs regarding reserved words.
 
 **Documentation:**
 
@@ -130,6 +130,14 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 		}
 
 _Note._ When no better option is available, the scrambler performs _swaps_ rather than _changes_. This typically happens with short symbols of one or two characters that have a tiny range of _exotic_ substitutions. For example, the identifier `x` cannot be changed into say `隰` due to encoding constraints. But it can be exchanged with another symbol used in the program, e.g `y` or `p`, which still contributes in obfuscating the code.
+
+---
+
+##### [`ScriptTemplate`](ScriptTemplate.jsx)
+
+***ScriptTemplate*** for InDesign/IdExtenso is a complete tool for building advanced scripts based on either DOM or ScriptUI dialog (BasicScript vs. ModalScript modules.) You can easily specify the attributes of your project in the GUI: name, description, extra modules, YALT locales, context, server, UI components, etc. No need to manually create the underlying files and to write their dependencies.
+
+  - Version 1.14 (March 31, 2019) is the first public release. It is localized in English and French.
 
 ---
 
