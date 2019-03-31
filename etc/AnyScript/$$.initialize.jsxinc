@@ -1,0 +1,119 @@
+/*******************************************************************************
+
+		Name:           initialize
+		Desc:           Declare automatic Settings for whatever script template.
+		Path:           /etc/AnyScript/$$.initialize.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Shared part of BasicScript and ModalScript modules.
+		API:            ~.DECL()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+
+	({
+		YALT: false,
+
+		DECL: function(  $$,q,v,o)
+		//----------------------------------
+		// (Declare-Settings.) Declare and normalize settings.
+		// [REM] Called by `onEngine`. See also `init()`.
+		// Normalized constant settings (the starting `_` is the contant shortcut.)
+		// ---------------------------------------------------------------------
+		// _$IDRQ :: (num)  InDesign version required ;  e.g 7.5
+		// _$SUID :: (str)  Unique ID                 ;  e.g "d7d1fbece5d803ed5c9bf50eb68580cd"
+		// ---------------------------------------------------------------------
+		// _$NAME :: (str)  Script name               ;  e.g "MyScript"
+		// _$VSTR :: (str)  Script version            ;  e.g "2.027"
+		// _$TYPE :: (str)  Script type (A,B,F,T,P)   ;  e.g "B"  (for beta.)
+		// _$COPY :: (str)  Copyright line            ;  e.g "© 2018, myserver.com"
+		// _$HEAD :: (str)  Full script title         ;  e.g "MyScript 2.027[beta]"
+		// ---------------------------------------------------------------------
+		// => undefined
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			// Script file name.
+			// ---
+			callee.FNME=$$.Env.runningScript;
+
+			// Raw data.
+			// ---
+			q = callee.DATA||(callee.DATA={});
+
+			// Required ID version ($IDRQ).
+			// ---
+			if( q.hasOwnProperty('_$IDRQ') )
+			{
+				v = q._$IDRQ;
+				'number' == typeof v || (v=parseFloat(String(s)));
+				6 < v && (callee.IDRQ=v);
+			}
+
+			// Script name ($NAME).
+			// ---
+			callee.NAME = q._$NAME || (q._$NAME=File(callee.FNME).nudeName);
+
+			// Script version ($VSTR). Fallback: "1.0".
+			// ---
+			callee.VSTR = q._$VSTR || (q._$VSTR='1.0');
+
+			// Script type ($TYPE) among 'A'|'B'|'F'|'T'|'P' or empty.
+			// ---
+			callee.TYPE = {A:' alpha', B:' beta', F:' free', T:' trial', P:' pro'}[q._$TYPE] || '';
+
+			// Copyright line ($COPY). May be empty.
+			// ---
+			callee.COPY = q._$COPY || "";
+			
+			// Script head ($HEAD) may be served as title in dialogs etc.
+			// Unless specified, mix of NAME, VSTR, TYPE and COPY.
+			// ---
+			callee.HEAD = q._$HEAD || (q._$HEAD=__("%1 %2%3 %4"
+				, callee.NAME
+				, callee.VSTR
+				, callee.TYPE
+				, callee.COPY
+				).trim());
+
+			// Settings Unique ID ($SUID).
+			// ---
+			callee.SUID = q._$SUID = String(q._$SUID) || ($$.MD5||String)(callee.NAME);
+
+			// Default LIVE keys:
+			// hasDocument ; hasSelection
+			// ---
+			( (o=q.LIVE) && o===Object(o) ) || (o=q.LIVE={});
+			o.hasOwnProperty('hasDocument')  || (o.hasDocument=void 0);
+			o.hasOwnProperty('hasSelection') || (o.hasSelection=void 0);
+
+			// Default RESET keys:
+			// endMessage
+			// ---
+			( (o=q.RESET) && o===Object(o) ) || (o=q.RESET={});
+			o.hasOwnProperty('endMessage') || (o.endMessage="");
+
+			// Declare the settings.
+			// ---
+			$$.Settings.declare(callee.SUID,q);
+		}
+		.setup
+		({
+			DATA:   false,
+			IDRQ:   6,
+			FNME:   '',
+			NAME:   '',
+			VSTR:   '',
+			COPY:   '',
+			SUID:   '',
+			TYPE:   '',
+			HEAD:   '',
+		}),
+
+	})
