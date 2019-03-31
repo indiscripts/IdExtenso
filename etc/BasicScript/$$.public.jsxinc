@@ -1,0 +1,128 @@
+/*******************************************************************************
+
+		Name:           public
+		Desc:           Public API (except run) of a Basic Script.
+		Path:           /etc/BasicScript/$$.public.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Part of the BasicScript module.
+		API:            init() onEngine() onLoad() onUnload() changeLocaleTo()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	[PUBLIC]
+	
+	({
+		init: function init_õs$XML$_õs$XML$_õs$XML$_$this$(/*?obj|str|xml*/a,/*?obj|str|xml*/b,/*?obj|str|xml*/c,  t,x,$$,I)
+		//----------------------------------
+		// Initialize settings and/or yalt pack and/or xml dialog,
+		// these arguments being *passed in no particular order*.
+		// This function is invoked at including time, before $$.load(),
+		// to get various engine persistent data already available.
+		// (a) Any object-type arg is interpreted script Settings
+		//     (Normalized settings properties are detailed in ~.DECL.)
+		// (b) Any string-typed arg is interpreted Yalt package.
+		// (c) Any xml-typed arg is interpreted XML dialog.
+		// ---
+		// => this
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			for( t=[a,b,c] ; t.length ; )
+			{
+				x = t.pop();
+				switch( typeof x )
+				{
+					case 'string' :
+						I.YALT || -1==x.indexOf('#') || $$.Yalt(I.YALT=x);
+						break;
+					
+					case 'xml' :
+						I.DIAL.DXML || (I.DIAL.DXML=x);
+						break;
+					
+					default :
+						I.DECL.DATA || (x!==Object(x)) || (I.DECL.DATA=x);
+				}
+			}
+			return callee.µ;
+		},
+
+		onEngine: function onEngine_(  )
+		// ---------------------------------
+		// Executed once if the script uses a persistent #targetengine.
+		{
+			callee.µ['~'].DECL();
+		},
+
+		onLoad: function onLoad_(  s)
+		// ---------------------------------
+		// Executed every time you run the script.
+		{
+			// Make sure the dialog is OK. This can't be done from
+			// onEngine due to a CC bug with persistent dialogs :-(
+			// ---
+			if( (s=callee.µ['~'].DIAL.SPEC) && resolve(s).isValid ) return;
+			callee.µ['~'].DIAL();
+		},
+
+		onUnload: function onUnload_(  s,$$,t)
+		// ---------------------------------
+		// If the script uses a Dialog AND runs in a *non-persistent* engine,
+		// we always have to destroy the object to free up memory (since dialogs
+		// are session-persistent.)
+		// [WARN] In CS4-CS6 keeping a dialog in memory is OK, but in CC dialog
+		// persistence is buggy so we have to clear the ref *even in non-main engine*.
+		{
+			if( !(s=callee.µ['~'].DIAL.SPEC) || !(t=resolve(s)).isValid ) return;
+			
+			$$ = $.global[callee.µ.__root__];
+			
+			// In CC, forcibly destroy the dialog in any case (and removes DIAL.SPEC.)
+			// ---
+			if( $$.inCC )
+			{
+				+$$.trace && $$.trace(__("%1 > Destroying %2 due to CC environment.",callee.µ,s));
+				t.destroy();
+				delete callee.µ['~'].DIAL.SPEC;
+				return;
+			}
+
+			// Taking advantage of persistent engine in CS4..CS6, only
+			// destroy the reference if engine state is non-persistent (-1).
+			// ---
+			if( $$.Env.engineState() < 0 )
+			{
+				+$$.trace && $$.trace(__("%1 > Destroying %2 due to non-persistent engine.",callee.µ,s));
+				 t.destroy();
+				 return;
+			}
+		},
+
+		changeLocaleTo: function changeLocaleTo_i$locale$_B(/*uint|LocaleID=auto*/iLocale,  I,$$,t)
+		// ---------------------------------
+		// [ADD180325] Re-activate Yalt to a different locale, then make
+		// sure the Dialog is accordingly rebuilt. This method should be
+		// called before Dialog values be populated, typically in an onLoad
+		// handler or at onActive stage (Context.)
+		// ---
+		// E.g: µ.changeLocaleTo(Locale.GERMAN_LOCALE);
+		{
+			I = callee.µ['~'];
+			$$ = $.global[callee.µ.__root__];
+			
+			I.YALT && $$.Yalt && $$.Yalt.activate(iLocale);
+			if( (t=I.DIAL.SPEC) && (t=resolve(t)).isValid )
+			{
+				t.destroy();
+				delete I.DIAL.SPEC;
+				I.DIAL();
+			}
+		},
+	})
