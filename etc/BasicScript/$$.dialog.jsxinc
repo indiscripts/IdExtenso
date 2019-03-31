@@ -1,0 +1,71 @@
+/*******************************************************************************
+
+		Name:           dialog
+		Desc:           Normalize and build the BasicScript (DOM) dialog.
+		Path:           /etc/BasicScript/$$.dialog.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Part of BasicScript.
+		API:            ~.DIAL()
+		DOM-access:     YES
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	[PRIVATE]
+
+	({
+
+		DIAL: function(  x,$$,xk,k,o,pfx,p)
+		//----------------------------------
+		// (Declare-Dialog.) Normalize and build the dialog.
+		// 1. Creates a default title unless the XML provides a `name` attr.
+		// 2. Calls Dom.Dialog to get a Dialog instance ; saves its spec.
+		// 3. Keeps track of the dialog<->settings key mapping, allowing
+		//    a few key prefixes to get a special treatment:
+		//    ------------------------------------------------------------
+		//    `%MyKey` (XML) is mapped to `MyKey` (Settings) w/ %-prefix
+		//    Useful to perform special op. regarding percentage boxes.
+		//    ------------------------------------------------------------
+		//    `µMyKey` (XML) is mapped to `MyKey` (Settings) w/ µ-prefix
+		//    Useful to perform special op. regarding unit boxes.
+		//    ------------------------------------------------------------
+		//    More detail in UserInterface.jsxlib.
+		// ---
+		// [REM] This method is called by `onLoad`. See also `init()`.
+		// => undefined
+		{
+			if( !(x=callee.DXML) ) return;
+			
+			// Default dialog title (if missing.)
+			// ---
+			if( !x.attribute('name').toString() ) x.@name=this.DECL.HEAD;
+
+			// Create the dialog and save its spec.
+			// ---
+			callee.SPEC = ($$=$.global[callee.µ.__root__]).Dom.Dialog(x).toSpecifier();
+			
+			// Want to keep Settings-To-Dialog Keys quickly accessible.
+			// ---
+			o = callee.KEYS;
+			pfx = callee.PRFX; // Special prefixes.
+			xk = x..@key;
+			for each( k in xk )
+			{
+				if( !(k=k.toString()) ) continue;
+				(0 <= pfx.indexOf(p=k.charAt(0)) || (p='')) && (k=k.substr(1));
+				$$.Settings.hasKey(k) && (o[k]=p);
+			}
+		}
+		.setup
+		({
+			DXML:   false,
+			SPEC:   false,
+			PRFX:   '%µ',
+			KEYS:   { /*ssKey=>prefix|''*/ }
+		}),
+
+	})
