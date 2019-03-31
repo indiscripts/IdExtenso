@@ -6,18 +6,57 @@
 		Require:        $$.ModalScript
 		Encoding:       ÛȚF8
 		Core:           NO
-		Kind:           Module (within $$.ModalScript)
+		Kind:           Child module of $$.ModalScript
 		API:            SmartListItemGetter CancelValue
-		                ?beforeShow() ?onClose()
+		        Hooks:  ?beforeShow() ?onClose()
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180601 (YYMMDD)
-		Modified:       190317 (YYMMDD)
+		Modified:       190331 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
-;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 190317))
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 190331))
+
+	//==========================================================================
+	// HOOKS
+	//==========================================================================
+
+	/*
+
+	beforeShow : function beforeShow(SUIDialog, settings, runMode)
+	----------------------------------------------------------------------------
+	`SUIDialog`:: ScriptUI-based dialog (Window instance.)
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> undefined
+	----------------------------------------------------------------------------
+	Called once settings have been automatically populated into the SUI dialog
+	through linked keys. Implement this function to preprocess, before showing
+	the dialog, existing or additional settings.
+
+
+	onClose : function onClose(ok, SUIDialog, settings, runMode)
+	----------------------------------------------------------------------------
+	`ok`       :: (false|uint) Returned value of the dialog; `false` if canceled.
+	`SUIDialog`:: ScriptUI-based dialog (Window instance.)
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
+	----------------------------------------------------------------------------
+	Called once the SUI dialog is closed and its values have been automatically
+	populated into Settings through linked keys. Implement this function to
+	normalize existing or additional settings. This function may return `true`
+	to skip the Server while allowing backup.
+	(a) If `ok===false`, the user has canceled the dialog. (In most cases you
+	    should then return false to tell ModalScript to stop the process.)
+	    This reflects the fact that `dlg.show` has returned `µ.Cancelvalue`.
+	(b) If `ok!==false`, it then reflects the value returned from `dlg.show()`,
+	    usually 1 (associated to `dlg.defaultElement` or the 'ok' button), but
+	    you can manage here any specific returned value.
+
+	*/
 
 	[PRIVATE]
 	
@@ -50,7 +89,7 @@
 			}
 		},
 
-		_GO_: function(/*int*/runMode,  $$,µ,ss,dlg,q,k,pfx,r)
+		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,µ,ss,dlg,q,k,pfx,r)
 		//----------------------------------
 		// (Go.) Build and show the dialog (if any) with applied settings ;
 		// call the `beforeShow` and `onClose` hooks if available.
@@ -138,37 +177,3 @@
 		// ---
 		CancelValue : 2,
 	})
-
-	//==========================================================================
-	// From a distinct `jsxinc` (included later,) you may provide
-	// a [PUBLIC] cluster for implementing the below HOOKS.
-	//==========================================================================
-
-	// beforeShow : function beforeShow_$SUIDialog$_O_Ï_(/*SUIDialog*/dlg,/*settings*/ss,/*int*/runMode)
-	// ----------------------------------
-	// Called once settings have been automatically populated into the SUI dialog
-	// through linked keys. Implement this function to preprocess, before showing
-	// the dialog, existing or additional settings.
-	// ---
-	// `runMode` represents the script run flag (signed integer.)
-	// ---
-	// => undefined
-	// {},
-
-	// onClose : function onClose_B_$SUIDialog$_O_Ï_x$Boolean$(/*false|uint*/ok,/*SUIDialog*/dlg,/*settings*/ss,/*int*/runMode)
-	// ----------------------------------
-	// Called once the SUI dialog is closed and its values have been automatically
-	// populated into Settings through linked keys. Implement this function to
-	// postprocess existing or additional settings.
-	// (a) If `ok===false`, the user has canceled the dialog. (In most cases you
-	//     should then return false to tell ModalScript to stop the process.)
-	//     This reflects the fact that `dlg.show` has returned `µ.Cancelvalue`.
-	// (b) If `ok!==false`, it then reflects the value returned from `dlg.show()`,
-	//     usually 1 (associated to `dlg.defaultElement` or the 'ok' button), but
-	//     you can manage here any specific returned value.
-	// This function may return `true` to skip the Server while allowing backup.
-	// ---
-	// `runMode` represents the script run flag (signed integer.)
-	// ---
-	// => any [CONTINUE]  |  true [SKIP-SERVER]  |  false [STOP]
-	// {},
