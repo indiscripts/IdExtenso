@@ -1,0 +1,103 @@
+/*******************************************************************************
+
+		Name:           run
+		Desc:           The public `run` method of whatever script template.
+		Path:           /etc/AnyScript/$$.run.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Shared part of BasicScript and ModalScript modules.
+		API:            run()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	[PUBLIC]
+
+	({
+
+		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r)
+		//----------------------------------
+		// Actual entry point of the script.
+		{
+			µ = callee.µ;                   // the present module
+			$$ = $.global[µ.__root__];      // agnostic reference
+			I = µ['~'];                     // private zone
+
+			runMode || (runMode=0);
+
+			$$.load(runMode);
+			
+			// [ADD190331] Allow to forcibly reset Settings.
+			// ---
+			-2==runMode && callee.RESET($$);
+
+			r = void 0;
+			try
+			{
+				$$.idVersion(I.DECL.IDRQ)
+				|| $$.error( __("Unsupported InDesign version. Should be at least %1.",I.DECL.IDRQ) );
+
+				// Go to the context (activate settings.)
+				// ---
+				$$.trace(__("%1 > Starting up the Context in runMode %2...",µ,runMode));
+				r = µ.Context['~']._GO_(runMode);
+				$$.trace(__("%1 > Returned value: <%2>.",µ,r));
+
+				// Go to the UI.
+				// ---
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the UserInterface...",µ)),
+					(r=µ.UserInterface['~']._GO_(runMode,µ)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
+
+				// Go to the Server.
+				// ---
+				false===r || (true===r&&(r=1)) ||
+				(
+					$$.trace(__("%1 > Calling the Server...",µ)),
+					(r=µ.Server['~']._GO_(runMode)),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
+
+				// Quit the context (backup if non-FALSE.)
+				// ---
+				$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r));
+				r = µ.Context['~']._QT_(false!==r,runMode);
+			}
+			catch(e)
+			{
+				// [CHG180605]
+				// ---
+				if( $$.yesNo(__("An error occured: %1. Do you want to forcibly reset script preferences?",e)) )
+				{
+					callee.RESET($$);
+					alert(__("Preferences have been reset to defaults. You may consider to run the script again."));
+				}
+				else
+				{
+					$$.receiveError(e);
+				}
+			}
+
+			// [CHG180406] The returned value from Context._QT_() is used
+			// as the KEEP_DORMANT arg of $$.unload.
+			// ---
+			$$.unload(r);
+		}
+		.setup
+		({
+			RESET: function(/*IdEx*/$$)
+			//----------------------------------
+			{
+				$$.Settings.reset(null);
+				$$.Settings.backup();
+			},
+		}),
+
+	})
