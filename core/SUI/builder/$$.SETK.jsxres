@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190311 (YYMMDD)
+		Modified:       190331 (YYMMDD)
 
 *******************************************************************************/
 
@@ -67,10 +67,11 @@
 			
 		// Convert special event keys into addEventListener statement.
 		// k :: `_move` | `_mouseup` | `_keydown` | etc       -> no capture phase
+		// [CHG190331] Changed event type detection method.
 		// ---
-		if( 2 < k.length && '_'==k.charAt(0) && 'function'==typeof x && callee.RE_EVNS.test(t=k.slice(1)) )
+		if( 2 < k.length && 'function'==typeof x && (t=callee.EV_KEYS[k]) )
 		{
-			wg.addEventListener(t,x,w);
+			wg.addEventListener(t,x);
 			return;
 		}
 		
@@ -125,12 +126,31 @@
 	.setup
 	({
 		Q_SIZE:  [ '', 'preferredSize' ], // Manage `optimalSize`
-		RE_EVNS: RegExp('^(?:'
-			     + 'move|moving|resize|resizing|show|close|'
-			     + 'focus|blur|change|changing|'
-			     + 'click|mousedown|mouseup|mousemove|mouseover|mouseout|'
-			     + 'enterKey|keydown|keyup'
-			     + ')$' ),
+		EV_KEYS:
+		{
+			_move:      'move',
+			_moving:    'moving',
+			_resize:    'resize',
+			_resizing:  'resizing',
+			_show:      'show',
+			_close:     'close',
+			// ---
+			_focus:     'focus',
+			_blur:      'blur',
+			_change:    'change',
+			_changing:  'changing',
+			// ---
+			_click:     'click',
+			_mousedown: 'mousedown',
+			_mouseup:   'mouseup',
+			_mousemove: 'mousemove',
+			_mouseover: 'mouseover',
+			_mouseout:  'mouseout',
+			// ---
+			_enterKey:  'enterKey',
+			_keydown:   'keydown',
+			_keyup:     'keyup',
+		},
 		RE_SIZE: RegExp('^(?:preferredS|minimumS|maximumS|optimalS|s)ize$'),
 		EXTERN:  {},
 	}),
