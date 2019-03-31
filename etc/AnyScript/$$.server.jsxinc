@@ -1,0 +1,56 @@
+/*******************************************************************************
+
+		Name:           server
+		Desc:           Abstract server of whatever script template.
+		Path:           /etc/AnyScript/$$.server.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Shared part of BasicScript.Server and ModalScript.Server submodules.
+		API:            ~._GO_()
+		        Hooks:  ?run()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// HOOKS
+	//==========================================================================
+
+	/*
+
+	run: function run(settings, runMode)
+	----------------------------------------------------------------------------
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> undefined [OK] | false [SKIP-BACKUP]
+	----------------------------------------------------------------------------
+	This function runs the 'hot process.' If not implemented, no actions are served.
+	It may return `false` to prevent Settings from being saved while quitting.
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		_GO_: function(/*int*/runMode,  µ)
+		//----------------------------------
+		// (Go.) Call `µ.run(ss,runMode)` if available.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// ---
+		// => any [CONTINUE] | false [STOP]
+		{
+			µ = callee.µ;
+			
+			return 'function' == typeof(µ.run) ?
+				µ.run($.global[µ.__root__].Settings(),runMode) :
+				void 0;
+		},
+	})
