@@ -1,0 +1,164 @@
+/*******************************************************************************
+
+		Name:           SUI keys
+		Desc:           ScriptUI and Settings interactions.
+		Path:           /etc/ModalScript/$$.sui_keys.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Part of ModalScript.
+		API:            ~._SV_() ~._GW_() ~._GV_() ~._GS_()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// IMPLEMENTATION NOTES
+	//==========================================================================
+	
+	/*
+	
+	Unlike script templates that rely on `Dom.Dialog` and then automatically enjoy
+	its prototyped API --dlg.getWidgetKey(), dlg.getValueKey(), dlg.setValueKey()
+	etc-- ModalScript must implement its own strategy for linking Settings keys to
+	any SUI Window instance.
+	
+	The below methods implement abstract getters and setters to be attached to
+	`Window.prototype`. Namely,
+	
+	      Window.prototype.setValueKey  =  ~._SV_;
+	      Window.prototype.getWidgetKey =  ~._GW_;
+	      Window.prototype.getValueKey  =  ~._GV_;
+	      Window.prototype.getStringKey =  ~._GV_;
+	
+	(Those assignments shall be processed from µ.onEngine.)
+	
+	Getters and setters try to 'guess' which widget property is the most relevant
+	for reflecting a key, unless the widget under consideration provides specialized
+	methods (`setValue`, `getValue`, `getString`) with the following semantics:
+	
+	      <myWidget>.setValue(v)      // Assign a value to this widget
+	      <myWidget>.getValue()       // Return the value (as such) owned by this widget
+	      <myWidget>.getString()      // Return the value as a string
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		_SV_ : function setValueKey(/*key*/k,/*any*/v,  o,t)
+		//----------------------------------
+		// (Set-Value-from-Key.)
+		// `this` :: SUIWindow
+		// [DEL180909] Removed boolean 'enabled' fallback.
+		// [CHG190331] Set `wg.properties.value` only if no other option is available.
+		// => undefined [KO]  |  v-result [OK]
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+
+			// Use the custom setter, if available.
+			// ---
+			if( 'function' == typeof o.setValue ) return o.setValue(v);
+
+			// Default algorithm.
+			// ---
+			switch( typeof v )
+			{
+				case 'boolean' :
+					if( ((k='value') in o) && 'boolean'==typeof(o[k]) ) break;
+					if( 'ListItem'== o.__class__ ){ k = 'selected'; break; }
+					// k = 'enabled'; [DEL180909] Doesn't look like a good idea :-/
+					k = void 0;
+					break;
+				
+				case 'number' :
+					if( (k='value') in o )
+					{
+						if( 'number'==typeof(o[k]) ) break;
+						if( 'boolean'==typeof(o[k]) && (0===v || 1===v) ){ v=!!v; break; }
+					}
+					if( (v===v>>>0) && ('items' in o) && v < (o.items||'').length ){ k='selection'; break; }
+					
+					// [ADD180824] Fallback mechanism for edited numbers.
+					// ---
+					if( (k='text') in o ) break;
+					k = void 0;
+					break;
+
+				case 'string' :
+					// [FIX180824] ('items' in o) test must be performed *before* ('text' in o)
+					// since list widgets support the `text` property!
+					// ---
+					if( ('items' in o) && (t=o.find(v)) ){ k='selection'; v=t.index; break; }
+					if( (k='text') in o ) break;
+					// no break;
+
+				default:
+					k = void 0;
+			}
+
+			return k ? (o[k]=v) : ( (t=o.properties) ? (t.value=v) : v );
+		},
+
+		_GW_ : function getWidgetKey(/*key*/k,  o)
+		//----------------------------------
+		// (Get-Widget-by-Key.) [ADD180824]
+		// `this` :: SUIWindow
+		// ---
+		// => undefined [KO]  |  Widget [OK]
+		{
+			return ScriptUI.isWidget(o=this[k]) ? o : (void 0);
+		},
+		
+		_GV_ : function getValueKey(/*key*/k,  o,t)
+		//----------------------------------
+		// (Get-Value-by-Key.)
+		// [FIX180909] Handles widget.value / widget.properties.value.
+		// `this` :: SUIWindow
+		// => any
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+
+			// Use the custom getter, if available.
+			// ---
+			if( 'function' == typeof o.getValue ) return o.getValue();
+
+			// Default algorithm.
+			// ---
+			if( o.hasOwnProperty(k='value') ) return o[k];
+			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.index : -1;
+			if( o.hasOwnProperty(k='text') ) return o[k];
+			// [ADD180909] Fallback mechanism: use the inner properties' value.
+			if( (t=o.properties) && (t.hasOwnProperty(k='value')) ) return t[k];
+
+			return o.enabled;
+		},
+		
+		_GS_ : function getStringKey(/*key*/k,  o,v)
+		//----------------------------------
+		// (Get-String-by-Key.)
+		// [FIX180909] Handles widget.value / widget.properties.value.
+		// [ADD190317] Call `getString` if available.
+		// `this` :: SUIWindow
+		// => str
+		{
+			if( !ScriptUI.isWidget(o=this[k]) ) return;
+
+			// Use the custom getter, if available.
+			// ---
+			if( 'function' == typeof o.getString ) return o.getString();
+			if( 'function' == typeof o.getValue ) return String(o.getValue()||'');
+
+			// Default algorithm.
+			// ---
+			if( o.hasOwnProperty('items') && o.hasOwnProperty(k='selection') ) return (o=o[k]) ? o.text : '';
+			if( o.hasOwnProperty(k='text') || o.hasOwnProperty(k='title') ) return o[k];
+
+			k = 'value';
+			v = o.hasOwnProperty(k) ? o[k] : ((o=o.properties||0).hasOwnProperty(k) ? o[k] : '');
+			return String(v||'');
+		},
+	})
