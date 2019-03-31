@@ -137,6 +137,12 @@ _Note._ When no better option is available, the scrambler performs _swaps_ rathe
 
 ***ScriptTemplate*** for InDesign/IdExtenso is a complete tool for building advanced scripts based on either DOM or ScriptUI dialog (BasicScript vs. ModalScript modules.) You can easily specify the attributes of your project in the GUI: name, description, extra modules, YALT locales, context, server, UI components, etc. No need to manually create the underlying files and to write their dependencies.
 
+![ScriptTemplate GUI](ScriptTemplate.png)
+
+<div style="width:440px;margin: 1px auto;">
+<iframe width="440" height="248" src="https://www.youtube.com/embed/o9tMyuBblP8?rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+
   - Version 1.14 (March 31, 2019) is the first public release. It is localized in English and French.
 
 ---
