@@ -1,0 +1,143 @@
+/*******************************************************************************
+
+		Name:           context
+		Desc:           Abstract context of whatever script template.
+		Path:           /etc/AnyScript/$$.context.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Shared part of BasicScript.Context and ModalScript.Context submodules.
+		API:            ~._GO_() ~._QT_()
+		        Hooks:  ?beforeActivate() ?onActive() ?beforeBackup() ?onQuit()
+		DOM-access:     YES [app.properties + Settings' API]
+		Todo:           ---
+		Created:        190331 (YYMMDD)
+		Modified:       190331 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// HOOKS
+	//==========================================================================
+
+	/*
+
+	beforeActivate: function beforeActivate(runMode)
+	----------------------------------------------------------------------------
+	`runMode`  :: Script run flag (signed integer.)
+	=> DOM object | undefined
+	----------------------------------------------------------------------------
+	Called before Settings activation. Can be used to return a specific InDesign
+	object (active document, selected item...) to be passed as first argument in
+	`$$.Settings.activate()`. If your settings don't declare OBJ or HYB keys,
+	simply remove this function, or let it return undefined. Contextual tasks
+	that depend on activated settings should be managed through `onActive`.
+
+
+	onActive: function onActive(settings, runMode)
+	----------------------------------------------------------------------------
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> any [CONTINUE]  |  true [SKIP-UI]  |  false [STOP]
+	----------------------------------------------------------------------------
+	Called as soon as Settings are active. Can implement any contextual parsing
+	(active document, selection, preferences...) intended to refine settings, UI
+	options, or possible actions to be done.
+	If this function returns false, UI and Server stages are cancelled and `onQuit`
+	is triggered without saving the settings. If it returns true, UI stage is
+	skipped but Server stage is processed.
+
+
+	beforeBackup: function beforeBackup(settings, runMode)
+	----------------------------------------------------------------------------
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> DOM object | NULL | undefined
+	----------------------------------------------------------------------------
+	Called before saving the Settings. May return an InDesign object to be passed as
+	first argument in `$$.Settings.backup()`. If your settings don't manage OBJ or
+	HYB keys, the default behavior is obtained by returning undefined. Returning
+	`null` has the special meaning of skipping HYB keys while APP keys are saved.
+	(This callback only makes sense for preparing, not for discarding, the backup
+	operation. Backup can be discarded upstream.)
+
+
+	onQuit: function onQuit(bkp, settings, runMode)
+	----------------------------------------------------------------------------
+	`bkp`      :: Whether the Backup operation has been performed.
+	`settings` :: Settings accessor.
+	`runMode`  :: Script run flag (signed integer.)
+	=> undefined [NOOP]  |  1 [KEEP_DORMANT_UNLOAD]
+	----------------------------------------------------------------------------
+	Called at the very end of the process, when the Context quits. Used to display
+	a final message, etc. The returned value is passed in to `$$.unload()`, which
+	allows to set the KEEP_DORMANT flag. (See $$.Root.jsxlib.)
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		_GO_: function(/*int32*/runMode,  µ,host,ss)
+		//----------------------------------
+		// (Go.) 1. Call the `beforeActivate` hook if available ;
+		// 2. activate the settings ; 3. call and return the result
+		// of `onActive` (if available), otherwise return undefined.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// ---
+		// => any [CONTINUE]  |  true [SKIP_UI]  |  false [STOP]
+		{
+			µ = callee.µ;
+
+			host = 'function' == typeof µ.beforeActivate ?
+				µ.beforeActivate(runMode) :
+				void 0;
+
+			ss = $.global[µ.__root__].Settings.activate(host);
+			
+			// Default LIVE keys.
+			// ---
+			ss.hasDocument = app.properties.activeDocument ? 1 : 0;
+			ss.hasSelection = (app.properties.selection||0).length ? 1 : 0;
+
+			return 'function' == typeof µ.onActive ?
+				µ.onActive(ss,runMode) :
+				void 0;
+		},
+
+		_QT_: function(/*bool*/bk,/*int*/runMode,  µ,$$,host)
+		//----------------------------------
+		// (Quit.) 1. If `bk` is truthy, backup the settings (in such case,
+		// the `beforeBackup` hook is called if available) ;
+		// 2. Call the `onQuit` hook if available.
+		// ---
+		// [REM] Althoug 'private,' this function is called from the parent
+		// module in a way that waives the usual rules. The reason is, we
+		// want to keep it as secure as possible while opening the PUBLIC
+		// area to the client code.
+		// [CHG180406] Returned value from onQuit, if any.
+		// ---
+		// => any
+		{
+			µ = callee.µ;
+			$$ = $.global[callee.µ.__root__];
+
+			// Backup stage?
+			// ---
+			if( bk )
+			{
+				host = 'function' == typeof µ.beforeBackup ?
+					µ.beforeBackup($$.Settings(),runMode) :
+					void 0;
+				$$.Settings.backup(host);
+			}
+
+			return 'function' == typeof µ.onQuit ?
+				µ.onQuit(bk,$$.Settings(),runMode) :
+				void 0;
+		},
+	})
