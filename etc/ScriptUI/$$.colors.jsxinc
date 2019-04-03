@@ -8,11 +8,11 @@
 		Core:           NO
 		Kind:           Snippet
 		API:  ScriptUI. colorArray() colorFormat() colorParse() colorMake()
-		                colorGetter() colorSetter() colorHandler()
+		                colorBrush() colorGetter() colorSetter() colorHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180829 (YYMMDD)
-		Modified:       190303 (YYMMDD)
+		Modified:       190403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -155,6 +155,9 @@
 	      ScriptUI.colorParse(...)      // Parses both string descriptors
 	                                    // and simple color values.
 
+	      ScriptUI.colorBrush(...)      // Returns a cached ScriptUIBrush for
+	                                    // a given 0xRRGGBB color and alpha.
+
 	*/
 
 	;if( $$.isBooting() )
@@ -177,7 +180,7 @@
 		// ---
 		// => [r,g,b]  |  [r,g,b,a]  (VOLATILE)
 		{
-			r = callee[ -1===a || 'undefined' != typeof a ? 'RGBA' : 'RGB' ];
+			r = callee[ (-1===a || 'undefined' != typeof a) ? 'RGBA' : 'RGB' ];
 
 			r[0] = (0xFF&(a_rgb >>> 16))/255;
 			r[1] = (0xFF&(a_rgb >>>  8))/255;
@@ -191,7 +194,9 @@
 			}
 			else
 			{
-				1 >= (a>>>=0) || (a=1);
+				// [FIX190403] Do not coerce `a` into uint!!!
+				// ---
+				1 < a && (a=1);
 			}
 			
 			return (r[3]=a), r;
@@ -276,6 +281,27 @@
 			k = PEN ? 'Brush' : 'Pen';
 			SC = callee.hasOwnProperty(SC=k+'SC') ? callee[SC] : ( callee[SC]=gx[k+'Type'].SOLID_COLOR );
 			return PEN ? gx.newPen(SC, arr, 1) : gx.newBrush(SC, arr);
+		};
+
+		ScriptUI.colorBrush = function colorBrush(/*Window*/w,/*false|uint24*/cv,/*0..1=1*/a,  q,k)
+		//----------------------------------
+		// [ADD190402] Return a cached ScriptUIBrush based on both a
+		// colorValue `cv` (uint24) and an alpha channel `a`. This function
+		// is similar to `colorSetter.MAKB`, except it also supports an
+		// alpha component. If `a` is not provided, 1 (opaque) is assumed.
+		// [REM] Use this routine if your script needs to constantly access,
+		// create, or change brushes. The cache mechanism makes these tasks
+		// faster and avoid recreating existing colors.
+		// ---
+		// => ScriptUIBrush
+		{
+			( ('undefined'==typeof a) || 1 < a ) && (a=1);
+			return ( false===cv || 1==a ) ? ScriptUI.colorSetter.MAKB(w,cv) :
+			(
+				(q=w['~']||(w['~']={})).hasOwnProperty(k='B#'+cv+'_'+a)
+				? q[k]
+				: ( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,a)) )
+			);
 		};
 
 		//==========================================================================
