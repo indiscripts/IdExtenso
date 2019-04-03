@@ -1,3 +1,7 @@
+
+##### [190403]
+  - [`ScriptUI/colors`](/etc/ScriptUI/$$.colors.jsxinc): Added `scriptUI.colorBrush()`, which returns a cached `ScriptUIBrush` based on both a colorValue `0xRRGGBB` and an alpha component in `0..1`. Fixed a stupid bug in `ScriptUI.colorArray()` (transparency was not treated.)
+
 ##### [190331]
   - Refactored both [**BasicScript**](/etc/$$.BasicScript.jsxlib) and [**ModalScript**](/etc/$$.ModalScript.jsxlib) to get all shared code at a single place. Cf `/etc/AnyScript/`. These changes do not impact the API, so existing scripts based on either BasicScript or ModalScript infrastructure should still work as expected.
 
