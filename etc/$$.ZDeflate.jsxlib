@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =run() onEngine()
+		API:            =run() onEngine() zlib()
 		DOM-access:     NO
-		Todo:           opt. add a zlib wrapper?
+		Todo:           ---
 		Created:        180914 (YYMMDD)
-		Modified:       181126 (YYMMDD)
+		Modified:       190420 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 181126, 'run'))
+;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 190420, 'run'))
 
 
 	//==========================================================================
@@ -157,6 +157,26 @@
 			callee.POS = callee.OFF = 0;
 		}
 		.setup({ OBUF:false, ODIM:0, OFF:0, POS:0, HEAD:false, TAIL:false, FREE:false }),
+		
+		ADLR: function(/*str*/s,/*?uint16*/seed,  a,b,n,i,mn)
+		//----------------------------------
+		// (Adler32.) [ADD190420]
+		// => uint32
+		{
+			( seed && 'number'==typeof seed ) || (seed=0);
+			a = seed ? (0xFFFF&seed) : 1;
+			b = seed ? (seed >>> 16) : 0;
+
+			for( mn=0, n=s.length, i=-1 ; ++i < n ; )
+			{
+				3850 > (mn=n-i) || (mn=3850);
+				for( mn+=i ; i < mn ; b += (a+=0xFF&s.charCodeAt(i++)) );
+				a = (15*(a>>>16)+(a&65535));
+				b = (15*(b>>>16)+(b&65535));
+			}
+
+			return ((b%65521) << 16) | (a%65521);
+		},
 
 	})
 
@@ -1382,5 +1402,29 @@
 			return I.DEFL(data,level,64+inSz,bs,hb);
 		},
 
+		zlib: function zlib_S_S(/*str*/data,  adlr)
+		//----------------------------------
+		// [ADD190420] Deflate (compress) data in zlib wrapper.
+		// [REF] tools.ietf.org/html/rfc1950
+		{
+			'string' == typeof data || (data=String(data));
+			
+			// Adler32 suffix.
+			// ---
+			adlr = callee.µ['~'].ADLR(data);
+			adlr = String.fromCharCode( adlr>>>24, 0xFF&(adlr>>>16), 0xFF&(adlr>>>8), 0xFF&(adlr>>>0) );
+
+			// Default compression.
+			// ---
+			data = callee.µ.run( data );
+
+			// Zlib headers:
+			// ---
+			// 78 01 - No Compression/low
+			// 78 9C - Default Compression
+			// 78 DA - Best Compression 
+
+			return '\x78\x9C' + data + adlr;
+		},
 	})
 
