@@ -1,5 +1,5 @@
 ##### [190420]
-  - [**ZInflate**](/etc/$$.ZInflate.jsxlib): Added the `zlib()` method, which embeds the compressed stream within a zlib wrapper.
+  - [**ZDeflate**](/etc/$$.ZDeflate.jsxlib): Added the `zlib()` method, which embeds the compressed stream within a zlib wrapper.
 
 ##### [190403]
   - [`ScriptUI/colors`](/etc/ScriptUI/$$.colors.jsxinc): Added `scriptUI.colorBrush()`, which returns a cached `ScriptUIBrush` based on both a colorValue `0xRRGGBB` and an alpha component in `0..1`. Fixed a stupid bug in `ScriptUI.colorArray()` (transparency was not treated.)
