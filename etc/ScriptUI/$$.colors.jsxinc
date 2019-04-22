@@ -8,11 +8,12 @@
 		Core:           NO
 		Kind:           Snippet
 		API:  ScriptUI. colorArray() colorFormat() colorParse() colorMake()
-		                colorBrush() colorGetter() colorSetter() colorHandler()
+		                colorBrush() colorPen() colorGetter() colorSetter()
+		                colorHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180829 (YYMMDD)
-		Modified:       190403 (YYMMDD)
+		Modified:       190422 (YYMMDD)
 
 *******************************************************************************/
 
@@ -302,6 +303,19 @@
 				? q[k]
 				: ( q[k]=ScriptUI.colorMake(w.graphics, ScriptUI.colorArray(cv,a)) )
 			);
+		};
+
+		ScriptUI.colorPen = function colorPen(/*Window*/w,/*false|uint24*/cv)
+		//----------------------------------
+		// [ADD190422] Return a cached ScriptUIPen based on a colorValue `cv`
+		// (uint24). This function is a shortcut of `colorSetter.MAKP`.
+		// [REM] Use this routine if your script needs to constantly access,
+		// create, or change pens. The cache mechanism makes these tasks
+		// faster and avoid recreating existing colors.
+		// ---
+		// => ScriptUIPen
+		{
+			return ScriptUI.colorSetter.MAKP(w,cv);
 		};
 
 		//==========================================================================
