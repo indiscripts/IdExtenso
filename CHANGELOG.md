@@ -1,3 +1,6 @@
+##### [190422]
+  - [`ScriptUI/colors`](/etc/ScriptUI/$$.colors.jsxinc): Added `scriptUI.colorPen()`, which returns a cached `ScriptUIPen` from a _uint24_ `0xrrggbb` value. (Simple shortcut to `ScriptUI.colorSetter.MAKP`.)
+
 ##### [190420]
   - [**ZDeflate**](/etc/$$.ZDeflate.jsxlib): Added the `zlib()` method, which embeds the compressed stream within a zlib wrapper.
 
