@@ -10,15 +10,14 @@
 		API:            =convert() fromXY() fromUV() fromRL()
 		                           intoXY() intoUV() intoRL()
 		                -> MasterSpread.prototype.resolve() [CS4]
-		DOM-access:     YES (Enums.)
-		Todo:           Page inner box and page CS may not coincide
-		                (cf CS&T, Fig. 18)
+		DOM-access:     YES (Enums ; obj.resolve)
+		Todo:           Page inner box and page CS may not coincide (cf CS&T, Fig. 18)
 		Created:        180606 (YYMMDD)
-		Modified:       180609 (YYMMDD)
+		Modified:       190427 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 180609, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190427, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -186,7 +185,7 @@
 	        MS.parent.spreads[0].resolve( [U,V], INNER );
 	      - Get (Xl,Yt) the spread coordinates of pages[0] TOP-LEFT using
 	        MS.pages[0].resolve( TOP_LEFT, PARENT );
-	      - Get (Xr,Yb) the spread coordinates of pages[0] BOR-RIGHT using
+	      - Get (Xr,Yb) the spread coordinates of pages[0] BOT-RIGHT using
 	        MS.pages[0].resolve( BOT_RIGHT, PARENT );
 	      - Noting that in CS4 pages are only *translated* relative to their
 	        parent spread, we have
@@ -342,7 +341,7 @@
 		CHKS: function(/*any*/space)
 		//----------------------------------
 		// (Check-Space.)
-		// => <CoordSpaceEnum> [OK] | 0 [KO]
+		// => +<CoordSpaceEnum> [OK] | 0 [KO]
 		{
 			if( 'string' == typeof space )
 			{
@@ -368,7 +367,7 @@
 			((xy=q[2]).length=0) || xy.push.apply(xy,obj.resolve(locs.bottom,destSpace,rulerUnits)[0]);
 		},
 
-		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool*/flag,  locs,a,b)
+		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'UV_C'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool*/flag,  locs,a,b)
 		//----------------------------------
 		// (Initializer.)
 		// => undef [OK]  |  str [KO-ERR]
@@ -391,6 +390,7 @@
 					flag = false;
 					break;
 				case 'UV':
+				case 'UV_C':
 					locs.zero[1] = locs.right[1] = locs.bottom[1] = this[flag?'bVSB':'bGEO'];
 					locs.zero[2] = locs.right[2] = locs.bottom[2] = space;
 					flag = false;
@@ -403,7 +403,7 @@
 			a = callee.FROM;
 			b = callee.INTO;
 			this.RESO(step?b:a, ref, locs, this.csPB, flag);
-			this.RMAP(this.CONV.MX,a[0],a[1],a[2],b[0],b[1],b[2]);
+			this.RMAP( this.CONV.MX, a[0],a[1],a[2], b[0],b[1],b[2] );
 		}
 		.setup({
 			XY: {
@@ -415,6 +415,12 @@
 				zero:   [ µ['~'].apTL, void 0, void 0 ],
 				right:  [ µ['~'].apTR, void 0, void 0 ],
 				bottom: [ µ['~'].apBL, void 0, void 0 ],
+				},
+			// [ADD190427]
+			UV_C: {
+				zero:   [ µ['~'].apCC, void 0, void 0 ],
+				right:  [ µ['~'].apRC, void 0, void 0 ],
+				bottom: [ µ['~'].apBC, void 0, void 0 ],
 				},
 			RL: {
 				zero:   [ [0,0], µ['~'].apCC ],
@@ -469,7 +475,6 @@
 		// => [x,y]&
 		{
 			mx = callee.MX;
-
 			r[0] = mx[0]*x + mx[2]*y + mx[4];
 			r[1] = mx[1]*x + mx[3]*y + mx[5];
 			
@@ -510,11 +515,15 @@
 			return callee.µ;
 		},
 
-		fromUV: function fromUV_D_s$CoordSpace$_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,  s)
+		fromUV: function fromUV_D_s$CoordSpace$_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,/*bool=0*/centered,  s)
 		//----------------------------------
 		// Initialize the `convert` method so it takes as input arguments
 		// *bounding box* coordinates --[0,0]=top-left; [1,1]=bottom-right--
 		// the box being framed relative to `space` and w/ respect to `visibleBounds`.
+		// [ADD190427] If `centered` is truthy, use a variant of the (u,v) system where:
+		//   [0,0] refers to the center anchor,
+		//   [1,0] -> center-right  ; [-1,0] -> center-left
+		//   [0,1] -> center-bottom ; [0,-1] -> center-top
 		// ---
 		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
 		// visibleBounds :: whether the bounding box relies on visible bounds rather
@@ -522,7 +531,7 @@
 		// [REM] `page` coordinate space is only supported from InDesign CS6.
 		// => µ [OK]  |  ERROR [KO]
 		{
-			( s=callee.µ['~'].INIT(0,'UV', ref, space||'inner', visibleBounds) )
+			( s=callee.µ['~'].INIT(0, centered ? 'UV_C' : 'UV', ref, space||'inner', visibleBounds) )
 			&& $.global[callee.µ.__root__].error(s,callee);
 			return callee.µ;
 		},
@@ -628,7 +637,7 @@
 		//               supplied, return the conversion matrix (array of 6 numbers.)
 		// `xyOutput` :: (opt.) If supplied, reference of the output array. If `xyOutput`
 		//               is missing, output coordinates will be loaded in `xyInput`.
-		// This function returns a reference to the output array (xyOutput or xyInput.)
+		// This function returns a reference to the resulting array (xyOutput or xyInput.)
 		// ---
 		// Examples:
 		// µ.fromUV(obj,'inner').intoRL().convert([ [.5,0],[1,.5],[.5,1],[0,.5] ])
