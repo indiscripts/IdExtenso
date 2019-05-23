@@ -7,17 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =access() declare() hasScope() hasKey() canDeclare()
-		                activate() reset() backup()
+		API:            =access() DontClone declare() hasScope() hasKey()
+		                canDeclare() activate() reset() backup()
 		                addLive() objKeyCount() appKeyCount()
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       190206 (YYMMDD)
+		Modified:       190523 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 190206, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 190523, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -167,7 +167,6 @@
 
 	*/
 
-
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
@@ -258,11 +257,12 @@
 		FSET : function(/*obj&*/o,/*key*/k,/*any*/v)
 		//----------------------------------
 		// (Setter.) Kill `o[k]` first, then clone `v` in it.
+		// [CHG190523] Manage DontClone.
 		// this :: ~
 		// => o[k]
 		{
 			this.FDEL(o,k);
-			return (o[k]=$.global[callee.µ.__root__].clone(v));
+			return ( o[k]=callee.µ.DontClone ? v : $.global[callee.µ.__root__].clone(v) );
 		},
 
 	})
@@ -614,6 +614,16 @@
 	[PUBLIC]
 	
 	({
+		// [ADD190523] Usually it's safer to let `$$.Settings` perform a JSON clone
+		// while setting a key to an object reference (`ss.myKey=myObj`), because
+		// that reference may be lost and ss.myKey is supposed to work anyway.
+		// But in specific cases you may want to explicitly prevent the module from
+		// cloning objects during script execution, either for performance purposes
+		// or for bypassing cloning limitations on complex objects (augmented arrays,
+		// etc) Then you can set `$$.Settings.DontClone` to 1.
+		// ---
+		DontClone: 0,
+		
 		declare : function declare_S_Õ_(/*str*/suid,/*{...,LIVE:{},RESET:{},SESSION:{},OBJ:{},APP:{},HYB:{}}*/oInput,  $$,I)
 		//----------------------------------
 		// Create a set of keys from scratch and register their default values. This function must be
