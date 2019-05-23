@@ -1,3 +1,6 @@
+##### [190523]
+  - [**Settings**](/etc/$$.Settings.jsxlib): Added a `DontClone` global option. Usually it's safer to let `$$.Settings` perform a JSON clone while setting a key to an object reference (`ss.myKey=myObj`), because that reference may be lost and `ss.myKey` is supposed to work anyway. But in specific cases you may want to explicitly prevent the module from cloning objects during script execution, either for performance gain or for bypassing cloning limitations over complex objects like augmented arrays etc. Then you can set `$$.Settings.DontClone` to 1 before invoking `$$.Settings.declare(...)`
+
 ##### [190422]
   - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): The `fromUV()` method supports a new parameter, `centered`, that lets you work in a variant of the _(u,v)_ system. When UV is centered, the coordinates `[0,0]` denote the center anchor, while `[1,0]` (resp. `[0,1]`) refer to center-right (resp. center-bottom) anchor. This variant is handy when you want to provide signed coordinates in `-1..+1` on both axes and have a true center point at `[0,0]` in the bounding box. (Rem: the regular UV system has its origin at top-left and the center point is located at `[0.5,0.5]`.)
   
