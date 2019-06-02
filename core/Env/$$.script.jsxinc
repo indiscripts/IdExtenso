@@ -9,11 +9,11 @@
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
 		                engineState() runCount() idEngine() inBinStream() scriptsPanel()
-		                domVersion()->$$ globalEvent()->$$
+		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ; app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190311 (YYMMDD)
+		Modified:       190602 (YYMMDD)
 
 *******************************************************************************/
 
@@ -326,6 +326,7 @@
 		//    `ver` digits (# or #.# format), 0 otherwise.
 		// 4. If `ver===-1`, return the backup value of the DOM version (str)
 		//    as registered in ~.DOMV().
+		// [REM] This method is made available straight from `$$`.
 		{
 			if( -1===ver ) return callee.µ['~'].DOMV(); // backup value.
 
@@ -346,6 +347,7 @@
 		// [190203] Return the DOM global event (if available), or zero.
 		// [REM] The global variable `evt` is automatically set when the current script
 		// is invoked as an event handler (e.g from a MenuAction listener.)
+		// [REM] This method is made available straight from `$$`.
 		// Typical ret:
 		// { eventType:"onInvoke", target:<ScriptMenuAction>, eventPhase:0x656E4154/*AT_TARGET*/,
 		//   bubbles:false, cancelable:false, timeStamp:<Date>, propagationStopped:false,
@@ -354,6 +356,27 @@
 		// => Event [OK]  |  0 [KO]
 		{
 			return $.global.evt || 0;
+		}
+		.copy('..'),
+
+		tempRedraw : function tempRedraw_F_o_x(/*fct*/userFunc,/*context=null*/cx,  t,b,r)
+		//----------------------------------
+		// [190602] Call `userFunc()` with no arg in `cx` context (optional) making
+		// sure it is executed with `enableRedraw` temporarily set to true. (If the
+		// flag is already turned on, just execute the function.)
+		// Return `userFunc` returned value.
+		// Example: `$$.tempRedraw( function(){$.sleep(100)} );`
+		// [REM] This method is made available straight from `$$`.
+		// ---
+		// => any
+		{
+			if( 'function' != typeof userFunc ) return;
+			
+			(b=(t=app.scriptPreferences).enableRedraw) || (t.enableRedraw=true);
+			r = userFunc.call(cx||null);
+			b || (t.enableRedraw=false);
+			
+			return r;
 		}
 		.copy('..'),
 
