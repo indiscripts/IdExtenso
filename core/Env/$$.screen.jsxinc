@@ -12,7 +12,7 @@
 		DOM-access:     YES (app.generalPreferences, app.properties.activeWindow)
 		Todo:           ---
 		Created:        180401 (YYMMDD)
-		Modified:       190221 (YYMMDD)
+		Modified:       190611 (YYMMDD)
 
 *******************************************************************************/
 
@@ -292,6 +292,7 @@
 		centerWindow: function centerWindow_$SUIWindow$_$Window$_$SUIWindow$(/*SUIWindow*/w,/*?Window*/relWin,  q,xy,wh)
 		//----------------------------------
 		// [CHG180531] Added the `relWin` (optional) argument.
+		// [CHG190611] Now supporting `relWin` of either LayoutWindow or Window type.
 		// ---
 		// => w
 		{
@@ -300,14 +301,22 @@
 			if( relWin && (relWin instanceof Window) )
 			{
 				w.center(relWin);
+				return w;
+			}
+
+			if( relWin && 'LayoutWindow' == relWin.constructor.name )
+			{
+				relWin = relWin.properties.bounds;
+				xy = [ (relWin[1]+relWin[3])/2, (relWin[0]+relWin[2])/2 ];
 			}
 			else
 			{
 				q = callee.µ['~'].SCRN.Q;
 				xy = q[q.hasOwnProperty('ACTV')?q.ACTV:q.PRIM].center;
-				wh = w.size;
-				w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
 			}
+
+			wh = w.size;
+			w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
 
 			return w;
 		}
