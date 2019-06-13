@@ -1,3 +1,6 @@
+##### [190613]
+  - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Added the method `matrixValues()` which returns the internal matrix numbers used by `convert()`. (And fixed a minibug in `convert()`.)
+
 ##### [190611]
   - [`Env/screen`](/core/Env/$$.screen.jsxinc): The `$$.centerWindow()` method now supports its 2nd argument as either `Window` or `LayoutWindow` type. So you can explicitly center a ScriptUI window (1st argument) relative to another one, or relative to a document window (`LayoutWindow` instance.) When no 2nd argument is supplied, the method still tries to guess the active screen center point based on internal checks.
   
