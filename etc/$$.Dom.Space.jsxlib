@@ -9,15 +9,16 @@
 		Kind:           Module.
 		API:            =convert() fromXY() fromUV() fromRL()
 		                           intoXY() intoUV() intoRL()
+		                matrixValues()
 		                -> MasterSpread.prototype.resolve() [CS4]
 		DOM-access:     YES (Enums ; obj.resolve)
 		Todo:           Page inner box and page CS may not coincide (cf CS&T, Fig. 18)
 		Created:        180606 (YYMMDD)
-		Modified:       190427 (YYMMDD)
+		Modified:       190613 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190427, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190613, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -352,7 +353,8 @@
 			return ( this.csIN==space || this.csPR==space || this.csPG==space
 				  || this.csSP==space || this.csPB==space ) ? space : 0;
 		}
-		.setup({
+		.setup
+		({
 			RE:/(inner|parent|page|spread|board)/,
 			Q: { inner:'csIN', parent:'csPR', page:'csPG', spread:'csSP', board:'csPB' },
 		}),
@@ -405,7 +407,8 @@
 			this.RESO(step?b:a, ref, locs, this.csPB, flag);
 			this.RMAP( this.CONV.MX, a[0],a[1],a[2], b[0],b[1],b[2] );
 		}
-		.setup({
+		.setup
+		({
 			XY: {
 				zero:   [ [0,0], void 0 ],
 				right:  [ [1,0], void 0 ],
@@ -649,7 +652,7 @@
 		{
 			I = callee.µ['~'];
 			
-			if( !xyInput ) return [].push.apply([],I.CONV.MX);
+			if( !xyInput ) return I.CONV.MX.concat(); // [FIX190612]
 			
 			(xyInput instanceof Array)
 			|| $.global[callee.µ.__root__].error(__("Invalid `xyInput` argument (%1). Should be an Array.", xyInput.__class__),callee);
@@ -668,6 +671,14 @@
 			}
 
 			$.global[callee.µ.__root__].error(__("Invalid `xyInput` argument. Should be either a point or an Array of points."),callee);
+		},
+		
+		matrixValues: function matrixValues_$matrix$()
+		//----------------------------------
+		// Return the attributes of the internal matrix (array of 6 numbers.)
+		// => new num[6]
+		{
+			return callee.µ['~'].CONV.MX.concat();
 		},
 
 	})
