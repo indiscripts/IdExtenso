@@ -7,18 +7,18 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =convert() fromXY() fromUV() fromRL()
+		API:            =convert() fromXY() fromUV() fromRL() fromCustom()
 		                           intoXY() intoUV() intoRL()
-		                matrixValues()
+		                preScale() matrixValues()
 		                -> MasterSpread.prototype.resolve() [CS4]
 		DOM-access:     YES (Enums ; obj.resolve)
 		Todo:           Page inner box and page CS may not coincide (cf CS&T, Fig. 18)
 		Created:        180606 (YYMMDD)
-		Modified:       190613 (YYMMDD)
+		Modified:       190617 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190613, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190617, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -33,8 +33,7 @@
 	script developers due to their deep complexity.
 
 	InDesign addresses three kinds of coordinate systems, as detailed in
-	<indiscripts.com/post/2014/03/coordinate-spaces-and-transformations-1>.
-	These are:
+	<http://indiscripts.com/tag/CST>. These are:
 
 	(1) Regular Coordinate Spaces (CS) attached to DOM objects (pasteboard,
 	    spread, page, parent and inner spaces.)
@@ -139,7 +138,7 @@
 	The problem is to get the inner box of a master spread in order to fully
 	implement `MasterSpread.prototype.resolve` when used with UV coordinates
 	or rulers coordinates involving UV location. The inner box of a spread
-	always includes the room around the pages, so we cannot just use page
+	always includes some room around the pages, so we cannot just use page
 	boxes to compute the whole spread area.
 
 	Given a MasterSpread MS, we have the following options:
@@ -359,19 +358,20 @@
 			Q: { inner:'csIN', parent:'csPR', page:'csPG', spread:'csSP', board:'csPB' },
 		}),
 		
-		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,/*bool*/rulerUnits,  xy)
+		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,  xy,t)
 		//----------------------------------
 		// (Resolver.)
 		// => undef
 		{
-			((xy=q[0]).length=0) || xy.push.apply(xy,obj.resolve(locs.zero,destSpace,rulerUnits)[0]);
-			((xy=q[1]).length=0) || xy.push.apply(xy,obj.resolve(locs.right,destSpace,rulerUnits)[0]);
-			((xy=q[2]).length=0) || xy.push.apply(xy,obj.resolve(locs.bottom,destSpace,rulerUnits)[0]);
+			((xy=q[0]).length=0), (t=locs.zero),   xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
+			((xy=q[1]).length=0), (t=locs.right),  xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
+			((xy=q[2]).length=0), (t=locs.bottom), xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
 		},
 
-		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'UV_C'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool*/flag,  locs,a,b)
+		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'UV_C'|'IJ'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool|{zero,right,bottom}*/xtra,  locs,a,b)
 		//----------------------------------
 		// (Initializer.)
+		// [ADD190615] Added 'IJ' kind for custom `from` schemes.
 		// => undef [OK]  |  str [KO-ERR]
 		{
 			if( !this.CHKO(ref) )
@@ -384,27 +384,27 @@
 			// ---
 			step || (callee.SPEC=ref.toSpecifier());
 
-			locs = callee[kind];
+			locs = 'IJ'==kind ? xtra : callee[kind];
 			switch( kind )
 			{
 				case 'XY':
 					locs.zero[1] = locs.right[1] = locs.bottom[1] = space;
-					flag = false;
 					break;
 				case 'UV':
 				case 'UV_C':
-					locs.zero[1] = locs.right[1] = locs.bottom[1] = this[flag?'bVSB':'bGEO'];
+					locs.zero[1] = locs.right[1] = locs.bottom[1] = this[xtra?'bVSB':'bGEO'];
 					locs.zero[2] = locs.right[2] = locs.bottom[2] = space;
-					flag = false;
 					break;
 				case 'RL':
+					locs.zero.ru = locs.right.ru = locs.bottom.ru = !!xtra;
+					break;
 				default:
 					;
 			}
 
 			a = callee.FROM;
 			b = callee.INTO;
-			this.RESO(step?b:a, ref, locs, this.csPB, flag);
+			this.RESO(step?b:a, ref, locs, this.csPB);
 			this.RMAP( this.CONV.MX, a[0],a[1],a[2], b[0],b[1],b[2] );
 		}
 		.setup
@@ -472,11 +472,15 @@
 			mx[5] = x*B + y*D + J;
 		},
 
-		CONV: function(/*num*/x,/*num*/y,/*pt&*/r,  mx)
+		CONV: function(/*num*/x,/*num*/y,/*pt&*/r,  k,mx)
 		//----------------------------------
 		// (Location-Converter.)
+		// [ADD190615] Supports the preScale feature.
 		// => [x,y]&
 		{
+			1 != (k=callee.KX) && (x*=k);  // [ADD190615]
+			1 != (k=callee.KY) && (y*=k);  // [ADD190615]
+
 			mx = callee.MX;
 			r[0] = mx[0]*x + mx[2]*y + mx[4];
 			r[1] = mx[1]*x + mx[3]*y + mx[5];
@@ -485,6 +489,8 @@
 		}
 		.setup({
 			MX:   [ 1, 0, 0, 1, 0, 0 ],
+			KX:   1,
+			KY:   1,
 		}),
 
 	})
@@ -554,6 +560,33 @@
 		{
 			( s=callee.µ['~'].INIT(0, 'RL', ref, false, !fromPoints) )
 			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+
+		fromCustom: function fromCustom_D_$Locations$_$this$(/*PageItem|Image|Spread|Page*/ref,/*Location[3]*/locs,  s)
+		//----------------------------------
+		// [ADD190617] Initialize the `convert` method so it takes as input arguments three
+		// location specifiers (origin, unit-right, unit-bottom) relative to ref. The converter
+		// is then built so that input coordinates be interpreted in that system: [0,0] will match the
+		// origin, [1,0] will match the unit-right point and [0,1] will match the unit-bottom point.
+		// ---
+		// locs :: array of three <Location> items, each <Location> having one of the regular forms:
+		// (a) T-specifier: [x,y]  or  [[x,y],<COORD_SPACE>]
+		// (b) B-specifier: <ANCHOR_PT>  or  [<ANCHOR_PT>,<BOX_LIMITS>]  or  [<ANCHOR_PT>,<BOX_LIMITS>,<COORD_SPACE>]
+		//                               or  [[u,v],<BOX_LIMITS>]        or  [[u,v],<BOX_LIMITS>,<COORD_SPACE>]
+		// (c) R-specifier: [[rx,ry],<PAGE_INDEX>]  or  [[rx,ry],<Location>]
+		//     To get a R-specifier interpreted in ruler units, add the property `ru` to the array and set it to true.
+		// The syntax `ref.resolve(locs[i] , ...)` must be valid for 0<=i<=2.
+		// => µ [OK]  |  ERROR [KO]
+		{
+			( !locs || !(locs instanceof Array) || 3!=locs.length )
+			&& $.global[callee.µ.__root__].error("Invalid `locs` argument. Should be an array of three locations",callee);
+			
+			// [TODO] Advanced Location validator.
+			
+			( s=callee.µ['~'].INIT(0, 'IJ', ref, false, { zero:locs[0], right:locs[1], bottom:locs[2] }) )
+			&& $.global[callee.µ.__root__].error(s,callee);
+
 			return callee.µ;
 		},
 
@@ -679,6 +712,18 @@
 		// => new num[6]
 		{
 			return callee.µ['~'].CONV.MX.concat();
+		},
+		
+		preScale: function preScale_n_n_$this$(/*?num!=0*/kx,/*?num!=0*/ky,  F)
+		//----------------------------------
+		// [ADD190615] Preset custom `kx` and/or `ky` factors to be applied
+		// during `convert` to every incoming (x,y) coordinates. If `kx` (resp.
+		// `ky`) is zero or not a  number, the default factor (=1) is restored.
+		// This function is useful to premultiply coordinates in `fromUV` scheme.
+		{
+			F = callee.µ['~'].CONV;
+			F.KX = kx && 'number'==typeof kx ? kx : 1;
+			F.KY = ky && 'number'==typeof ky ? ky : 1;
 		},
 
 	})
