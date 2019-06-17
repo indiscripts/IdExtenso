@@ -1,3 +1,7 @@
+##### [190617]
+  - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Added `fromCustom()`, a special `from...` method that inializes the converter so it takes as input arguments _(x,y)_ coordinates in your own (O,I,J) system. Pass in an array of three [valid locations](http://indiscripts.com/blog/public/data/coordinate-spaces-and-transformations-5/CoordinateSpacesTransfos01-05.pdf#page=25) to define `O` (origin), `I` (right point), `J` (bottom point). This method is useful if your script cannot supply coordinates in the usual _XY_, _UV_ or _RL_ systems.
+  - In addition, the method `$$.Dom.Space.preScale(kx,ky)` provides the option to preset multipliers (x- and y- factors) that the converter will apply to any incoming coordinate pair.
+  
 ##### [190613]
   - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Added the method `matrixValues()` which returns the internal matrix numbers used by `convert()`. (And fixed a minibug in `convert()`.)
 
