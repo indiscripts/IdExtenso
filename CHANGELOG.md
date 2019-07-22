@@ -1,3 +1,6 @@
+##### [190722]
+  - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Enhanced coordinate processor (see `~.RESO`.) Due to a [CS6-CC bug](https://forums.adobe.com/message/10897624#10897624) affecting `AnchoredObject`'s coordinate system, a stronger routine was needed to support anchored items as well as regular InDesign components. We found a set of fine-tuned workarounds to resolve locations in _almost_ all cases whatever the incoming format (coordinate space, bounding space or ruler coordinates.)
+
 ##### [190617]
   - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Added `fromCustom()`, a special `from...` method that inializes the converter so it takes as input arguments _(x,y)_ coordinates in your own (O,I,J) system. Pass in an array of three [valid locations](http://indiscripts.com/blog/public/data/coordinate-spaces-and-transformations-5/CoordinateSpacesTransfos01-05.pdf#page=25) to define `O` (origin), `I` (right point), `J` (bottom point). This method is useful if your script cannot supply coordinates in the usual _XY_, _UV_ or _RL_ systems.
   - In addition, the method `$$.Dom.Space.preScale(kx,ky)` provides the option to preset multipliers (x- and y- factors) that the converter will apply to any incoming coordinate pair.
