@@ -14,11 +14,11 @@
 		DOM-access:     YES (Enums ; obj.resolve)
 		Todo:           Page inner box and page CS may not coincide (cf CS&T, Fig. 18)
 		Created:        180606 (YYMMDD)
-		Modified:       190617 (YYMMDD)
+		Modified:       190722 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190617, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190722, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -358,15 +358,163 @@
 			Q: { inner:'csIN', parent:'csPR', page:'csPG', spread:'csSP', board:'csPB' },
 		}),
 		
-		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,  xy,t)
+		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,/*'XY'|'UV'|'UV_C'|'IJ'|'RL'*/kind,  re,t,oo,k,x,i,cs,mx,xy,pg)
 		//----------------------------------
-		// (Resolver.)
+		// (Resolver.) [CHG190721] Improved version intended to fix the bug w/ anchored objects (CS6-CC.)
+		// this :: ~
 		// => undef
 		{
-			((xy=q[0]).length=0), (t=locs.zero),   xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
-			((xy=q[1]).length=0), (t=locs.right),  xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
-			((xy=q[2]).length=0), (t=locs.bottom), xy.push.apply(xy,obj.resolve(t, destSpace, (t instanceof Array) && !!t.ru)[0]);
-		},
+			// Quick routine for Spread/Page object, or Spread/Page child.
+			// ---
+			if( (re=callee.CTOR).test(obj.constructor.name) || ((t=obj.parent) && (re.test(t.constructor.name))) )
+			{
+				callee.RSLV(q[0], obj, locs.zero,   destSpace);
+				callee.RSLV(q[1], obj, locs.right,  destSpace);
+				callee.RSLV(q[2], obj, locs.bottom, destSpace);
+				return;
+			}
+			
+			// ---
+			// `obj` might be (or belong to) an anchored object,
+			// so we need an alternate resolver.
+			// ---
+			oo = callee.KEYS;
+			if( 'IJ' != kind )
+			{
+				oo.zero = oo.right = oo.bottom = kind;
+			}
+			else
+			{
+				for( k in oo )
+				{
+					if( !oo.hasOwnProperty(k) ) continue;
+					t = locs[k];
+
+					if( (!(t instanceof Array)) || callee.BLIM(t[1]) )
+					{
+						oo[k]='UV';
+						continue;
+					}
+
+					if( (!(t[0] instanceof Array)) || callee.SPAC(t[1]) )
+					{
+						oo[k]='XY';
+						continue;
+					}
+
+					oo[k] = 'RL';
+				}
+			}
+			
+			for( k in oo )
+			{
+				if( !oo.hasOwnProperty(k) ) continue;
+				t = locs[k];
+				i = 1*('right'==k) || 2*('bottom'==k);
+				
+				kind = oo[k];
+				
+				if( 'XY' == kind )
+				{
+					// t :: [x,y]  |  [ [x,y], SPACE ]
+					// ---
+
+					( t[0] instanceof Array )
+					? ( cs=t[1], xy=t[0] )
+					: ( cs=this.csPB, xy=t );
+
+					// Use changeCoordinates instead of resolve.
+					// ---
+					xy = obj.transformValuesOf(cs)[0].invertMatrix()            // CS-to-INNER
+					     .catenateMatrix(obj.transformValuesOf(destSpace)[0])   // INNER-to-DEST
+					     .changeCoordinates(xy);
+
+					q[i][0] = xy[0];
+					q[i][1] = xy[1];
+					continue;
+				}
+				
+				if( 0===kind.indexOf('UV') )
+				{
+					// t :: AP  |  [AP,BL(,SPACE]]  |  [[u,v],BL(,SPACE)]
+					
+					// The UV point can be properly resolved in INNER coords, then
+					// converted through the INNER-to-DEST matrix.
+					// ---
+					xy = obj.resolve( t, this.csIN)[0];
+					
+					destSpace != this.csIN
+					&& ( xy = obj.transformValuesOf(destSpace)[0].changeCoordinates(xy) );
+
+					q[i][0] = xy[0];
+					q[i][1] = xy[1];
+					continue;
+				}
+				
+				// Ruler coordinates.
+				// t :: [ [rx,ry], (PAGE_IDX|PAGE_LOC) ]
+				
+				if( 'parentPage' in obj && (pg=obj.parentPage) )
+				{
+					// Get the coords (from the Page object) in SPREAD space.
+					// ---
+					xy = pg.resolve( t, (cs=this.csSP), !!t.ru )[0];
+
+					destSpace != cs
+					&& (xy = obj.transformValuesOf(cs)[0].invertMatrix()        // SPREAD-to-INNER
+					     .catenateMatrix(obj.transformValuesOf(destSpace)[0])   // INNER-to-DEST
+					     .changeCoordinates(xy));
+
+					q[i][0] = xy[0];
+					q[i][1] = xy[1];
+				}
+				else
+				{
+					// Fallback.
+					// ---
+					callee.RSLV(q[i], obj, t,   destSpace);
+				}
+			}
+		}
+		.setup
+		({
+			KEYS: { zero:'', right:'', bottom:'' },
+			CTOR: /^Spread|MasterSpread|Page$/,
+
+			BLIM: function(/*any*/x,  q)
+			//----------------------------------
+			// Is-Box-Limits
+			// => true [OK]  |  falsy [KO]
+			{
+				return (x=+x) && (x==(q=callee.Q)[0] || x==q[1]);
+			}
+			.setup
+			({
+				Q: [ µ['~'].bGEO, µ['~'].bVSB ],
+			}),
+
+			SPAC: function(/*any*/x,  q,i,r)
+			//----------------------------------
+			// Is-Coord-Space
+			// => true [OK]  |  falsy [KO]
+			{
+				if( !(x=+x) ) return 0;
+				for( i=(q=callee.Q).length ; i-- && !(r=(x==q[i])) ; );
+				return r;
+			}
+			.setup
+			({
+				Q: [ µ['~'].csIN, µ['~'].csPR, µ['~'].csPG, µ['~'].csSP, µ['~'].csPB ],
+			}),
+
+			RSLV: function(/*pnt&*/xy,/*dom*/obj,/*location*/loc,/*space*/dst,  t)
+			//----------------------------------
+			// => xy&
+			{
+				t = obj.resolve(loc, dst, (loc instanceof Array) && !!loc.ru)[0];
+				return (xy[0]=t[0]), (xy[1] = t[1]), xy;
+			},
+		}),
 
 		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'UV_C'|'IJ'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool|{zero,right,bottom}*/xtra,  locs,a,b)
 		//----------------------------------
@@ -404,7 +552,7 @@
 
 			a = callee.FROM;
 			b = callee.INTO;
-			this.RESO(step?b:a, ref, locs, this.csPB);
+			this.RESO(step?b:a, ref, locs, this.csPB, kind);
 			this.RMAP( this.CONV.MX, a[0],a[1],a[2], b[0],b[1],b[2] );
 		}
 		.setup
