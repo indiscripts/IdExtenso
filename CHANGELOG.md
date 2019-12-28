@@ -1,3 +1,6 @@
+##### [191228]
+  - [`Root/messaging`](/core/Root/$$.messaging.jsxinc): Added `$$.input(caption,defVal...)`, which displays a OK/Cancel prompt box. Allows to get an input string from the user. (Supports dropdown list.)
+
 ##### [190722]
   - [**Dom.Space**](/etc/$$.Dom.Space.jsxlib): Enhanced coordinate processor (see `~.RESO`.) Due to a [CS6-CC bug](https://forums.adobe.com/message/10897624#10897624) affecting `AnchoredObject`'s coordinate system, a stronger routine was needed to support anchored items as well as regular InDesign components. We found a set of fine-tuned workarounds to resolve locations in _almost_ all cases whatever the incoming format (coordinate space, bounding space or ruler coordinates.)
 
