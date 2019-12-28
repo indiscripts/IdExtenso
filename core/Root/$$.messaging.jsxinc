@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Root module.
-		API:            success() failure() edit() yesNo()
+		API:            success() failure() edit() yesNo() input()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190203 (YYMMDD)
+		Modified:       191228 (YYMMDD)
 
 *******************************************************************************/
 
@@ -24,9 +24,6 @@
 	Provides simple messaging functions for quick prompts, warnings, or
 	pending messages.
 	
-	[REM180516] The current implementation of the [PRIVATE] area is not
-	meant to be finalized.
-
 	*/
 
 	[PRIVATE]
@@ -68,7 +65,7 @@
 			edit && (r.active=true);
 			return r;
 		},
-		
+
 		KBTS: function(/*Window|Group|Panel*/parent,/*str*/okStr,/*str*/koStr,  r)
 		//----------------------------------
 		// (Buttons-Factory.) [FIX190202]
@@ -82,9 +79,9 @@
 			return r;
 		},
 		
-		WRES: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  q,o)
+		WMSG: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  q,o)
 		//----------------------------------
-		// [ADD180531] [FIX190202]
+		// [ADD180531] [FIX190202] [CHG191228] Changed key name.
 		{
 			q = callee.Q || (callee.Q={
 				properties:             { type:'dialog', text:'', borderless:false, closeButton:true },
@@ -131,7 +128,7 @@
 		{
 			// Build the UI.
 			// ---
-			ui = this.WRES(msec?'palette':'dialog', title||'', +(false!==title), 0, txt, msec?'':__("OK"), '', win||0, 1);
+			ui = this.WMSG(msec?'palette':'dialog', title||'', +(false!==title), 0, txt, msec?'':__("OK"), '', win||0, 1);
 			w = ScriptUI.builder.call(this,ui);
 
 			// Position and show.
@@ -161,7 +158,7 @@
 		{
 			// Build the UI.
 			// ---
-			ui = this.WRES('dialog', title||'', +(false!==title), 1, txt, __("OK"), '', win||0);
+			ui = this.WMSG('dialog', title||'', +(false!==title), 1, txt, __("OK"), '', win||0);
 			w = ScriptUI.builder.call(this,ui);
 
 			// Position and show.
@@ -177,13 +174,126 @@
 		{
 			// Build the UI.
 			// ---
-			ui = this.WRES('dialog', title||'', +(false!==title), 0, txt, __("Yes"), __("No"), win||0);
+			ui = this.WMSG('dialog', title||'', +(false!==title), 0, txt, __("Yes"), __("No"), win||0);
 			w = ScriptUI.builder.call(this,ui);
 
 			// Position and show.
 			// ---
 			$.global[callee.µ.__root__].centerWindow(w,win);
 			return 1==w.show() ? 1 : 0;
+		},
+
+		WINP: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*str*/caption,/*str*/defVal,/*str[]|0*/ops,/*str*/ok,/*str*/ko,/*0|Window*/w,  q,o,i,a)
+		//----------------------------------
+		// [ADD191228]
+		{
+			q = callee.Q || (callee.Q={
+				properties:             { type:'dialog', text:'', borderless:false, closeButton:true },
+				alignChildren:          ScriptUI.CT,
+				margins:                20,
+				spacing:                20,
+				Group$0:
+				{
+					alignChildren:      ScriptUI.LT,
+					margins:            8,
+					spacing:            16,
+					orientation:        'column',
+					alignChildren:      ScriptUI.LC,
+					Custom$cap:         ['KTXT', /*edit*/0, /*text*/'', /*autoMargin*/0],
+					Group$gpEdi:
+					{
+						orientation:    'stack',
+						margins:        0,
+						spacing:        0,
+						alignChildren:  ScriptUI.LC,
+						DropDownList$dd:
+						{
+							properties: { items:[] },
+							optimalSize:[220,24],
+							visible:    false,
+							onChange:   callee.ONCH,
+						},
+						EditText$ed:
+						{
+							properties: { text:'', multiline:false, scrolling:false, borderless:false },
+							optimalSize:[200,22],
+							active:     true,
+						},
+					},
+				},
+				Custom$0:               ['KBTS', /*okStr*/'', /*koStr*/''],
+			});
+
+			o = q.properties;
+			o.type = tpe;
+			o.text = title;
+			o.borderless = !border;
+			o.closeButton = !ko;
+
+			// [FIX190203] o.bounds must be reset from scratch here.
+			// ---
+			o = o.bounds = Array(4);
+			o[0] = w && (w.location.x);
+			o[1] = w && (w.location.y + (w.size.height >>> 1));
+			o[2] = void 0;
+			o[3] = void 0;
+			
+			q.Group$0.orientation = 16 > caption.length ? 'row' : 'column';
+
+			o = q.Group$0.Custom$cap;
+			o[2] = caption;
+			
+			o = q.Group$0.Group$gpEdi.EditText$ed;
+			o = o.properties;
+			o.text = defVal;
+			
+			i = ops&&ops.length;
+			o.borderless = i ? true : false;
+
+			o = q.Group$0.Group$gpEdi.DropDownList$dd;
+			o.visible = i ? true : false;
+			if( i )
+			{
+				a = o.properties.items;
+				for( a.length=i ; i-- ; (a[i]=ops[i])===defVal && o.selection=i );
+			}
+			
+			o = q.Custom$0;
+			o[1] = ok || '';
+			o[2] = ko || '';
+			
+			return q;
+		}
+		.setup
+		({
+			ONCH: function onChangeKey(  w,t,s)
+			//----------------------------------
+			// this::DropDownList
+			{
+				if( !(w=this.window) ) return;
+				if( !(t=w.ed) ) return;
+				if( s=this.selection )
+				{
+					t.text = s.text;
+				}
+				t.active = true;
+			},
+		}),
+
+		INPT: function(/*str*/caption,/*str*/defVal,/*str|false*/title,/*str[]|0*/ops,/*?Window*/win,  ui,w)
+		//----------------------------------
+		// (Input-Box.) [191228]
+		// => str [OK]  |  false [KO]
+		{
+			// Build the UI.
+			// ---
+			ui = this.WINP('dialog', title||'', +(false!==title), caption, defVal, ops, __("OK"), __("Cancel"), win||0);
+			w = ScriptUI.builder.call(this,ui);
+
+			// Position and show.
+			// ---
+			$.global[callee.µ.__root__].centerWindow(w,win);
+			return 1==w.show() ? w.ed.text : false;
 		},
 
 	})
@@ -261,7 +371,7 @@
 
 			callee.µ['~'].EDIT(txt, title, relWin);
 		},
-		
+
 		yesNo: function yesNo_S_s_$Window$_B(/*str*/msg,/*-1|str=auto*/title,/*?Window*/relWin)
 		//----------------------------------
 		// [ADD180531] Displays a Yes/No question and return the user answer (1 or 0.)
@@ -278,6 +388,30 @@
 			( relWin && relWin instanceof Window ) || (relWin=void 0);
 			
 			return callee.µ['~'].YSNO(msg, title, relWin);
+		},
+
+		input: function input_S_s_$Window$_(/*str*/caption,/*str=""*/defVal,/*-1|str="IdExtenso"*/title,/*?str[]*/options,/*?Window*/relWin)
+		//----------------------------------
+		// [ADD191228] Displays a OK/Cancel prompt box allowing to either enter a string or
+		// select among existing choices.
+		// ---
+		// `caption` :: Name of the field or caption line, e.g "Enter your name:"
+		// `defVal`  :: Default value, or empty.
+		// `title`   :: Title of the box ; default is "IdExtenso"
+		//              -1 => remove the title bar.
+		// `options` :: If supplied, array of choices (dropdown list.)
+		// `relWin`  :: Optional, related Window.
+		// ---
+		// E.g  $$.edit($$.JSON(app.properties), "MyTool");
+		// => str [OK]  |  false [KO]
+		{
+			caption = String(caption||'');
+			defVal = String(defVal||'');
+			title = -1===title ? false : ( title ? String(title) : callee.µ['~'].TTLE );
+			(options && options instanceof Array)  || (options=0);
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
+
+			return callee.µ['~'].INPT(caption, defVal, title, options, relWin);
 		},
 
 	})
