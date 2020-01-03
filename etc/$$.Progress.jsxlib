@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           Message pattern ; Mac El Capitan... etc
 		Created:        181022 (YYMMDD)
-		Modified:       181026 (YYMMDD)
+		Modified:       200103 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Progress') || eval(__(MODULE, $$, 'Progress', 181026, 'hit'))
+;$$.hasOwnProperty('Progress') || eval(__(MODULE, $$, 'Progress', 200103, 'hit'))
 
 	//==========================================================================
 	// NOTICE
@@ -180,7 +180,7 @@
 			callee.µ['~']._UI_(-1);
 		},
 		
-		close: function close_()
+		close: function close_(  I)
 		//----------------------------------
 		// Hide and unregister the window.
 		// => undef
