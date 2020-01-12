@@ -1,3 +1,6 @@
+##### [200112]
+  - Fixed a typo (wrong variable) in [`AnyScript/initialize`](/etc/AnyScript/$$.initialize.jsxinc).
+
 ##### [191228]
   - [`Root/messaging`](/core/Root/$$.messaging.jsxinc): Added `$$.input(caption,defVal...)`, which displays a OK/Cancel prompt box. Allows to get an input string from the user. (Supports dropdown list.)
 
