@@ -12,13 +12,13 @@
 		       proto:   codePointAt() toUTF8() toSource() split() [CS4]
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
-		                stripSpaces() charSet()
+		                rpad() lpad() stripSpaces() charSet()
 		DOM-access:     NO
 		Todo:           Perf tests ; string.lorem() ; warn if relativePath() fails
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       190313 (YYMMDD)
+		Modified:       200112 (YYMMDD)
 
 *******************************************************************************/
 
@@ -141,7 +141,7 @@
 	// [181007] String.prototype.toUTF8()
 	//==========================================================================
 
-	String.fromUTF8 = function(/*str|uint8[]*/x)
+	String.fromUTF8 = function fromUTF8(/*str|uint8[]*/x)
 	//----------------------------------
 	// Given a sequence of *valid* UTF8 codes (string or array),
 	// reconstruct and output the original UTF16 string.
@@ -156,7 +156,7 @@
 		return decodeURIComponent(escape(x));
 	};
 
-	String.prototype.toUTF8 = function()
+	String.prototype.toUTF8 = function toUTF8()
 	//----------------------------------
 	// Convert this string (assumed in native UTF16) into UTF8. The result
 	// is then a string formed of characters whose codes are all <= 0xFF.
@@ -1020,6 +1020,38 @@
 		// ---
 		t = this.rtrunc(x,'',wordBound) + c + this.ltrunc(p-x,'',wordBound);
 		return t.length > s.length ? t : s;
+	};
+
+	//==========================================================================
+	// String.prototype.rpad() lpad()
+	//==========================================================================
+
+	String.prototype.rpad = function rpad(/*uint>0*/minSize,/*char=' '*/padChar,   p)
+	//----------------------------------
+	// [ADD200112] Extend the RIGHT part of the string til its length reaches minSize.
+	//   `minSize`   :: If this.length >= minSize, the string is returned as is.
+	//   `padChar`   :: Single character string, default is space (U+0020).
+	// E.g: ("abc",5) => "abc  "
+	// => str
+	{
+		p = (minSize>>>0) - this.length;
+		if( p <= 0 ) return String(this);
+		padChar = 'string' == typeof padChar ? padChar.charAt(0) : ' ';
+		return this.concat(Array.prototype.join.call({length:1+p}, padChar));
+	};
+
+	String.prototype.lpad = function lpad(/*uint>0*/minSize,/*char=' '*/padChar,   p)
+	//----------------------------------
+	// [ADD200112] Extend the LEFT part of the string til its length reaches minSize.
+	//   `minSize`   :: If this.length >= minSize, the string is returned as is.
+	//   `padChar`   :: Single character string, default is space (U+0020).
+	// E.g: ("abc",5) => "  abc"
+	// => str
+	{
+		p = (minSize>>>0) - this.length;
+		if( p <= 0 ) return String(this);
+		padChar = 'string' == typeof padChar ? padChar.charAt(0) : ' ';
+		return Array.prototype.join.call({length:1+p}, padChar).concat(this);
 	};
 
 	//==========================================================================
