@@ -1,5 +1,6 @@
 ##### [200112]
   - Fixed a typo (wrong variable) in [`AnyScript/initialize`](/etc/AnyScript/$$.initialize.jsxinc).
+  - [`Ext/string`](/core/Ext/$$.string.jsxinc): added string methods `String.prototype.rpad` (right padding) and `String.prototype.lpad` (left padding.)
 
 ##### [191228]
   - [`Root/messaging`](/core/Root/$$.messaging.jsxinc): Added `$$.input(caption,defVal...)`, which displays a OK/Cancel prompt box. Allows to get an input string from the user. (Supports dropdown list.)
