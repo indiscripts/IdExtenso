@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190331 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       200112 (YYMMDD)
 
 *******************************************************************************/
 
@@ -52,7 +52,7 @@
 			if( q.hasOwnProperty('_$IDRQ') )
 			{
 				v = q._$IDRQ;
-				'number' == typeof v || (v=parseFloat(String(s)));
+				'number' == typeof v || (v=parseFloat(String(v))); // [FIX200112]
 				6 < v && (callee.IDRQ=v);
 			}
 
