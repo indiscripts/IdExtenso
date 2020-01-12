@@ -58,7 +58,7 @@
 
 			// Script name ($NAME).
 			// ---
-			callee.NAME = q._$NAME || (q._$NAME=File(callee.FNME).nudeName);
+			callee.NAME = q._$NAME || (q._$NAME=File(callee.FNME).nudeName()); // [FIX200112]
 
 			// Script version ($VSTR). Fallback: "1.0".
 			// ---
