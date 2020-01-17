@@ -7,9 +7,9 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:  static:   SourceEscapes fromCodePoint() fromUTF8()
+		API:  static:   SourceEscapes fromCodePoint() fromUTF8() fromBase64()
 		                random() levenDist() levenFilter()
-		       proto:   codePointAt() toUTF8() toSource() split() [CS4]
+		       proto:   codePointAt() toUTF8() toBase64() toSource() split() [CS4]
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                rpad() lpad() stripSpaces() charSet()
@@ -18,7 +18,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       200112 (YYMMDD)
+		Modified:       200117 (YYMMDD)
 
 *******************************************************************************/
 
@@ -172,6 +172,80 @@
 	// => str
 	{
 		return unescape(encodeURIComponent(this));
+	};
+
+	//==========================================================================
+	// [200117] String.B64, .fromBase64()
+	//          String.prototype.toBase64()
+	//==========================================================================
+
+	String.B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+	String.fromBase64 = function fromBase64(/*str|uint8[]*/s,/*bool=0*/AS_BYTES,  CHR,B,n,r,i,x0,x1,x2,x3,x)
+	//----------------------------------
+	// Given a sequence of *valid* Base64 codes (string or array), reconstruct
+	// and output the original JS string. By default, the outcoming bytes are
+	// assumed UTF8 units and then *converted into UTF16*. If `AS_BYTES` is set
+	// the routine returns the bytes without processing UTF8-to-UTF16 conv.
+	// ---
+	// => str
+	{
+		CHR = String.fromCharCode;
+		'string' == typeof s || (s=CHR.apply(0,x));
+
+		for
+		(
+			B=String.B64, n=s.length, r='', i=0 ;
+			// ---
+			i < n ;
+			// ---
+			x0 = B.indexOf(s.charAt(i++)),
+			x1 = B.indexOf(s.charAt(i++)),
+			x2 = B.indexOf(s.charAt(i++)),
+			x3 = B.indexOf(s.charAt(i++)),
+			x = x0 << 18 | x1 << 12 | x2 << 6 | x3,
+			r += ( 64 == x2 ? CHR(255&(x>>16)) : ( 64 == x3 ? CHR(255&(x>>16), 255&(x>>8)) : CHR(255&(x>>16), 255&(x>>8), 255&x) ) )
+		);
+		
+		return AS_BYTES ? r : String.fromUTF8(r);
+	};
+
+	String.prototype.toBase64 = function toBase64(/*bool=0*/AS_BYTES,  s,B,n,r,i,x)
+	//----------------------------------
+	// Convert this string into Base64. (The result is always a code string
+	// exclusively formed of B64 characters.)
+	// By default, `this` is regarded as a full UTF16 string, so it is
+	// *converted into UTF8 bytes* and then passed to the base64 converter.
+	// If AS_BYTES is set, the method bypasses UTF16-to-UTF8 conversion and
+	// treats each incoming character as a byte. (Thus, if the string contains
+	// units greater than 0xFF, only the 8 lowest bits are kept.)
+	// ---
+	// [REM] The condition `S == String.fromBase64(S.toBase64())` is satisfied
+	// for any JS string (UTF16), but is no longer guaranteed if AS_BYTES is true.
+	// Set the AS_BYTES flag if you know that the target string addresses 8-bit
+	// characters only (e.g, UTF8 units.)
+	// ---
+	// E.g  "ÀÉÔ".toBase64()               => "wMnU"
+	//      "小飼弾".toBase64()             => "5bCP6aO85by+"  ;  UTF16-to-UTF8 behind the scenes
+	//      "小飼弾".toBase64(true)         => "n/8+"          ;  Warning: high bits are lost!
+	// ---
+	// => str
+	{
+		s = AS_BYTES ? String(this) : this.toUTF8();
+
+		for
+		(
+			B=String.B64, n=s.length, r='', i=0 ;
+			// ---
+			i < n ;
+			// ---
+			x = s.charCodeAt(i++) << 16 | s.charCodeAt(i++) << 8 | s.charCodeAt(i++),
+			r += B.charAt(63&(x>>18))+B.charAt(63&(x>>12))+B.charAt(63&(x>>6))+B.charAt(63&x)
+		);
+		
+		return ( n %= 3 ) ?
+			( 1 < n ? (r.slice( 0, -1 ) + '=') : (r.slice( 0, -2 ) + '==') ) :
+			r;
 	};
 
 	//==========================================================================
