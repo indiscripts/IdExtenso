@@ -1,5 +1,6 @@
 ##### [200117]
   - [`Ext/string`](/core/Ext/$$.string.jsxinc): added `String.fromBase64()` and `String.prototype.toBase64()`.
+  - [`Root/messaging`](/core/Root/$$.messaging.jsxinc): slight improvements ; uses a panel in borderless windows.
 
 ##### [200112]
   - Fixed a typo (wrong variable) in [`AnyScript/initialize`](/etc/AnyScript/$$.initialize.jsxinc).
