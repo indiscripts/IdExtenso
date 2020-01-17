@@ -1,3 +1,6 @@
+##### [200117]
+  - [`Ext/string`](/core/Ext/$$.string.jsxinc): added `String.fromBase64()` and `String.prototype.toBase64()`.
+
 ##### [200112]
   - Fixed a typo (wrong variable) in [`AnyScript/initialize`](/etc/AnyScript/$$.initialize.jsxinc).
   - [`Ext/string`](/core/Ext/$$.string.jsxinc): added string methods `String.prototype.rpad` (right padding) and `String.prototype.lpad` (left padding.)
