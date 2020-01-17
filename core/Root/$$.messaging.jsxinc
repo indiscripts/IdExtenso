@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       191228 (YYMMDD)
+		Modified:       200117 (YYMMDD)
 
 *******************************************************************************/
 
@@ -55,7 +55,6 @@
 
 			q.multiline = ML;
 			r = parent.add(edit?'edittext':'statictext', void 0, txt, q);
-
 			ML && !edit && (r.characters=40);
 
 			o = r.preferredSize;
@@ -82,20 +81,15 @@
 		WMSG: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*0|1*/edit,/*str*/txt,/*str*/ok,/*str*/ko,/*0|Window*/w,/*0|1*/autoMg,  q,o)
 		//----------------------------------
 		// [ADD180531] [FIX190202] [CHG191228] Changed key name.
+		// [CHG200117] Use a panel in borderless case.
 		{
-			q = callee.Q || (callee.Q={
-				properties:             { type:'dialog', text:'', borderless:false, closeButton:true },
-				alignChildren:          ScriptUI.CT,
-				margins:                20,
-				spacing:                20,
-				Group$0:                { Custom$data: ['KTXT', /*edit*/1, /*text*/'', /*autoMargin*/0], },
-				Custom$0:               ['KBTS', /*okStr*/'', /*koStr*/''],
-			});
+			// [CHG200117]
+			q = callee[border?'Q1':'Q0'];
+			q.spacing = (ok || ko) ? 20 : 0;
 
 			o = q.properties;
 			o.type = tpe;
 			o.text = title;
-			o.borderless = !border;
 			o.closeButton = !ko;
 
 			// [FIX190203] o.bounds must be reset from scratch here.
@@ -106,7 +100,7 @@
 			o[2] = void 0;
 			o[3] = void 0;
 
-			o = q.Group$0.Custom$data;
+			o = q[border?'Group$0':'Panel$0'].Custom$data;
 			o[1] = edit;
 			o[2] = txt;
 			o[3] = autoMg;
@@ -116,7 +110,33 @@
 			o[2] = ko || '';
 			
 			return q;
-		},
+		}
+		.setup
+		({
+			// Border case -> Group$0
+			// ---
+			Q1:
+			{
+				properties:             { type:'dialog', text:'', borderless:false, closeButton:true },
+				alignChildren:          ScriptUI.CT,
+				margins:                20,
+				spacing:                20,
+				Group$0:                { Custom$data: ['KTXT', /*edit*/1, /*text*/'', /*autoMargin*/0], },
+				Custom$0:               ['KBTS', /*okStr*/'', /*koStr*/''],
+			},
+
+			// Borderless case -> Panel$0
+			// ---
+			Q0:
+			{
+				properties:             { type:'dialog', text:'', borderless:true, closeButton:true },
+				alignChildren:          ScriptUI.CT,
+				margins:                20,
+				spacing:                20,
+				Panel$0:                { Custom$data: ['KTXT', /*edit*/1, /*text*/'', /*autoMargin*/0], },
+				Custom$0:               ['KBTS', /*okStr*/'', /*koStr*/''],
+			},
+		}),
 
 		MSSG : function(/*str*/txt,/*str|false*/title,/*uint|false*/msec,/*0|1*/failing,/*?Window*/win,  ui,w)
 		//----------------------------------
@@ -138,6 +158,9 @@
 			
 			if( 'dialog' != w.type )
 			{
+				// [ADD200117] Seems to work better.
+				try{ w.enabled=true }catch(_){}
+
 				// [ADD170504] Calling update() here seems to solve (rare?) issues on MacOS
 				// [RES] https://forums.adobe.com/message/9484275#9484275
 				// ---
@@ -316,6 +339,7 @@
 		// `relWin`  :: Optional, related Window.
 		// [CHG170508] Coerce msg and title into string (if relevant.)
 		// [ADD180531] Added relWin.
+		// [REM200117] Unlike Win, MacOS isn't able to display a palette/window over a modal dialog.
 		// ---
 		// E.g  $$.success("Web data have been entirely retrieved.", "MyTool", 3);
 		// => undef
@@ -341,6 +365,7 @@
 		// [TODO] So far this method is just a placeholder, it mainly behaves as `success`
 		// when `seconds` is supplied. Our purpose is just to provide a KO routine
 		// semantically distinct from `success`.
+		// [REM200117] Unlike Win, MacOS isn't able to display a palette/window over a modal dialog.
 		// ---
 		// E.g  $$.failure("Cannot open the file.", "MyTool");
 		// => undef
