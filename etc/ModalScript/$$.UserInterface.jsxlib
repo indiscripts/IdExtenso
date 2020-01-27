@@ -12,12 +12,12 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180601 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       200127 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
-;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 190331))
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 200127))
 
 	//==========================================================================
 	// HOOKS
@@ -69,24 +69,29 @@
 			for( i=a.length ; i-- ; (k=a[i]), dlg.setValueKey(k,ss[k]) );
 		},
 
-		_DS_ : function(/*key[]*/a,/*SUIWindow*/dlg,/*settings&*/ss,  i,k,v)
+		_DS_ : function(/*key[]*/a,/*SUIWindow*/dlg,/*settings&*/ss,  i,k,v,CHG)
 		//----------------------------------
 		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
 		// [ADD190317] Added `getString` test.
-		// => undefined
+		// [ADD200127] Returns a Change flag (might be used in some hacks...)
+		// => true [SOME CHANGE]  |  false [NO CHANGE]
 		{
 			// Manages smart list strings.
 			// ---
 			const SLIG = callee.µ.SmartListItemGetter;
 
-			for( i=a.length ; i-- ; )
+			for( CHG=false, i=a.length ; i-- ; )
 			{
 				k = a[i];
 				v = SLIG && 'string'==typeof ss[k] && ((dlg[k]||0).hasOwnProperty('items') || 'function'==typeof (dlg[k]||0).getString) ?
 					dlg.getStringKey( k ) :  // List item as a string.
 					dlg.getValueKey ( k );   // Raw ui value.
+
+				CHG || (CHG=ss[k]!=v);       // [ADD200127]
 				ss[k] = v;
 			}
+			
+			return CHG;
 		},
 
 		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,µ,ss,dlg,q,k,pfx,r)
@@ -144,7 +149,7 @@
 			// ---
 			µ.CancelValue===(r=dlg.show()) && (r=false);
 			false!==r && this._DS_(q, dlg, ss);
-			
+
 			// onClose hook?
 			// ---
 			return 'function' == typeof µ.onClose ?
