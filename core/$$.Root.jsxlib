@@ -8,18 +8,18 @@
 		Core:           YES
 		Kind:           Module.
 		API:            =load() unload() getLoadStamp()
-		                resolve() isModule() isLoaded() isBooting()
+		                resolve() isModule() spin() isLoaded() isBooting()
 		                kill() clone()
 		                uid() beep() error() receiveError() success()
 		                help()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       190303 (YYMMDD)
+		Modified:       200228 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 190303, 'load'))
+;eval(__(MODULE, '$.global', $$, 200228, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -162,18 +162,21 @@
 		//----------------------------------
 		// (Load-Module.) Load the given module.
 		// [CHG180309] Added warn if onLoad has been blocked (false returned.)
+		// [ADD190611] Added `spin()` steps.
 		// => 0:noop | 1:processed
 		{
 			if( mod.__load__ ) return 0;
 
 			if( callee.__first__ && mod.hasOwnProperty('onEngine') )
 			{
+				callee.µ.spin();
 				callee.µ.trace(__("%1 > %2 [%3] Calling onEngine().", callee.µ, mod, mod.__modf__||'unknown'));
 				mod.onEngine(x,y);
 			}
 
 			if( mod.hasOwnProperty('onLoad') )
 			{
+				callee.µ.spin();
 				callee.µ.trace(__("%1 > %2 [%3] Calling onLoad().", callee.µ, mod, mod.__modf__||'unknown'));
 				return false===mod.onLoad(x,y) ?
 					( callee.µ.warn(__("%1 > %2 -> onLoad blocked.", callee.µ, mod, mod.__modf__||'unknown')), 0 ) :
@@ -233,8 +236,9 @@
 			GLO_IDEX: Array
 			//----------------------------------
 			// Temporary global keys used at include-time.
+			// [ADD190611] Added `SPIN`
 			(
-				'PRIVATE', 'PUBLIC', 'STATIC', 'PARENT', 'PROTO',
+				'PRIVATE', 'PUBLIC', 'STATIC', 'PARENT', 'PROTO', 'SPIN',
 				'__path__', 'MODULE', 'CLASS', 'µ'
 			),
 			GLO_DOMK: Array
@@ -306,6 +310,19 @@
 
 			return ( path && callee.µ['~'].__mods__.hasOwnProperty(path) ) ? 1 : 0;
 		},
+		
+		spin: function spin_t_(/*-1|0|+1=+1*/mode)
+		//----------------------------------
+		// [ADD190611] Access $.Spinner's API when available.
+		// mode :: +1 or undef  =>  hit the spinner
+		//          0           =>  hide the spinner
+		//         -1           =>  close the spinner
+		{
+			if( 'function' != typeof $.Spinner ) return;
+			'number' == typeof mode || (mode=1);
+			mode = 0 < mode ? 'hit' : ( 0===mode ? 'hide' : 'close' );
+			$.Spinner[mode]();
+		},
 	})
 
 	//==========================================================================
@@ -369,6 +386,10 @@
 			// Should be the unique call to $.hiresTimer within IdExtenso.
 			// ---
 			I.HRTM = $.hiresTimer;
+			
+			// [ADD190611] Call the spinner if available.
+			// ---
+			$$.spin();
 
 			// Initialize the Log.
 			// ---
@@ -395,7 +416,6 @@
 			// ---
 			I.LOOP(I.LDMD);
 			delete I.LDMD.__first__;
-
 			// First snapshot [TODO]
 			// ---
 			// $$.snapshot();
