@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190321 (YYMMDD)
-		Modified:       190326 (YYMMDD)
+		Modified:       200228 (YYMMDD)
 
 *******************************************************************************/
 
@@ -194,6 +194,7 @@
 		//----------------------------------
 		// (Http-Getter.) Access the `target` using HTTP GET and save the resource in
 		// `resp.data` with additional infos (status, headers...)
+		// [FIX200228] Typo was causing error "T is not a function". Fixed.
 		// ---
 		// This getter uses the `Socket` object so it doesn't depend on the environment,
 		// doesn't hit the DOM, and should deal with basic, regular 'http' downloads.
@@ -394,7 +395,7 @@
 				&& ( x=x[1].toUpperCase() )
 				&& File.isEncodingAvailable(x)
 				&& callee.ENCODE($.global[callee.µ.__root__],resp,x)
-				&& T( __("%1 > Converted into %2 characters.",callee.µ,x) );
+				&& T && T( __("%1 > Converted into %2 characters.",callee.µ,x) ); // [FIX200228]
 
 				r = 1;
 				break;
