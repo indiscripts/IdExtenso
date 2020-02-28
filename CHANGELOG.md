@@ -1,3 +1,6 @@
+##### [200228]
+  - [**Web**](/etc/$$.Web.jsxlib): Fixed a typo in [`HttpSocket`](/etc/Web/$$.HttpSocket.jsxinc). This was causing a _not-a-function_ runtime error in non-trace mode.
+
 ##### [200117]
   - [`Ext/string`](/core/Ext/$$.string.jsxinc): added `String.fromBase64()` and `String.prototype.toBase64()`.
   - [`Root/messaging`](/core/Root/$$.messaging.jsxinc): slight improvements ; uses a panel in borderless windows.
