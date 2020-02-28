@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       190303 (YYMMDD)
+		Modified:       200228 (YYMMDD)
 
 *******************************************************************************/
 
@@ -188,11 +188,14 @@
 		$.global.PUBLIC  = "PUBLIC";
 		$.global.STATIC  = "PUBLIC"; // [ADD170527] Simple alias, used in classes.
 		$.global.PARENT  = "PARENT";
-		$.global.PROTO  =  "PROTO";  // [ADD170527] Used in classes.
+		$.global.PROTO   = "PROTO";  // [ADD170527] Used in classes.
+		// --- [ADD190611]
+		$.global.SPIN   = 'function' == typeof $.Spinner ? "($.Spinner())," : "";
 	
 		// Macro `MODULE`. (See implementation notes.)
 		// [ADD171109] __core__ property.
 		// [FIX180516] Supports up to 9 formal arguments in automatic methods and constructors.
+		// [ADD190611] Optional SPIN call.
 		// ---
 		$.global.ARGLIST = "_1,_2,_3,_4,_5,_6,_7,_8,_9"; // [180516] Temporary global string.
 		$.global.MODULE = """
@@ -201,7 +204,7 @@
 				({
 					__root__: $$.name||(($.global.$$=$.global.µ).name),
 					__core__: 1,
-					__load__: 0,
+					__load__: ("""+SPIN+"""0),
 					__modf__: +%3,
 					__auto__: ''!='%4' && 'undefined'!='%4' ? '%4' : 'toString',
 					__path__: (%1.__path__||'/') + '%2/',
@@ -218,6 +221,7 @@
 
 		// [ADD170527] Macro `CLASS`. (See implementation notes.)
 		// [ADD171109] __core__ property.
+		// [ADD190611] Optional SPIN call.
 		// ---
 		$.global.CLASS = """
 		(
@@ -229,7 +233,7 @@
 				({
 					__root__: $$.name,
 					__core__: 1,
-					__load__: 0,
+					__load__: ("""+SPIN+"""0),
 					__modf__: +%3,
 					__path__: (%1.__path__||'/') + '%2/',
 	
