@@ -1,3 +1,8 @@
+## 2.00228
+  - Stabilized version (Feb. 28, 2020) including latest fixes and additions.
+  - An alternate entry point is provided, [`$$.spin.jsxinc`]($$.spin.jsxinc), which lets you display a _spinner_ from the including stage. Use `$$.spin()` at any point of your script/module to get the spinner updated while performing time-consuming tasks. To enjoy this feature, change `#include path/to/$$.jsxinc` into `#include path/to/$$.spin.jsxinc` in your client script. The method `$$.spin()` is otherwise transparent.
+  - Recent additions in the `core` branch: `String.fromBase64()`, `String.prototype.toBase64()`, `String.prototype.rpad()`, `String.prototype.lpad()`, `String.levenFilter(arr,str,max)`, `$$.input()`, `$$.Env.tempRedraw()`.
+
 ##### [200228]
   - [**Web**](/etc/$$.Web.jsxlib): Fixed a typo in [`HttpSocket`](/etc/Web/$$.HttpSocket.jsxinc). This was causing a _not-a-function_ runtime error in non-trace mode.
 
