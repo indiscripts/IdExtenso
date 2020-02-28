@@ -11,11 +11,11 @@
 		DOM-access:     YES (if https involved.)
 		Todo:           make `wantText` automatic if not supplied
 		Created:        170403 (YYMMDD)
-		Modified:       190325 (YYMMDD)
+		Modified:       200228 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 190322, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 200228, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -39,6 +39,7 @@
 	[190315] Important fix for Windows, `responseBody` now properly escaped
 	         in VBS and parsed in JS.
 	[190322] Full rewrite; splitted parts into snippets.
+	[200228] Fixed a typo in `HttpSocket` (was causing a not-a-function error.)
 	
 	*/
 
