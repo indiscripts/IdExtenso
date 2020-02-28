@@ -1,0 +1,321 @@
+/*******************************************************************************
+
+		Name:           IdExtenso Entry Point (spin mode)
+		Desc:           Runs IdExtenso with a Spinner.
+		Path:           $$.spin.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Entry point.
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190611 (YYMMDD)
+		Modified:       200228 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+
+	This alternate Entry Point preloads a basic spinner in the ExtendScript object
+	(`$.Spinner`) and makes it available in IdExtenso --$$.spin()-- as soon as
+	possible.
+	
+	Instead of the regular
+
+	      #include 'path/to/$$.jsxinc'
+	
+	you can use
+	
+	      #include 'path/to/$$.spin.jsxinc'
+
+	to have a spinner component waking up at both include and load stages. This
+	helps the user wait for the UI if your script has a lot of dependencies that
+	need time to load.
+	
+	By default, `$$.spin()` is called at each MODULE/CLASS include stage, and at
+	each MODULE/CLASS load stage, including core modules. In your own code, you
+	can invoke `$$.spin()` whenever a time consuming process is about to run,
+	and within a loop at any new iteration.
+
+	*/
+
+	//==========================================================================
+	// BEFORE INCLUDE
+	//==========================================================================
+
+	;if( 'function' != typeof $.Spinner )
+	//----------------------------------
+	//
+	{
+		$.Spinner = function Spinner(/*?false*/flag)
+		//----------------------------------
+		// Hit the spinner, or hide it if flag===false
+		// => undef
+		{
+			false===flag ? callee._UI_(-1) : callee.SPIN();
+		};
+
+		//==========================================================================
+		// UI
+		//==========================================================================
+
+		$.Spinner._UI_ = function(/*-1:hide|0:keep|+1:show*/SHW)
+		//----------------------------------
+		// (User-Interface.) Show/hide/make the UI palette.
+		// => Window{Palette} | undef [HIDDEN]
+		{
+			if( SHW < 0 )
+			{
+				if( callee.SHOWN )
+				{
+					callee.VISB(0);
+					callee.RDRW();
+				}
+				callee.SHOWN = 0;
+				return;
+			}
+			if( !callee.BUILT )
+			{
+				callee.CTRW(callee.WIN=callee.MAKE());
+				callee.BUILT = 1;
+				callee.SHOWN = 0;
+			}
+			if( SHW > callee.SHOWN )
+			{
+				callee.VISB(1);
+				callee.POSN();
+				callee.RDRW();
+				callee.SHOWN = 1;
+			}
+			return callee.WIN;
+		};
+
+		$.Spinner._UI_.BUILT = 0;
+		$.Spinner._UI_.SHOWN = 0;
+		$.Spinner._UI_.WIN   = false;
+		$.Spinner._UI_.INCC  = 9 <= parseFloat(app.version||0);
+		$.Spinner._UI_.OPAC  = [.9, .2, .15, .1];
+
+		$.Spinner._UI_.RDRW = function(  t,b)
+		//----------------------------------
+		// Short redraw time (120 ms.)
+		{
+			t = app.scriptPreferences||0;
+			( b=t.enableRedraw ) || (t.enableRedraw=true);
+			$.sleep(120);
+			b || (t.enableRedraw=false);
+		};
+
+		$.Spinner._UI_.CTRW = function(/*SUIWindow*/w, W,xy,wh)
+		//----------------------------------
+		// Center the window.
+		{
+			w.layout.layout(1);
+
+			W = (app.layoutWindows||0).length && app.activeWindow;
+			if( W && 'LayoutWindow'==W.constructor.name )
+			{
+				W = W.properties.bounds;
+				xy = [ (W[1]+W[3])/2, (W[0]+W[2])/2 ];
+				wh = w.size;
+				w.location = [xy[0]-(wh[0]>>1), xy[1]-(wh[1]>>1)];
+			}
+			else
+			{
+				w.center();
+			}
+		};
+
+		$.Spinner._UI_.MAKE = function(  w,wp,gx,t,o,d,a,i)
+		//----------------------------------
+		// => Window{Palette}
+		{
+			w = new Window('palette', '\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0\xA0', void 0, callee.Q);
+			wp = w.properties;
+			gx = w.graphics;
+
+			const BT = +gx.BrushType.SOLID_COLOR;
+			const PT = +gx.PenType.SOLID_COLOR;
+
+			// Window
+			// ---
+			w.margins = wp.borderSize;
+			gx.backgroundColor = gx.disabledBackgroundColor = gx.newBrush(BT, callee.RGBA(wp.borderColor));
+
+			// Inner group
+			// ---
+			(t=w.add('group')).margins = 0;
+			t.preferredSize = t.minimumSize = [wp.minWidth,wp.minHeight];
+			t.graphics.backgroundColor = t.graphics.disabledBackgroundColor = gx.newBrush(BT, callee.RGBA(wp.background));
+
+			// Squares --> w.properties.squares
+			// ---
+			wp.squares = Array(4);
+			o = { x:0, y:0, width:wp.squareWidth, height:wp.squareHeight };
+			d = o.width + wp.squareSpace;
+			a = callee.RGBA(wp.squareColor);
+
+			for( i=-1 ; ++i < 4 ; wp.squares[i]=t )
+			{
+				o.x = d*( 2*(1&i)==(2&i) );
+				o.y = d*( (2&i)>>1 );
+				
+				t = new Window('palette', ' ', o, { borderless:true, idx:i });
+				t.margins = t.spacing = 0;
+
+				gx = t.graphics;
+				gx.backgroundColor = gx.disabledBackgroundColor = gx.newBrush(BT,a);
+				t.opacity = 0;
+			}
+			
+			return w;
+		};
+
+		$.Spinner._UI_.MAKE.Q =
+		//----------------------------------
+		{
+			borderless:     true,
+			// ---
+			minWidth:       200,
+			minHeight:      150,
+			borderSize:     1,
+			// ---
+			squareWidth:    20,
+			squareHeight:   'W'!=String($.os).charAt(0) && $.Spinner._UI_.INCC ? 1 : 20,
+			squareSpace:    6,
+			offset:         -1,
+			// ---
+			background:     0xEFEFEE,         // #EFEFEE
+			borderColor:    0xFFFFFF,         // #D1D1D0
+			squareColor:    0x336699,         // #336699
+		};
+
+		$.Spinner._UI_.MAKE.RGBA = function(/*uint24*/rgb)
+		//----------------------------------
+		// => [r,g,b,1]
+		{
+			return [ (0xFF&(rgb>>>16))/255, (0xFF&(rgb>>>8))/255, (0xFF&(rgb>>>0))/255, 1 ];
+		},
+
+		$.Spinner._UI_.VISB = function(/*0|1=0*/SHW,  w,a,k,UP,i)
+		//----------------------------------
+		// Show-or-hide the UI.
+		// this :: _UI_
+		// => undef
+		{
+			w = this.WIN;
+			SHW && w.show();
+			
+			// Squares.
+			// ---
+			a = w.properties.squares;
+			k = SHW ? 'show' : 'hide';
+			UP = SHW && this.INCC;
+			for( i=-1 ; ++i < 4 ; a[i][k](), (UP&&a[i].update()) );
+			
+			SHW || w.hide();
+		};
+
+		$.Spinner._UI_.POSN = function(  wp,b,a,sz,t,x0,y0)
+		//----------------------------------
+		// (RePosition-Squares.)
+		// this :: _UI_
+		// => undef
+		{
+			wp = this.WIN.properties;
+			b = this.WIN.bounds;
+
+			a = wp.squares;
+			sz = wp.squareWidth;
+			t = wp.squareSpace;
+
+			x0 = Math.round(b.left + b.width/2 - sz - t/2);
+			y0 = Math.round(b.top + b.height/2 - sz - t/2);
+
+			t += sz;
+			a[0].location = [x0,y0];
+			a[1].location = [x0+t,y0];
+			a[2].location = [x0+t,y0+t];
+			a[3].location = [x0,y0+t];
+			
+			wp.offset = -1;
+			this.INCR();
+		};
+
+		$.Spinner._UI_.INCR = function(  o,wp,a,d,i)
+		//----------------------------------
+		// (Offset-Squares.)
+		// this :: _UI_
+		{
+			o = this.OPAC;
+			wp = this.WIN.properties;
+			a = wp.squares;
+			d = (1+wp.offset)%4;
+
+			for( i=-1 ; ++i < 4 ; a[(i+d)%4].opacity=o[i] );
+
+			wp.offset = d;
+		};
+
+		
+		//==========================================================================
+		// HELPERS
+		//==========================================================================
+
+		$.Spinner.SPIN = function(  ui,dt)
+		//----------------------------------
+		{
+			ui = this._UI_;
+			if( !ui.SHOWN )
+			{
+				ui.call(this,1);
+				callee.DT= +new Date;
+				return;
+			}
+			
+			dt = +new Date;
+			if( dt - callee.DT < callee.RATE ) return;
+
+			ui.INCR();
+			callee.DT = +new Date;
+		};
+		$.Spinner.SPIN.DT   = +new Date;  // init
+		$.Spinner.SPIN.RATE = 100;        // ms
+
+		$.Spinner.KILL = function(  ui,w,a,t)
+		//----------------------------------
+		{
+			ui = this._UI_;
+			if( !ui.BUILT ) return;
+			
+			ui.BUILT = ui.SHOWN = 0;
+
+			w = ui.WIN;
+			a = w.properties.squares;
+			while( t=a.pop() ) t.close();
+			delete w.properties.squares;
+			
+			w.close();
+			ui.BUILT = ui.SHOWN = 0;
+		};
+
+		//==========================================================================
+		// API
+		//==========================================================================
+
+		$.Spinner.hit = function hit(flag){ $.Spinner(flag) };
+		$.Spinner.hide = function hide(){ $.Spinner(false) };
+		$.Spinner.close = function close(){ $.Spinner.KILL() };
+	}
+
+
+	//==========================================================================
+	// REGULAR ENTRY POINT
+	//==========================================================================
+
+	#include '$$.jsxinc'
