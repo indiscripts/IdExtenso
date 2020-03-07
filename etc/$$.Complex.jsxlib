@@ -3,7 +3,7 @@
 		Name:           Complex
 		Desc:           Class for Complex numbers managed as {x,y} pairs.
 		Path:           /etc/$$.Complex.jsxlib
-		Require:        __()
+		Require:        __() ; Number.EPSILON
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Class.
@@ -14,16 +14,16 @@
 		                square() log() exp() pow() sqrt() sin() cos() tan()
 		                sinh() cosh() tanh() mod()
 		    Operators:  ==  <  <=  +  -  *  /  ~  %  ^  <<  >>  >>>  &  |
-		    Static:     ZERO ONE I
+		    Static:     ZERO ONE I EPSILON
 		DOM-access:     NO
 		Todo:           More tests w/ advanced functions (pow...) & EPSILON ;
 		                pow() might be enhanced in case argument is a real.
 		Created:        180117 (YYMMDD)
-		Modified:       180302 (YYMMDD)
+		Modified:       200307 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Complex') || eval(__(CLASS, $$, 'Complex', 180302))
+;$$.hasOwnProperty('Complex') || eval(__(CLASS, $$, 'Complex', 200307))
 
 	//==========================================================================
 	// BACKGROUND
