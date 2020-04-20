@@ -1,5 +1,5 @@
 ##### [200420]
-  - [**ByteStream**](/etc/$$.ByteStreaù.jsxlib): Added the `TAG` encoding (equivalent to `ASC*4`) to handle OpenType tag type or similar 4-letter strings. Added a convenient `toSource()` method that both supports input and output streams.
+  - [**ByteStream**](/etc/$$.ByteStream.jsxlib): Added the `TAG` encoding (equivalent to `ASC*4`) to handle OpenType tag type or similar 4-letter strings. Added a convenient `toSource()` method that both supports input and output streams.
 
 ## 2.00228
   - Stabilized version (Feb. 28, 2020) including latest fixes and additions.
