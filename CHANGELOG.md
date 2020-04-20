@@ -1,3 +1,6 @@
+##### [200420]
+  - [**ByteStream**](/etc/$$.ByteStreaù.jsxlib): Added the `TAG` encoding (equivalent to `ASC*4`) to handle OpenType tag type or similar 4-letter strings. Added a convenient `toSource()` method that both supports input and output streams.
+
 ## 2.00228
   - Stabilized version (Feb. 28, 2020) including latest fixes and additions.
   - An alternate entry point is provided, [`$$.spin.jsxinc`]($$.spin.jsxinc), which lets you display a _spinner_ from the including stage. Call `$$.spin()` at any point of your script/module to get the spinner updated while performing time-consuming tasks. To enjoy this feature, change `#include path/to/$$.jsxinc` into `#include path/to/$$.spin.jsxinc` in your client script. The method `$$.spin()` is otherwise transparent.
