@@ -8,17 +8,17 @@
 		Core:           NO
 		Kind:           Class.
 		API:            onEngine()
-		       [proto]  create() valueOf() getSource() toString()
+		       [proto]  create() valueOf() getSource() toString() toSource()
 		                peek() read() jump() write()
 		                + Array.prototype
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180927 (YYMMDD)
-		Modified:       181123 (YYMMDD)
+		Modified:       200420 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 181123))
+;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 200420))
 
 	//==========================================================================
 	// NOTICE
@@ -61,6 +61,7 @@
 	  ASC  |   1   | string(1) | Ascii character ; char code <= 0x7F
 	  LAT  |   1   | string(1) | Latin character ; char code <= 0xFF
 	  HEX  |   1   | string(2) | Hex string (2 chars) ; e.g  0x1F -> "1F"
+	  TAG  |   4   | string(4) | OTF or Adobe tag, i.e string of 4 Ascii chars  [ADD200420]
 	-----------------------------------------------------------------------
 	  I08  |   1   | number    | Signed byte     [-128, 127 ]
 	  U08  |   1   | number    | Unsigned byte   [   0, 255 ]
@@ -259,8 +260,9 @@
 	({
 
 		// Encoding schemes.
+		// [ADD200420] Added `TAG` encoding (OTF tag, i.e ASC*4)
 		// ---
-		ENCS: /(STR|ASC|LAT|HEX|I08|U08|I16|U16|I24|U24|I32|U32|F32|F64)([><])?(\*\d+)?(\:[^ ]+)?/g,
+		ENCS: /(STR|ASC|TAG|LAT|HEX|I08|U08|I16|U16|I24|U24|I32|U32|F32|F64)([><])?(\*\d+)?(\:[^ ]+)?/g,
 
 		RSTR: function(/*byte[]|str*/a,/*uint*/p)
 		//----------------------------------
@@ -301,6 +303,24 @@
 			return (callee.Q[0]=0x7F&x.charCodeAt(0)), callee.Q;
 		}
 		.setup({ Q: Array(1) }),
+
+		RTAG: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
+		//----------------------------------
+		// [ADD200420] Interprets a[p]..a[p+3] as an OTF tag (=ASC*4).
+		// => str4
+		{
+			return String.fromCharCode(0x7F&f(a,p),0x7F&f(a,1+p),0x7F&f(a,2+p),0x7F&f(a,3+p));
+		}
+		.setup({ SZ:4 }),
+
+		WTAG: function(/*str=\x00\x00\x00\x00*/x,  q)
+		//----------------------------------
+		// [ADD200420] Given an OTF tag string (=ASC*4), return a VOLATILE sequence of 4 bytes.
+		// => byte[4]  [VOLATILE]
+		{
+			return (q=callee.Q), (q[0]=0x7F&x.charCodeAt(0)), (q[1]=0x7F&x.charCodeAt(1)), (q[2]=0x7F&x.charCodeAt(2)), (q[3]=0x7F&x.charCodeAt(3)), q;
+		}
+		.setup({ Q: Array(4) }),
 
 		RLAT: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
@@ -600,6 +620,19 @@
 			return this.hasOwnProperty('__pos__')
 				? ( last ? String(this.valueOf()).slice(last) : String(this.valueOf()) )
 				: ( String.fromCharCode.apply(0, last ? this.slice(last) : this) );
+		},
+		
+		toSource: function toSource_S()
+		//----------------------------------
+		// [ADD200420] Uneval the stream.
+		// [INPUT STREAM]  Return `(new $$["ByteStream"](<src>.toSource()))`.
+		// [OUTPUT STREAM] Return this.toString().toSource()
+		// ---
+		// => str
+		{
+			return this.hasOwnProperty('__src__') ?
+				__( "(new %1(%2))",callee.µ.toSource(),this.__src__.toSource() ) :
+				this.toString().toSource();
 		},
 
 		peek: function peek_s_oa_$this$(/*str=U08*/fmt,/*obj|arr=this&*/dst,  I,i,src,f,p,re,m,F,dp,LE,n,k,v,o,j)
