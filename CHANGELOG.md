@@ -1,3 +1,6 @@
+##### [200524]
+  - [`Dom/app`](/core/Dom/$$.app.jsxinc): Notice and cosmetic refinements (`fromLocaleStr` and `toLocaleStr`.)
+
 ##### [200420]
   - [**ByteStream**](/etc/$$.ByteStream.jsxlib): Added the `TAG` encoding (equivalent to `ASC*4`) to handle OpenType tag type or similar 4-letter strings. Added a convenient `toSource()` method that both supports input and output streams.
 
