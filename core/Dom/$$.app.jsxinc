@@ -125,7 +125,7 @@
 	
 		}.copy('..'),
 	
-		toLocaleStr : function toLocaleStr_S_S(/*str*/keyStr,/*0|1=0*/CHECK,  r)
+		toLocaleStr : function toLocaleStr_S_b_S(/*str*/keyStr,/*0|1=0*/CHECK,  r)
 		//----------------------------------
 		// Given a ID keystring (prefix '$ID/' is optional)
 		// return the associated locale string, or the empty string.
