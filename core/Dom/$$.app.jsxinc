@@ -11,13 +11,39 @@
 		DOM-access:     app.findKeyStrings() app.translateKeyString()
 		Todo:           ---
 		Created:        170324 (YYMMDD)
-		Modified:       170324 (YYMMDD)
+		Modified:       200524 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
-	// BACKGROUND
+	// NOTICE
 	//==========================================================================
+	
+	/*
+	
+	Some InDesign components (MenuItems, default styles, Languages...) are
+	accessed through localized names, that is, strings based on the application
+	locale. If your script is intended to work in whatever locale, it is often
+	desirable to get locale-independent access to these strings, or to translate
+	a known keystring into a specific locale.
+	
+	The public methods `$$.Dom.fromLocaleStr()` and `$$.Dom.toLocaleStr()` invoke
+	`app.findKeyStrings` and `app.translateKeyString` behind the scenes in a
+	secure way. They also use a cache to reduce DOM commands.
+	
+	1. `fromLocaleStr` typically returns a set of locale-independent keys in `k1|k2...`
+	   form, e.g "$ID/Layer|$ID/#LinkInfoLayerNameStr|$ID/kPreflightOD_Layer"
+	   Indeed a single locale name ("Calque" in FR) may have various corresponding
+	   keystrings and then the client script needs to select the right one. In
+	   many cases the shortest keystring is fine. Set the `SHORTEST` flag to get it.
+
+	2. `toLocaleStr` translates a particular keystring, say "$ID/Layer", into a
+	   locale string ("Calque" in FR.) In most cases, if the incoming keystring is
+	   not referenced, it is still returned, unchanged, without the `$ID/` prefix.
+	   So it's useful to check whether a genuine translation exists. Set the `CHECK`
+	   flag to perform that test.
+
+	*/
 
 	[PRIVATE]
 	
@@ -30,20 +56,17 @@
 			return a.join('|');
 		},
 
-		SHR$ : function(/*str*/x,/*str*/y)
-		//----------------------------------
-		// SHRT sorter.
-		{
-			return x.length - y.length;
-		},
-
 		SHRT : function(/*str[]&*/a)
 		//----------------------------------
 		// Return the shortest item.
 		// => str
 		{
-			return 1 < a.length ? a.sort(this.SHR$)[0] : a[0];
-		},
+			return 1 < a.length ? a.sort(callee.SORT)[0] : a[0];
+		}
+		.setup
+		({
+			SORT: function(/*str*/x,/*str*/y){ return x.length - y.length },
+		}),
 
 		FLCS : function(/*str*/s,/*0|1*/SHORTEST,  q,k)
 		//----------------------------------
@@ -51,7 +74,7 @@
 		// If SHORTEST is on, return the shortest key.
 		// => str :: idKey1|idKey2...|idKeyN or <empty>
 		{
-			return (q=callee.Q).hasOwnProperty(k=' '+s+'@'+SHORTEST) ?
+			return (q=callee.Q).hasOwnProperty(k='_'+s+'@'+SHORTEST) ?
 				q[k] :
 				( q[k]=this[SHORTEST?'SHRT':'JOIN'](app.findKeyStrings(s)||['']) );
 
@@ -62,7 +85,7 @@
 		// To Locale String (from ID Key); `s` is given w/o '$ID/' prefix.
 		// => str :: locStr or <empty>
 		{
-			return (q=callee.Q).hasOwnProperty(k=' '+s) ?
+			return (q=callee.Q).hasOwnProperty(k='_'+s) ?
 				q[k] :
 				( q[k]=app.translateKeyString('$ID/' + s)||'' );
 
@@ -91,6 +114,8 @@
 		//   ("Calque")   => "$ID/Layer|$ID/#LinkInfoLayerNameStr|$ID/kPreflightOD_Layer"
 		//   ("Calque",1) => "$ID/Layer"
 		//   ("Sans",1)   => "$ID/None"
+		// ---
+		// => wag
 		{
 			// Assertion.
 			// ---
@@ -113,8 +138,10 @@
 		//   ("Layer")     => "Calque"
 		//   ("$ID/XYZ")   => "XYZ"
 		//   ("$ID/XYZ",1) => ""
+		// ---
+		// => str
 		{
-			keyStr && '$ID/'==keyStr.substr(0,4) && (keyStr=keyStr.substr(4));
+			keyStr && '$ID/'==keyStr.slice(0,4) && (keyStr=keyStr.slice(4));
 	
 			// Assertion.
 			// ---
