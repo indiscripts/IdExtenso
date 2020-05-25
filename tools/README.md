@@ -143,7 +143,7 @@ _Note._ When no better option is available, the scrambler performs _swaps_ rathe
 
 ##### [`RebuildUnicode.jsx`](RebuildUnicode.jsx)
 
-Reconstruct the resources of the [Unicode](`etc/$$.Unicode.jsxlib`) module using [MetaUnicode](`etc/$$.MetaUnicode.jsxlib`).
+Reconstruct the resources of the [Unicode](etc/$$.Unicode.jsxlib) module using [MetaUnicode](etc/$$.MetaUnicode.jsxlib).
 
 ---
 
