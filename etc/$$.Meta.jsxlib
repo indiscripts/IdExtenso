@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Meta
-		Desc:           Templates and tools for building IdExtenso files/components.
+		Desc:           Templates and tools for manipulating IdExtenso components.
 		Path:           /etc/$$.Meta.jsxlib
 		Require:        Date.guess() ; trim()
 		Encoding:       ÛȚF8
@@ -11,15 +11,39 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180516 (YYMMDD)
-		Modified:       181030 (YYMMDD)
+		Modified:       200525 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Meta') || eval(__(MODULE, $$, 'Meta', 181030, 'header'))
+;$$.hasOwnProperty('Meta') || eval(__(MODULE, $$, 'Meta', 200525, 'header'))
 
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
+
+	/*
+	
+	This module helps you create and/or parse IdExtenso files or components at
+	development stage.
+	
+	It is mostly used to regenerate resource files automatically. Dedicated 'meta-
+	modules', like MetaUnicode or MetaCollator, occasionally have to update their
+	own resource files, or some internal component, from fresh data being either
+	available online or supplied by the developer of the module.
+	
+	`Meta` provides a simple and generic API to handle IdExtenso I/O files in a
+	uniform way. In particular, it manages the header format of every IdExtenso-
+	compliant file. (See ~.HEAD.)
+	
+	NOTE. - Meta-modules are intended for IdExtenso developers only, they're not
+	supposed to be included as such in your final product. So, except in very
+	special cases, they do not want to run if IdExtenso is jsxbin-compiled. It
+	is therefore recommended to throw an error from your meta-module whenever
+	`$$.Env.inBinStream()` returns 1.
+	
+	By convention, every meta-module should have the prefix `Meta...`
+	
+	*/
 
 	[PRIVATE]
 
@@ -79,17 +103,31 @@
 			return callee.µ['~'].YYMD(Date.guess(dt));
 		},
 		
-		topic : function topic_S_S(/*str*/title,/*str=''*/spacing,  I)
+		topic : function topic_SA_S(/*str|str[]*/title,/*str=''*/spacing,  I,NL,s,i)
 		//----------------------------------
 		// Return a three-line topic name in the form
 		//   `<spacing>//======================
 		//    <spacing>// <title>
 		//    <spacing>//======================`
+		// [CHG200228] Supports multiline `title` (array.)
 		// => str
 		{
 			I = callee.µ['~'];
+			NL = callee.µ.NewLine;
+
 			spacing = String(spacing||'');
-			return [ spacing+I.EQLN, spacing + '// ' + title, spacing+I.EQLN].join(callee.µ.NewLine);
+			
+			if( title instanceof Array )
+			{
+				for( s='', i=-1 ; ++i < title.length ; s += NL+spacing+'// '+title[i] );
+				s && s=s.slice(NL.length);
+			}
+			else
+			{
+				s = spacing + '// ' + title;
+			}
+			
+			return [ spacing+I.EQLN, s, spacing+I.EQLN].join(NL);
 		},
 
 		header : function header_S_s_s_s_s_s_b_s_bs_S(/*str*/name,/*?str*/desc,/*?ymd*/modf,/*?ymd*/crea,/*?str*/path,/*?str*/req,/*bool=0*/inCore,/*?str*/kind,/*?bool|str*/dom,  I)
@@ -127,7 +165,7 @@
 				);
 		},
 		
-		parseHeader: function parseHeader_O(/*str*/s,  i,m,q,k)
+		parseHeader: function parseHeader_S_O(/*str*/s,  i,m,q,k)
 		//----------------------------------
 		// Parse the header contained in the string s and return a
 		// { key => val } object (each `val` being a string.)
