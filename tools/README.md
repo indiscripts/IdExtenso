@@ -8,6 +8,14 @@ From this location, any `.jsx` script can include the core framework using `#inc
 
 ### List of Tools
 
+* GetMD5
+* JsxBlindLib
+* RebuildUnicode
+* ScriptTemplate
+* SelToPng
+
+### Detail
+
 ##### [`GetMD5.jsx`](GetMD5.jsx)
 
 Compute and prompt the MD5 hash of the input string. (Based on `etc/$$.MD5.jsxlib`.)
@@ -130,6 +138,12 @@ _Note._ The only difference between option 1. and option 2. is, the former still
 		}
 
 _Note._ When no better option is available, the scrambler performs _swaps_ rather than _changes_. This typically happens with short symbols of one or two characters that have a tiny range of _exotic_ substitutions. For example, the identifier `x` cannot be changed into say `隰` due to encoding constraints. But it can be exchanged with another symbol used in the program, e.g `y` or `p`, which still contributes in obfuscating the code.
+
+---
+
+##### [`RebuildUnicode.jsx`](RebuildUnicode.jsx)
+
+Reconstruct the resources of the [Unicode](`etc/$$.Unicode.jsxlib`) module using [MetaUnicode](`etc/$$.MetaUnicode.jsxlib`).
 
 ---
 
