@@ -1,3 +1,6 @@
+##### [200525]
+  - [**Unicode**](/etc/$$.Unicode.jsxlib): Utility module added for dealing with Unicode data (work-in-progress.) So far, it manages Unicode blocks through the methods `getParentBlock(codePoint)` and `getRange(blockName)`.
+
 ##### [200524]
   - [`Dom/app`](/core/Dom/$$.app.jsxinc): Notice and cosmetic refinements (`fromLocaleStr` and `toLocaleStr`.)
 
