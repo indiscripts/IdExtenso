@@ -15,6 +15,10 @@
 
 *******************************************************************************/
 
+;if( !$$.Meta ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Meta')); exit(); }
+;if( !$$.Web ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Web')); exit(); }
+;$$.hasOwnProperty('MetaUnicode') || eval(__(MODULE, $$, 'MetaUnicode', 200525))
+
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
@@ -34,10 +38,6 @@
 	[REM] Include the Progress module to get visual feedback while processing.
 	
 	*/
-
-;if( !$$.Meta ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Meta')); exit(); }
-;if( !$$.Web ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Web')); exit(); }
-;$$.hasOwnProperty('MetaUnicode') || eval(__(MODULE, $$, 'MetaUnicode', 200525))
 
 	[PRIVATE]
 
@@ -158,9 +158,10 @@
 
 		updateAGL : function updateAGL_(  $$,I,PB,url,path,o,a,i,m,t)
 		//----------------------------------
-		// [CHG200228] Create the resource /core/Unicode/$$.AGL.jsxres,
+		// [CHG200228] Create the resource /etc/Unicode/$$.AGLM.jsxres,
 		// from github.com/adobe-type-tools/
 		// https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt
+		// => undef [OK]  |  ERROR [KO]
 		{
 			// Init.
 			// ---
