@@ -1,0 +1,114 @@
+/*******************************************************************************
+
+		Name:           Unicode
+		Desc:           Unicode-related routines.
+		Path:           /etc/$$.Unicode.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Module.
+		API:            getParentBlock()
+		DOM-access:     ---
+		Todo:           everything!
+		Created:        170428 (YYMMDD)
+		Modified:       200525 (YYMMDD)
+
+*******************************************************************************/
+
+;eval(__(MODULE, $$, 'Unicode', 200525, 'toString'))
+
+	[PRIVATE]
+	
+	({
+
+		UBLK:
+		[
+		#include 'Unicode/$$.UBLK.jsxres'
+		],
+		
+		AGLM:
+		{
+		#include 'Unicode/$$.AGLM.jsxres'
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		getParentBlock: function getParentBlock_U_t_SA$false$(/*u24*/codePoint,/*?-1|+1*/GET_ARR,  a,ii,i,r,p)
+		//----------------------------------
+		// Tell which Unicode block contains `codePoint` (uint24). By default the block
+		// name is returned (str) as specified in Unicode's Blocks.txt
+		// Set GET_ARR to a truthy value to have the result returned in a full
+		// [<init>,<end>,<name>] array, where
+		//   -  <init> is the 1st codepoint of the block (uint24),
+		//   -  <end> is the last codepoint of the block (uint24),
+		//   -  <name> is the block name (str).
+		// The function usually creates a new array to prevent the client code from
+		// changing internal data (see ~.UBLK), but for perfomance purpose you have
+		// the option to supply GET_ARR == -1, which then returns the existing
+		// reference -- [<init>,<end>,<name>]& --, assuming you won't rewrite it!
+		// ---
+		// E.g:  getParentBlock(0x2F)      => "Basic Latin"
+		//       getParentBlock(0x10540,1) => [ 0x10530,  0x1056F,  "Caucasian Albanian" ]
+		//       getParentBlock(0x30000)   => false  (not in Unicode ranges)
+		//       getParentBlock(0x11FFFF)  => false  (not in Unicode ranges)
+		// ---
+		// => str|[uint24,uint24,str] [OK]  |  false [KO]
+		{
+			// Checkpoint.
+			// ---
+			(0xFFFFFF&codePoint) === codePoint || error(__("Invalid codePoint argument (%1).", $.global[callee.µ.__root__].JSON(codePoint)),callee.µ);
+			
+			// Binary search.
+			// ---
+			for( a=callee.µ['~'].UBLK, ii=[0,a.length-1] ; 1 < ii[1]-ii[0] ; ii[p-1]=i )
+			{
+				r = a[i=(ii[1]+ii[0])>>>1];
+				p = 2*(codePoint < r[0]) || 1*(codePoint > r[1]);
+				if( !p ) break;
+			}
+
+			// p==1 means that cp > a[iMid][1] so a[ii[1]] has still to be tested.
+			// p==2 means that cp < a[iMid][0] so a[ii[0]] has still to be tested.
+			// ---
+			p && (r=a[ii[+(1==p)]]) && r[0] <= codePoint && codePoint <= r[1] && (p=0);
+			
+			p && $.global[callee.µ.__root__].warn(__("The codepoint %1 is not in Unicode ranges.", codePoint.toHexa()));
+
+			return p ? false : ( GET_ARR ? (-1===GET_ARR ? r : r.concat()) : r[2] );
+		},
+		
+		getRange: function getRange_S_P$false$(/*str*/blockName,/*bool=0*/VOLATILE,  BK,q,i,r)
+		//----------------------------------
+		// Return the range associated to this block name, or false if it doesn't exist.
+		// By default a new array is created, set VOLATILE to a truthy value to get the
+		// internal reference.
+		// ---
+		// => [<init>,<end>]|[<init>,<end>,...]& [OK]  |  false [KO]
+		{
+			('string' == typeof blockName) || error(__("Invalid blockName argument (%1). Should be a string.", typeof blockName),callee.µ);
+
+			BK = callee.µ['~'].UBLK;
+			if( (q=callee.Q).hasOwnProperty(blockName) )
+			{
+				// Cache.
+				i = q[blockName];
+			}
+			else
+			{
+				for( i=BK.length ; i-- && BK[i][2] != blockName ; );
+				if( 0 > i ) return false;
+				q[blockName] = i;
+			}
+
+			return VOLATILE ? BK[i] : Array(BK[i][0],BK[i][1]);
+		}
+		.setup({ Q:{} }),
+
+	})
