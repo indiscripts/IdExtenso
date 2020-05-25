@@ -1,6 +1,6 @@
 ##### [200525]
   - [**Unicode**](/etc/$$.Unicode.jsxlib): Utility module added for dealing with Unicode data (work-in-progress.) So far, it manages Unicode blocks through the methods `getParentBlock(codePoint)` and `getRange(blockName)`.
-  - [**MetaUnicode**](/etc/$$.MetaUnicode.jsxlib): Meta-module for rebuilding [**Unicode**](/etc/$$.Unicode.jsxlib) resources.
+  - [**MetaUnicode**](/etc/$$.MetaUnicode.jsxlib): Meta-module for rebuilding [**Unicode**](/etc/$$.Unicode.jsxlib) resources. See [tools/RebuildUnicode.jsx](/tools/RebuildUnicode.jsx) for a ready-to-use tool.
 
 ##### [200524]
   - [`Dom/app`](/core/Dom/$$.app.jsxinc): Notice and cosmetic refinements (`fromLocaleStr` and `toLocaleStr`.)
