@@ -7,11 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Env module.
-		API:            appLocaleId isValidLocaleId() localeIdToString()
+		API:            appLocaleId
+		                isValidLocaleId() localeIdToString() localePrefix()
 		DOM-access:     app.translateKeyString(), app.locale
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190202 (YYMMDD)
+		Modified:       200526 (YYMMDD)
 
 *******************************************************************************/
 
@@ -88,20 +89,28 @@
 			return +(callee.µ['~'].LZ2S.hasOwnProperty(+iLocale));
 		},
 
-		localeIdToString : function localeIdToString_I_S(/*uint*/iLocale,/*0|1=0*/KEEP_LOCALE_SUFFIX,  s)
+		localeIdToString : function localeIdToString_i_S(/*uint=current*/iLocale,/*0|1=0*/KEEP_LOCALE_SUFFIX,  s)
 		//----------------------------------
 		// Given a Locale enumerator number `iLocale`, return its enum string w/o suffix,
 		// e.g  0x4C434569 => 'INTERNATIONAL_ENGLISH'
-		// ---
 		// If `KEEP_LOCALE_SUFFIX` is 1, do not remove the `_LOCALE` suffix,
 		// e.g  0x4C434569 => 'INTERNATIONAL_ENGLISH_LOCALE'
-		// ---
+		// [ADD200526] If `iLocale` is missing consider the current locale id.
 		// [REM] This function allows `iLocale` to be an Enumerator
 		// since the argument is always coerced into a Number.
-		// => str | ''
+		// => str [OK]  |  '' [KO]
 		{
+			iLocale || (iLocale=callee.µ['~'].LOCZ); // [ADD200526]
 			s = callee.µ['~'].LZ2S[+iLocale] || '';
 			return (KEEP_LOCALE_SUFFIX || !s) ? s : s.replace('_LOCALE','');
+		},
+		
+		localePrefix: function localePrefix_S()
+		//----------------------------------
+		// [ADD200526] Return the locale prefix (capitalized),
+		// e.g 'FRENCH', 'INTERNATIONAL_ENGLISH'...
+		{
+			return callee.µ['~'].LPFX;
 		},
 
 	})
