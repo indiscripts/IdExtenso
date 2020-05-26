@@ -1,5 +1,6 @@
 ##### [200526]
   - [`Env/locale`](/core/Env/$$.locale.jsxinc): Added `localePrefix()`, a getter that simply returns the current locale name prefix, e.g `"FRENCH"`, `"SIMPLIFIED_CHINESE"`, `"INTERNATIONAL_ENGLISH"`... Also, the `localeIdToString(iLocale,keepSuffix)` method now implicitly considers the current InDesign locale if the `iLocale` arg is missing.
+  - [`Ext/string`](/core/Ext/$$.string.jsxinc): CS4 patch of `String.prototype.lastIndexOf()`, which was unable to address `myStr.lastIndexOf('\0')`.
 
 ##### [200525]
   - [**Unicode**](/etc/$$.Unicode.jsxlib): Utility module added for dealing with Unicode data (work-in-progress.) So far, it manages Unicode blocks through the methods `getParentBlock(codePoint)` and `getRange(blockName)`.
