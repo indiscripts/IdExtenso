@@ -1,0 +1,50 @@
+/*******************************************************************************
+
+		Name:           LFAM
+		Desc:           Language families (resource of the Linguist module.)
+		Path:           /etc/Linguist/$$.LFAM.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170424 (YYMMDD)
+		Modified:       200317 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// DATA  (each family key is formed of three UPPERCASE chars)
+	// Language families registered here are only those involved in ~.LISO
+	//==========================================================================
+
+	ART : "<Constructed>",
+	SPE : "<Special>",
+	ENG : "<English-Based>",
+	// ---
+	AAV : "Austroasiatic",
+	AFA : "Afro-Asiatic",
+	ALG : "Algonquian",
+	AYM : "Aymaran",
+	CCN : "Northeast or Northwest Caucasian",
+	CCS : "South Caucasian",
+	DRA : "Dravidian",
+	ESX : "Eskimo–Aleut",
+	EUQ : "Vasconic",
+	INE : "Indo-European",
+	IRO : "Iroquoian",
+	JPX : "Japonic",
+	KOR : "Koreanic",
+	MAP : "Austronesian",
+	MUS : "Muskogean",
+	NIC : "Niger–Congo",
+	QUE : "Quechuan",
+	SIT : "Sino-Tibetan",
+	SSA : "Nilo-Saharan",
+	TAI : "Tai–Kadai",
+	TRK : "Turkic",
+	TUP : "Tupian",
+	URJ : "Uralic",
+	XGN : "Mongolic",
