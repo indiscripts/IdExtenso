@@ -1,0 +1,427 @@
+/*******************************************************************************
+
+		Name:           WSYS
+		Desc:           Main writing systems
+		Path:           /etc/Linguist/$$.WSYS.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource of the Linguist module
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170426 (YYMMDD)
+		Modified:       200317 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// DATA  (each system key has four Titlecase chars)
+	// ISO 15924 systems registered here are only those involved in ~.LISO
+	// [RES] https://en.wikipedia.org/wiki/ISO_15924
+	//==========================================================================
+
+
+	Arab :
+	{
+		name:   "Arabic",
+		dir:    "R2L",
+		ranges: [
+			[0x600,0x6FF],[0x750,0x77F],[0x8A0,0x8FF],[0xFB50,0xFDFF],[0xFE70,0xFEFF],
+			[0x1EE00,0x1EEFF],[0x10E60,0x10E7F]
+		],
+		// U+0600 - U+06FF     Arabic
+		// U+0750 - U+077F     Arabic Supplement
+		// U+08A0 - U+08FF     Arabic Extended-A
+		// U+FB50 - U+FDFF     Arabic Pres. Forms-A
+		// U+FE70 - U+FEFF     Arabic Pres. Forms-B
+		// U+1EE00 - U+1EEFF   Arabic Mathematical...
+		// U+10E60 - U+10E7F   Rumi Numeral Symbols
+	},
+
+	Armn :
+	{
+		name: "Armenian",
+		dir: "L2R",
+		ranges: [ [0x530,0x58F],[0xFB00,0xFB17] ],
+		// U+0530 - U+058F Armenian
+		// U+FB00 - U+FB17 Alphabetic Pres. Forms
+	},
+
+	Beng :
+	{
+		name:   "Bengali",
+		dir:    "L2R",
+		ranges: [ [0x980,0x9FF] ],
+		// U+0980 - U+09FF
+	},
+
+	Bugi :
+	{
+		name:   "Buginese",
+		dir:    "L2R",
+		ranges: [ [0x1A00,0x1A1F] ],
+		// U+1A00 - U+1A1F
+	},
+
+	Cans :
+	{
+		name:   "Canadian Aboriginal",
+		dir:    "L2R",
+		ranges: [ [0x1400,0x167F],[0x18B0,0x18FF] ],
+		// U+1400 - U+167F Unified Canadian Aboriginal Syllabics,
+		// U+18B0 - U+18FF Unified Canadian Aboriginal Syllabics Extended
+	},
+
+	Cher :
+	{
+		name:   "Cherokee",
+		dir:    "L2R",
+		ranges: [ [0x13A0,0x13FF],[0xAB70,0xABBF] ],
+		// U+13A0 - U+13FF Cherokee
+		// U+AB70 - U+ABBF Cherokee Supplement
+	},
+
+	Cyrl :
+	{
+		name:   "Cyrillic",
+		dir:    "L2R",
+		ranges: [ [0x400,0x4FF],[0x500,0x52F],[0x2DE0,0x2DFF],[0xA640,0xA69F],[0x1C80,0x1C8F] ],
+		// U+0400 - U+04FF Cyrillic
+		// U+0500 - U+052F Cyrillic Supplement
+		// U+2DE0 - U+2DFF Cyrillic Extended-A
+		// U+A640 - U+A69F Cyrillic Extended-B
+		// U+1C80 - U+1C8F Cyrillic Extended-C
+	},
+
+	Cyrs :
+	{
+		name:   "Early Cyrillic",
+		dir:    "VAR",
+		ranges: [ [0x400,0x4FF],[0x500,0x52F],[0x2DE0,0x2DFF],[0xA640,0xA69F],[0x1C80,0x1C8F] ],
+		// U+0400 - U+04FF Cyrillic
+		// U+0500 - U+052F Cyrillic Supplement
+		// U+2DE0 - U+2DFF Cyrillic Extended-A
+		// U+A640 - U+A69F Cyrillic Extended-B
+		// U+1C80 - U+1C8F Cyrillic Extended-C
+	},
+
+	Deva :
+	{
+		name:   "Devanagari",
+		dir:    "L2R",
+		ranges: [ [0x900,0x97F],[0xA8E0,0xA8FF],[0x1CD0,0x1CFF] ],
+		// U+0900 - U+097F Devanagari,
+		// U+A8E0 - U+A8FF Devanagari Extended,
+		// U+1CD0 - U+1CFF Vedic Extensions
+	},
+
+	Ethi :
+	{
+		name:   "Ethiopic",
+		dir:    "L2R",
+		ranges: [ [0x1200,0x137F],[0x1380,0x139F],[0x2D80,0x2DDF],[0xAB00,0xAB2F] ],
+		// U+1200 - U+137F Ethiopic
+		// U+1380 - U+139F Ethiopic Supplement
+		// U+2D80 - U+2DDF Ethiopic Extended
+		// U+AB00 - U+AB2F Ethiopic Extended-A
+	},
+
+	Geor :
+	{
+		name:   "Georgian",
+		dir:    "L2R",
+		ranges: [ [0x10A0,0x10FF],[0x2D00,0x2D2F] ],
+		// U+10A0 - U+10FF Georgian
+		// U+2D00 - U+2D2F Georgian Supplement
+	},
+
+	Goth :
+	{
+		name:   "Gothic",
+		dir:    "L2R",
+		ranges: [ [0x10330,0x1034F] ],
+		// U+10330 - U+1034F
+	},
+
+	Grek :
+	{
+		name:   "Greek",
+		dir:    "L2R",
+		ranges: [ [0x370,0x3FF],[0x1F00,0x1FFF] ],
+		// U+0370 - U+03FF Greek and Coptic
+		// U+1F00 - U+1FFF Greek Extended
+	},
+
+	Gujr :
+	{
+		name:   "Gujarati",
+		dir:    "L2R",
+		ranges: [ [0xA80,0xAFF] ],
+		// U+0A80 - U+0AFF
+	},
+
+	Hans :
+	{
+		name:   "Han Simplified",
+		dir:    "VAR",
+		ranges: [
+			[0x2E80,0x2EFF],[0x2F00,0x2FDF],[0x2FF0,0x2FFF],[0x3000,0x303F],[0x31C0,0x31EF],
+			[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],[0xF900,0xFAFF],
+			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],
+			[0x2B820,0x2CEAF],[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
+		],
+		// Hans-Hant:
+		// CJK Radicals Supplement (2E80 - 2EFF)
+		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
+		// Ideographic Description Characters (2FF0 - 2FFF)
+		// CJK Symbols and Punctuation (3000 - 303F)
+		// CJK Strokes (31C0 - 31EF)
+		// Enclosed CJK Letters and Months (3200 - 32FF)
+		// CJK Unified Ideographs Extension A (3400 - 4DBF)
+		// CJK Unified Ideographs (4E00 - 9FFF)
+		// CJK Compatibility Ideographs (F900 - FAFF)
+		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
+		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
+		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
+		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
+		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
+		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
+		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
+	},
+
+	Hant :
+	{
+		name:   "Han Traditional",
+		dir:    "L2R",
+		ranges: [
+			[0x2E80,0x2EFF],[0x2F00,0x2FDF],[0x2FF0,0x2FFF],[0x3000,0x303F],[0x31C0,0x31EF],
+			[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],[0xF900,0xFAFF],
+			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],
+			[0x2B820,0x2CEAF],[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
+		],
+		// Hans-Hant:
+		// CJK Radicals Supplement (2E80 - 2EFF)
+		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
+		// Ideographic Description Characters (2FF0 - 2FFF)
+		// CJK Symbols and Punctuation (3000 - 303F)
+		// CJK Strokes (31C0 - 31EF)
+		// Enclosed CJK Letters and Months (3200 - 32FF)
+		// CJK Unified Ideographs Extension A (3400 - 4DBF)
+		// CJK Unified Ideographs (4E00 - 9FFF)
+		// CJK Compatibility Ideographs (F900 - FAFF)
+		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
+		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
+		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
+		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
+		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
+		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
+		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
+	},
+
+	Hebr :
+	{
+		name:   "Hebrew",
+		dir:    "R2L",
+		ranges: [ [0x590,0x05FF],[0xFB1D,0xFB4F] ],
+		// U+0590 to U+05FF Hebrew,
+		// U+FB1D to U+FB4F Alphabetic Presentation Forms
+	},
+
+	Jpan :
+	{
+		name:   "Japanese",
+		dir:    "L2R",
+		ranges: [ [0x4E00,0x9FBF],[0x3040,0x309F],[0x30A0,0x30FF] ],
+		// U+4E00 - U+9FBF Kanji
+		// U+3040 - U+309F Hiragana
+		// U+30A0 - U+30FF Katakana
+	},
+
+	Khmr :
+	{
+		name:   "Khmer",
+		dir:    "L2R",
+		ranges: [ [0x1780,0x17FF],[0x19E0,0x19FF] ],
+		// U+1780 - U+17FF Khmer
+		// U+19E0 - U+19FF Khmer Symbols
+	},
+
+	Knda :
+	{
+		name:   "Kannada",
+		dir:    "L2R",
+		ranges: [ [0xC80,0xCFF] ],
+		// U+0C80 - U+0CFF
+	},
+
+	Kore :
+	{
+		name:   "Korean",
+		dir:    "L2R",
+		ranges: [
+			[0xAC00,0xD7AF],[0x1100,0x11FF],[0x2E80,0x2EFF],[0x2F00,0x2FDF],[0x2FF0,0x2FFF],[0x3000,0x303F],
+			[0x3130,0x318F],[0x31C0,0x31EF],[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],[0xA960,0xA97F],
+			[0xD7B0,0xD7FF],[0xF900,0xFAFF],[0xFF00,0xFFEF],
+			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],[0x2B820,0x2CEAF],
+			[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
+			],
+		// U+AC00 - U+D7AF Hangul Syllables
+		// U+1100 - U+11FF Hangul Jamo
+		// U+3130 - U+318F Hangul Compatibility Jamo
+		// U+A960 - U+A97F Hangul Jamo Extended-A
+		// U+D7B0 - U+D7FF Hangul Jamo Extended-B
+		// U+FF00 - U+FFEF Halfwidth and Fullwidth Forms
+		// + Han:
+		// CJK Radicals Supplement (2E80 - 2EFF)
+		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
+		// Ideographic Description Characters (2FF0 - 2FFF)
+		// CJK Symbols and Punctuation (3000 - 303F)
+		// CJK Strokes (31C0 - 31EF)
+		// Enclosed CJK Letters and Months (3200 - 32FF)
+		// CJK Unified Ideographs Extension A (3400 - 4DBF)
+		// CJK Unified Ideographs (4E00 - 9FFF)
+		// CJK Compatibility Ideographs (F900 - FAFF)
+		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
+		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
+		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
+		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
+		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
+		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
+		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
+	},
+
+	Laoo :
+	{
+		name:   "Lao",
+		dir:    "L2R",
+		ranges: [ [0xE80,0xEFF] ],
+		// U+0E80 - U+0EFF
+	},
+
+	Latn :
+	{
+		name:   "Latin",
+		dir:    "L2R",
+		ranges: [
+			[0x0,0x7F],[0x80,0xFF],[0x100,0x17F],[0x180,0x24F],[0x250,0x2AF],[0x2B0,0x2FF],
+			[0x1D00,0x1D7F],[0x1D80,0x1DBF],[0x1E00,0x1EFF],[0x2070,0x209F],[0x2100,0x214F],
+			[0x2150,0x218F],[0x2C60,0x2C7F],[0xA720,0xA7FF],[0xAB30,0xAB6F],[0xFB00,0xFB4F],
+			[0xFF00,0xFFEF]
+		],
+		// Basic Latin, 0000 - 007F. This block corresponds to ASCII.
+		// Latin-1 Supplement, 0080 - 00FF
+		// Latin Extended-A, 0100 - 017F
+		// Latin Extended-B, 0180 - 024F
+		// IPA Extensions, 0250 - 02AF
+		// Spacing Modifier Letters, 02B0 - 02FF
+		// Phonetic Extensions, 1D00 - 1D7F
+		// Phonetic Extensions Supplement, 1D80 - 1DBF
+		// Latin Extended Additional, 1E00 - 1EFF
+		// Superscripts and Subscripts, 2070 - 209F
+		// Letterlike Symbols, 2100 - 214F
+		// Number Forms, 2150 - 218F
+		// Latin Extended-C, 2C60 - 2C7F
+		// Latin Extended-D, A720 - A7FF
+		// Latin Extended-E, AB30 - AB6F
+		// Alphabetic Presentation Forms (Latin ligatures) FB00 - FB4F
+		// Halfwidth and Fullwidth Forms (fullwidth Latin letters) FF00 - FFEF
+	},
+
+	Mlym :
+	{
+		name:   "Malayalam",
+		dir:    "L2R",
+		ranges: [ [0xD00,0xD7F] ],
+		// U+0D00 - U+0D7F
+	},
+
+	Mymr :
+	{
+		name:   "Myanmar",
+		dir:    "L2R",
+		ranges: [ [0x1000,0x104F] ],
+		// U+1000 - U+104F
+	},
+
+	Orya :
+	{
+		name:   "Oriya (Odia)",
+		dir:    "L2R",
+		ranges: [ [0xB00,0xB7F] ],
+		// U+0B00 - U+0B7F
+	},
+
+	Phli :
+	{
+		name:   "Inscriptional Pahlavi",
+		dir:    "R2L",
+		ranges: [ [0x10B60,0x10B7F] ],
+		// U+10B60 - U+10B7F
+	},
+
+	Sinh :
+	{
+		name:   "Sinhala",
+		dir:    "L2R",
+		ranges: [ [0xD80,0xDFF],[0x111E0,0x111FF] ],
+		// U+0D80 - U+0DFF Sinhala
+		// U+111E0 - U+111FF Sinhala Archaic Numbers
+	},
+
+	Syrc :
+	{
+		name:   "Syriac",
+		dir:    "R2L",
+		ranges: [ [0x700,0x74F] ],
+		// U+0700 - U+074F
+	},
+
+	Taml :
+	{
+		name:   "Tamil",
+		dir:    "L2R",
+		ranges: [ [0xB80,0xBFF] ],
+		// U+0B80 - U+0BFF
+	},
+
+	Telu :
+	{
+		name:   "Telugu",
+		dir:    "L2R",
+		ranges: [ [0xC00,0xC7F] ],
+		// U+0C00 - U+0C7F
+	},
+
+	Thaa :
+	{
+		name:   "Thaana",
+		dir:    "R2L",
+		ranges: [ [0x780,0x7BF] ],
+		// U+0780 - U+07BF
+	},
+
+	Thai :
+	{
+		name:   "Thai",
+		dir:    "L2R",
+		ranges: [ [0xE00,0xE7F] ],
+		// U+0E00 - U+0E7F
+	},
+
+	Tibt :
+	{
+		name:   "Tibetan",
+		dir:    "L2R",
+		ranges: [ [0xF00,0xFFF] ],
+		// U+0F00 - U+0FFF
+	},
+
+	Yiii :
+	{
+		name:   "Yi",
+		dir:    "L2R",
+		ranges: [ [0xA000,0xA48F],[0xA490,0xA4CF] ],
+		// U+A000 - U+A48F Yi Syllables,
+		// U+A490 - U+A4CF Yi Radicals
+	},
