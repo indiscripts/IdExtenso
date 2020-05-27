@@ -1,0 +1,636 @@
+/*******************************************************************************
+
+		Name:           Linguist::YALT
+		Desc:           Yalt strings (resource of the Linguist module.)
+		Path:           /etc/Linguist/$$.yalt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        170424 (YYMMDD)
+		Modified:       200528 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	// Supported locales: <EN> FR DE SP IT RU.
+	// Feel free to correct, or to add new locales, as long as
+	// you don't change the keys (1st column.) Each translation
+	// string must have the following format, in a single line:
+	// key # trL1 # trL2 # etc (placeholders %1 to %9 allowed.)
+
+	//==========================================================================
+	// DATA  (keep the starting and ending triple quotes)
+	//==========================================================================
+
+"""
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
+
+	<Basic English> # <Anglais basic> # <Einfaches Englisch> # <Inglés básico> # <Basic English> # <Упрощённый английский>
+	<Multiple Languages> # <Multilingue> # <Mehrsprachig> # <Lenguas múltiples> # <Multilingua> # <Несколько языков>
+	<No linguistic content> # <Sans contenu linguistique> # <Keine Sprachinhalte> # <Sin contenido lingüístico> # <Nessun contenuto linguistico> # <Без языкового содержания>
+
+	============================================================================
+
+	Abkhazian # Abkhaze # Abchasisch # Abjasio # Abcaso # Абхазский
+	Acehnese # Achinais # Achinesisch # Achenés # Accinese # Ачехский
+	Acoli # Acoli # Acholi-Sprache # Acoli # Acioli # Ачоли
+	Adangme # Adangme # Adangme # Adangme # Adangme # Адангме
+	Adyghe # Adyghéen # Adygeisch # Adigeo # Adyghe # Адыгейский
+	Afar # Afar # Afar # Afar # Afar # Афар
+	Afrihili # Afrihili # Afrihili # Afrihili # Afrihili # Африхили
+	Afrikaans # Afrikaans # Afrikaans # Afrikáans # Afrikaans # Африкаанс
+	Aghem # Aghem # Aghem # Aghem # Aghem # Агхем
+	Ainu # Aïnou # Ainu-Sprache # Ainu # Ainu # Айну
+	Akan # Akan # Akan # Akan # Akan # Акан
+	Akkadian # Akkadien # Akkadisch # Acadio # Accado # Аккадский
+	Akoose # Akoose # Akoose # Akoose # Akoose # Акоосе
+	Albanian # Albanais # Albanisch # Albanés # Albanese # Албанский
+	Alemannic # Alémanique # Alemannische Dialekte # Alemánico # Alemanno # Алеманнский диалект
+	Aleut # Aléoute # Aleutisch # Aleutiano # Aleuto # Алеутский
+	American English # Anglais américain # Amerikanisches Englisch # Inglés estadounidense # Inglese americano # Американский английский
+	Amharic # Amharique # Amharisch # Amárico # Amarico # Амхарский
+	Ancient Egyptian # Égyptien ancien # Ägyptisch # Egipcio antiguo # Egiziano antico # Древнеегипетский
+	Ancient Greek # Grec ancien # Altgriechisch # Griego antiguo # Greco antico # Древнегреческий
+	Angika # Angika # Angika # Angika # Angika # Ангика
+	Arabic # Arabe # Arabisch # Árabe # Arabo # Арабский
+	Aragonese # Aragonais # Aragonesisch # Aragonés # Aragonese # Арагонский
+	Aramaic # Araméen # Aramäisch # Arameo # Aramaico # Арамейский
+	Arapaho # Arapaho # Arapaho-Sprache # Arapaho # Arapaho # Арапахо
+	Arawak # Arawak # Arawak-Sprache # Arahuaco # Aruaco # Аравакский
+	Armenian # Arménien # Armenisch # Armenio # Armeno # Армянский
+	Aromanian # Valaque # Aromunisch # Arrumano # Arumeno # Арумынский
+	Arpitan # Francoprovençal # Frankoprovenzalisch # Arpitano # Arpitano # Франкопровансальский
+	Assamese # Assamais # Assamesisch # Asamés # Assamese # Ассамский
+	Asturian # Asturien # Asturianisch # Asturiano # Asturiano # Астурийский
+	Asu # Assou # Pare # Asu # Asu # Асу
+	Atsam # Atsam # Atsam # Atsam # Atsam # Атсам
+	Australian English # Anglais australien # Australisches Englisch # Inglés australiano # Inglese australiano # Австралийский английский
+	Austrian German # Allemand autrichien # Österreichisches Deutsch # Alemán austríaco # Tedesco austriaco # Австрийский немецкий
+	Avaric # Avar # Awarisch # Avar # Avaro # Аварский
+	Avestan # Avestique # Avestisch # Avéstico # Avestan # Авестийский
+	Awadhi # Awadhi # Awadhi # Avadhi # Awadhi # Авадхи
+	Aymara # Aymara # Aymara # Aimara # Aymara # Аймара
+	Azerbaijani # Azéri # Aserbaidschanisch # Azerbaiyano # Azerbaigiano # Азербайджанский
+	============================================================================
+	Bafia # Bafia # Bafia # Bafia # Bafia # Бафия
+	Bafut # Bafut # Bafut # Bafut # Bafut # Бафут
+	Balinese # Balinais # Balinesisch # Balinés # Balinese # Балийский
+	Baluchi # Baloutchi # Belutschisch # Baluchi # Beluci # Белуджский
+	Bambara # Bambara # Bambara # Bambara # Bambara # Бамбарийский
+	Bamun # Bamoun # Bamun # Bamun # Bamun # Бамум
+	Banjar # Banjar # Banjaresisch # Banjar # Banjar # Банджарский
+	Banyumasan # Banyumasan # Banyumasan # Banyumasan # Banyumasan # Баньюмасанский
+	Basaa # Bassa # Basaa-Sprache # Basa # Basa # Баса
+	Bashkir # Bachkir # Baschkirisch # Baskir # Baschiro # Башкирский
+	Basque # Basque # Baskisch # Euskera # Basco # Баскский
+	Bavarian # Bavarois # Bairisch # Bávaro # Bavarese # Баварский диалект
+	Beja # Bedja # Bedauye # Beja # Begia # Беджа
+	Belarusian # Biélorusse # Weißrussisch # Bielorruso # Bielorusso # Белорусский
+	Belarusian (Classical Orthography) # Taraškievica # Taraškievica # Taraškievica # Taraškievica # Тарашкевица
+	Bemba # Bemba # Bemba # Bemba # Wemba # Бемба
+	Bena # Béna # Bena # Bena # Bena # Бена
+	Bengali # Bengali # Bengalisch # Bengalí # Bengalese # Бенгальский
+	Bhojpuri # Bhojpuri # Bhodschpuri # Bhojpuri # Bhojpuri # Бходжпури
+	Bikol # Bikol # Bikol-Sprache # Bicol # Bicol # Бикольский
+	Bini # Bini # Bini-Sprache # Bini # Bini # Бини
+	Bislama # Bichelamar # Bislama # Bislama # Bislama # Бислама
+	Bishnupriya # Bishnupriya Manipuri # Bishnupriya Manipuri # Bishnupriya # Bishnupriya # Бишнуприя-манипури
+	Blin # Blin # Blin # Blin # Blin # Билин (блин)
+	Blissymbols # Symboles Bliss # Bliss-Symbole # Símbolos Bliss # Blissymbol # Блиссимволика
+	Bodo # Bodo # Bodo # Bodo # Bodo # Бодо
+	Bosnian # Bosniaque # Bosnisch # Bosnio # Bosniaco # Боснийский
+	Braj # Braj # Braj-Bhakha # Braj # Braj # Брауи
+	Brazilian Portuguese # Portugais brésilien # Brasilianisches Portugiesisch # Portugués de Brasil # Portoghese brasiliano # Бразильский португальский
+	Breton # Breton # Bretonisch # Bretón # Bretone # Бретонский
+	British English # Anglais britannique # Britisches Englisch # Inglés británico # Inglese britannico # Британский английский
+	Buginese # Bugi # Buginesisch # Buginés # Bugi # Бугийский
+	Bulgarian # Bulgare # Bulgarisch # Búlgaro # Bulgaro # Болгарский
+	Bulu # Boulou # Bulu # Bulu # Bulu # Булу
+	Buryat (Cyrillic) # Bouriate # Burjatisch # Buriat # Buriat # Бурятский
+	Burmese # Birman # Birmanisch # Birmano # Birmano # Бирманский
+	============================================================================
+	Caddo # Caddo # Caddo # Caddo # Caddo # Каддо
+	Canadian Aboriginal # Syllabaire autochtone canadien # Kanadische Silbenschrift # Silabarios indígenas canadienses # Sillabario aborigeno canadese # Канадское слоговое письмо
+	Canadian English # Anglais canadien # Kanadisches Englisch # Inglés canadiense # Inglese canadese # Канадский английский
+	Canadian French # Français canadien # Kanadisches Französisch # Francés canadiense # Francese canadese # Канадский французский
+	Cantonese # Cantonais # Kantonesisch # Cantonés # Cantonese # Кантонский
+	Carib # Caribe # Karibisch # Caribe # Caribico # Кариб
+	Catalan # Catalan # Katalanisch # Catalán # Catalano # Каталанский
+	Cayuga # Cayuga # Cayuga # Cayuga # Cayuga # Кайюга
+	Cebuano # Cebuano # Cebuano # Cebuano # Cebuano # Кебуано
+	Central Atlas Tamazight # Tamazight # Zentralatlas-Tamazight # Tamazight del Marruecos Central # Tamazight # Среднеатласский тамазигхтский
+	Chadian Arabic # Arabe tchadien # Tschadisch-Arabisch # Árabe chadiano # Chadian arabic # Чадский арабс
+	Chagatai # Tchaghataï # Tschagataisch # Chagatái # Ciagataico # Чагатайский
+	Chamorro # Chamorro # Chamorro-Sprache # Chamorro # Chamorro # Чаморро
+	Chechen # Tchétchène # Tschetschenisch # Checheno # Ceceno # Чеченский
+	Cherokee # Cherokee # Cherokee # Cheroqui # Cherokee # Чероки
+	Cheyenne # Cheyenne # Cheyenne # Cheyene # Cheyenne # Чейенн
+	Chibcha # Chibcha # Chibcha-Sprache # Chibcha # Chibcha # Чибча
+	Chiga # Kiga # Rukiga # Chiga # Chiga # Чига
+	Chinese # Chinois # Chinesisch # Chino # Cinese # Китайский
+	Chinese (Classical) # Chinois classique # Klassisches Chinesisch # Chino clásico # Cinese classico # Вэньянь
+	Chinese (Simplified) # Chinois simplifié # Kurzzeichen # Caracteres chinos simplificados # Caratteri cinesi semplificati # Упрощение иероглифов
+	Chinook Jargon # Jargon chinook # Chinook # Jerga chinuk # Gergo chinook # Чинук жаргон
+	Chipewyan # Chipewyan # Chipewyan # Chipewyan # Chipewyan # Чипевайян
+	Choctaw # Choctaw # Choctaw # Choctaw # Choctaw # Чоктав
+	Church Slavic # Slavon d’église # Kirchenslawisch # Eslavo eclesiástico # Slavo della Chiesa # Церковнославянский
+	Chuukese # Chuuk # Trukesisch # Trukés # Chuukese # Чукотский
+	Chuvash # Tchouvache # Tschuwaschisch # Chuvasio # Ciuvascio # Чувашский
+	Classical Newari # Newarî classique # Alt-Newari # Newari clásico # Newari classico # Невари (классический)
+	Classical Syriac # Syriaque classique # Altsyrisch # Siríaco clásico # Siriaco classico # Классический сирийский
+	Colognian # Francique ripuaire # Kölsch # Kölsch # Coloniese # Кёльш
+	Comorian # Comorien # Komorisch # Comorense # Comoriano # Коморский
+	Congo Swahili # Swahili du Congo # Kongo-Suaheli # Suajili del Congo # Congo swahili # Конголезский суахили
+	Coptic # Copte # Koptisch # Copto # Copto # Коптский
+	Cornish # Cornique # Kornisch # Córnico # Cornico # Корнийский
+	Corsican # Corse # Korsisch # Corso # Corso # Корсиканский
+	Cree # Cree # Cree # Cree # Cree # Криийский
+	Creek # Creek # Muskogee-Sprache # Creek # Creek # Крик
+	Crimean Tatar # Turc de Crimée # Krimtatarisch # Tártaro de Crimea # Turco crimeo # Крымско-татарский
+	Croatian # Croate # Kroatisch # Croata # Croato # Хорватский
+	Cyrillic # Cyrillique # Kyrillisches Alphabet # Alfabeto cirílico # Alfabeto cirillico # Кириллица
+	Czech # Tchèque # Tschechisch # Checo # Ceco # Чешский
+	============================================================================
+	Dakota # Dakota # Dakota-Sprache # Dakota # Dakota # Дакота
+	Danish # Danois # Dänisch # Danés # Danese # Датский
+	Dargwa # Dargwa # Darginisch # Dargva # Dargwa # Даргва
+	Dazaga # Dazaga # Dazaga # Dazaga # Dazaga # Дазагский
+	Delaware # Delaware # Delaware-Sprache # Delaware # Delaware # Делаварский
+	Devanagari # Devanagari # Devanagari # Devanagari # Devanagari # Деванагари
+	Dinka # Dinka # Dinka-Sprache # Dinka # Dinca # Динка
+	Divehi # Maldivien # Maledivisch # Divehi # Divehi # Мальдивский
+	Dogri # Dogri # Dogri # Dogri # Dogri # Догри
+	Dogrib # Dogrib # Dogrib # Dogrib # Dogrib # Догриб
+	Duala # Douala # Duala # Duala # Duala # Дуала
+	Dutch # Néerlandais # Niederländisch # Neerlandés # Olandese # Нидерландский
+	Dyula # Dioula # Dyula-Sprache # Diula # Diula # Диула (дьюла)
+	Dzongkha # Dzongkha # Dzongkha # Dzongkha # Dzongkha # Дзонг-кэ
+	============================================================================
+	Early Cyrillic # Cyrillique archaïque # Altkyrillisches Alphabet # Alfabeto cirílico arcaico # Alfabeto cirillico arcaico # Старославянская азбука
+	Efik # Efik # Efik # Efik # Efik # Эфик
+	Egyptian Arabic # Arabe égyptien # Ägyptisch-Arabisch # Árabe egipcio # Arabo egiziano # Египетский диалект арабского
+	Ekajuk # Ekajuk # Ekajuk # Ekajuk # Ekajuka # Экаджук
+	Elamite # Élamite # Elamisch # Elamita # Elamitico # Эламский
+	Embu # Embou # Embu # Embu # Embu # Эмбу
+	Emilian-Romagnol # Émilien-romagnol # Emilianisch # Emiliano-romañol # Emiliano-romagnolo # Эмилиано-романьольский
+	English # Anglais # Englisch # Inglés # Inglese # Английский
+	Erzya # Erzya # Ersja-Mordwinisch # Erzya # Erzya # Эрзя
+	Esperanto # Espéranto # Esperanto # Esperanto # Esperanto # Эсперанто
+	Estonian # Estonien # Estnisch # Estonio # Estone # Эстонский
+	Ethiopic # Alphasyllabaire éthiopien # Äthiopische Schrift # Escritura etíope # Alfabeto ge'ez # Эфиопское письмо
+	European Portuguese # Portugais européen # Europäisches Portugiesisch # Portugués de Portugal # Portoghese europeo # Европейский португальский
+	European Spanish # Espagnol européen # Europäisches Spanisch # Español de España # Spagnolo europeo # Европейский испанский
+	Ewe # Éwé # Ewe # Ewé # Ewe # Эве
+	Ewondo # Éwondo # Ewondo # Ewondo # Ewondo # Эвондо
+	============================================================================
+	Fang # Fang # Pangwe-Sprache # Fang # Fang # Фанг
+	Fanti # Fanti # Fanti-Sprache # Fanti # Fanti # Фанти
+	Faroese # Féroïen # Färöisch # Feroés # Faroese # Фарерский
+	Fiji Hindi # Hindi des Fidji # Fidschi Hindi # Hindi de Fiyi # Figi Hindi # Фиджийский хинди
+	Fijian # Fidjien # Fidschi # Fiyiano # Figiano # Фиджи
+	Filipino # Philippin # Filipino # Filipino # Filippino # Филиппинский
+	Finnish # Finnois # Finnisch # Finés # Finlandese # Финский
+	Flemish # Flamand # Flämisch # Flamenco # Fiammingo # Фламандский
+	Fon # Fon # Fon-Sprache # Fon # Fon # Фон
+	French # Français # Französisch # Francés # Francese # Французский
+	Frisian (East) # Frison oriental # Ostfriesisch # Frisón oriental # Frisone orientale # Восточный фризский
+	Frisian (North) # Frison septentrional # Nordfriesisch # Frisón septentrional # Frisone settentrionale # Фризский северный
+	Frisian (West) # Frison occidental # Westfriesisch # Frisón occidental # Frisone occidentale # Западно-фризский
+	Friulian # Frioulan # Friulisch # Friulano # Friulano # Фриульский
+	Fulah # Peul # Ful # Fula # Fulah # Фулах
+	============================================================================
+	Ga # Ga # Ga-Sprache # Ga # Ga # Га
+	Gagauz # Gagaouze # Gagausisch # Gagauzo # Gagauzo # Гагаузский
+	Galician # Galicien # Galizisch # Gallego # Galiziano # Галисийский
+	Gan # Gan # Gan # Chino Gàn # Gan # Гань
+	Ganda # Ganda # Ganda # Ganda # Ganda # Ганда
+	Gayo # Gayo # Gayo # Gayo # Gayo # Гайо
+	Gbaya # Gbaya # Gbaya-Sprache # Gbaya # Gbaya # Гбая
+	Geez # Guèze # Geez # Geez # Geez # Геэз
+	Georgian # Géorgien # Georgisch # Georgiano # Georgiano # Грузинский
+	German # Allemand # Deutsch # Alemán # Tedesco # Немецкий
+	Ghomala # Ghomala # Ghomala # Ghomala # Ghomala # Гхомала
+	Gilaki # Gilaki # Gilaki # Guilakí # Gilaki # Гилянский
+	Gilbertese # Gilbertais # Gilbertesisch # Gilbertés # Gilbertese # Гильбертский
+	Gondi # Gondi # Gondi-Sprache # Gondi # Gondi # Гонди
+	Gorontalo # Gorontalo # Mongondou # Gorontalo # Gorontalo # Горонтало
+	Gothic # Gotique # Gotisch # Gótico # Gotico # Готский
+	Grebo # Grebo # Grebo-Sprache # Grebo # Gerbo # Гребо
+	Greek # Grec # Griechisch # Griego # Greco # Греческий
+	Greenlandic # Groenlandais # Grönländisch # Groenlandés # Groenlandese # Гренландский
+	Guarani # Guarani # Guarani # Guaraní # Guaraní # Гуарани
+	Gujarati # Gujarati # Gujarati # Gujarati # Gujarati # Гуджарати
+	Gusii # Gusii # Gusii # Gusii # Gusii # Гусии
+	Gwichʼin # Gwichʼin # Kutchin-Sprache # Kutchin # Gwichʼin # Гвичин
+	============================================================================
+	Haida # Haida # Haida-Sprache # Haida # Haida # Хайда
+	Haitian # Créole haïtien # Haiti-Kreolisch # Haitiano # Haitiano # Гаитянский
+	Han Simplified # Sinogrammes simplifiés # Kurzzeichen # Caracteres chinos simplificados # Caratteri cinesi semplificati # Упрощение иероглифов
+	Han Traditional # Sinogrammes traditionnels # Langzeichen # Caracteres chinos tradicionales # Caratteri cinesi tradizionali # Традиционные китайские иероглифы
+	Hakka # Hakka # Hakka # Hakka # Hakka # Хакка
+	Hausa # Haoussa # Haussa # Hausa # Hausa # Хауса
+	Hawaiian # Hawaïen # Hawaiisch # Hawaiano # Hawaiano # Гавайский
+	Hebrew # Hébreu # Hebräisch # Hebreo # Ebraico # Иврит
+	Herero # Héréro # Herero-Sprache # Herero # Herero # Гереро
+	Hiligaynon # Hiligaynon # Hiligaynon-Sprache # Hiligaynon # Hiligayna # Хилигайнон
+	Hindi # Hindi # Hindi # Hindi # Hindi # Хинди
+	Hiri Motu # Hiri motu # Hiri-Motu # Hiri motu # Hiri motu # Хиримоту
+	Hittite # Hittite # Hethitisch # Hitita # Hittite # Хеттский
+	Hmong # Hmong # Miao-Sprache # Hmong # Hmong # Хмонг
+	Hungarian # Hongrois # Ungarisch # Húngaro # Ungherese # Венгерский
+	Hupa # Hupa # Hupa # Hupa # Hupa # Хупа
+	============================================================================
+	Iban # Iban # Iban # Iban # Iban # Ибанский
+	Ibibio # Ibibio # Ibibio # Ibibio # Ibibio # Ибибио
+	Icelandic # Islandais # Isländisch # Islandés # Islandese # Исландский
+	Ido # Ido # Ido-Sprache # Ido # Ido # Идо
+	Igbo # Igbo # Igbo # Igbo # Igbo # Игбо
+	Ilocano # Ilocano # Ilokano-Sprache # Ilocano # Ilocano # Илоко
+	Inari Sami # Sami d’Inari # Inari-Samisch # Sami inari # Sami di Inari # Инари-саамский
+	Indonesian # Indonésien # Indonesisch # Indonesio # Indonesiano # Индонезийский
+	Ingush # Ingouche # Inguschisch # Ingush # Ingush # Ингушский
+	Inscriptional Pahlavi # Écriture pehlevi # Pahlavi-Schrift # Escritura pahlaví # Scrittura Pahlavi # Пехлевийский
+	Interlingua # Interlingua # Interlingua # Interlingua # Interlingua # Интерлингва
+	Interlingue # Interlingue # Interlingue # Interlingue # Interlingue # Интерлингве
+	Inuktitut # Inuktitut # Inuktitut # Inuktitut # Inuktitut # Инуктитут
+	Inupiaq # Inupiaq # Inupiak # Inupiaq # Inupiak # Инупиак
+	Irish # Irlandais # Irisch # Irlandés # Irlandese # Ирландский
+	Italian # Italien # Italienisch # Italiano # Italiano # Итальянский
+	============================================================================
+	Japanese # Japonais # Japanisch # Japonés # Giapponese # Японский
+	Javanese # Javanais # Javanisch # Javanés # Giavanese # Яванский
+	Jju # Jju # Jju # Jju # Kai # Каджи
+	Jola-Fonyi # Diola-fogny # Diola # Jola-fonyi # Jola-fony # Дьола-фоньи
+	Judeo-Arabic # Judéo-arabe # Jüdisch-Arabisch # Judeo-árabe # Giudeo arabo # Еврейско-арабский
+	Judeo-Persian # Judéo-persan # Jüdisch-Persisch # Judeo-persa # Giudeo persiano # Еврейско-персидский
+	============================================================================
+	Kabardian # Kabardin # Kabardinisch # Kabardiano # Kabardia # Кабардинский
+	Kabuverdianu # Capverdien # Kabuverdianu # Criollo caboverdiano # Capoverdiano # Кабувердьяну
+	Kabyle # Kabyle # Kabylisch # Cabila # Cabilo # Кабильский
+	Kachin # Kachin # Kachin-Sprache # Kachin # Kachin # Качинский
+	Kako # Kako # Kako # Kako # Kako # Како
+	Kalenjin # Kalenjin # Kalenjin # Kalenjin # Kalenjin # Календжин
+	Kalmyk # Kalmouk # Kalmückisch # Kalmyk # Kalmyk # Калмыцкий
+	Kamba # Kamba # Kamba # Kamba # Kamba # Камба
+	Kanembu # Kanembou # Kanembu # Kanembu # Kanembu # Канембу
+	Kannada # Kannada # Kannada # Canarés # Kannada # Каннада
+	Kanuri # Kanouri # Kanuri-Sprache # Kanuri # Kanuri # Канури
+	Karakalpak # Karakalpak # Karakalpakisch # Karakalpako # Kara-kalpak # Каракалпакский
+	Karachay-Balkar # Karatchaï balkar # Karatschaiisch-Balkarisch # Karachay-balkar # Karachay-Balkar # Карачаево-балкарский
+	Karelian # Carélien # Karelisch # Carelio # Careliano # Карельский
+	Kashmiri # Kashmiri # Kaschmiri # Cachemiro # Kashmiri # Кашмири
+	Kashubian # Kachoube # Kaschubisch # Casubio # Kashubian # Кашубианский
+	Kawi # Kawi # Kawi # Kawi # Kawi # Кави
+	Kazakh # Kazakh # Kasachisch # Kazajo # Kazako # Казахский
+	Khasi # Khasi # Khasi-Sprache # Khasi # Khasi # Кхаси
+	Kirghiz # Kirghize # Kirgisisch # Kirguís # Kirghiso # Киргизский
+	Khmer # Khmer # Khmer # Jemer # Khmer # Кхмерский
+	Khotanese # Khotanais # Sakisch # Kotanés # Khotanese # Хотанский
+	Kikuyu # Kikuyu # Kikuyu # Kikuyu # Kikuyu # Кикуйю
+	Kimbundu # KiMboundou # Kimbundu-Sprache # Kimbundu # Kimbundu # Кимбундийский
+	Kinyarwanda # Rwanda # Kinyarwanda # Kinyarwanda # Kinyarwanda # Киньяруанда
+	Kom # Kom # Kom # Kom # Kom # Ком
+	Komi # Komi # Komi-Sprache # Komi # Komi # Коми
+	Komi-Permyak # Komi-permiak # Komi-Permjakisch # Komi permio # Permiaco # Коми-пермяцкий
+	Kongo # Kongo # Kongolesisch # Kongo # Kongo # Конго
+	Konkani # Konkani # Konkani # Konkaní # Konkani # Конкани
+	Korean # Coréen # Koreanisch # Coreano # Coreano # Корейский
+	Koro # Koro # Koro # Koro # Koro # Коро
+	Kosraean # Kusaien # Kosraeanisch # Kosraeano # Kosraean # Косраенский
+	Koyra Chiini # Koyra chiini # Koyra Chiini # Koyra chiini # Koyra chiini # Койра чиини
+	Koyraboro Senni # Koyraboro senni # Koyra Senni # Koyraboro senni # Koyraboro senni # Койраборо сенни
+	Kpelle # Kpellé # Kpelle-Sprache # Kpelle # Kpelle # Кпелле
+	Kuanyama # Kuanyama # Kwanyama # Kuanyama # Kuanyama # Кунама
+	Kumyk # Koumyk # Kumükisch # Kumyk # Kumyk # Кумыкский
+	Kurdish # Kurde # Kurdisch # Kurdo # Curdo # Курдский
+	Kurdish (Sorani) # Sorani # Zentralkurdisch # Kurdo sorani # Curdo sorani # Сорани курдский
+	Kurukh # Kurukh # Oraon-Sprache # Kurukh # Kurukh # Курух
+	Kutenai # Kutenai # Kutenai-Sprache # Kutenai # Kutenai # Кутенаи
+	Kwasio # Kwasio # Kwasio # Kwasio # Kwasio # Квасио
+	Kyrgyz # Kirghize # Kirgisisch # Kirguís # Chirghiso # Киргизский
+	Kʼicheʼ # K’iche’ # K’iche’ # Quiché # K’iche’ # Киче
+	============================================================================
+	Ladino # Judéo-espagnol # Judenspanisch # Judeoespañol # Giudeo-spagnolo # Ладино
+	Lahnda (West Punjabi) # Lahnda # Lahnda # Lahnda # Lahnda # Лахнда
+	Lakota # Lakota # Lakota # Lakota # Lakota # Лакота
+	Lamba # Lamba # Lamba-Sprache # Lamba # Lamba # Ламба
+	Langi # Langi # Langi # Langi # Langi # Ланги
+	Lao # Lao # Laotisch # Laosiano # Lao # Лаосский
+	Latgalian # Latgalien # Lettgallisch # Letgalla # Letgalla # Латгальский
+	Latin # Latin # Latein # Latín # Latino # Латинский
+	Latin American Spanish # Espagnol latino-américain # Lateinamerikanisches Spanisch # Español latinoamericano # Spagnolo latinoamericano # Латиноамериканский испанский
+	Latvian # Letton # Lettisch # Letón # Lettone # Латышский
+	Lezgian # Lezghien # Lesgisch # Lezgiano # Lezghian # Лезгинский
+	Limburgish # Limbourgeois # Limburgisch # Limburgués # Limburgese # Лимбургский
+	Lingala # Lingala # Lingala # Lingala # Lingala # Лингала
+	Lithuanian # Lituanien # Litauisch # Lituano # Lituano # Литовский
+	Lojban # Lojban # Lojban # Lojban # Lojban # Ложбан
+	Lombard # Lombard # Lombardisch # Lombardo # Lombardo # Ломбардский
+	Low German # Bas-allemand # Niederdeutsch # Bajo alemán # Basso tedesco # Нижнегерманский
+	Lower Sorbian # Bas-sorabe # Niedersorbisch # Bajo sorbio # Basso sorabo # Нижнелужицкий
+	Lozi # Lozi # Rotse-Sprache # Lozi # Lozi # Лози
+	Luba-Katanga # Luba-katanga # Luba-Katanga # Luba-katanga # Luba-katanga # Луба-катанга
+	Luba-Lulua # Luba-lulua # Luba-Lulua # Luba-lulua # Luba-lulua # Луба-лулуа
+	Luiseno # Luiseno # Luiseno-Sprache # Luiseño # Luiseno # Луисеньо
+	Lule Sami # Sami de Lule # Lule-Samisch # Sami lule # Sami di Lule # Луле-саамский
+	Lunda # Lunda # Lunda-Sprache # Lunda # Lunda # Лунда
+	Luo # Luo # Luo-Sprache # Luo # Luo # Луо (Кения и Танзания)
+	Lurish # Lori # Luri # Lorí # Luri # Лурский
+	Luxembourgish # Luxembourgeois # Luxemburgisch # Luxemburgués # Lussemburghese # Люксембургский
+	Luyia # Oluluyia # Luhya # Luyia # Luyia # Лухья
+	============================================================================
+	Maba # Maba # Maba # Maba # Maba # Мабанский
+	Macedonian # Macédonien # Mazedonisch # Macedonio # Macedone # Македонский
+	Machame # Machame # Machame # Machame # Machame # Мачаме
+	Madurese # Madurais # Maduresisch # Madurés # Madurese # Мадурский
+	Mafa # Mafa # Mafa # Mafa # Mafa # Мафа
+	Magahi # Magahi # Khotta # Magahi # Magahi # Магахи
+	Maithili # Maithili # Maithili # Maithili # Maithili # Майтхили
+	Makasar # Makassar # Makassarisch # Macasar # Makasar # Макассарский
+	Makhuwa-Meetto # Makhuwa-meetto # Makhuwa-Meetto # Makhuwa-meetto # Makhuwa-meetto # Макуа-меетто
+	Makonde # Makonde # Makonde # Makonde # Makonde # Маконде
+	Malagasy # Malgache # Madagassisch # Malgache # Malgascio # Малагасийский
+	Malay # Malais # Malaiisch # Malayo # Malese # Малайский
+	Malayalam # Malayalam # Malayalam # Malayalam # Malayalam # Малаялам
+	Maltese # Maltais # Maltesisch # Maltés # Maltese # Мальтийский
+	Manchu # Mandchou # Mandschurisch # Manchú # Manchu # Маньчжурский
+	Mandar # Mandar # Mandaresisch # Mandar # Mandar # Мандарский
+	Mandingo # Mandingue # Manding-Sprache # Mandingo # Mandingo # Мандинго
+	Manipuri # Manipuri # Meithei-Sprache # Manipuri # Manipuri # Манипурский
+	Manx # Manx # Manx # Manés # Mannese # Мэнский
+	Maori # Maori # Maori # Maorí # Maori # Маори
+	Mapuche # Mapuche # Mapudungun # Mapuche # Araucano # Арауканский
+	Marathi # Marathe # Marathi # Maratí # Marathi # Маратхи
+	Mari # Mari # Tscheremissisch # Marí # Mari # Марийский (черемисский)
+	Marshallese # Marshall # Marschallesisch # Marshalés # Marshallese # Маршалльский
+	Marwari # Marwarî # Marwari # Marwari # Marwari # Марвари
+	Masai # Masai # Massai # Masái # Masai # Масаи
+	Mazanderani # Mazandérani # Masanderanisch # Mazandaraní # Mazandarani # Мазендеранский
+	Medumba # Medumba # Medumba # Medumba # Medumba # Медумба
+	Mende # Mendé # Mende-Sprache # Mende # Mende # Менде
+	Meru # Merou # Meru # Meru # Meru # Меру
+	Metaʼ # Méta’ # Meta’ # Meta’ # Meta’ # Мета
+	Mexican Spanish # Espagnol mexicain # Mexikanisches Spanisch # Español de México # Spagnolo messicano # Мексиканский испанский
+	Micmac # Micmac # Micmac-Sprache # Micmac # Micmac # Микмак
+	Middle Dutch # Moyen néerlandais # Mittelniederländisch # Neerlandés medieval # Olandese medio # Средненидерландский
+	Middle English # Moyen anglais # Mittelenglisch # Inglés medieval # Inglese medio # Среднеанглийский
+	Middle French # Moyen français # Mittelfranzösisch # Francés medieval # Francese medio # Среднефранцузский
+	Middle High German # Moyen haut-allemand # Mittelhochdeutsch # Alemán de la alta edad media # Tedesco medio alto # Средневерхненемецкий
+	Middle Irish # Moyen irlandais # Mittelirisch # Irlandés medieval # Irlandese medio # Среднеирландский
+	Min Dong # Mindong # Min Dong # Min del este # Min orientale # Восточноминьский
+	Min Nan # Minnan # Min Nan # Chino Mǐn Nán # Min meridionale # Южноминьский
+	Minangkabau # Minangkabau # Minangkabau-Sprache # Minangkabau # Menangkabau # Минангкабау
+	Mirandese # Mirandais # Mirandesisch # Mirandés # Mirandese # Мирандийский
+	Mizo # Lushai # Lushai-Sprache # Lushai # Lushai # Лушай
+	Modern Standard Arabic # Arabe standard moderne # Modernes Hocharabisch # Árabe estándar moderno # Arabo moderno standard # Арабский литературный
+	Mohawk # Mohawk # Mohawk # Mohawk # Mohawk # Мохаук
+	Moksha # Moksa # Moksha # Moksha # Moksha # Мокшанский
+	Moldavian # Moldave # Moldauisch # Moldavo # Moldavo # Молдавский
+	Mongo # Mongo # Mongo # Mongo # Lolo bantu # Монго
+	Mongolian # Mongol # Mongolisch # Mongol # Mongolo # Монгольский
+	Morisyen # Créole mauricien # Morisyen # Criollo mauriciano # Creolo mauriziano # Маврикийский креольский
+	Mossi # Moré # Mossi-Sprache # Mossi # Mossi # Моси
+	Mundang # Mundang # Mundang # Mundang # Mundang # Мунданг
+	Muscogee # Creek # Muskogee-Sprache # Maskoki # Creek # Крик
+	Myanmar # Écriture birmane # Birmanische Schrift # Escritura birmana # Alfabeto birmano # Бирманское письмо
+	Myene # Myènè # Myene # Myene # Myene # Миене
+	============================================================================
+	Nama # Nama # Nama # Nama # Nama # Нама
+	Nauru # Nauruan # Nauruisch # Nauruano # Nauru # Науру
+	Navajo # Navaho # Navajo # Navajo # Navajo # Навахо
+	Ndebele (North) # Ndébélé du Nord # Nord-Ndebele # Ndebele septentrional # Ndebele del nord # Северный ндебели
+	Ndebele (South) # Ndébélé du Sud # Süd-Ndebele-Sprache # Ndebele meridional # Ndebele del sud # Ндебели южный
+	Ndonga # Ndonga # Ndonga # Ndonga # Ndonga # Ндонга
+	Neapolitan # Napolitain # Neapolitanisch # Napolitano # Napoletano # Неаполитанский
+	Nepali # Népalais # Nepalesisch # Nepalí # Nepalese # Непальский
+	Newari # Newari # Newari # Newari # Newari # Неварский
+	Ngambay # Ngambay # Ngambay # Ngambay # Ngambay # Нгамбайский
+	Ngiemboon # Ngiemboon # Ngiemboon # Ngiemboon # Ngiemboon # Нгиембунд
+	Ngomba # Ngomba # Ngomba # Ngomba # Ngamambo # Нгомба
+	Nias # Nias # Nias-Sprache # Nias # Nias # Ниас
+	Niuean # Niué # Niue-Sprache # Niueano # Niue # Ниуэ
+	Nogai # Nogaï # Nogai # Nogai # Nogai # Ногайский
+	Norfolk # Norfolk # Norfolk # Norfuk # Norfuk # Норфолкский
+	Norman # Normand # Normannisch # Normando # Normanno # Нормандский
+	Northern Sami # Sami du Nord # Nordsamisch # Sami septentrional # Sami del nord # Северносаамский
+	Northern Sotho # Sotho du Nord # Nord-Sotho-Sprache # Sotho septentrional # Sotho del nord # Сото северный
+	Norwegian # Norvégien # Norwegisch # Noruego # Norvegese # Норвежский
+	Norwegian (Bokmål) # Norvégien bokmål # Norwegisch Bokmål # Noruego bokmal # Norvegese bokmål # Норвежский букмол
+	Norwegian Nynorsk # Norvégien nynorsk # Norwegisch Nynorsk # Noruego nynorsk # Norvegese nynorsk # Норвежский нюнорск
+	Nuer # Nuer # Nuer # Nuer # Nuer # Нуэр
+	Nuosu # Nuosu # Nuosu-Sprache # Nuosu # Nuosu # Носу
+	Nyamwezi # Nyamwezi # Nyamwezi-Sprache # Nyamwezi # Nyamwezi # Ньямвези
+	Nyanja # Nyanja # Nyanja-Sprache # Nyanja # Nyanja # Ньянджа
+	Nyankole # Nyankolé # Nyankole # Nyankole # Nyankole # Ньянколе
+	Nyasa Tonga # Tonga nyasa # Tsonga-Sprache # Tonga del Nyasa # Nyasa del Tonga # Ньяса (тонга)
+	Nyoro # Nyoro # Nyoro # Nyoro # Nyoro # Ньоро
+	Nzima # Nzema # Nzima # Nzima # Nzima # Нзима
+	N’Ko # N’ko # N’Ko # N’ko # N’ko # Нко
+	============================================================================
+	Occitan # Occitan # Okzitanisch # Occitano # Occitano # Окситанский
+	Ojibwe # Ojibwé # Ojibwa-Sprache # Ojibwa # Ojibwa # Оджибве
+	Old Church Slavonic # Vieux-slave # Altkirchenslawisch # Antiguo eslavo eclesiástico # Slavo ecclesiastico antico # Старославянский
+	Old English # Ancien anglais # Altenglisch # Inglés antiguo # Inglese antico # Староанглийский
+	Old French # Ancien français # Altfranzösisch # Francés antiguo # Francese antico # Старофранцузский
+	Old High German # Ancien haut allemand # Althochdeutsch # Alemán de la alta edad antigua # Tedesco antico alto # Древневерхненемецкий
+	Old Irish # Ancien irlandais # Altirisch # Irlandés antiguo # Irlandese antico # Староирландский
+	Old Norse # Vieux norrois # Altnordisch # Nórdico antiguo # Norse antico # Старонорвежский
+	Old Persian # Persan ancien # Altpersisch # Persa antiguo # Persiano antico # Староперсидский
+	Old Provençal # Provençal ancien # Altprovenzalisch # Provenzal antiguo # Provenzale antico # Старопровансальский
+	Oriya # Oriya # Oriya # Oriya # Oriya # Ория
+	Oriya (Odia) # Alphasyllabaire odia # Oriya-Schrift # Oriya (Odia) # Oriya (Odia) # Ория (письмо)
+	Oromo # Oromo # Oromo # Oromo # Oromo # Оромо
+	Osage # Osage # Osage-Sprache # Osage # Osage # Оседжи
+	Ossetian # Ossète # Ossetisch # Osético # Ossetico # Осетинский
+	Ottoman Turkish # Turc ottoman # Osmanisch # Turco otomano # Turco ottomano # Старотурецкий
+	============================================================================
+	Pahlavi # Pahlavi # Mittelpersisch # Pahlavi # Pahlavi # Пехлевийский
+	Palauan # Palau # Palau # Palauano # Palau # Палау
+	Pali # Pali # Pali # Pali # Pali # Пали
+	Pampanga # Pampangan # Pampanggan-Sprache # Pampanga # Pampanga # Пампанга
+	Pangasinan # Pangasinan # Pangasinan-Sprache # Pangasinán # Pangasinan # Пангасинан
+	Papiamento # Papiamento # Papiamento # Papiamento # Papiamento # Папьяменто
+	Pashto # Pachto # Paschtu # Pastún # Pashto # Пушту
+	Persian # Persan # Persisch # Persa # Persiano # Персидский
+	Phoenician # Phénicien # Phönikisch # Fenicio # Fenicio # Финикийский
+	Picard # Picard # Picardisch # Picardo # Picard # Пикардский
+	Piedmontese # Piémontais # Piemontesisch # Piamontés # Piemontese # Пьемонтский
+	Pohnpeian # Pohnpei # Ponapeanisch # Pohnpeiano # Ponape # Понапе
+	Polish # Polonais # Polnisch # Polaco # Polacco # Польский
+	Pontic # Grec pontique # Pontisch # Póntico # Pontico # Понтийский
+	Portuguese # Portugais # Portugiesisch # Portugués # Portoghese # Португальский
+	Punjabi # Pendjabi # Punjabi # Panyabí # Punjabi # Панджаби
+	============================================================================
+	Quechua # Quechua # Quechua # Quechua # Quechua # Кечуа
+	============================================================================
+	Rajasthani # Rajasthani # Rajasthani # Rajasthani # Rajasthani # Раджастхани
+	Rapanui # Rapanui # Osterinsel-Sprache # Rapanui # Rapanui # Рапануи
+	Rarotongan # Rarotongien # Rarotonganisch # Rarotongano # Rarotonga # Раротонганский
+	Reunionese # Créole réunionnais # Réunion-Kreolisch # Criollo reunionés # Creolo della Riunione # реюньонский креольский
+	Romanian # Roumain # Rumänisch # Rumano # Rumeno # Румынский
+	Romansh # Romanche # Rätoromanisch # Retorrománico # Romancio # Романшский
+	Romany # Tzigane # Romani # Romaní # Romani # Цыганский
+	Rombo # Rombo # Rombo # Rombo # Rombo # Ромбо
+	Root # Racine # Root # Raíz # Root # Корневой
+	Rundi # Roundi # Rundi # Kiroundi # Rundi # Рунди
+	Russian # Russe # Russisch # Ruso # Russo # Русский
+	Rusyn # Rusyn # Russinisch # Rusino # Russino # РусинскийSakha
+	Rwa # Rwa # Rwa # Rwa # Rwa # Руанда
+	============================================================================
+	Saho # Saho # Saho # Saho # Saho # Сахо
+	Sakha (Yakut) # Iakoute # Jakutisch # Sakha # Yakut # Якутский
+	Samaritan Aramaic # Araméen samaritain # Samaritanisch # Arameo samaritano # Aramaico samaritano # Самаритянский арамейский
+	Samburu # Samburu # Samburu # Samburu # Samburu # Самбуру
+	Samoan # Samoan # Samoanisch # Samoano # Samoano # Самоанский
+	Samogitian # Samogitien # Schemaitisch # Samogitiano # Samogitico # Жемайтское наречие
+	Sandawe # Sandawe # Sandawe-Sprache # Sandawe # Sandawe # Сандаве
+	Sango # Sangho # Sango # Sango # Sango # Санго
+	Sangu # Sangu # Sangu # Sangu # Sangu # Сангу
+	Sanskrit # Sanskrit # Sanskrit # Sánscrito # Sanscrito # Санскрит
+	Santali # Santal # Santali # Santali # Santali # Сантали
+	Sardinian # Sarde # Sardisch # Sardo # Sardo # Сардинский
+	Sasak # Sasak # Sasak # Sasak # Sasak # Сасаки
+	Scots # Écossais (germanique) # Scots # Escocés # Scozzese # Шотландский
+	Scottish Gaelic # Gaélique écossais # Schottisches Gälisch # Gaélico escocés # Gaelico scozzese # Гэльский
+	Selkup # Selkoupe # Selkupisch # Selkup # Selkup # Селькупский
+	Sena # Sena # Sena # Sena # Sena # Сена
+	Seneca # Seneca # Seneca # Seneca # Seneca # Сенека
+	Serbian # Serbe # Serbisch # Serbio # Serbo # Сербский
+	Serbo-Croatian # Serbo-croate # Serbo-Kroatisch # Serbocroata # Serbo-croato # Сербскохорватский
+	Serer # Sérère # Serer-Sprache # Serer # Serer # Серер
+	Shambala # Chambala # Shambala # Shambala # Shambala # Шамбала
+	Shan # Shan # Schan-Sprache # Shan # Shan # Шанский
+	Shona # Shona # Shona # Shona # Shona # Шона
+	Sichuan Yi # Yi du Sichuan # Yi # Yi de Sichuán # Sichuan yi # Сычуань
+	Sicilian # Sicilien # Sizilianisch # Siciliano # Siciliano # Сицилийский
+	Sidamo # Sidamo # Sidamo # Sidamo # Sidamo # Сидама
+	Siksika # Siksika # Blackfoot-Sprache # Siksika # Siksika # Сиксика
+	Silesian # Silésien # Schlesisch # Silesio # Slesiano # Силезский
+	Simplified Chinese # Chinois simplifié # Chinesisch (vereinfacht) # Chino simplificado # Cinese semplificato # Упрощенный китайский
+	Sindhi # Sindhi # Sindhi # Sindhi # Sindhi # Синдхи
+	Sinhala # Alphasyllabaire cingalais # Singhalesische Schrift # Escritura sinhala # Alfabeto singalese # Сингальское письмо
+	Sinhalese # Cingalais # Singhalesisch # Cingalés # Singalese # Сингальский
+	Skolt Sami # Sami skolt # Skolt-Samisch # Sami skolt # Sami skolt # Скольт-саамский
+	Slave # Slavey # Slave # Slave # Slave # Слейви
+	Slovak # Slovaque # Slowakisch # Eslovaco # Slovacco # Словацкий
+	Slovenian # Slovène # Slowenisch # Esloveno # Sloveno # Словенский
+	Soga # Soga # Soga # Soga # Soga # Сога
+	Sogdien # Sogdien # Sogdisch # Sogdiano # Sogdiano # Согдийский
+	Somali # Somali # Somali # Somalí # Somalo # Сомали
+	Soninke # Soninké # Soninke-Sprache # Soninké # Soninke # Сонинке
+	Southern Altai # Altaï du Sud # Süd-Altaisch # Altái meridional # Altai meridionale # Южноалтайский
+	Southern Kurdish # Kurde du Sud # Südkurdisch # Kurdo meridional # Curdo meridionale # Южнокурдский
+	Southern Sami # Sami du Sud # Südsamisch # Sami meridional # Sami del sud # Южно-саамский
+	Sotho # Sesotho # Süd-Sotho-Sprache # Sesotho meridional # Sotho del sud # Сото южный
+	Spanish # Espagnol # Spanisch # Español # Spagnolo # Испанский
+	Sranan Tongo # Sranan tongo # Srananisch # Sranan tongo # Sranan tongo # Сранан тонго
+	Standard Moroccan Tamazight # Amazighe standard marocain # Tamazight # Tamazight estándar marroquí # Tamazight del Marocco standard # Тамазигхтский
+	Sukuma # Sukuma # Sukuma-Sprache # Sukuma # Sukuma # Сукума
+	Sumerian # Sumérien # Sumerisch # Sumerio # Sumero # Шумерский
+	Sundanese # Soundanais # Sundanesisch # Sundanés # Sundanese # Сунданский
+	Susu # Soussou # Susu # Susu # Susu # Сусу
+	Swahili # Swahili # Suaheli # Suajili # Swahili # Суахили
+	Swati # Swati # Swazi # Siswati # Swati # Свази
+	Swedish # Suédois # Schwedisch # Sueco # Svedese # Шведский
+	Swiss French # Français suisse # Schweizer Französisch # Francés suizo # Francese svizzero # Швейцарский французский
+	Swiss German # Suisse allemand # Schweizerdeutsch # Alemán suizo # Tedesco svizzero # Швейцарский немецкий
+	Swiss High German # Allemand suisse # Schweizer Hochdeutsch # Alto alemán suizo # Alto tedesco svizzero # Швейцарский верхненемецкий
+	Syriac # Syriaque # Syrisch # Siriaco # Siriaco # Сирийский
+	============================================================================
+	Tachelhit # Chleuh # Taschelhit # Tashelhit # Tashelhit # Ташельхит
+	Tagalog # Tagalog # Tagalog # Tagalo # Tagalog # Тагалог
+	Tahitian # Tahitien # Tahitisch # Tahitiano # Taitiano # Таитянский
+	Taita # Taita # Taita # Taita # Taita # Таита
+	Tajik # Tadjik # Tadschikisch # Tayiko # Tagico # Таджикский
+	Tamashek # Tamacheq # Tamaseq # Tamashek # Tamashek # Тамашек
+	Tamil # Tamoul # Tamil # Tamil # Tamil # Тамильский
+	Tarantino # Tarentin # Tarandíne # Tarentino # Tarantino # Тарантинский
+	Taroko # Taroko # Taroko # Taroko # Taroko # Тароко
+	Tasawaq # Tasawaq # Tasawaq # Tasawaq # Tasawaq # Тасавак
+	Tatar # Tatar # Tatarisch # Tártaro # Tataro # Татарский
+	Telugu # Télougou # Telugu # Telugu # Telugu # Телугу
+	Tereno # Tereno # Tereno-Sprache # Tereno # Tereno # Терено
+	Teso # Teso # Teso # Teso # Teso # Тесо
+	Tetum # Tetum # Tetum-Sprache # Tetún # Tetum # Тетум
+	Thaana # Thâna # Thaana-Alphabet # Thaana # Thaana # Тана (письмо)
+	Thai # Thaï # Thailändisch # Tailandés # Thai # Тайский
+	Tibetan # Tibétain # Tibetisch # Tibetano # Tibetano # Тибетский
+	Tigre # Tigré # Tigre # Tigré # Tigre # Тигре
+	Tigrinya # Tigrigna # Tigrinya # Tigriña # Tigrino # Тигринья
+	Timne # Temne # Temne # Temne # Temne # Темне
+	Tiv # Tiv # Tiv-Sprache # Tiv # Tiv # Тиви
+	Tlingit # Tlingit # Tlingit-Sprache # Tlingit # Tlingit # Тлингит
+	Tok Pisin # Tok pisin # Neumelanesisch # Tok pisin # Tok pisin # Ток-писин
+	Tokelau # Tokelau # Tokelauanisch # Tokelauano # Tokelau # Токелайский
+	Tongan # Tonguien # Tongaisch # Tongano # Tongano # Тонганский
+	Traditional Chinese # Chinois traditionnel # Chinesisch (traditionell) # Chino tradicional # Cinese tradizionale # Традиционный китайский
+	Tsimshian # Tsimshian # Tsimshian-Sprache # Tsimshiano # Tsimshian # Цимшиан
+	Tsonga # Tsonga # Tsonga # Tsonga # Tsonga # Тсонга
+	Tswana # Tswana # Tswana-Sprache # Setchwana # Tswana # Тсвана
+	Tulu # Toulou # Tulu-Sprache # Tulu # Tulu # Тулу
+	Tumbuka # Tumbuka # Tumbuka-Sprache # Tumbuka # Tumbuka # Тумбука
+	Turkish # Turc # Türkisch # Turco # Turco # Турецкий
+	Turkmen # Turkmène # Turkmenisch # Turcomano # Turcomanno # Туркменский
+	Tuvalu # Tuvalu # Elliceanisch # Tuvaluano # Tuvalu # Тувалу
+	Tuvinian # Touva # Tuwinisch # Tuviniano # Tuvinian # Тувинский
+	Twi # Twi # Twi # Twi # Ci # Тви
+	Tyap # Tyap # Tyap # Tyap # Tyap # Тьяп
+	============================================================================
+	Udmurt # Oudmourte # Udmurtisch # Udmurt # Udmurt # Удмуртский
+	Ugaritic # Ougaritique # Ugaritisch # Ugarítico # Ugaritico # Угаритский
+	Ukrainian # Ukrainien # Ukrainisch # Ucraniano # Ucraino # Украинский
+	Umbundu # Umbundu # Mbundu-Sprache # Umbundu # Mbundu # Умбунду
+	Unknown Language # Langue indéterminée # Unbestimmte Sprache # Lengua desconocida # Lingua imprecisata # Неизвестный
+	Upper Sorbian # Haut-sorabe # Obersorbisch # Alto sorbio # Alto sorabo # Верхнелужицкий
+	Urdu # Ourdou # Urdu # Urdu # Urdu # Урду
+	Uyghur # Ouïghour # Uigurisch # Uigur # Uiguro # Уйгурский
+	Uzbek # Ouzbek # Usbekisch # Uzbeko # Usbeco # Узбекский
+	============================================================================
+	Vai # Vaï # Vai # Vai # Vai # Ваи
+	Venda # Venda # Venda-Sprache # Venda # Venda # Венда
+	Venetian # Vénitien # Venetisch # Véneto # Veneto # Венетский
+	Veps # Vepse # Wepsisch # Vepsio # Vepso # Вепсский
+	Vietnamese # Vietnamien # Vietnamesisch # Vietnamita # Vietnamita # Вьетнамский
+	Volapük # Volapuk # Volapük # Volapük # Volapük # Волапюк
+	Votic # Vote # Wotisch # Vótico # Voto # Водский
+	Vunjo # Vunjo # Vunjo # Vunjo # Vunjo # Вунджо
+	============================================================================
+	Walloon # Wallon # Wallonisch # Valón # Vallone # Валлонский
+	Walser # Walser # Walser-Dialekte # Walser # Walser # Валисский
+	Waray # Waray # Waray # Waray # Waray # Варай
+	Warlpiri # Warlpiri # Warlpiri # Warlpiri # Warlpiri # Вальбири
+	Washo # Washo # Washo-Sprache # Washo # Washo # Вашо
+	Welsh # Gallois # Walisisch # Galés # Gallese # Валлийский
+	Western Balochi # Baloutchi occidental # Westliches Belutschi # Baluchi occidental # Beluci occidentale # Западно-белуджский
+	Wolaytta # Walamo # Walamo-Sprache # Walamo # Walamo # Воламо
+	Wolof # Wolof # Wolof # Wolof # Wolof # Волоф
+	Wu # Wu # Wu # Wu # Wu # У
+	============================================================================
+	Xhosa # Xhosa # Xhosa # Xhosa # Xhosa # Коса
+	============================================================================
+	Yangben # Yangben # Yangben # Yangben # Yangben # Янбан
+	Yao # Yao # Yao-Sprache # Yao # Yao (bantu) # Яо
+	Yapese # Yapois # Yapesisch # Yapés # Yapese # Яп
+	Yemba # Yemba # Yemba # Yemba # Yemba # Йемба
+	Yi # Syllabaire yi # Yi (Schrift) # Escritura Yi # Yi # И (письмо)
+	Yiddish # Yiddish # Jiddisch # Yídish # Yiddish # Идиш
+	Yoruba # Yoruba # Yoruba # Yoruba # Yoruba # Йоруба
+	============================================================================
+	Zapotec # Zapotèque # Zapotekisch # Zapoteco # Zapotec # Сапотекский
+	Zarma # Zarma # Zarma # Zarma # Zarma # Зарма
+	Zaza # Zazaki # Zaza # Zazaki # Zaza # Заза
+	Zeelandic # Zélandais # Seeländisch # Zelandés # Zelandese # Зеландский
+	Zenaga # Zenaga # Zenaga # Zenaga # Zenaga # Зенагский
+	Zhuang # Zhuang # Zhuang # Zhuang # Zhuang # Чжуань
+	Zulu # Zoulou # Zulu # Zulú # Zulu # Зулу
+	Zuni # Zuni # Zuni-Sprache # Zuni # Zuni # Зуньи
+
+	</YALT>*/
+"""
