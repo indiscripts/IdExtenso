@@ -9,7 +9,7 @@
 		Kind:           Resource
 		API:            ---
 		DOM-access:     NO
-		Todo:           adding other locales!
+		Todo:           ---
 		Created:        150509 (YYMMDD)
 		Modified:       170306 (YYMMDD)
 
@@ -19,7 +19,7 @@
 	// NOTICE
 	//==========================================================================
 
-	// Supported locales: <EN> FR DE SP.
+	// Supported locales: <EN> FR DE SP IT RU.
 	// Feel free to correct, or to add new locales, as long as
 	// you don't change the keys (1st column.) Each translation
 	// string must have the following format, in a single line:
@@ -30,86 +30,95 @@
 	//==========================================================================
 
 """
-	/*<YALT> # FRENCH # GERMAN # SPANISH
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
+
+	================================ Generic Patterns and Time Units
+
+	DD # JJ # TT # DD # GG # ДД
+	MM # MM # MM # MM # MM # ММ
+	YYYY # AAAA # JJJJ # AAAA # AAAA # ГГГГ
+	h. # h # h. # h # h # ч.
+	min. # min # min. # min # min. # мин.
+	s. # s # s. # s # sec. # с.
 
 	================================ {DDDD}
 
-	Sunday # dimanche # Sonntag # domingo
-	Monday # lundi # Montag # lunes
-	Tuesday # mardi # Dienstag # martes
-	Wednesday # mercredi # Mittwoch # miércoles
-	Thursday # jeudi # Donnerstag # jueves
-	Friday # vendredi # Freitag # viernes
-	Saturday # samedi # Samstag # sábado
+	Sunday # dimanche # Sonntag # domingo # domenica # воскресенье
+	Monday # lundi # Montag # lunes # lunedì # понедельник
+	Tuesday # mardi # Dienstag # martes # martedì # вторник
+	Wednesday # mercredi # Mittwoch # miércoles # mercoledì # среда
+	Thursday # jeudi # Donnerstag # jueves # giovedì # четверг
+	Friday # vendredi # Freitag # viernes # venerdì # пятница
+	Saturday # samedi # Samstag # sábado # sabato # суббота
 
 	================================ {DDD}
 
-	Sun # dim. # So # do.
-	Mon # lun. # Mo # lu.
-	Tue # mar. # Di # ma.
-	Wed # mer. # Mi # mi.
-	Thu # jeu. # Do # ju.
-	Fri # ven. # Fr # vi.
-	Sat # sam. # Sa # sá.
+	Sun # dim. # So # do. # do. # Вс
+	Mon # lun. # Mo # lu. # lu. # Пн
+	Tue # mar. # Di # ma. # ma. # Вт
+	Wed # mer. # Mi # mi. # me. # Ср
+	Thu # jeu. # Do # ju. # gi. # Чт
+	Fri # ven. # Fr # vi. # ve. # Пт
+	Sat # sam. # Sa # sá. # sa. # Сб
 
 	================================ {MMMM}
 
-	January # janvier # Januar # enero
-	February # février # Februar # febrero
-	March # mars # März # marzo
-	April # avril # April # abril
-	May # mai # Mai # mayo
-	June # juin # Juni # junio
-	July # juillet # Juli # julio
-	August # août # August # agosto
-	September # septembre # September # septiembre
-	October # octobre # Oktober # octubre
-	November # novembre # November # noviembre
-	December # décembre # Dezember # diciembre
+	January # janvier # Januar # enero # gennaio # Январь
+	February # février # Februar # febrero # febbraio # Февраль
+	March # mars # März # marzo # marzo # Март
+	April # avril # April # abril # aprile # Апрель
+	May # mai # Mai # mayo # maggio # Май
+	June # juin # Juni # junio # giugno # Июнь
+	July # juillet # Juli # julio # luglio # Июль
+	August # août # August # agosto # agosto # Август
+	September # septembre # September # septiembre # settembre # Сентябрь
+	October # octobre # Oktober # octubre # ottobre # Октябрь
+	November # novembre # November # noviembre # novembre # Ноябрь
+	December # décembre # Dezember # diciembre # dicembre # Декабрь
 
 	================================ {MMM}
 
-	Jan # janv. # Jan # enero
-	Feb # fév. # Feb # feb.
-	Mar # mars # Mrz # marzo
-	Apr # avr. # Apr # abr.
-	May # mai # Mai # mayo
-	Jun # juin # Jun # jun.
-	Jul # juil. # Jul # jul.
-	Aug # août # Aug # agosto
-	Sep # sept. # Sep # sept.
-	Oct # oct. # Okt # oct.
-	Nov # nov. # Nov # nov.
-	Dec # déc. # Dez # dic.
+	Jan # janv. # Jan # enero # gen. # янв
+	Feb # fév. # Feb # feb. # feb. # фев
+	Mar # mars # Mrz # marzo # mar. # мар
+	Apr # avr. # Apr # abr. # apr. # апр
+	May # mai # Mai # mayo # mag. # май
+	Jun # juin # Jun # jun. # giu. # июн
+	Jul # juil. # Jul # jul. # lug. # июл
+	Aug # août # Aug # agosto # ago. # авг
+	Sep # sept. # Sep # sept. # set. # сен
+	Oct # oct. # Okt # oct. # ott. # окт
+	Nov # nov. # Nov # nov. # nov. # ноя
+	Dec # déc. # Dez # dic. # dic. # дек
 
 	================================ PATTERNS
 
-	// shortDate:  3/9/2015 # 09/03/2015 # 09.03.2015 # 9-3-2015
-	{M}/{d}/{yyyy} # {dd}/{MM}/{yyyy} # {dd}.{MM}.{yyyy} # {d}-{M}-{yyyy}
+	// shortDate:  3/9/2015 # 09/03/2015 # 09.03.2015 # 9-3-2015 # 09/03/2015 # 09.03.2015
+	{M}/{d}/{yyyy} # {dd}/{MM}/{yyyy} # {dd}.{MM}.{yyyy} # {d}-{M}-{yyyy} # {dd}/{MM}/{yyyy} # {dd}.{MM}.{yyyy}
 
-	// abbrDate:   Mar 09, 2015 # 9 mars 2015 # 9. Mrz 2015 # 9 marzo 2015
-	{MMM} {dd}, {yyyy} # {d} {MMM} {yyyy} # {d}. {MMM} {yyyy} # {yyyy} {MMM} {d}
+	// abbrDate:   Mar 09, 2015 # 9 mars 2015 # 9. Mrz 2015 # 9 marzo 2015 # 9 mar. 2015 # 3 апр 2015 г.
+	{MMM} {dd}, {yyyy} # {d} {MMM} {yyyy} # {d}. {MMM} {yyyy} # {d} {MMM} {yyyy} # {d} {MMM} {yyyy} # {d} {MMM} {yyyy} г.
 
-	// longDate:   Friday, April 03, 2015 # vendredi 3 avril 2015 # Freitag, 3. April 2015 # viernes 3 de abril de 2015
-	{DDDD}, {MMMM} {dd}, {yyyy} # {DDDD} {d} {MMMM} {yyyy} # {DDDD}, {d}. {MMMM} {yyyy} # {DDDD} {d} de {MMMM} de {yyyy}
+	// longDate:   Friday, April 03, 2015 # vendredi 3 avril 2015 # Freitag, 3. April 2015 # viernes 3 de abril de 2015 # venerdì 3 aprile 2015 # 3 Апрель 2015 г.
+	{DDDD}, {MMMM} {dd}, {yyyy} # {DDDD} {d} {MMMM} {yyyy} # {DDDD}, {d}. {MMMM} {yyyy} # {DDDD} {d} de {MMMM} de {yyyy} # {DDDD} {d} {MMMM} {yyyy} # {d} {MMMM} {yyyy} г.
 
-	// shortTime:  9:06 PM # 21h06 # 21:06 # 21:06
-	{H}:{mm} {TT} # {hh}h{mm} # {hh}:{mm} # {hh}:{mm}
+	// shortTime:  9:06 PM # 21h06 # 21:06 # 21:06 # 21.06 # 21:06
+	{H}:{mm} {TT} # {hh}h{mm} # {hh}:{mm} # {hh}:{mm} # {hh}.{mm} # {hh}:{mm}
 
-	// longTime:   8:59:01 AM # 08:59:01 # 08:59:01 # 08:59:01
-	{H}:{mm}:{ss} {TT} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss}
+	// longTime:   8:59:01 AM # 08:59:01 # 08:59:01 # 08:59:01 # 08.59.01 # 08:59:01
+	{H}:{mm}:{ss} {TT} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss} # {hh}:{mm}:{ss} # {hh}.{mm}.{ss} # {hh}:{mm}:{ss}
 
 	// fullDateTime (cf longDate - longTime)
-	{DDDD}, {MMMM} {dd}, {yyyy} - {H}:{mm}:{ss} {TT} # {dddd} {d} {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd}, {d}. {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd} {d} de {MMMM} de {yyyy} - {hh}:{mm}:{ss}
+	{DDDD}, {MMMM} {dd}, {yyyy} - {H}:{mm}:{ss} {TT} # {dddd} {d} {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd}, {d}. {MMMM} {yyyy} - {hh}:{mm}:{ss} # {dddd} {d} de {MMMM} de {yyyy} - {hh}:{mm}:{ss} # {dddd} {d} {MMMM} {yyyy} {hh}.{mm}.{ss} # {d} {MMMM} {yyyy} г. {hh}:{mm}:{ss}
 
-	// fileNameDateTime:  2015-04-03_21-06_59s # 2015-04-03_21h06_59s # 2015-04-03_21-06_59s # 2015-04-03_21-06_59s
-	{yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}h{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s
+	// fileNameDateTime:  2015-04-03_21-06_59s # 2015-04-03_21h06_59s # 2015-04-03_21-06_59s # 2015-04-03_21-06_59s # 2015-04-03_21-06_59s # 2015-04-03_21-06_59с
+	{yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}h{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}s # {yyyy}-{MM}-{dd}_{hh}-{mm}_{ss}с
 
-	// monthDay:  April 04 # 4 avril # 04 April # 4 de abril
-	{MMMM} {dd} # {d} {MMMM} # {dd} {MMMM} # {d} de {MMMM}
+	// monthDay:  April 04 # 4 avril # 04 April # 4 de abril # 4 aprile # Апрель 04
+	{MMMM} {dd} # {d} {MMMM} # {dd} {MMMM} # {d} de {MMMM} # {d} {MMMM} # {MMMM} {dd}
 
-	// yearMonth: April, 2015 # avril 2015 # April 2015 # abril de 2015
-	{MMMM}, {yyyy} # {MMMM} {yyyy} # {MMMM} {yyyy} # {MMMM} de {yyyy}
+	// yearMonth: April, 2015 # avril 2015 # April 2015 # abril de 2015 # aprile 2015 # Апрель 2015 г.
+	{MMMM}, {yyyy} # {MMMM} {yyyy} # {MMMM} {yyyy} # {MMMM} de {yyyy} # {MMMM} {yyyy} # {MMMM} {yyyy} г.
 
 	</YALT>*/
 """
