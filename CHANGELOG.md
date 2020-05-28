@@ -1,5 +1,6 @@
 ##### [200528]
   - [**Linguist**](/etc/$$.Linguist.jsxlib): New module designed as a central place for addressing language and locale data. Its main component (`~.LISO`) maps ISO639-1 codes.
+  - [**DateFormat**](/etc/$$.DateFormat.jsxlib): Added IT (Italian) and RU (Russian) localization patterns, so the module now supports `EN FR DE SP IT RU` date/time formats.
 
 ##### [200526]
   - [`Env/locale`](/core/Env/$$.locale.jsxinc): Added `localePrefix()`, a getter that simply returns the current locale name prefix, e.g `"FRENCH"`, `"SIMPLIFIED_CHINESE"`, `"INTERNATIONAL_ENGLISH"`... Also, the `localeIdToString(iLocale,keepSuffix)` method now implicitly considers the current InDesign locale if the `iLocale` arg is missing.
