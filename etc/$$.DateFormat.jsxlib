@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           manage UTC variants
 		Created:        150502 (YYMMDD)
-		Modified:       170405 (YYMMDD)
+		Modified:       200528 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('DateFormat') || eval(__(MODULE, $$, 'DateFormat', 170405, 'format'))
+;$$.hasOwnProperty('DateFormat') || eval(__(MODULE, $$, 'DateFormat', 200528, 'format'))
 
 	//==========================================================================
 	// NOTICE
