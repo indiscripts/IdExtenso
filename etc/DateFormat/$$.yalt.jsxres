@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       170306 (YYMMDD)
+		Modified:       200530 (YYMMDD)
 
 *******************************************************************************/
 
@@ -34,9 +34,12 @@
 
 	================================ Generic Patterns and Time Units
 
+	Time Zone # Fuseau horaire # Zeitzone # Franja horaria # Fuso orario # Часовой пояс
+	Year # Année # Jahr # Año # Anno # Год
 	DD # JJ # TT # DD # GG # ДД
 	MM # MM # MM # MM # MM # ММ
 	YYYY # AAAA # JJJJ # AAAA # AAAA # ГГГГ
+	MM/dd/yy # dd/MM/yy # dd.MM.yy # MM/dd/yy # dd/MM/yy # мм/дд/гг
 	h. # h # h. # h # h # ч.
 	min. # min # min. # min # min. # мин.
 	s. # s # s. # s # sec. # с.
