@@ -1,0 +1,1265 @@
+/*******************************************************************************
+
+		Name:           Collator
+		Desc:           Simplified version of the Unicode Collation Algorithm (UCA)
+		Path:           /etc/$$.Collator.jsxlib
+		Require:        ScriptUI.builder (selectLanguage)
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =sort() setTailor() getTailor()
+		                getRichList() selectLanguage()
+		                getLocaleKey() localeSort()
+		DOM-access:     NO
+		Todo:           testing tailored languages
+		Created:        151228 (YYMMDD)
+		Modified:       200531 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200531, 'sort'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	
+	0. OVERVIEW
+	____________________________________________________________________________
+	
+	This module implements a light-weight, simplified, optimized version of the
+	Unicode Collation Algorithm (UCA). It allows you to sort strings according
+	to a specific language and with respect to the UCA rules, in ExtendScript.
+
+	It supports three comparison levels:
+
+	      L1      Base characters         role < roles < rule
+	      L2      Accents                 role < rôle  < roles
+	      L3      Case/Variants           role < Role  < rôle
+	      
+	and assigns a default weight to about 10,000 characters or n-grams, referred
+	to as KEYS. These keys only reflect a subset of the Default Unicode Collation
+	Element Table (DUCET) -- http://unicode.org/Public/UCA/latest/allkeys.txt --
+	which contains 35,000+ items.
+
+	Collator makes it possible to globally address LATIN, GREEK, CYRILLIC, ARABIC, or
+	HEBREW scripts. It also targets ARMENIAN, BENGALI, DEVANAGARI, LAO, MALAYALAM,
+	TAMIL, TELUGU, and THAI writing systems, as well as most ALPHANUMERIC and
+	PUNCTUATION symbols, including DIACRITICAL marks, LETTERLIKE symbols, NUMBER
+	forms, SUPERSCRIPTS and SUBSCRIPTS, and many symbols/dingbats/shapes that might
+	be involved in sorting (arrows, IPA, technical and mathematical symbols, etc.)
+	
+	[NOTE] For a full list of supported Unicode blocks, see /etc/MetaCollator/~.KEEP.
+	
+	The original DUCET elements that have been removed are, for the most part, CJK-
+	related characters and old script/language components. A distinct implementation
+	should be designed to handle these characters. *If you need to sort CJK strings,
+	do not use the present module.*
+
+
+	1. BASICS
+	____________________________________________________________________________
+
+	To any supported key (character or n-gram, including surrogate pairs such as
+	`\uD82F\uDCA0`), Collator assigns a Weight Sequence (WS). A WS is a string in
+	the form S1,S2,... where each S_i represents a Weight Code in base 36:
+	
+	      WeightCode_i = parseInt(S_i, 36).
+
+	This specific encoding allows to reduce the size of the literal map. Weights are
+	ordered as specified in the DUCET but they use a smaller range of (L1,L2,L3)
+	values, so the actual weight code of any element is coerced into a single
+	uint32 that JavaScript can digest and manipulate through bitwise operators.
+	
+	[NOTE] The KEY-to-WS map is stored in /etc/Collator/$$.WMAP.jsxres.
+	It can be rebuilt from scratch using the MetaCollator module.
+
+	Each Weight Code (uint32) encodes inner weights as follows:
+
+	      1111 1111 1111 1xxx 2222 222y 3333 3zzV
+	      └─────────────────┘ └───────┘ └──────┘╰──Variable-Bit
+	              L1             L2        L3
+	           13+3 bits      7+1 bits  4+2 bits
+	
+	where
+	      L1 (16bits)     reflects a level-1 weight,
+	      L2 (8bits)      reflects a level-2 weight,
+	      L3 (6bits)      reflects a level-3 weight,
+	      V  (1bit flag)  tells whether the code concerns a 'variable' element
+	                      (see below.)
+
+	`xxx`, `y` and `zz` are reserved bits (set to zero in WMAP) used in TAILORED
+	languages which need specific reordering. The subfolder /etc/Collation/tailoring
+	contains 50+ resource files that extend the default rules to specific languages
+	or language sets.
+	
+	For example, the European Ordering Rules (EOR) are defined in the file
+	
+	      `/etc/Collation/tailoring/$$.EOR.jsxres`
+
+	which adds L1 and/or L2 extra bits for addressing keys like
+	`Æ`, `æ`, `Ĳ`, `ĳ`, `Œ`, `œ`, `ß`, etc.
+
+
+	3. VARIABLE WEIGHTING
+	____________________________________________________________________________
+
+	"Variable collation elements, which typically include punctuation characters
+	and which may or may not include a subset of symbol characters, require
+	special handling in the UCA."
+
+	[REF] http://unicode.org/reports/tr10/#Variable_Weighting
+
+	The present implementation provides two variable-weighting options:
+	
+	(a) NON-IGNORABLE: Variable collation elements are "not reset to be quaternary
+        collation elements", that is, their weight values just behave as specified
+        in the map like any other regular collation element.
+
+        For example, it comes
+        
+	           'a b'  <<<  'a B'  <  'a-b'  <<<  'a-B'  <  'ab'
+
+	    since*
+	    
+	    [.1E89.0020.0002],[*0209.0020.0002],[.1EA3.0020.0002]     ; 'a b'
+	    <<<                                             ^^^^
+	    [.1E89.0020.0002],[*0209.0020.0002],[.1EA3.0020.0008]     ; 'a B'
+	    <                   ^^^^
+	    [.1E89.0020.0002],[*020D.0020.0002],[.1EA3.0020.0002]     ; 'a-b'
+	    <<<                                             ^^^^
+	    [.1E89.0020.0002],[*020D.0020.0002],[.1EA3.0020.0008]     ; 'a-B'
+	    <                   ^^^^
+	    [.1E89.0020.0002],[.1EA3.0020.0002]                       ; 'ab'
+
+	    * As specified in UCA's Main Algorithm -- unicode.org/reports/tr10/
+	    tr10-41.html#Main_Algorithm -- the actual sort keys to be compared are
+	    in fact <L1_Weights>\0<L2_Weights>\0<L3_Weights>, that is
+	    
+	            [1E89,0209,1EA3]\0[0020,0020,0020]\0[0002,0002,0002] for 'a b'
+	            [1E89,0209,1EA3]\0[0020,0020,0020]\0[0002,0002,0008] for 'a B'
+	            etc
+
+	    "The UCA uses the value zero (0000) for the level separator, to guarantee
+	    that the level separator has a lower value than any of the actual
+	    collation weights appended to the sort key from the collation element
+	    array. Implementations can, however, use a non-zero value, as long as
+	    that value is lower than the minimum weight at that level."
+
+
+    (b) BLANKED: "Variable collation elements and any subsequent ignorable
+        collation elements are reset so that all weights (...) are zero."
+
+        For example, it comes
+        
+		       'a b'  ===  'a-b'  ===  'ab'  <<<  'a B'  ===  'a-B'
+
+		since*
+
+	    [.1E89.0020.0002]<0>[.1EA3.0020.0002]                         ; 'a b'
+	    ===
+	    [.1E89.0020.0002]<0>[.1EA3.0020.0002]                         ; 'a-b'
+	    ===
+	    [.1E89.0020.0002]<0>[.1EA3.0020.0002]                         ; 'ab'
+        <<<                             ^^^^
+	    [.1E89.0020.0002]<0>[.1EA3.0020.0008]                         ; 'a B'
+	    ===
+	    [.1E89.0020.0002]<0>[.1EA3.0020.0008]                         ; 'a-B'
+	    
+	    * See (a) note.
+
+	[NOTE] The SHIFTED and SHIFT-TRIMMED options are not implemented in Collator.
+
+
+	4. AVOIDING NORMALIZATION
+	____________________________________________________________________________
+
+	A conformant implementation of the UCA should, as a first step, convert the
+	input string into Normalization Form D (NFD), as detailed in
+	https://unicode.org/reports/tr15/
+	
+	However,
+	
+	"Conformant implementations must get the same results as the UCA, but such
+	implementations may use different techniques to get those results, usually
+	with the goal of achieving better performance. For example, an implementation
+	may be able to avoid normalizing most, if not all, of an input string in
+	[NFD conversion] of the algorithm.
+
+	In a straightforward implementation of the algorithm, canonically decomposable
+	characters do not require mappings to collation elements because [NFD
+	conversion] decomposes them, so they do not occur in any of the following
+	algorithm steps and thus are irrelevant for the collation elements lookup.
+	For example, there need not be a mapping for “ü” because it is always
+	decomposed to the sequence “u + ◌̈”.
+
+	In an optimized implementation, a canonically decomposable character like
+	“ü” may map directly to the sequence of collation elements for the
+	decomposition (“ü” → CE(u)CE(◌̈), unless there is a contraction defined for
+	that sequence). For most input strings, these mappings can be used directly
+	for correct results, rather than first having to normalize the text.
+
+	While such an approach can lead to significantly improved performance, there
+	are various issues that need to be handled, including but not limited to the
+	following:
+
+    -  Typically, the easiest way to manage the data is to add mappings for each
+       of the canonically equivalent strings, the so-called “canonical closure”.
+       Thus, each of {ǭ, ǫ + ̄ , ō + ̨ , o+ ̄ + ̨ , o+ ̨, +  ̄ } can map to the
+       same collation elements.
+    
+    -  These collation elements must be in the same order as if the characters
+       were decomposed using Normalization Form D.
+    
+    -  The easiest approach is to detect sequences that are in the format known
+       as “Fast C or D form” (FCD*), and to directly look up collation elements
+       for characters in such FCD sequences, without normalizing them.
+       
+       * Canonical Equivalence in Applications: http://unicode.org/notes/tn5/
+    
+    -  In any difficult cases, such as if a sequence is not in FCD form, or when
+       there are contractions that cross sequence boundaries, the algorithm can
+       fall back to doing a full NFD normalization."
+	
+	In the present implementation, input strings are *assumed* to be supplied in
+	FCD form and canonical equivalences are treated straight in `WMAP`. For
+	example, the grapheme “ü” is registered as:
+	
+	      "\u00FC"    => "x8gmiw,4qw",  // 3833.1.1  0.12.1
+	
+	which also matches the values found in the canonical decomposition:
+	
+	      "\u0075"    => "x8gmiw",      // 3833.1.1
+	      "\u0308"    => "4qw",         // 0.12.1
+
+	Thus, the result of processing the weight sequence is equivalent as far as
+	no tailoring is involved for the grapheme “ü”.
+	
+	Now, should the grapheme “ü” require tailoring (as in Danish: `Y << ü`),
+	special rules have to be specified for both the composed key (\u00FC) and
+	its decomposed form "\u0075\u0308". Technically, the default weight sequences
+	of the individual keys "\u0075" and "\u0308" won't change, but
+	
+	      i. The key "\u00FC" has to be overridden:     "\u00FC" => <new_WS>
+	
+	     ii. A new key "\u0075\u0308" has to be added:  "\u0075\u0308" => <new_WS>
+
+	Those tailoring rules are treated and encoded from MetaCollator and made
+	available to Collator from the ~.TLRM resource. (See next section for detail.)
+	Usual decompositions are automatically added by MetaCollator while parsing the
+	tailoring rules.
+
+
+	5. TAILORING
+	____________________________________________________________________________
+
+	"Tailoring consists of any well-defined change in the Collation Element Table
+	and/or any well-defined change in the behavior of the algorithm. Typically,
+	a tailoring is expressed by means of a formal syntax which allows detailed
+	manipulation of values in a Collation Element Table (...) A tailoring can
+	be used to provide linguistically-accurate collation, if desired."
+	
+	[REF] http://unicode.org/reports/tr35/tr35-collation.html#Rules
+
+	Collator implements the main tailoring procedure, that is,
+
+	    "Reordering any character or contraction with respect
+	     to others in the default ordering."
+	    
+	  The reordering can represent a L1 difference ( A < B ),  L2 difference
+	  ( A << À ), or L3 difference ( a <<< A ).
+	  
+	  E.g in Breton:    C < ch <<< Ch <<< CH
+	                      < c'h <<< C'h <<< C'H
+
+	  The map ~.TLRM provides, for particular language keys like `br_BR` or `es_ES`,
+	  a sequence of RULES that specify such reordering. In Collator's syntax the
+	  usual operators <, <<, and <<< are changed into `>1`, `>2`, `>3`. Then the
+	  above rules will be encoded
+
+	      br_BR:
+	      {
+	         . . .
+	         "ch" : ">1C",   "Ch" : ">3ch",   "CH" : ">3Ch",
+	         "c'h" : ">1CH", "C'h" : ">3c'h", "C'H" : ">3C'h",
+	         . . .
+	      }
+
+	  The first key asserts that ch > C, in other words, the digram “ch” must have a
+	  L1-weight greater than that of “C”. Technically, when `µ.setTailor()` is
+	  invoked for selecting particular tailoring rules, Collator consumes the extra
+	  bits `xxx`, `y` and/or `zz` allowed in weight encoding:
+
+	      1111 1111 1111 1xxx 2222 222y 3333 3zzV
+	      └─────────────────┘ └───────┘ └──────┘╰──Var
+	              L1             L2        L3
+
+	  The rule "ch"=>">1C", for example, increments the `xxx` part of the L1 area to
+	  make room for the bigram “ch”. It is therefore possible to insert up to seven L1
+	  additional weights at any point of the default collation map.
+	  
+	  When a L1 weight is inserted for tailoring purpose, the L2_L3_V bits are reset
+	  to zero. So the result of tailoring the “ch” bigram looks like
+	  
+	      <default_C_bits>001 0000 0000 0000 0000
+	      └─────────────────┘ └───────┘ └──────┘╰──Var
+	              L1             L2        L3
+	  
+	  On the other hand, *native* L2 weights only offer a single extra bit (`y`) of
+	  differenciation. This is justified by the fact that adding several L2 weights
+	  between the default values is unfrequent, so it is assumed in the present
+	  implementation that such event rarely occurs and can be treated by simply
+	  increasing L2 as a whole when the `y` bit is already set. That `y` extra bit
+	  is useful though. For example, the Estonian key (et_EE) has a rule
+	  
+	      V << w <<< W
+	  
+	  which specifies that “w” is ordered as V/v at the primary level (L1) while
+	  introducing a L2 difference, then w <<< W is maintained at the third level.
+	  In Collator's syntax,
+	  
+	      "w" => ">2V"     //  V <<  w
+	      "W" => ">3w"     //  w <<< W
+
+	  It comes that the extra L2 bit is consumed:
+
+	    w :: <default_V_bits>000 <def_L2>1 0000 0000
+	         └─────────────────┘ └───────┘ └──────┘╰──Var
+	                 L1             L2        L3
+	  and
+
+	    W :: <default_V_bits>000 <def_L2>1 0000 0010
+	         └─────────────────┘ └───────┘ └──────┘╰──Var
+	                 L1             L2        L3
+	  
+	  Note that since the rule "w"=>">2V" comes first and redefines w's weights,
+	  the next rule "W" => ">3w" resets W's weight with respect to the new value
+	  assigned to w. So order matters when encoding tailoring resources.
+	  (See /etc/MetaCollator/tailoring.)
+
+	[NOTE] Collator does not support fine-tuned operations like "Setting the
+	secondary level to be backwards or forwards" or "Customizing the exact list
+	of variable collation elements". Also, when a `[beforeN]` operation is
+	required, it has to be rephrased to fit our `>N...` syntax.
+
+
+	6. MAIN ALPHABETS
+	____________________________________________________________________________
+
+	By default (ROOT), Latin, Greek, and Cyrillic alphabets are ordered as
+	specified in the DUCET:
+
+	      LATIN
+	      Aa, Bb, Cc, Dd, Ee, Əə, Ff, Gg, Hh, Ii, ı, Jj, Kk, Ll, Mm, Nn,
+	      Ŋŋ, Oo, Pp, Qq, ĸ, Rr, Ss, Tt, Ŧŧ, Uu, Vv, Ww, Xx, Yy, Zz, Þþ
+
+	      GREEK
+	      Αα, Ββ, Γγ, Δδ, Εε, Ζζ, Ηη, Θθ, Ιι, Κκ, Λλ, Μμ, Νν, Ξξ, Οο, Ππ,
+	      Ρρ, Σσς, Ττ, Υυ, Φφ, Χχ, Ψψ, Ωω
+	
+	      CYRILLIC
+	      Аа, Әә, Бб, Вв, Гг, Ғғ, Дд, Ђђ, Ѓѓ, Ее, Єє, Жж, Җҗ, Зз, Ѕѕ, Ии,
+	      Іі, Її, Йй, Јј, Кк, Ққ, Ҝҝ, Лл, Љљ, Мм, Нн, Ңң, Њњ, Оо, Өө, Пп,
+	      Рр, Сс, Тт, Ћћ, Ќќ, Уу, Ўў, Үү, Ұұ, Фф, Хх, Ҳҳ, Һһ, Цц, Чч, Ҹҹ,
+	      Џџ, Шш, Щщ, Ъъ, Ыы, Ьь, Ээ, Юю, Яя
+
+	Other writing systems are included (ARABIC, HEBREW, ARMENIAN, BENGALI,
+	DEVANAGARI, LAO, MALAYALAM, TAMIL, TELUGU, and THAI) but they likely
+	require serious tailoring refinements to deal with the many underlying
+	languages they support. This is also the case for some CYRILLIC- or
+	even LATIN-based languages. Collator should gradually evolve to provide
+	such refinements...
+	
+
+	7. EUROPEAN ORDERING RULES (EOR)
+	____________________________________________________________________________
+	
+	[REF] en.wikipedia.org/wiki/European_ordering_rules
+
+	"The European ordering rules (EOR/EN 13710), define an ordering for strings
+	written in languages that are written with the Latin, Greek and Cyrillic
+	alphabets. The standard covers languages used by the European Union, the
+	European Free Trade Association, and parts of the former Soviet Union. It is
+	a tailoring of the Common Tailorable Template of ISO/IEC 14651. EOR can
+	in turn be tailored for different (European) languages. But in inter-
+	European contexts, EOR can be used without further tailoring."
+
+
+	REFERENCES
+	____________________________________________________________________________
+
+	Unicode Collation Algorithm:    unicode.org/reports/tr10/
+	Language-Territory Information: unicode.org/cldr/charts/latest/supplemental/language_territory_information.html
+	Collation Charts per language:  www.unicode.org/cldr/charts/28/collation/
+	Alphabetical Order (WP):        en.wikipedia.org/wiki/Alphabetical_order
+	Common Locale Data Repository:  cldr.unicode.org
+	Collation Customization:        userguide.icu-project.org/collation/customization
+	Languages:                      101languages.net/
+	Online Tool (ICU):              demo.icu-project.org/icu-bin/collation.html
+	J. Tauber's Python Collator:    github.com/jtauber/pyuca
+	Linguistic Collation (SAS)      support.sas.com/resources/papers/linguistic_collation.pdf
+	Comparing with JS Collators     dev.to/aumayeung/comparing-non-english-strings-with-javascript-collators-57bf
+
+	*/
+
+	//==========================================================================
+	// DATA
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		YALT : $$.Yalt &&
+		(
+		$$.Yalt.addPackage
+		(
+		#include 'Collator/$$.yalt.jsxres'
+		)
+		,
+		$$.Yalt.addPackage
+		(
+		#include 'Collator/$$.LING.yalt.jsxres'
+		)
+		),
+
+		// Root key-to-weight map. Each weight is a string in "w1,w2,w3..." form,
+		// where each `wi` is the base 36 representation of a uint32 weight.
+		// ---
+		WMAP:
+		#include 'Collator/$$.WMAP.jsxres'
+		,
+
+		// Regex that retrieve all weighted keys from a string.
+		// ---
+		MTCH:
+		#include 'Collator/$$.MTCH.jsxres'
+		,
+		
+		// String that contains all zero-weighted keys.
+		// ---
+		ZROS:
+		#include 'Collator/$$.ZROS.jsxres'
+		,
+		
+		// Tailoring map. (Contains tailoring rules for 50+ languages.)
+		// Keys are ISO639 identifiers (cf etc/Linguist/languages) or
+		// specialized `zz_xyz` subkeys like `de_phone`. The unique
+		// exception is `EOR` (addressing European Ordering Rules.)
+		// ---
+		TLRM:
+		#include 'Collator/$$.TLRM.jsxres'
+		,
+
+		// Suffix map. Any tailor key of the form `zz_xyz` has a suffix
+		// `_xyz` which must be a key of ~.SUFX. The suffix map provides
+		// a display pattern `ptn` for that suffix (in default EN) so `zz`
+		// can be parsed independently as an ISO639 identifier. Also, the
+		// SUFX map provides a `def` property that tells (0|1) whether
+		// `zz_xyz` is the default tailoring key for the match `zz`.
+		// For example, `es_modern` is the default tailor for `es`,
+		// since `~.SUFX['_modern'].def` is 1.
+		// ---
+		SUFX:
+		#include 'Collator/$$.SUFX.jsxres'
+		,
+		
+		// Language map. Subset (200+ items) of Linguist/LISO.
+		// zz => { name:str, dft:'EOR'|'ROOT', natv:str }
+		// When `zz` is not visible among TLRM keys, the `dft` property
+		// tells whether the EOR rules might be applied instead of ROOT.
+		// [REM] As a default mechanism EOR is automatically associated
+		// to Latn/Grek/Cyrl writing systems.
+		// ---
+		LING:
+		#include 'Collator/$$.LING.jsxres'
+		,
+
+	})
+
+	//==========================================================================
+	// KEYS/WEIGHT TOOLS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,  F,a)
+		//----------------------------------
+		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
+		// on `callee.CUR_MTCH`. Non-measurable characters are replaced by `\uFFFD`;
+		// each elem of the returned array is a key having 1, 2, or more characters.
+		// (n-grams with n>2 usually appear in tailoring, cf ~.TLRM AND ~.TMAP.)
+		// [REM] `callee.CUR_MTCH` is either a tailored regex, or the default ~.MTCH.
+		// The caller is responsible to set `CUR_MTCH` as expected.
+		// ---
+		// For saving performance, the returned array is volatile and its `length`
+		// property *is not updated* ; use `<ret>.SIZE` instead when needed. You
+		// can set `UPD_LENGTH` to 1 to force the update of `<ret>.length` when
+		// absolutely necessary, but keep in mind that's more time-consuming.
+		// ---
+		// `this` :: ~
+		// => str[]&  [VOLATILE]  + .SIZE 
+		{
+			// Init.
+			// ---
+			F = callee.REPL;
+			F.OFS = (a=F.RET).SIZE = 0;
+			
+			// Trick: we use a 'fake' replacement function, its actual job is
+			// to digest the successive matches captured by the regex and to
+			// update accordingly its internal array `F.RET`. (See callee.REPL.)
+			// ---
+			s.replace(callee.CUR_MTCH, F);
+			
+			// Time-consuming in ExtendScript but sometimes needed.
+			// ---
+			UPD_LENGTH && a.length != a.SIZE && (a.length=a.SIZE);
+
+			return a;
+		}
+		.setup
+		({
+			REPL: function($match,$offset,_,q,z)
+			//----------------------------------
+			// Replace callback that always returns '' (important!)
+			// `$match`  :: Current match found in the input.
+			// `$offset` :: Index of $match in the input, noting that the
+			//              input is dynamically reduced, from left to right,
+			//              as every incoming match <M> is replaced by ''
+			// 
+			// At each step `callee.OFS` indicates the *previous* offset
+			// (init=0.) If $offset > OFS, the OUT symbol \uFFFD is added
+			// in the RET array whose SIZE is incremented. Then $match is
+			// added, RET.SIZE is incremented, and OFS is updated to
+			// $offset. In the below schema `•` represents the OUT symbol.
+			//
+			//      OFS     0                      3                  4
+			//      input   XXX<M>Y<M><M>…  ->  XXXY<M><M>…  ->  XXXY<M>…
+			//      offset      3                    4                4
+			//      RET [] => [•,M1]        =>  [•,M1,•,M2]  => [•,M1,•,M2,M3]
+			//      SIZE 0 =>      2        =>            4  =>              5
+			// ---
+			// => ''
+			{
+				z = (q=callee.RET).SIZE;
+				
+				callee.OFS < $offset && ( q[z++]=callee.OUT, callee.OFS=$offset );
+				
+				return (q[z++]=$match), (q.SIZE=z), '';
+			}
+			.setup({ RET:[], OFS:0, OUT:String.fromCharCode(0xFFFD) }),
+			
+			CUR_MTCH: µ['~'].MTCH,
+		}),
+		
+		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,k,keys,op,rf,m,i,t,w,b)
+		//----------------------------------
+		// (Tailor-Map.) Set the tailor map with respect to incoming rules.
+		// This function also updates `~.SPLT.CUR_MTCH` accordingly.
+		// Supply a falsy TL to restore the default map (= no tailoring.)
+		// ---
+		// [REM] `TMAP.DATA` and `~.WMAP` share the same k=>WS structure.
+		// TMAP.DATA is used to partially supersede WMAP assignments: if
+		// a KEY is found in TMAP.DATA its associated Weight String will
+		// be used. While TMAP.DATA is built, SPLT.CUR_MTCH is updated
+		// to make sure that any new key can be detected by the regex (the
+		// whole key must be capturable as such, taking precedence over
+		// substrings that ~.MTCH could detect.) Also, given a set of new
+		// keys k1, k2, k3..., it's important to prepend regex patterns
+		// from longest to shortest keys, in case `k_i` would be part of
+		// `k_j` (j>i). Keys are therefore reordered to guarantee that
+		// longest strings will be captured first while splitting an input.
+		// ---
+		// rule   ::  ( `==` | `>1` | `>2` | `>3` ) + refString
+		// `this` ::  ~
+		// ---
+		// => undef [OK]  |  ERR_MSG [KO]
+		{
+			// Clean up the tailor-map and restore the default (ROOT) config.
+			// ---
+			TM = callee.DATA;
+			for( k in TM ) delete TM[k];
+			this.SPLT.CUR_MTCH = this.MTCH;  // So far, activate the default regex.
+
+			if( !TL ) return;                // Nothing to do: goes back to default.
+
+			// Init.
+			// ---
+			(WRN = callee.WARNS).length = 0;
+			const WM = this.WMAP;
+			const MAX1 = parseInt(WM['\uFFFD'],36)>>>16; // Maximal L1 weight
+			const CHR = String.fromCharCode;
+
+			keys = [];
+			for( k in TL )
+			{
+				if( !TL.hasOwnProperty(k) ) continue;
+
+				// Keys require descending sort by length.
+				// [REM] In principle we could optimize the final regex by ignoring
+				// keys that are already captured in full by ~.MTCH, but in practice
+				// we will prepend *every* tailoring key, even being already detected,
+				// as this does not dramatically increase the whole regex and likely
+				// speeds up the detection of initial, relevant keys.
+				// ---
+				keys.push( CHR(~k.length)+k );
+
+				// Get the operator and the reference.
+				// ---
+				op = (rf=TL[k]).slice(0,2);  // `==` | `>1` | `>2` | `>3`
+				rf = rf.slice(2);            // Any string (character, bigram or more.)
+
+				// [REM] The TM map has been initialized to `{}`. It is intended to
+				// provide `k => WeightString` mapping for every TL's key. When a
+				// rule `k •rf` is parsed (• referring to any operator), we may find
+				// that `rf` has been previously involved as a key: TM[rf]==WS.
+				// In such event, WS should take precedence over SPLT(rf) and be used
+				// as the reference Weight String for applying •. For example,
+				//     `k ==rf`   implies   TM[k]=WS
+				//     `k >1rf`   implies   TM[k]=incrementL1(WS)
+				// On the other hand, if TM[rf] is undefined, then rf is splitted into
+				// subkeys through SPLT(rf). But some of these subkeys could in turn
+				// already exist in TM, and their dedicated Weight Strings should then
+				// be used rather than the default ones.
+				// ---
+				m = TM.hasOwnProperty(rf) ? [rf] : this.SPLT(rf,1);                           // m :: [ "k1", "k2", ... ]
+				for( i=m.length ; i-- ; m[i] = TM.hasOwnProperty(t=m[i]) ? TM[t] : WM[t] );   // m :: [ "w11,w12...", "w21,w22...", ... ]
+
+				// EQUAL -> strict weight equivalence (just concatenate.)
+				// ---
+				if( '==' == op ){ TM[k]=m.join(','); continue; }
+
+				// >(1|2|3) OPERATOR
+				// ---
+				t = m.pop().split(',');        // We only want to increase the weight of the *last* component.
+				w = parseInt(t.pop(),36)>>>0;  // w :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+
+				switch( op )
+				{
+					case '>1':
+						// Increase (if possible) the level1 extra bits `xxx` : 000=>001=>010=>etc=>111
+						// and reset to zero the last 16 bits.
+						// ---
+						b = w>>>16;
+						7 == (7&b) && (WRN[WRN.length] = __("No enough LEVEL1 extra bits for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+						++b;
+						if( MAX1 <= b ) return __("LEVEL1 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
+						w = (++b)<<16;
+						break;
+
+					case '>2':
+						// Set (if possible) the level2 extra bit `y`
+						// and reset to zero the last 8 bits
+						// ---
+						b = 0xFF&(w>>>8);
+						1 == (1&b) && (WRN[WRN.length] = __("The LEVEL2 extra bit is already set for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+						++b;
+						if( 0xFF <= b ) return __("LEVEL2 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
+						w = ( (0xFFFF0000&w) | (b<<8) );
+						break;
+
+					case '>3':
+						// Increase (if possible) the level3 extra bits `zz`: 00=>01=>10=>11
+						// and reset to zero the V flag.
+						// ---
+						b = 0x7F&(w>>>1);
+						3 == (3&b) && (WRN[WRN.length] = __("No enough LEVEL3 extra bits for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+						++b;
+						if( 0x7F <= b ) return __("LEVEL3 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
+						w = ( (0xFFFFFF00&w) | (b<<1) );
+						break;
+
+					default:
+						return __("Wrong operator (%1).", op);
+				}
+				
+				t.push((w>>>0).toString(36));
+				m.push(t.join(','));
+				
+				TM[k] = m.join(',');           // Add k=>WS to the map.
+			}
+
+			if( i=keys.length )
+			{
+				keys.sort();
+				while( i-- ) keys[i] = RegExp.escape(keys[i].slice(1));
+				this.SPLT.CUR_MTCH = RegExp( keys.join('|') + '|' + this.MTCH.source, 'g');
+			}
+		}
+		.setup
+		({
+			DATA:  {},
+			WARNS: [],
+		}),
+
+		WG_3: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,s2,s3,n,i,k,ws,x,t,p)
+		//----------------------------------
+		// (Weight-1-to-3.) Get the Weight String associated to the array
+		// of input keys for L1-L3 comparison. Result has the form
+		//          "<S1><0><S2><0><S3>"
+		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
+		// `IGNORE_VARS` :: Ignore variable elements.
+		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
+		// `this` :: ~
+		// ---
+		// => str   :: <L1_Weights>\0<L2_Weights>\0<L3_Weights>
+		{
+			const CHR = String.fromCharCode;
+			const ZR = this.ZROS;
+			const WM = this.WMAP;
+
+			for( s1=s2=s3='', n=keys.SIZE, i=-1 ; ++i < n ; )
+			{
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
+				
+				do
+				{
+					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					if( IGNORE_VARS && (1&x) ) continue;
+					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
+					(t=0xFF&(x>>>8)) && (s2+=CHR(t));	              // add only if t!=0 (level2)
+					(t=0x7F&(x>>>1)) && (s3+=CHR(t));				  // add only if t!=0 (level3)
+				}
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+			}
+
+			return s1 + '\0' + s2 + '\0' + s3;
+		},
+
+		WG_2: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,s2,n,i,k,ws,x,t,p)
+		//----------------------------------
+		// (Weight-1-to-2.) Get the Weight String associated to the array
+		// of input keys for L1-L2 comparison. Result has the form
+		//          "<S1><0><S2>"
+		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
+		// `IGNORE_VARS` :: Ignore variable elements.
+		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
+		// `this` :: ~
+		// ---
+		// => str   :: <L1_Weights>\0<L2_Weights>
+		{
+			const CHR = String.fromCharCode;
+			const ZR = this.ZROS;
+			const WM = this.WMAP;
+
+			for( s1=s2='', n=keys.SIZE, i=-1 ; ++i < n ; )
+			{
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
+				
+				do
+				{
+					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					if( IGNORE_VARS && (1&x) ) continue;
+					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
+					(t=0xFF&(x>>>8)) && (s2+=CHR(t));	              // add only if t!=0 (level2)
+				}
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+			}
+			
+			return s1 + '\0' + s2;
+		},
+
+		WG_1: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,n,i,k,ws,x,t,p)
+		//----------------------------------
+		// (Weight-1.) Get the Weight String associated to the array
+		// of input keys for L1 comparison. Result has the form
+		//          (\uHHHH)+
+		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
+		// `IGNORE_VARS` :: Ignore variable elements.
+		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
+		// `this` :: ~
+		// ---
+		// => str   :: <L1_Weights>
+		{
+			const CHR = String.fromCharCode;
+			const ZR = this.ZROS;
+			const WM = this.WMAP;
+
+			for( s1='', n=keys.SIZE, i=-1 ; ++i < n ; )
+			{
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
+				
+				do
+				{
+					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					if( IGNORE_VARS && (1&x) ) continue;
+					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
+				}
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+			}
+			
+			return s1;
+		},
+	})
+
+	//==========================================================================
+	// LANGUAGES/ISO HELPERS
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		LCHK: function(  $$,T,L,z,k,t)
+		//----------------------------------
+		// (Ling-Check.) Check that all reduced tailor keys (~.TLRM) are present in ~.LING.
+		// `this` :: ~
+		// => 1 [OK]  |  0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			T = this.TLRM;
+			L = this.LING;
+			
+			z = 0;
+			for( k in T )
+			{
+				if( !T.hasOwnProperty(k) ) continue;
+				if( 'EOR' == k ) continue;
+				t = k.split('_')[0];
+				L.hasOwnProperty(t) || ( ++z, $$.trace( __("%1 => KO", t) ) );
+			}
+			
+			return z ? 0 : 1;
+		},
+
+		ITOK: function(/*str*/isoKey,  T,L,zz,tk,q,S,k,i)
+		//----------------------------------
+		// (Iso-to-TailorKey.) If isoKey is a tailorKey, return it;
+		// otherwise return the best matching tailorKey (if found.)
+		// `this` :: ~
+		// => key [OK]  |  0 [KO]
+		{
+			T = this.TLRM;
+			if( 'ROOT'==(tk=isoKey.toUpperCase()) || 'EOR' == tk || T.hasOwnProperty(tk=isoKey.toLowerCase()) ) return tk;
+
+			L = this.LING;
+			if( !L.hasOwnProperty(tk) ) return 0;
+			
+			if( !(q=callee.Q) )
+			{
+				q = callee.Q = [];
+				S = this.SUFX;
+				for( k in S ) S[k].def && (q[q.length]=k);
+			}
+			
+			for( i=q.length ; i-- ; )if( T.hasOwnProperty(k=tk+q[i]) ) return k;
+			return L[tk].dft;
+		},
+
+		LIST: function(/*bool=0*/VERBOSE,  q,T,L,S,i,o,k,t,sf,zz,en,na,s)
+		//----------------------------------
+		// (Ling-List.) Rich array of YALT-localized languages that
+		// Collator actually supports or may support in the future.
+		// The returned Array has additional mappings:
+		//    `_<LocName>`         => <TailorKey>
+		//    `=<TailorOrIsoKey>   => <LocName>
+		//    `§<LocName>`         => <NativeName>
+		// `this` :: ~
+		// ---
+		// => str[]&
+		{
+			// Cache.
+			// ---
+			if( (q=callee.DATA).length ) return q;
+
+			T = this.TLRM;
+			L = this.LING;
+			S = this.SUFX;
+			
+			i = 0;
+			o = {};
+			const DF = { def:1, ptn:"%1" };
+			for( k in T )
+			{
+				if( !T.hasOwnProperty(k) ) continue;
+				if( 'EOR' == k ) continue;
+
+				// k :: 'de_phone'  ; zz :: 'de' ; sf :: '_phone'  (def=0)
+				// k :: 'es_modern' ; zz :: 'es' ; sf :: '_modern' (def=1)
+				// k :: 'fr'        ; zz :: 'fr' ; sf :: ''
+				// ---
+				zz = -1 == (t=k.indexOf('_'))
+				? ( (sf=''), k )
+				: ( (sf=k.slice(t)), k.slice(0,t) );
+
+				// Nude EN name.
+				// E.g "Spanish" | "Emilian-Romagnol" | "Norwegian (Bokmål)" etc
+				// ---
+				t = L[zz] || 0;                             // { name, dft, natv }
+				en = t.name || zz.toUpperCase();
+				na = t.natv || en;
+				
+				// L10N name.
+				// ---
+				t = (sf && S[sf]) || DF;                    // { def:0|1, ptn:`..%1..` }
+				q[i++] = s = __(t.ptn, __(en));             // LocName
+				q['_'+s] = k;                               // _LocName => TailorKey
+				q['='+k] = s;                               // =TailorK => LocName
+				q['§'+s] = na;                              // §LocName => NatName
+				if( t.def )
+				{
+					zz != k && (q['='+zz]=s);
+					o[zz] = 1;                              // Done (no need to parse zz in L.)
+				}
+			}
+
+			const BP = VERBOSE ? callee.VERB_PTN : 0;
+			sf = "%1";
+			for( zz in L )
+			{
+				if( !L.hasOwnProperty(zz) ) continue;
+				if(  q.hasOwnProperty('='+zz) || o.hasOwnProperty(zz) ) continue;
+				
+				t = L[zz];                                  // { name, dft, natv }
+				en = t.name;
+				na = t.natv||en;
+				k =  t.dft||'';                             // 'EOR' | 'ROOT';
+				BP && (sf=BP[k.toUpperCase()]||"%1");
+
+				// L10N name.
+				// ---
+				q[i++] = s = __(sf,__(en));                 // LocName [EOR|DUCET]
+				q['_'+s] = k;                               // _LocName => TailorKey
+				q['='+zz] = s;                              // =IsoKey  => LocName
+				q['§'+s] = na;                              // §LocName => NatName
+			}
+
+			callee.µ.localeSort(q,2,1);
+			q.unshift
+			(
+				__("Default [DUCET]"),
+				__("European Ordering Rules [EOR]"),
+				"-"
+			);
+			s = q[0]; q['_'+s] = q['§'+s] = 'ROOT';         // index 0 : ROOT
+			q['=ROOT'] = s;
+			s = q[1]; q['_'+s] = q['§'+s] = 'EOR';          // index 1 : EOR
+			q['=EOR'] = s;
+
+			return q;
+		}
+		.setup
+		({
+			VERB_PTN:
+			{
+				EOR:  "%1 [EOR]",
+				ROOT: "%1 [DUCET]",
+			},
+
+			DATA: [],
+		}),
+		
+		SHOW: function(/*str|''*/iso,  host,q,sel,w,t)
+		//----------------------------------
+		// (Show-List.) Show the Ling-List and let the user select an item.
+		// `this` :: ~
+		// => tailorKey [OK]  |  false [Cancel]
+		{
+			host = callee;
+			q = this.LIST();
+
+			sel = q.hasOwnProperty('='+iso) ? q['='+iso] : -1;
+
+			w = ScriptUI.builder.call(host,
+			{
+				properties:                 { type:'dialog', text:host.WIN_TITLE, },
+				margins:                    host.MARGINS,
+				spacing:                    host.MARGINS,
+				orientation:                'column',
+				alignChildren:              ScriptUI.CT,
+
+				Group$Main:
+				{
+					properties:             { },
+					margins:                host.MARGINS,
+					spacing:                10,
+					orientation:            'column',
+
+					DropDownList$List:
+					{
+						properties:         { items:q },
+						optimalSize:        { width:host.WIDTH, height:24 },
+						onChange:           callee.ON_LCHG,
+					},
+
+					StaticText$Info:
+					{
+						properties:         { text:'' },
+						optimalSize:        { width:host.WIDTH, height:24 },
+					},
+				},
+
+				Group$Footer:
+				{
+					orientation:            'row',
+					Button$OK:
+					{
+						properties:         { text:__("OK"), name:'OK' },
+					},
+					Button$KO:
+					{
+						properties:         { text:__("Cancel"), name:'Cancel' },
+					},
+				},
+				
+				onShow:                      callee.ON_WSHW,
+			});
+			
+			'string' == typeof sel && (sel=w.List.find(sel)) && (callee.ON_WSHW.SEL_IDX=sel.index);
+
+			return 1 == w.show() ? (t=w.List.selection, callee.ON_WSHW.SEL_IDX=t.index, q['_'+t.text]) : false;
+		}
+		.setup
+		({
+			WIN_TITLE:   __("Language"),
+			WIDTH:       200,
+			MARGINS:     20,
+
+			ON_WSHW: function onShow(  idx,wg)
+			//----------------------------------
+			// this :: Window
+			{
+				idx = callee.SEL_IDX || 1;
+				(wg=this.List).active = true;
+				wg.selection = idx;
+				wg.onChange();
+			}
+			.setup
+			({
+				SEL_IDX: 1,
+			}),
+			
+			ON_LCHG: function onChange(  wg,q,s,tk,bullet,nv)
+			//----------------------------------
+			// this :: DropDownList
+			{
+				wg = this.window.Info;
+				q = this.properties.items;
+				s = this.selection.text;
+				tk = q['_'+s];
+				bullet = ( 'ROOT'==tk || 'EOR'==tk ) ? '\u25B7' : '\u25B6';
+				nv = q['§'+s];
+				nv==tk ? (nv='') : (nv=' '+nv);
+				wg.text = bullet + nv + '  [' + tk + ']';
+			},
+
+		}),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		sort: function sort_L_ý_b_L(/*str[]&*/arr,/*1|2|3=1*/level,/*bool=0*/PUNCT_SENSITIVE,  $$,I,WG,TM,i,t)
+		//----------------------------------
+		// Sort alphabetically an array of strings based on the active tailoring rules.
+		// `arr`       :: Input/ouput array to be reordered.
+		// `level`     :: Depth of the collation algorithm:
+		//                3 - Deep sort.
+		//                2 - Ignore case variants (and similar L3 diffs.)
+		//                1 - (Default) Ignore case and diacritics variants
+		//                    (L2 and L3 levels.)
+		// `PUNCT_SENSITIVE` ::
+		//                If set, take care of 'variable' collation elements,
+		//                i.e punctuation signs and similar characters. This
+		//                parameter is false by default, meaning that variable
+		//                elements (spaces, line breaks, etc) are purely ignored.
+		// ---
+		// [REM] In principle the character U+0000 ('\0') is not allowed in input
+		// strings since it is used internally. Anyway if a string has the form
+		// "xyz\0abc" (where \0 denotes the last occurence of U+0000), it will be
+		// sorted as such then finally changed into "abc".
+		// ---
+		// => arr&
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			2===level || 3===level || (level=1);
+
+			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Sorting the string list at level %2 (%3 elements.)",callee.µ,level,arr.length));
+
+			WG = I['WG_'+level];
+
+			(TM=I.TMAP.DATA).__count__ || (TM=I.WMAP);
+			
+			for( i=arr.length ; i-- ; (t=arr[i]), arr[i]=WG.call(I,I.SPLT(t),TM,!PUNCT_SENSITIVE) + '\0' + t );
+			arr.sort();
+			for( i=arr.length ; i-- ; (t=arr[i]), arr[i]=t.slice(1+t.lastIndexOf('\0')) );
+
+			(+$$.trace) && $$.trace(__("%1 > Collation completed in %2 ms.",callee.µ,+$$.Log.chrono));
+			
+			return arr;
+		},
+
+		setTailor: function setTailor_K$false$_(/*key|false*/isoKey,  $$,I,tk,msg,i)
+		//----------------------------------
+		// Activate the tailoring rules associated to the specified key.
+		// (a) If `isoKey` is false or 'ROOT', reset the rules to the DUCET (default ordering)
+		// (b) If `isoKey` is a TLRM key ('EOR', 'af', 'ast', ..., 'de_phone'), select it.
+		// (c) If `isoKey` is a LING key, select the best matching tailoring rules for that language.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			// Checkpoint.
+			// ---
+			( false===isoKey && (isoKey='ROOT') )
+			|| 'string'==typeof isoKey
+			|| $$.error(__("Wrong `isoKey` argument (%1). String or FALSE expected.",typeof isoKey),callee);
+
+			// Get the implied tailoring key.
+			// ---
+			( tk=I.ITOK(isoKey) )
+			|| $$.error(__("The key %1 is not defined.",isoKey.toSource()),callee);
+
+			// No need to reset the same key.
+			// ---
+			if( tk == callee.CUR_TK ) return;
+			
+			// Set/unset the tailoring map.
+			// ---
+			x = 'ROOT' == tk ? false : I.TLRM[tk];
+			(msg=I.TMAP(x)) && $$.error(__("Fatal error: %1.",msg),callee);
+			if( +$$.warn ) for( msg=I.TMAP.WARNS, i=-1 ; ++i < msg.length ; $$.warn(__("%1 > %2",callee.µ,msg[i])) );
+
+			// Backup the key.
+			// ---
+			callee.CUR_TK = tk;
+
+			(+$$.trace) && x && $$.trace(__("%1 > Tailored weights for [%2]: %3", callee.µ, tk, $$.JSON(I.TMAP.DATA)));
+		}
+		.setup
+		({
+			CUR_TK: 'ROOT',
+		}),
+
+		getTailor: function getTailor_K()
+		//----------------------------------
+		// Return the active tailor key.
+		// E.g: 'ROOT', 'EOR', 'fr', 'de_phone', etc
+		// => str
+		{
+			return callee.µ.setTailor.CUR_TK;
+		},
+		
+		getRichList: function getRichList_b_Ë(/*bool=0*/SIMPLE_ARR,  a)
+		//----------------------------------
+		// Get the array of YALT-localized languages that Collator actually supports
+		// or may support in the future. The returned Array is an entity with extra
+		// mappings:
+		//    `_<LocName>`         => <TailorKey>
+		//    `=<TailorOrIsoKey>   => <LocName>
+		//    `§<LocName>`         => <NativeName>
+		// [REM] By default indices 0 to 2 are predefined as follows:
+		//       0 => <ROOT> ; 1 => <EOR> ; 2 => '-' 
+		// Since the returned entity is a reference, make sure you won't alter it. If
+		// you need a simple, mutable array, set the SIMPLE_ARR flag. In that case
+		// index-2 element ('-') is removed
+		// ---
+		// => str[]& + extra keys
+		{
+			a = callee.µ['~'].LIST();
+			SIMPLE_ARR && (a=a.slice()).splice(2,1);
+			return a;
+		},
+		
+		selectLanguage: function selectLanguage_s_(/*?str*/hint,  tk)
+		//----------------------------------
+		// Open a modal dialog to let the user select a tailoring key
+		// throughout a language list. If the user presses OK,
+		// µ.setTailor() is called accordingly.
+		// `hint` :: if supplied, existing iso or tailorkey (e.g 'es',
+		//           'fr', 'es_modern'...) that will be used by default.
+		// ---
+		// => undef
+		{
+			(tk=callee.µ['~'].SHOW(hint||'')) && callee.µ.setTailor(tk);
+		},
+
+		getLocaleKey: function getLocaleKey_b_K(/*bool=0*/AS_ISO,  µ,zz)
+		//----------------------------------
+		// Get the most relevant tailor key associated to the Env locale.
+		// (The 'ROOT' key is returned as a fallback for CJK locales.)
+		// If `AS_ISO` is set, return the iso key (in `zz` form) rather than
+		// the corresponding tailor key.
+		// => key
+		{
+			µ = callee.µ;
+			zz = callee.LOC2ISO[$.global[µ.__root__].Env.localePrefix()]||'en';
+			return AS_ISO ? zz : (µ['~'].ITOK(zz)||'ROOT');
+		}
+		.setup
+		({
+			LOC2ISO:
+			// Simple ISO keys associated to ID locale names.
+			// ---
+			{
+				ARABIC                 : 'ar',
+				CZECH                  : 'cs',
+				DANISH                 : 'da',
+				ENGLISH                : 'en',
+				FINNISH                : 'fi',
+				FRENCH                 : 'fr',
+				GERMAN                 : 'de',
+				GREEK                  : 'el',
+				HEBREW                 : 'he',
+				HUNGARIAN              : 'hu',
+				INTERNATIONAL_ENGLISH  : 'en',
+				ITALIAN                : 'it',
+				JAPANESE               : 'ja',
+				KOREAN                 : 'ko',
+				POLISH                 : 'pl',
+				PORTUGUESE             : 'pt',
+				ROMANIAN               : 'ro',
+				RUSSIAN                : 'ru',
+				SIMPLIFIED_CHINESE     : 'zh',
+				SPANISH                : 'es',
+				SWEDISH                : 'sv',
+				TRADITIONAL_CHINESE    : 'zh',
+				TURKISH                : 'tr',
+				UKRAINIAN              : 'uk',
+			},
+		}),
+
+		localeSort:  function localeSort_L_ý_b_L(/*str[]&*/arr,/*1|2|3=1*/level,/*bool=0*/PUNCT_SENSITIVE,  µ,bkp)
+		//----------------------------------
+		// Sort alphabetically an array of strings based on the current locale ($$.Env.locale.)
+		// (The parameters are detailed in `µ.sort`.)
+		// This function *temporarily* switches the tailoring rules, then restore them.
+		// [REM] Since CJK collation is not supported, the DUCET is used as a fallback.
+		// ---
+		// => arr&
+		{
+			µ = callee.µ;
+			bkp = µ.getTailor();
+
+			// Adjust the tailor key.
+			// ---
+			µ.setTailor(µ.getLocaleKey());
+			
+			// Sort.
+			// ---
+			µ.sort(arr,level,PUNCT_SENSITIVE);
+
+			// Restore.
+			// ---
+			µ.setTailor(bkp);
+			
+			return arr;
+		},
+
+	})
+
