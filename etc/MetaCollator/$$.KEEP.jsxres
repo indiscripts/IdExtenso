@@ -1,0 +1,112 @@
+/*******************************************************************************
+
+		Name:           KEEP
+		Desc:           Target Blocks.
+		Path:           /etc/MetaCollator/$$.KEEP.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource of MetaCollator (arr items)
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        200229 (YYMMDD)
+		Modified:       200309 (YYMMDD)
+
+*******************************************************************************/
+
+	// Surrogate pairs are recovered from String methods.
+	// ---
+	// [ 0xD800,   0xDB7F,   "High Surrogates" ],
+	// [ 0xDB80,   0xDBFF,   "High Private Use Surrogates" ],
+	// [ 0xDC00,   0xDFFF,   "Low Surrogates" ],
+
+	// Unsupported diacritics/symbols:
+	// ---
+	// [ 0x1F100,  0x1F1FF,  "Enclosed Alphanumeric Supplement" ],
+	// [ 0x1F300,  0x1F5FF,  "Miscellaneous Symbols and Pictographs" ],
+	// [ 0x1F600,  0x1F64F,  "Emoticons" ],
+	// [ 0x1F700,  0x1F77F,  "Alchemical Symbols" ],
+	// [ 0x20D0,   0x20FF,   "Combining Diacritical Marks for Symbols" ],
+	// [ 0xE0100,  0xE01EF,  "Variation Selectors Supplement" ],
+
+
+	"Alphabetic Presentation Forms" : 1,               // FB00..FB4F
+	"Arabic Extended-A" : 1,                           // 08A0..08FF
+	"Arabic Mathematical Alphabetic Symbols" : 1,      // 1EE00..1EEFF
+	"Arabic Presentation Forms-A" : 1,                 // FB50..FDFF
+	"Arabic Presentation Forms-B" : 1,                 // FE70..FEFF
+	"Arabic Supplement" : 1,                           // 0750..077F
+	"Arabic" : 1,                                      // 0600..06FF
+	"Armenian" : 1,                                    // 0530..058F
+	"Arrows" : 1,                                      // 2190..21FF
+	"Basic Latin" : 1,                                 // 0000..007F
+	"Bengali" : 1,                                     // 0980..09FF
+	"Block Elements" : 1,                              // 2580..259F
+	"Box Drawing" : 1,                                 // 2500..257F
+	"Chess Symbols" : 1,                               // 1FA00..1FA6F
+	"Combining Diacritical Marks" : 1,                 // 0300..036F
+	"Combining Diacritical Marks Extended" : 1,        // 1AB0..1AFF
+	"Combining Diacritical Marks Supplement" : 1,      // 1DC0..1DFF
+	"Combining Half Marks" : 1,                        // FE20..FE2F [ADD200309]
+	"Common Indic Number Forms" : 1,                   // A830..A83F
+	"Control Pictures" : 1,                            // 2400..243F
+	"Currency Symbols" : 1,                            // 20A0..20CF
+	"Cyrillic Extended-A" : 1,                         // 2DE0..2DFF
+	"Cyrillic Extended-B" : 1,                         // A640..A69F
+	"Cyrillic Extended-C" : 1,                         // 1C80..1C8F
+	"Cyrillic Supplement" : 1,                         // 0500..052F
+	"Cyrillic" : 1,                                    // 0400..04FF
+	"Devanagari Extended" : 1,                         // A8E0..A8FF
+	"Devanagari" : 1,                                  // 0900..097F
+	"Dingbats" : 1,                                    // 2700..27BF
+	"Domino Tiles" : 1,                                // 1F030..1F09F
+	"Enclosed Alphanumerics" : 1,                      // 2460..24FF
+	"General Punctuation" : 1,                         // 2000..206F
+	"Geometric Shapes Extended" : 1,                   // 1F780..1F7FF
+	"Geometric Shapes" : 1,                            // 25A0..25FF
+	"Greek Extended" : 1,                              // 1F00..1FFF
+	"Greek and Coptic" : 1,                            // 0370..03FF
+	"Halfwidth and Fullwidth Forms" : 1,               // FF00..FFEF
+	"Hebrew" : 1,                                      // 0590..05FF
+	"IPA Extensions" : 1,                              // 0250..02AF
+	"Ideographic Description Characters" : 1,          // 2FF0..2FFF
+	"Lao": 1,                                          // 0E80..0EFF  [ADD200308]
+	"Latin Extended Additional" : 1,                   // 1E00..1EFF
+	"Latin Extended-A" : 1,                            // 0100..017F
+	"Latin Extended-B" : 1,                            // 0180..024F
+	"Latin Extended-C" : 1,                            // 2C60..2C7F
+	"Latin Extended-D" : 1,                            // A720..A7FF
+	"Latin Extended-E" : 1,                            // AB30..AB6F
+	"Latin-1 Supplement" : 1,                          // 0080..00FF
+	"Letterlike Symbols" : 1,                          // 2100..214F
+	"Mahjong Tiles" : 1,                               // 1F000..1F02F
+	"Malayalam" : 1,                                   // 0D00..0D7F
+	"Mathematical Alphanumeric Symbols" : 1,           // 1D400..1D7FF
+	"Mathematical Operators" : 1,                      // 2200..22FF
+	"Miscellaneous Mathematical Symbols-A" : 1,        // 27C0..27EF
+	"Miscellaneous Mathematical Symbols-B" : 1,        // 2980..29FF
+	"Miscellaneous Symbols and Arrows" : 1,            // 2B00..2BFF
+	"Miscellaneous Symbols" : 1,                       // 2600..26FF
+	"Miscellaneous Technical" : 1,                     // 2300..23FF
+	"Number Forms" : 1,                                // 2150..218F
+	"Optical Character Recognition" : 1,               // 2440..245F
+	"Ornamental Dingbats" : 1,                         // 1F650..1F67F
+	"Playing Cards" : 1,                               // 1F0A0..1F0FF
+	"Small Form Variants" : 1,                         // FE50..FE6F
+	"Spacing Modifier Letters" : 1,                    // 02B0..02FF
+	"Specials" : 1,                                    // FFF0..FFFF
+	"Superscripts and Subscripts" : 1,                 // 2070..209F
+	"Supplemental Arrows-A" : 1,                       // 27F0..27FF
+	"Supplemental Arrows-B" : 1,                       // 2900..297F
+	"Supplemental Arrows-C" : 1,                       // 1F800..1F8FF
+	"Supplemental Mathematical Operators" : 1,         // 2A00..2AFF
+	"Supplemental Punctuation" : 1,                    // 2E00..2E7F
+	"Supplemental Symbols and Pictographs" : 1,        // 1F900..1F9FF
+	"Symbols and Pictographs Extended-A" : 1,          // 1FA70..1FAFF
+	"Tags" : 1,                                        // E0000..E007F
+	"Tamil" : 1,                                       // 0B80..0BFF
+	"Telugu" : 1,                                      // 0C00..0C7F
+	"Thai" : 1,                                        // 0E00..0E7F
+	"Transport and Map Symbols" : 1,                   // 1F680..1F6FF
+	"Vertical Forms" : 1,                              // FE10..FE1F
