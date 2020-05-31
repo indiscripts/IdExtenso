@@ -1,0 +1,918 @@
+/*******************************************************************************
+
+		Name:           MetaCollator
+		Desc:           Auto-builds or updates Collator resources.
+		Path:           /etc/$$.MetaCollator.jsxlib
+		Require:        Meta, Unicode, Linguist
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =parseCollatorKeys() parseUnicodeKeys()
+		                parseTailoringRules() setLanguageFullMap()
+		DOM-access:     ---
+		Todo:           May provide direct download of allkeys/decomps...
+		Created:        200222 (YYMMDD)
+		Modified:       200531 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Meta ){ alert(__("%1 requires the %2 module.",'MetaCollator','Meta')); exit(); }
+;if( !$$.Unicode ){ alert(__("%1 requires the %2 module.",'MetaCollator','Unicode')); exit(); }
+;if( !$$.Linguist ){ alert(__("%1 requires the %2 module.",'MetaCollator','Linguist')); exit(); }
+;$$.hasOwnProperty('MetaCollator') || eval(__(MODULE, $$, 'MetaCollator', 200531, 'parseCollatorKeys'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	This meta-module is used to automatically rebuild vital Collator resources
+	(key mapping, regex, etc) based on a filtered set of UCA keys stored in
+	`Collator/data/allkeys.filtered.txt`.
+	
+	It will update the following files:
+
+	      /etc/Collator/$$.WMAP.jsxres       ;  Key-to-weight map
+	      /etc/Collator/$$.MTCH.jsxres       ;  Key matcher (regex)
+	      /etc/Collator/$$.ZROS.jsxres       ;  Zero-weight keys (str)
+
+	Simply call `$$.MetaCollator()` to reconstruct the resources, in case the
+	set of filtered UCA keys has changed.
+	
+	[REM] Include the Progress module to get visual feedback while processing.
+	
+	*/
+
+	//==========================================================================
+	// FILTERING UNICODE DATA
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		KEEP:
+		{
+		#include 'MetaCollator/$$.KEEP.jsxres'
+		},
+		
+		// allkeys regex (simplified to run fast.)
+		// 0010  ; [.0000.0000.0000] # DATA LINK ESCAPE (in ISO 6429)
+		// $1 :: `HHHH+ `{1,n}
+		// $2 :: `[...`
+		// ---
+		AREG: /^([0-9A-F]{4}[ 0-9A-F]+); (\[.+)$/,
+		
+		// decomps regex.
+		// 1F1A6;<square>;0048 0063 # SQUARED HC => LATIN CAPITAL LETTER H + LATIN SMALL LETTER C
+		// $1 :: `HHHH+`
+		// $2 :: <class>|''
+		// $3 :: `HHHH( HHHH)* `
+		// $4 :: <desc>
+		DREG: /^([0-9A-F]{4,6});([^;]*);([^#]+)# (.+)$/,
+	})
+
+	//==========================================================================
+	// KEYS AND TOOLS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		// When parseUnicodeKeys() is invoked it both rewrites
+		// `collator.keys.txt` and updates `~.KEYS` (str).
+		// ---
+		KEYS:
+		#include 'MetaCollator/data/collator.keys.txt'
+		,
+		
+		// $1 :: `HHHH `{1,n}
+		// $2 :: `[•HHHH.HHHH.HHHH]`{1,n}   ; where • is either `*` or  `.`
+		// $3 :: <Description>
+		// ---
+		REGX: /^((?:[0-9A-F]{4} )+); ((?:\[[\.\*][0-9A-F]{4}\.[0-9A-F]{4}\.[0-9A-F]{4}\])+) # (.+)$/,
+		
+		TPTN: function(/*str[]*/a,  t,px,py,pfx,seq,rng,opt,r,o,z,i,x,y,s)
+		//----------------------------------
+		// (To-Pattern.) Given a *sorted* array of unique characters or bigrams*,
+		// returns an optimized regex pattern that captures any element of `a`.
+		// E.g ['A', 'B', 'C', 'CE', 'CF', 'CG', 'G', 'HA', 'HE', 'I']
+		//     => `[AB]|C[E-G]?|G|H[AE]|I`
+		// *[CHG200303] This routine now supports n-grams (n>2) by just inserting
+		//  longest strings *before* optimized character/bigram patterns. Since
+		//  trigrams or longer sequences are unfrequent in `~.KEYS`, this doesn't
+		//  add too much to the final RegExp and avoids complicating the algo.
+		//  E.g => `ABX|[AB]|CXYZ|C[E-G]?|G|HXY|H[AE]|I`
+		//           ^        ^              ^
+		// ---
+		// => str
+		{
+			const U = '\\u';
+			const L = 6;
+
+			// Init.
+			// ---
+			px = (t=a[0]).charCodeAt(0);                 // >=0           ; Code of the previous 1st char.
+			py = 1 < t.length && t.charCodeAt(1);        // >0 | false    ; Code of the previous 2nd char, or FALSE if length was 1.
+			// ---
+			pfx = py ? px.toHexa(U,4) : '';              // `\uHHHH` | '' ; Initial prefix for bigram class, or ''.
+			seq = (py||px).toHexa(U,4);                  // `\uHHHH...`   ; Current sequence, will require `[seq]` if seq.length > L.
+			rng = 0;                                     // 0 | 1 | >1    ; Range count, tell if `-<prev>` is needed in the seq.
+			opt = '';                                    // '' | '?'      ; Whether `?` should be added at the end of bigram class.
+
+			// Loop.
+			// ---
+			for( r=[], o={}, z=0, i=1 ; i < a.length ; px=x, py=y, ++i )
+			{
+				t = a[i];
+				
+				// [ADD200302] Store n-gram index, its insertion being delayed.
+				// ---
+				if( 2 < t.length )
+				{
+					o[t] = z;
+					continue;
+				}
+
+				// Current codes.
+				// ---
+				x = t.charCodeAt(0);
+				y = 1 < t.length && t.charCodeAt(1);
+
+				// Switch 1 -> 2
+				// Special case (x==px)  =>  REMOVE last char, TERMINATE 1-class, INIT 2-class w/ opt='?'
+				// Regular case (x!=px)  =>                    TERMINATE 1-class, INIT 2-class w/ opt=''
+				// ---
+				if( y && !py )
+				{
+					// Final sequence.
+					// ---
+					(opt=+(x==px)) && 0 > --rng && (seq=seq.slice(0,seq.length-L));
+					0 < rng && ( seq += (1<rng?'-':'') + (px-opt).toHexa(U,4) );
+
+					// Backup.
+					// ---
+					(t=seq.length) && ( r[z++] = L < t ? ('['+seq+']') : seq );
+
+					// Init 2-class.
+					// ---
+					pfx = x.toHexa(U,4);
+					seq = y.toHexa(U,4);
+					rng = 0;
+					opt = opt ? '?' : '';
+					continue;
+				}
+
+				// Switch 2 -> 1 [py && !y]  or  2 -> 2 [py && x!=px]
+				// TERMINATE 2-class, INIT new class w/ opt=''
+				// ---
+				if( py && ( (!y) || (x!=px) ) )
+				{
+					// Final sequence.
+					// ---
+					0 < rng && ( seq += (1<rng?'-':'') + py.toHexa(U,4) );
+
+					// Backup.
+					// ---
+					(t=seq.length) && ( r[z++] = pfx + ( L < t ? ('['+seq+']') : seq ) + opt );
+
+					// Init new class.
+					// ---
+					pfx = y ? x.toHexa(U,4) : '';
+					seq = (y||x).toHexa(U,4);
+					rng = 0;
+					opt = '';
+
+					continue;
+				}
+				
+				// Continue 2- or 1- class.
+				// ---
+				if( y ? (y==1+py) : (x==1+px) )
+				{
+					// Increment -> extend the range (let `seq` as such.)
+					// ---
+					++rng;
+				}
+				else
+				{
+					// No Increment -> Close the range (if any) and add y||x.
+					// ---
+					0 < rng && ( seq += (1<rng?'-':'') + (py||px).toHexa(U,4) );
+					seq += (y||x).toHexa(U,4);
+					rng = 0;
+				}
+			}
+			
+			// Is there a pending range?
+			// ---
+			0 < rng && ( seq += (1<rng?'-':'') + (py||px).toHexa(U,4) );
+			
+			// Backup the last sequence.
+			// ---
+			(t=seq.length) && ( r[z++] = pfx + ( L < t ? ('['+seq+']') : seq ) + opt );
+			
+			// Append n-grams *before* short patterns.
+			// ---
+			for( t in o )
+			{
+				if(!o.hasOwnProperty(t) ) continue;
+				for( s='', i=-1 ; ++i < t.length ; s+=t.charCodeAt(i).toHexa(U,4) );
+				z = o[t];
+				r[z] = s + '|' + r[z];
+			}
+
+			return r.join('|');
+		},
+		
+		COPS: function(/*str*/s,  F,i,cp,r)
+		//----------------------------------
+		// (Code-Points.) Return the sequence of actual codepoints forming s
+		// in the form HHHH{4,6}( HHHH{4,6})+
+		// => str
+		{
+			F = String.prototype.codePointAt;
+			
+			for( r='', i=0 ; i < s.length ; i+=(F.SIZE||1) )
+			{
+				cp = s.codePointAt(i);
+				r += ' ' + cp.toHexa('',4);
+			}
+			
+			return r.length ? r.slice(1) : '';
+		},
+
+		OUT_RES: function(/*str*/res,/*IdEx*/$$,/*str*/name,/*str*/desc,/*str*/kind,/*str*/iniDate,/*?str*/infos,  path,s,ff)
+		//----------------------------------
+		// File utility.
+		// => undef
+		{
+			path = __("/Collator/$$.%1.jsxres",name);
+
+			s = $$.Meta.header
+			(
+				name,
+				desc + " (autogenerated.)",
+				void 0,
+				iniDate,
+				'etc' + path,
+				"---",
+				0,
+				__("Resource of the Collator module (%1)",kind),
+				0
+			);
+
+			const NL = $$.Meta.NewLine;
+			s += __("%1\t// Automatically generated from MetaCollator%1", NL);
+			infos && ( s+= __("%1%1\t/*%1%2%1\t*/%1", NL, infos) );
+			s += __("%1\t%2%1", NL, res);
+
+			ff = $$.File.writeUTF8( File($.fileName).parent + path, s );
+			if( !ff ) $$.error(__("Unable to write the %1 resource file.",name), callee);
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		parseUnicodeKeys: function parseUnicodeKeys_(  $$,I,PB,ALL,DEC,re,a,i,s,m,k,bk,t,ff)
+		//----------------------------------
+		// Parse allkeys.txt + decomps.txt then rebuild `collator.keys.txt`.
+		// Update `~.KEYS` too to reflect these changes.
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			// Checkpoint.
+			// ---
+			$$.Env.inBinStream() && $$.error("This function cannot be invoked from a binary stream.", callee);
+
+			ALL = File(File($.fileName).parent+'/MetaCollator/data/allkeys.txt');
+			ALL.exists || $$.error("The file allkeys.txt is missing.", callee);
+			PB && PB.message( __("Reading allkeys.txt...") );
+			(ALL=$$.File.readUTF8(ALL)) ? (ALL=ALL.split(RegExp.LINEs)) : $$.error("Unable to read the file allkeys.txt.", callee);
+			
+			DEC = File(File($.fileName).parent+'/MetaCollator/data/decomps.txt');
+			DEC.exists || $$.error("The file decomps.txt is missing.", callee);
+			PB && PB.message( __("Reading decomps.txt...") );
+			(DEC=$$.File.readUTF8(DEC)) ? (DEC=DEC.split(RegExp.LINEs)) : $$.error("Unable to read the file decomps.txt.", callee);
+			
+			const KP = I.KEEP;
+			const KEYS = [];
+
+			// Parse allkeys. This file contains essential data mapping codepoints
+			// or codepoint sequences to weight sequences. ~.KEEP tells which Unicode
+			// are to be inspected (external codepoints will be ignored.)
+			// ---
+			for( re=I.AREG, a=ALL, i=-1 ; ++i < a.length ; PB && !(i%500) && PB(~~(100*i/a.length), "Parsing allkeys...") )
+			{
+				s = a[i];
+
+				if( !(m=s.match(re)) ) continue;
+				
+				// $1 :: `HHHH+ `{1,n}
+				// $2 :: `[...`
+				
+				k = m[1].trim();
+				bk = $$.Unicode.getParentBlock(parseInt(k,16));  // Parent block of the 1st codepoint
+				if( !bk || !KP[bk] ) continue;                   // Skip items whose 1st cp belongs to a non-KEEP block
+				KEYS[k] = m[2];                                  // Single CPs ~ 2200 ; multi CPs ~ 7600 ; >0xFFFF are included.
+			}
+			
+			// Parse decomps. This file brings some additional mapping data
+			// (like `Õ` = `O` + `~`) which for the most part are already specified
+			// in allkeys. This step basically controls that the desired decomposed
+			// forms are registered in `KEYS`, it adds missing keys if necessary.
+			// ---
+			// 00B2;<super>;0032 # SUPERSCRIPT TWO => DIGIT TWO
+			// 00C0;;0041 0300 # LATIN CAPITAL LETTER A WITH GRAVE => LATIN CAPITAL LETTER A + COMBINING GRAVE ACCENT
+			// 1F1A6;<square>;0048 0063 # SQUARED HC => LATIN CAPITAL LETTER H + LATIN SMALL LETTER C
+			// ---
+			const RE_HASH_ETC = /# .+$/;
+			for( re=I.DREG, a=DEC, i=-1 ; ++i < a.length ; PB && !(i%500) && PB(~~(100*i/a.length), "Parsing decomps...") )
+			{
+				s = a[i];
+
+				if( !(m=s.match(re)) ) continue;
+				
+				// 1F1A6;<square>;0048 0063 # SQUARED HC => LATIN CAPITAL LETTER H + LATIN SMALL LETTER C
+				// $1 :: `HHHH+`
+				// $2 :: <class>|''
+				// $3 :: `HHHH( HHHH)* `
+				// $4 :: <desc>
+				
+				k = m[1].trim();
+				bk = $$.Unicode.getParentBlock(parseInt(k,16));  // Parent block of the codepoint
+				if( !bk || !KP[bk] ) continue;                   // Skip items whose cp belongs to a non-KEEP block
+				m[3] = m[3].trim();
+
+				if( KEYS.hasOwnProperty(k) )
+				{
+					// (i)  [A] => X          Do we need [X] -> w(A)       ?  Yes if X is not present in KEYS
+					// (ii) [A] => X Y Z      Do we need [X Y Z] -> w(A)   ?  Yes if `X Y Z` is not present in KEYS
+					//                                                        AND  has 'COMBINING' stuff
+					//                                                        AND  doesn't just repeat [X][Y][Z] existing keys.
+
+					s = KEYS[k];
+					k = m[3];                                    // `k` now refers to the destination key.
+
+					if( KEYS.hasOwnProperty(k) ) continue;
+					if( 0 < k.indexOf(' ') )
+					{
+						if( -1 == m[4].indexOf('COMBINING') && -1 == m[4].indexOf('MODIFIER') ) continue;
+						t = k.split(' ');
+						while( KEYS.hasOwnProperty(t.pop()||'') );
+						if( !t.length ) continue;
+					}
+					
+					KEYS[k] = s.replace(RE_HASH_ETC,__("# %1%2",m[2],m[4]));
+					continue;
+				}
+			}
+
+			// Rewrite KEYS in UTF16 (i.e deals with surrogate pairs.)
+			// All filtered keys then are then rewritten in `HHHH( HHHH)+` format,
+			// codepoints greater than 0xFFFF being UTF16-encoded as required in JS.
+			// ---
+			PB && PB.message("Rewriting 'collator.keys'...");
+			const SIZE_MAX = 3;
+			a = [];
+			for( k in KEYS )
+			{
+				if( !KEYS.hasOwnProperty(k) ) continue;
+				s = KEYS[k];
+				k = k.split(' ');
+
+				if( k.length > SIZE_MAX ){ $$.warn(__("%1 > Ignored key sequence (too long): %2",callee.µ,k.join(' '))); continue; }
+				for( i=k.length ; i-- ; )
+				{
+					if( 0xFFFF >= (t=parseInt(k[i],16)) ) continue;
+					t = String.fromCodePoint(t);
+					2==t.length && k.splice(i,1,t.charCodeAt(0).toHexa('',4),t.charCodeAt(1).toHexa('',4));
+				}
+				if( k.length > SIZE_MAX ){ $$.warn(__("%1 > Ignored key sequence (too long): %2",callee.µ,k.join(' '))); continue; }
+
+				a[a.length] = __("%1 ; %2", k.join(' '), s);
+			}
+
+			// Sort and output --> collator.keys.txt
+			// ---
+			a.sort();
+			ff = $$.File.writeUTF8
+			(
+				File($.fileName).parent + '/MetaCollator/data/collator.keys.txt'
+				,
+				[
+					__("// Automatically generated from MetaCollator [%1]",$$.Meta.yymmdd()),
+					'"""',
+					a.join($$.Meta.NewLine),
+					'"""'
+				].join($$.Meta.NewLine)
+			);
+			if( !ff ) $$.error(__("Unable to write 'collator.keys'."), callee);
+			
+			// Update `~.KEYS` accordingly.
+			// ---
+			I.KEYS = a.join('\r');
+		},
+		
+		parseCollatorKeys: function parseCollatorKeys_(  $$,PB,I,W1,W2,W3,MAP,ALL,ZER,a,i,s,m,k,isZero,ws,p,w,t,x)
+		//----------------------------------
+		// Parse all lines of `~.KEYS` and rebuild the associated resources
+		// in etc/Collator: `WMAP`, `MTCH`, and `ZROS`
+		// [REM] This function reduces the original weights to fit the int32
+		// encoding of the Collator module:
+		//          1111 1111 1111 1xxx 2222 222y 3333 3zzV
+		//          --------LV1-------- ---LV2--- --LV3---^
+		// Supported keys are UTF16 characters and n-grams, incl. surrogate pairs.
+		// U+0000 is not supported. (See `Collator.jsxlib` for further detail.)
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			// Checkpoint.
+			// ---
+			$$.Env.inBinStream() && $$.error("This function cannot be invoked from a binary stream.", callee);
+
+			// Init and constants.
+			// ---
+			I = callee.µ['~'];
+			const RE_LINE = I.REGX;
+			const RE_BRKT = /[\[\]]/g;
+			const RE_SPCE = / /g;
+			const CHR = String.fromCharCode;
+			
+			// Weight instances per level. Each weight is stored as '\uHHHH' (including '\u0000'.)
+			// [WRN] Make sure 0=>'\0' and ''=>0 always exist first. (The key '' is equivalent to '\0' due to ES bug.)
+			// ---
+			(W1=['\0'])['']=0;
+			(W2=['\0'])['']=0;
+			(W3=['\0'])['']=0;
+
+			// Key mapping.
+			// ---
+			// MAP   k => e.g `<X1>\u0310\u0020\u0004<X0>\u1BDB\u0020\u0004<X1>\u0311\u0020\u0004`  (excluding full ZERO keys ; <X1> means VAR)
+			// ALL   i => k  (including full ZERO keys.)
+			// ZER   i => k  (full ZERO keys only.)
+			// ---
+			MAP = {};
+			ALL = [];
+			ZER = [];
+
+			// Line :: (HHHH )+  `; `  (`[`  [\.\*]HHHH\.HHHH\.HHHH  `]`)+  ` # `  .+
+			// [REM] `I.KEYS` may contain duplicated keys (e.g `004C` is defined twice.)
+			// ---
+			// E.g
+			// 0062 ; [.1BDB.0020.0002] # Latin -- LATIN SMALL LETTER B
+			// 006C 00B7 ; [.1CF2.0020.0002][.0000.010B.0002] # LATIN SMALL LETTER L WITH MIDDLE DOT
+			// 249D ; [*0310.0020.0004][.1BDB.0020.0004][*0311.0020.0004] # Common -- PARENTHESIZED LATIN SMALL LETTER B
+			// D835 DD1A ; [.1E70.0020.000B] # Common -- MATHEMATICAL FRAKTUR CAPITAL W
+			// ---
+			for( a=I.KEYS.split(RegExp.LINEs), i=-1 ; ++i < a.length ; PB && !(i%500) && PB(~~(100*i/a.length), "Parsing the UCA keys...") )
+			{
+				s = a[i].trim();
+				m = s.match(RE_LINE);
+				if( !m )
+				{
+					$$.warn( __("%1 > Invalid line: %2", callee.µ, s.toSource()) );
+					continue;
+				}
+
+				// ---
+				// $1 :: `HHHH `{1,n}
+				// $2 :: `[•HHHH.HHHH.HHHH]`{1,n}   ; where • is either `*` or  `.`
+				// $3 :: <Category>
+				// $4 :: <Description>
+				// ---
+				
+				// e.g ` 0062` | ` D835 DD1A` | etc
+				// k :: '\u0062' | '\uD835\uDD1A' | etc
+				// ---
+				k = eval( '("\\u'+ m[1].trim().replace(RE_SPCE, '\\u') + '")' );
+
+				if( '\0'===k || MAP.hasOwnProperty(k) ) continue; // Ignore U+0000 and dups
+				
+				// E.g     `[*0310.0020.0004][.1BDB.0020.0004][*0311.0020.0004]`
+				// ->  s :: `*0310.0020.0004.1BDB.0020.0004*0311.0020.0004`
+				//            ----- VAR ---- ---- REG ----- ----- VAR ----
+				// ---
+				s = m[2].replace(RE_BRKT,'');
+				
+				// Full Zero Weight?
+				// ---
+				isZero = +(0 == s.indexOf('.0000.0000.0000'));
+				
+				// Push in array(s).
+				// ---
+				ALL[ALL.length] = k;
+				if( isZero ){ ZER[ZER.length]=k; continue; }
+
+				// Non-zero key.
+				// -> ws :: `<X1>\u0310\u0020\u0004<X0>\u1BDB\u0020\u0004<X1>\u0311\u0020\u0004
+				// ---
+				for( ws='', p=0 ; p < s.length ; p+=15 )
+				{
+					// Variable component?
+					// ---
+					ws += ( '*'==s.charAt(p) ? '\x01' : '\x00' )
+					
+					// LEVEL1 -- w :: '\u0310'   ; may be \u0000
+					// ---
+					ws += ( w=CHR(parseInt(s.slice(1+p,5+p), 16)) );
+					W1.hasOwnProperty(w) || ( W1[w]=0, W1[W1.length]=w );
+
+					// LEVEL2 -- w :: '\u0020'   ; may be \u0000
+					// ---
+					ws += ( w=CHR(parseInt(s.slice(6+p,10+p), 16)) );
+					W2.hasOwnProperty(w) || ( W2[w]=0, W2[W2.length]=w );
+					
+					// LEVEL3 -- w :: '\u0004'   ; may be \u0000
+					// ---
+					ws += ( w=CHR(parseInt(s.slice(11+p,15+p), 16)) );
+					W3.hasOwnProperty(w) || ( W3[w]=0, W3[W3.length]=w );
+				}
+
+				MAP[k] = ws;
+			}
+
+			// Adjust final weights.
+			// ---
+			// W1.length ~ 6339  < 8191 (1FFF) 13bit    +3=16  (3 extra bits)
+			// W2.length ~   99  <  127   (7F)  7bit    +1=8   (1 extra bit)
+			// W3.length ~   23  <   31   (1F)  5bit    +2=7   (2 extra bits)
+			// ---
+			// Full 32bit Weight Code:
+			// 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+			// --------LV1-------- ---LV2--- --LV3---^
+			// where xxx represents 3 shift bits for level1 tailoring,
+			//         y represents 1 shift bit  for level2 tailoring,
+			//        zz represents 2 shift bits for level3 tailoring,
+			//         V represents the 'var' flag.
+
+			// W1 :: \u<1111> -> 1111 1111 1111 1xxx 0000 0000 0000 0000
+			PB && PB.message( __("Adjusting LEVEL1 weights (%1 values)...", W1.length) );
+			for( W1.sort(), i=W1.length ; i-- ; W1[W1.pop()]=i<<(16+3) );
+			// ---
+			// W2 :: \u<2222> -> ____ ____ ____ ____ 2222 222y 0000 0000
+			PB && PB.message( __("Adjusting LEVEL2 weights (%1 values)...", W2.length) );
+			for( W2.sort(), i=W2.length ; i-- ; W2[W2.pop()]=i<<(8+1)  );
+			// ---
+			// W3 :: \u<3333> -> ____ ____ ____ ____ ____ ____ 3333 3zz0
+			PB && PB.message( __("Adjusting LEVEL3 weights (%1 values)...", W3.length) );
+			for( W3.sort(), i=W3.length ; i-- ; W3[W3.pop()]=i<<(1+2)  );
+
+			// ---
+			// Output data.
+			// WMAP :: i  =>  `"<key>" : "<w1>,<w2>..."`
+			// ---
+			
+			// 1. Recalculate MAP weights -> WMAP
+			// ---
+			const WMAP = [];
+			PB && PB.message( __("Rebuilding $$.WMAP.jsxres...") );
+			for( k in MAP )
+			{
+				if( !MAP.hasOwnProperty(k) ) continue;
+				
+				// `<X1>\u0310\u0020\u0004<X0>\u1BDB\u0020\u0004<X1>\u0311\u0020\u0004`  (excluding full ZERO keys ; <X1> means VAR)
+				// ---
+				ws = MAP[k];
+
+				for( s='', t='', i=0 ; i < ws.length ; i+=4 )
+				{
+					x = W1[ws.charAt(1+i)] | W2[ws.charAt(2+i)] | W3[ws.charAt(3+i)] | ('\x01'===ws.charAt(i));
+					s += ',' + (x>>>0).toString(36);
+					t += __(" %4%1.%2.%3"
+						, x>>>(16+3)
+						, 0x7F&(x>>>(8+1))
+						, 0x1F&(x>>>(1+2))
+						, (1&x)?'*':' '
+						);
+				}
+				
+				// E.g 	`"\xB4"          : "bjs3n",`
+				WMAP[WMAP.length] = __('\t%1: %2 // %3', k.toSource().rpad(16), (s.slice(1).toSource()+',').rpad(40), t);
+			}
+			s = __("{%1%2%1\t}", $$.Meta.NewLine, WMAP.join($$.Meta.NewLine));
+			I.OUT_RES(s, $$, 'WMAP', "Default Weight Mapping", 'map', '151229');
+			
+			// 2. Regenerate the regex that captures *any* measurable key -> MTCH
+			// ---
+			PB && PB.message( __("Rebuilding the global regular expression (MTCH)...") );
+			ALL.sort();
+			s = '/' + I.TPTN(ALL) + '/g';
+			I.OUT_RES(s, $$, 'MTCH', "Global Collator RegExp", 'RegExp', '151229');
+			
+			// 3. Regenerate the zeroes string -> ZROS
+			// ---
+			PB && PB.message( __("Rebuilding the zero weight string (ZROS)...") );
+			ZER.sort();
+			s = ZER.join('').toSource();
+			I.OUT_RES(s, $$, 'ZROS', "Zero-Weight String", 'str', '151229');
+		},
+		
+		parseTailoringRules: function parseTailoringRules_(  $$,PB,I,DEC,FD,RE,kAliases,a,infos,ret,i,ff,k,s,hd,inObj,outObj,rk,rule,cps,t,j,pair,p)
+		//----------------------------------
+		// Read each `$$.<lang>.txt` file of the tailoring folder and regenerate
+		// the corresponding tailoring rules in `Collator/TLRM`.
+		// [TODO] Improve perfs of parsing decomps (use a map rather than dynamic regexes)
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			// Checkpoint.
+			// ---
+			$$.Env.inBinStream() && $$.error("This function cannot be invoked from a binary stream.", callee);
+
+			// Init and constants.
+			// ---
+			I = callee.µ['~'];
+
+			// `decomps` data will be used to check and refine rules.
+			// ---
+			DEC = File(File($.fileName).parent+'/MetaCollator/data/decomps.txt');
+			DEC.exists || $$.error("The file decomps.txt is missing.", callee);
+			PB && PB.message( __("Reading decomps.txt...") );
+			(DEC=$$.File.readUTF8(DEC)) || $$.error("Unable to read the file decomps.txt.", callee);
+
+			// Scan files of the /tailoring folder.
+			// ---
+			FD = Folder(File($.fileName).parent+'/MetaCollator/tailoring/');
+			(FD.exists && FD instanceof Folder) || $$.error(__("The folder %1 is missing.",FD), callee);
+			a = FD.getFiles('$$.*.jsxres');
+			a.length || $$.error("No valid resource file found in /tailoring.", callee);
+			
+			const RE_ff = /^\$\$\.(\w+)\.jsxres$/;
+			for( kAliases={}, infos=[], ret=[], i=-1 ; ++i < a.length ; )
+			{
+				ff = a[i];
+				k = (ff.name.match(RE_ff)||0)[1];  // k :: 'af_ZA' | 'de_DE_phone' | 'EOR' | ...
+				if( !k ) continue;
+				
+				PB && PB(~~(100*i/a.length), __("Parsing [%1] tailoring rules...", k));
+				(s=$$.File.readUTF8(ff)) || $$.error(__("Unable to read the file %1.",ff.displayName), callee);
+				(hd=$$.Meta.parseHeader(s)) || $$.error(__("Invalid header in file %1.",ff.displayName), callee);
+				
+				k===hd.Name || $$.warn(__("%1 > The header key '%2' does not match the file key [%3]. The latter will be used.",callee.µ,hd.Name,k));
+				
+				t = hd.Desc || '';
+				if( 0 < (p=t.indexOf(' == ')) )
+				{
+					// E.g : `bs_BA<X1>160103` => "hr_HR Croatian (Croatia)"
+					// ---
+					kAliases[k + '\x01' + hd.Modified.slice(0,6)] = t.slice(4+p).trim();
+					t = t.slice(0,p).trim();
+				}
+				
+				infos[infos.length] = __("\t%1 : %2 [CHG%3]", k.rpad(12), t.rpad(40), hd.Modified.slice(0,6));
+				
+				$$.trace( __("============= %1 %2", k, hd.Desc) );
+
+				inObj = eval('({'+s+'})'); // Get the rule object from the current file content.
+				outObj = {};
+
+				for( rk in inObj )
+				{
+					rule = inObj[rk];
+
+					// 1. Array of literal codepoints forming rk (resolve surrogate pairs.)
+					// E.g   "u\u0308" : ['0075', '0308']   ; canon. decomposition
+					//       "ü"       : ['00FC']           ; composed form
+					//       "\u0149"  : ['0149']           ; ŉ (composed) but ʼn <compat> should be targeted as well
+					//       "d\u017E" : ['0064', '017E']   ; dž (where ž is composed), but decomps also says 017E => 007A 030C
+					//                                        so "dz\u030C" should be added as equal.
+					//       "l\xB7l"  : ['006C', '00B7', '006C'] ; l·l, here decomps says 0140 => 006C 00B7 <compat>
+					//                                              so the key "\u0140l" (composed) should be considered equiv.
+					// ---
+					cps = I.COPS(rk).split(' '); // E.g  ['006C', '00B7', '006C']
+					
+					// ---
+					// Typical lines in decomps:
+					// 00FC;;0075 0308 # LATIN SMALL LETTER U WITH DIAERESIS => LATIN SMALL LETTER U + COMBINING DIAERESIS
+					// 0149;<compat>;02BC 006E # LATIN SMALL LETTER N PRECEDED BY APOSTROPHE => MODIFIER LETTER APOSTROPHE + LATIN SMALL LETTER N
+					// 017E;;007A 030C # LATIN SMALL LETTER Z WITH CARON => LATIN SMALL LETTER Z + COMBINING CARON
+					// 0140;<compat>;006C 00B7 # LATIN SMALL LETTER L WITH MIDDLE DOT => LATIN SMALL LETTER L + MIDDLE DOT
+					// 0132;<compat>;0049 004A # LATIN CAPITAL LIGATURE IJ => LATIN CAPITAL LETTER I + LATIN CAPITAL LETTER J
+					// ---
+					
+					// 2. If rk contain a DECOMPOSED bigram, change it into its COMPOSED equiv.
+					// [REM] In principle, the source file shouldn't contain DECOMPOSED forms, so
+					// this step is for sanity only and doesn't achieve in-depth parsing.
+					// [REM] Only '<compat>', '<sort>', and empty categories are examined.
+					// ---
+					for( p=-1, j=1 ; j < cps.length ; ++j )
+					{
+						pair = cps[j-1] + ' ' + cps[j];                   // E.g   '006C 00B7'
+						if( 0 < (p=DEC.indexOf(';'+pair+' # ')) ) break;  // E.g  ';006C 00B7 #'
+					}
+					if( 0 < p && (t=DEC.match(RegExp('[\\r\\n]([0-9A-F]{4,6});(.*);' + pair + ' #'))) && (''==t[2] || '<compat>'==t[2]) )
+					{
+						t = t[1];
+
+						// Reduce cps and change rk accordingly.
+						// ---
+						cps.splice(j,1);
+						cps[j-1] = t;
+						$$.trace( __("Change rk=%1 into [%2]",rk.toSource(),cps.join(' ')) );
+						for( rk='', j=-1 ; ++j < cps.length ; rk+=String.fromCodePoint(parseInt(cps[j],16)) );
+					}
+
+					if( outObj.hasOwnProperty(rk) )
+					{
+						$$.warn
+						( __("Cannot override %1 -> %2  ; so the EXPLICIT rule %1 -> %3 won't be available! (This is usually a critical issue.)"
+							, rk.toSource()
+							, outObj[rk].toSource()
+							, rule.toSource()
+							)
+						);
+						continue;
+					}
+					$$.trace( __(" RULE: %1 [%2] : %3",rk.toSource(),cps.join(' '),rule.toSource()) );
+					outObj[rk] = rule;
+
+					// 3. Now, for each composed form in `cps` (e.g for `rk` == 'ü', 'ŉ', 'dž'...),
+					// apply the decomposed equivalent and create a rule '==<rk>'
+					// ---
+					rule = '==' + rk;
+					for( rk='', j=-1 ; ++j < cps.length ; )
+					{
+						t = DEC.match(RegExp('[\\r\\n]' + cps[j] + ';(.*);([^#]+)#'));
+
+						if( !t || !(''==t[1] || '<compat>'==t[1] || '<sort>'==t[1]) )
+						{
+							rk += String.fromCodePoint(parseInt(cps[j],16));
+							continue;
+						}
+
+						t = t[2].trim().split(' ');
+						while( s=t.shift() ) rk += String.fromCodePoint(parseInt(s,16));
+					}
+
+					if( rk==rule.slice(2) ) continue; // Would mean `rk`==`rk`!
+					
+					if( outObj.hasOwnProperty(rk) )
+					{
+						$$.warn
+						( __("Cannot override %1 -> %2  ;  so the IMPLICIT rule %1 -> %3 won't be added. (Usually, this is not a critical issue.)"
+							, rk.toSource()
+							, outObj[rk].toSource()
+							, rule.toSource()
+							)
+						);
+						continue;
+					}
+					
+					$$.trace( __("+RULE: %1 [%2] : %3",rk.toSource(),I.COPS(rk),rule.toSource()) );
+					outObj[rk] = rule;
+				}
+				
+				ret[k] = ret.length; // Register the key index.
+				ret[ret.length] = __("\t%1 : %2,", k.toSource("'").rpad(14), $$.JSON(outObj));
+			}
+
+			// Manage aliases.
+			// ---
+			for( k in kAliases )
+			{
+				if( !kAliases.hasOwnProperty(k) ) continue;
+
+				// k           :: `<src_KEY><X1><YYMMDD>`
+				// kAliases[k] :: `<new_KEY> <LanguageCountry>( == <new_KEY> <LanguageDesc>)*`
+
+				s = k.split('\x01');                                     // s[0] :: <src_KEY>  ;  s[1] :: <YYMMDD>
+				if( !ret.hasOwnProperty(s[0]) ) continue;                // Shouldn't happen, but who knows...
+
+				a = kAliases[k].split(' == ');                           // a :: [ `<new_KEY> <LanguageDesc>`, ... ]
+				while( t=a.pop() )                                       // t :: `<new_KEY> <LanguageDesc>`
+				{
+					if( -1 == (p=(t=t.trim()).indexOf(' ')) ) continue;  // Space required in t.
+
+					k = t.slice(0,p);                                    // k :: `new_KEY`
+					if( ret.hasOwnProperty(k) )
+					{
+						$$.warn(__("%1 > The alias '%2' (found in %3) is already defined in a dedicated file.",callee.µ,k,s[0]));
+					}
+					t = t.slice(1+p).trim();                             // t :: <LanguageDesc>
+					
+					// Add k,t,s[1] in `infos`.
+					// ---
+					infos[infos.length] = __("\t%1 : %2 [CHG%3] Alias from %4", k.rpad(12), t.rpad(40), s[1], s[0]);
+					
+					t = ret[ret[s[0]]];                                  // `\t<src_KEY><PADDING> : <JSON>,`
+					p = t.indexOf(' : ');                                //                      p
+					
+					ret[k] = ret.length;
+					ret[ret.length] = __("\t%1 : %2", k.toSource("'").rpad(14), t.slice(3+p));
+				}
+			}
+
+			// Regenerate TLRM.
+			// ---
+			PB && PB.message( __("Rebuilding the entire tailoring map (TLRM)...") );
+			infos.sort();
+			ret.sort();
+			s = __("{%1%2%1\t}", $$.Meta.NewLine, ret.join($$.Meta.NewLine));
+			I.OUT_RES(s, $$, 'TLRM', "Tailoring Map", 'map', '200215', infos.join($$.Meta.NewLine));
+		},
+		
+		setLanguageFullMap: function setLanguageFullMap_(  $$,PB,I,ret,a,o,k,t,eor,src,i,s)
+		//----------------------------------
+		// [ADD200525] Create the LING map and the extra YALT package.
+		// Supported writing systems:
+		// 1. LATIN (Latn) GREEK (Grek) CYRILLIC (Cyrl, Cyrs)
+		// 2. ARABIC (Arab) HEBREW (Hebr)
+		// 3. ARMENIAN (Armn) BENGALI (Beng) DEVANAGARI (Deva) KANNADA (Knda) LAO (Laoo)
+		//    MALAYALAM (Mlym) TAMIL (Taml) TELUGU (Telu) THAI (Thai)
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			// Checkpoint.
+			// ---
+			$$.Env.inBinStream() && $$.error("This function cannot be invoked from a binary stream.", callee);
+
+			// Init and constants.
+			// ---
+			I = callee.µ['~'];
+
+			// Loop.
+			// ---
+			PB && PB.message( __("Rebuilding the linguistic map (LING)...") );
+			o = $$.Linguist.getData(callee.FLTR, 'name|alias|natv|system');
+			ret = [];
+			a = [];
+			const RE_EOR = /^(?:Latn|Grek|Cyrl|Cyrs)$/;
+			for( k in o )
+			{
+				if( !o.hasOwnProperty(k) ) continue;
+				if( (t=o[k]).alias ) continue;         // Remove aliases.
+				if( 0 <= k.indexOf('_') ) continue;    // Remove non-ISO codes.
+
+				eor = RE_EOR.test(t.system);
+				a[a.length] = t.name;
+				ret[ret.length] = __("\t%1 : { name:%2, dft:%3, natv:%4 },"
+					, ("'"+k+"'").rpad(8)
+					, t.name.toSource().rpad(20)
+					, eor ? "'EOR' " : "'ROOT'"
+					, (eor ? '"'+t.natv+'"' : t.natv.toSource()).rpad(60)
+					);
+			}
+
+			// Regenerate LING.
+			// ---
+			ret.sort();
+			s = __("{%1%2%1\t}", $$.Meta.NewLine, ret.join($$.Meta.NewLine));
+			I.OUT_RES(s, $$, 'LING', "Linguistic Map", 'map', '200525');
+			
+			// Yalt package from Linguist.
+			// ---
+			src = File(File($.fileName).parent+'/Linguist/$$.yalt.jsxres');
+			src.exists || $$.error("The Linguist YALT package is missing.", callee);
+			PB && PB.message( __("Reading yalt.jsxres...") );
+			(src=$$.File.readUTF8(src)) || $$.error("Unable to read the file yalt.jsxres.", callee);
+			for( i=a.length ; i-- ; )
+			{
+				s = a[i];
+				p = src.indexOf('\t' + s + ' # ');
+				-1 == p ? a.splice(i,1) : (a[i]=callee.EOL(src,p));
+			}
+			s = __("%3%1%4%1%2%1%5%1\t%3"
+				, $$.Meta.NewLine
+				, a.join($$.Meta.NewLine)
+				, '"""'
+				, '\t/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN'
+				, '\t</YALT>*/'
+				);
+			I.OUT_RES(s, $$, 'LING.yalt', "Additional YALT Package", 'yalt', '200525');
+		}
+		.setup
+		({
+			EOL: function(/*str*/s,/*uint*/p,  x0,x1,x)
+			//----------------------------------
+			// Return `s.slice(p,x)` where `x` is the EOL.
+			// => str
+			{
+				p >>>= 0;
+				-1 == (x0=s.indexOf('\r',p)) && (x0=1/0);
+				-1 == (x1=s.indexOf('\n',p)) && (x1=1/0);
+				return (isFinite(x0)||isFinite(x1)) ? s.slice(p, x0<x1?x0:x1) : s.slice(p);
+			},
+
+			FLTR:
+			{
+				systems:  'Latn|Grek|Cyrl|Cyrs|Arab|Hebr|Armn|Beng|Deva|Knda|Laoo|Mlym|Taml|Telu|Thai',
+				minSpread: 1,
+			},
+		}),
+
+	})
