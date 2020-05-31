@@ -1,0 +1,33 @@
+/*******************************************************************************
+
+		Name:           fy
+		Desc:           Frisian [West] (Netherlands)
+		Path:           /etc/MetaCollator/tailoring/$$.fy.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       160104 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Frisian alphabet:
+	--
+	Aa (Ââ, Ää), Bb, Cc, Dd,
+	Ee (Éé, Êê, Ëë), Ff, Gg, Hh,
+	Ii (Ïï, Yy), Jj, Kk, Ll, Mm, Nn,
+	Oo (Ôô, Öö), Pp, Qq, Rr, Ss, Tt,
+	Uu (Úú, Ûû, Üü), Vv, Ww, Xx, Zz
+	--
+	& I << y <<< Y
+	*/
+
+	"y" : ">2I", "Y" : ">3y",

@@ -1,0 +1,32 @@
+/*******************************************************************************
+
+		Name:           en
+		Desc:           English
+		Path:           /etc/MetaCollator/tailoring/$$.en.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	English alphabet:
+	--
+	Aa (Àà), (Ææ), Bb, Cc (Çç), Dd, Ee (Éé, Èè, Êê, Ëë), Ff, Gg, Hh, Ii (Ïï), Jj,
+	Kk, Ll, Mm, Nn (Ññ), Oo (Ôô, Öö), (Œœ), Pp, Qq, Rr, Ss, Tt, Uu, Vv, Ww, Xx, Yy, Zz
+	--
+	The ligatures Æ and Œ are ordered
+	as A+E and O+E respectively.
+	*/
+
+	"Æ": "==AE",		"æ": "==ae",
+	"Œ": "==OE",		"œ": "==oe",

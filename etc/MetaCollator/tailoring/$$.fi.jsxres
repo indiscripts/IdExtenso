@@ -1,0 +1,51 @@
+/*******************************************************************************
+
+		Name:           fi
+		Desc:           Finnish (Finland)
+		Path:           /etc/MetaCollator/tailoring/$$.fi.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] https://en.wikipedia.org/wiki/Finnish_orthography
+	Finnish alphabet:
+	--
+	Aa, Bb, [Cc], Dd, Ee, Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn, Oo, Pp, [Qq], Rr,
+	Ss (Šš), Tt, Uu, Vv [Ww], [Xx], Yy [Üü], Zz (Žž), [Åå], Ää [Ææ], Öö [Øø]
+	--
+	// 1. w is generally regarded equivalent to v (in a multilingual context it may,
+	//    however, be collated separately after v, as in English).
+	& V << w <<< W
+	// ---
+	// 2. Turkish and German ü and Hungarian ű are alphabetized as y, not as u
+	& Y << ü <<< Ü << ű <<< Ű
+	// ---
+	// 3. å, ä and ö are regarded distinct letters and collated after z;
+	//    Danish and Norwegian ø, Estonian õ and Hungarian ő are alphabetized as ö, not as o.
+	& Z < å <<< Å
+	    < ä <<< Ä << æ <<< Æ
+	    < ö <<< Ö << ø <<< Ø << ő <<< Ő << õ <<< Õ << œ <<< Œ
+	*/
+	"w" : ">2V",	"W" : ">3w",
+	// ---
+	"ü" : ">2Y",	"Ü" : ">3ü",  "ű" : ">2Ü",  "Ű" : ">3ű",
+	// ---
+	"å" : ">1Z",	"Å" : ">3å",
+	"ä" : ">1Å",	"Ä" : ">3ä",  "æ" : ">2Ä",	"Æ" : ">3æ",
+	"ö" : ">1Æ",	"Ö" : ">3ö",
+	                "ø" : ">2Ö",  "Ø" : ">3ø",
+	                "ő" : ">2Ø",  "Ő" : ">3ő",
+	                "õ" : ">2Ő",  "Õ" : ">3õ",
+	                "œ" : ">2Õ",  "Œ" : ">3œ",

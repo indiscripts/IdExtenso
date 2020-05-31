@@ -1,0 +1,46 @@
+/*******************************************************************************
+
+		Name:           de_phone
+		Desc:           German [Phonebook] (Germany)
+		Path:           /etc/MetaCollator/tailoring/$$.de_phone.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       160104 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	German alphabet:
+	--
+	Aa (Ää), Bb, Cc, Dd, Ee (Éé), Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn,
+	Oo (Öö), Pp, Qq, Rr, Ss (ß), Tt, Uu (Üü), Vv, Ww, Xx, Yy, Zz
+	--
+	ß is ordered as s+s.
+	--
+	The letters Ä, Ö, Ü are ordered
+	as A+E, O+E, U+E respectively.
+	--
+	& AE << ä <<< Ä
+	& OE << ö <<< Ö
+	& UE << ü <<< Ü
+	*/
+
+	// From EOR
+	"Æ": "==AE",	"æ": "==ae",
+	"Ĳ": "==IJ",	"ĳ": "==ij",
+	"Œ": "==OE",	"œ": "==oe",
+	"ß": "==ss",
+
+	// Phonebook specific
+	"ä" : ">2AE",	"Ä" : ">3ä",
+	"ö" : ">2OE",	"Ö" : ">3ö",
+	"ü" : ">2UE",	"Ü" : ">3ü",

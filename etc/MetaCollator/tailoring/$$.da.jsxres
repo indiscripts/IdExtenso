@@ -1,0 +1,50 @@
+/*******************************************************************************
+
+		Name:           da
+		Desc:           Danish (Denmark) == no Norwegian Bokmål (Norway)
+		Path:           /etc/MetaCollator/tailoring/$$.da.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] en.wikipedia.org/wiki/Comparison_of_Norwegian_Bokm%C3%A5l_and_Standard_Danish
+	The Danish alphabet has traditionally seen "W" as a variant of "V", but
+	today "W" is considered a separate letter.
+
+	Danish alphabet:
+	--
+	Aa (Áá), Bb, Cc, Dd, Ee (Éé), Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn, Oo (Óó), Pp,
+	Qq, Rr, Ss, Tt, Uu, Vv, Ww, Xx, Yy [Üü], Zz, Ææ [Ää], Øø [Öö], Åå (AAaa)
+	--
+	[CHG200306]
+	& D << đ <<< Đ << ð <<< Ð
+	& th <<< þ
+	& TH <<< Þ
+	& Y << ü <<< Ü << ű <<< Ű
+	& Z < æ <<< Æ << ä <<< Ä
+	    < ø <<< Ø << ö <<< Ö << ő <<< Ő
+	    < å <<< Å <<< aa <<< Aa <<< AA
+	& oe << œ <<< Œ
+	*/
+	"đ" : ">2D", "Đ" : ">3đ", "ð" : ">2Đ", "Ð" : ">3ð",  // There are two CPs: Ð (U+00D0 ETH) vs. Đ (U+0110 D WITH STROKE)
+	"þ" : ">3th",
+	"Þ" : ">3TH",
+	// ---
+	"ü" : ">2Y", "Ü" : ">3ü", "ű" : ">2Ü", "Ű" : ">3ű",
+	"æ" : ">1Z", "Æ" : ">3æ", "ä" : ">2Æ", "Ä" : ">3ä",
+	"ø" : ">1Ä", "Ø" : ">3ø", "ö" : ">2Ø", "Ö" : ">3ö", "ő" : ">2Ö", "Ő" : ">3ő",
+	"å" : ">1Ő", "Å" : ">3å", "aa" : ">2Å", "Aa" : ">3aa", "AA" : ">3Aa",
+	// ---
+	"œ" : ">2oe", "Œ" : ">3œ",

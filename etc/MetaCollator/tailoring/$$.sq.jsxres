@@ -1,0 +1,50 @@
+/*******************************************************************************
+
+		Name:           sq
+		Desc:           Albanian (Albania)
+		Path:           /etc/MetaCollator/tailoring/$$.sq.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Albanian alphabet:
+	Aa, Bb, Cc, Çç, Dd, DHdh, Ee, Ëë, Ff, Gg, GJgj, Hh, Ii, Jj, Kk, Ll, LLll, Mm, Nn,
+	NJnj, Oo, Pp, Qq, Rr, RRrr, Ss, SHsh, Tt, THth, Uu, Vv, [Ww], Xx, XHxh, Yy, Zz, ZHzh
+	// ---
+	& C < ç <<< Ç
+	& D < dh <<< Dh <<< DH
+	& E < ë <<< Ë
+	& G < gj <<< Gj <<< GJ
+	& L < ll <<< Ll <<< LL
+	& N < nj <<< Nj <<< NJ
+	& R < rr <<< Rr <<< RR
+	& S < sh <<< Sh <<< SH
+	& T < th <<< Th <<< TH
+	& X < xh <<< Xh <<< XH
+	& Z < zh <<< Zh <<< ZH
+
+	*/
+
+	"ç": ">1C",		"Ç": ">3ç",
+	"dh": ">1D",	"Dh": ">3dh",	"DH": ">3Dh",
+	"ë": ">1E",		"Ë": ">3ë",
+	"gj": ">1G",	"Gj": ">3gj",	"GJ": ">3Gj",
+	"ll": ">1L",	"Ll": ">3ll",	"LL": ">3Ll",
+	"nj": ">1N",	"Nj": ">3nj",	"NJ": ">3Nj",
+	"rr": ">1R",	"Rr": ">3rr",	"RR": ">3Rr",
+	"sh": ">1S",	"Sh": ">3sh",	"SH": ">3Sh",
+	"th": ">1T",	"Th": ">3th",	"TH": ">3Th",
+	"xh": ">1X",	"Xh": ">3xh",	"XH": ">3Xh",
+	"zh": ">1Z",	"Zh": ">3zh",	"ZH": ">3Zh",

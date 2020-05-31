@@ -1,0 +1,46 @@
+/*******************************************************************************
+
+		Name:           to
+		Desc:           Tongan (Tonga)
+		Path:           /etc/MetaCollator/tailoring/$$.to.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200309 (YYMMDD)
+		Modified:       200309 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] https://en.wikipedia.org/wiki/Tongan_language#Alphabet
+	Tongan alphabet:
+	"The glottal stop ʻ (U+02BB) should be written with the modifier letter turned comma
+	and not with the single quote open or with a mixture of quotes open and quotes close."
+	--
+	Aa, Ee, Ff, Hh, Ii, Kk, Ll, Mm, Nn, Ngng, Oo, Pp, Ss, Tt, Uu, Vv, ʻ 
+	--
+    & n < ng <<< Ng <<< NG <<< ŋ <<< Ŋ
+    & z <  ʻ <<< ʽ
+    // ---
+    & a << á <<< Á << ā <<< Ā
+    & e << é <<< É << ē <<< Ē
+    & i << í <<< Í << ī <<< Ī
+    & o << ó <<< Ó << ō <<< Ō
+    & u << ú <<< Ú << ū <<< Ū
+	*/
+
+	"ng" : ">1n", "Ng" : ">3ng", "NG" : ">3Ng", "ŋ" : ">3NG", "Ŋ" : ">3ŋ",
+	"\u02BB" : ">1z", "\u02BD" : ">3\u02BB",
+	// ---
+	"á" : ">2a", "Á" : ">3á", "ā" : ">2Á", "Ā" : ">3ā",
+	"é" : ">2e", "É" : ">3é", "ē" : ">2É", "Ē" : ">3ē",
+	"í" : ">2i", "Í" : ">3í", "ī" : ">2Í", "Ī" : ">3ī",
+	"ó" : ">2o", "Ó" : ">3ó", "ō" : ">2Ó", "Ō" : ">3ō",
+	"ú" : ">2u", "Ú" : ">3ú", "ū" : ">2Ú", "Ū" : ">3ū",

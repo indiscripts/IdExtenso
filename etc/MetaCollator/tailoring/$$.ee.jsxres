@@ -1,0 +1,54 @@
+/*******************************************************************************
+
+		Name:           ee
+		Desc:           Ewe (Ghana, Togo)
+		Path:           /etc/MetaCollator/tailoring/$$.ee.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF]
+	https://github.com/unicode-org/icu/blob/master/icu4c/source/data/coll/ee.txt
+	https://en.wikipedia.org/wiki/Ewe_language
+
+	& \u030C << \u0302
+	& D < dz <<< Dz <<< DZ < ɖ <<< Ɖ
+	& E < ɛ <<< Ɛ
+	& F < ƒ <<< Ƒ
+	& G < gb <<< Gb <<< GB
+	    < ɣ <<< Ɣ
+	& H < x <<< X
+	& K < kp <<< Kp <<< KP
+	& N < ny <<< Ny <<< NY
+	    < ŋ <<< Ŋ
+	& O < ɔ <<< Ɔ
+	& T < ts <<< Ts <<< TS
+	& V < ʋ <<< Ʋ
+	*/
+
+	"\u0302" : ">2\u030C",  // U+030C COMBINING CARON vs. U+0302 COMBINING CIRCUMFLEX ACCENT
+	// ---
+	"dz" : ">1D", "Dz" : ">3dz", "DZ" : ">3Dz", "ɖ" : ">1DZ", "Ɖ" : ">3ɖ",
+	"ɛ" : ">1E", "Ɛ" : ">3ɛ",
+	"ƒ" : ">1F", "Ƒ" : ">3ƒ",
+	"gb" : ">1G", "Gb" : ">3gb", "GB" : ">3Gb",
+	"ɣ" : ">1GB", "Ɣ" : ">3ɣ",
+	"x" : ">1H", "X" : ">3x",
+	"kp" : ">1K", "Kp" : ">3kp", "KP" : ">3Kp",
+	"ny" : ">1N", "Ny" : ">3ny", "NY" : ">3Ny",
+	"ŋ" : ">1NY", "Ŋ" : ">3ŋ",
+	"ɔ" : ">1O", "Ɔ" : ">3ɔ",
+	"ts" : ">1T", "Ts" : ">3ts", "TS" : ">3Ts",
+	"ʋ" : ">1V", "Ʋ" : ">3ʋ",

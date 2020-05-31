@@ -1,0 +1,31 @@
+/*******************************************************************************
+
+		Name:           af
+		Desc:           Afrikaans (South Africa)
+		Path:           /etc/MetaCollator/tailoring/$$.af.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Afrikaans alphabet:
+	--
+	Aa (Áá, Ââ), Bb, [Cc], Dd, Ee (Éé, Èè, Êê, Ëë), Ff, Gg, Hh, Ii (Îî, Ïï),
+	Jj, Kk, Ll, Mm, Nn (ŉ), Oo (Ôô, Öö), Pp, [Qq], Rr, Ss, Tt, Uu (Ûû), Vv,
+	Ww, [Xx], Yy, Zz
+	--
+	& N << ŉ
+	*/
+
+	"ŉ" : ">2N",

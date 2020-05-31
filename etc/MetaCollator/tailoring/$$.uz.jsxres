@@ -1,0 +1,75 @@
+/*******************************************************************************
+
+		Name:           uz
+		Desc:           Uzbek (Uzbekistan)
+		Path:           /etc/MetaCollator/tailoring/$$.uz.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Uzbek latin alphabet:
+	--
+	Aa, Bb, [Cc], Dd, Ee, Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn [NGng]*,
+	Oo, Pp, Qq, Rr, Ss, Tt, Uu, Vv, [Ww], Xx, Yy, Zz, Oʻoʻ, Gʻgʻ,
+	SHsh, CHch
+
+	* Native speakers & linguists say that the digraph `ng` and the symbol `ʼ`
+	are not considered separate letters.
+
+	[REF] See also: en.wikipedia.org/wiki/Uzbek_alphabet#Alphabetical_order
+
+	--
+	[DEL200307] See changes below.
+	& C < ch <<< Ch <<< CH  [moved]
+	& G < g' <<< G'         [moved]
+	& N < ng <<< Ng <<< NG  [moved]
+	& O < o' <<< O'         [moved]
+	& S < sh <<< Sh <<< SH  [moved]
+
+
+	[CHG200307] New rules.
+	The following letters sort after z:
+	
+	& Z < oʻ=o‘=o'' <<< Oʻ = O‘ = O''
+	    < gʻ=g‘=g'' <<< Gʻ = G‘ = G''
+	    < sh <<< Sh <<< SH
+	    < ch <<< Ch <<< CH
+
+	[REM200307] U+02BB ʻ MODIFIER LETTER TURNED COMMA is hard to type,
+	so equiv. contractions are provided using U+2018 ‘ LEFT SINGLE QUOTATION MARK
+	and U+0027 APOSTROPHE (x2)
+
+	--
+	Uzbek cyrillic alphabet:
+	--
+	Аа, Бб, Вв, Гг, Ғғ, Дд, Ее, Ёё, Жж, Зз, Ии, Йй, Кк, Ққ, Лл, Мм, Нн, Оо, Пп,
+	Рр, Сс, Тт, Уу, Ўў, Фф, Хх, Ҳҳ, [Цц], Чч, Шш, Ъъ, [Ьь], Ээ, Юю, Яя
+	--
+	& Е < ё <<< Ё
+	*/
+
+	"o\u02BB" : ">1Z",       "o\u2018" : "==o\u02BB", "o''" : "==o\u02BB",
+	"O\u02BB" : ">3o\u02BB", "O\u2018" : "==O\u02BB", "O''" : "==O\u02BB",
+	
+	"g\u02BB" : ">1O\u02BB", "g\u2018" : "==g\u02BB", "g''" : "==g\u02BB",
+	"G\u02BB" : ">3g\u02BB", "G\u2018" : "==G\u02BB", "G''" : "==G\u02BB",
+	
+	"sh" : ">1G\u02BB", "Sh" : ">3sh", "SH" : ">3Sh",
+	"ch" : ">1SH", "Ch" : ">3ch", "CH" : ">3Ch",
+
+	// "ng" : ">1N", "Ng" : ">3ng", "NG" : ">3Ng",  [PENDING!]
+
+
+	"ё" : ">1Е", "Ё" : ">3ё",  // Cyrillic

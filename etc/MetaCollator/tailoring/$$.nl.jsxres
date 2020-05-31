@@ -1,0 +1,37 @@
+/*******************************************************************************
+
+		Name:           nl
+		Desc:           Dutch (Netherlands)
+		Path:           /etc/MetaCollator/tailoring/$$.nl.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Dutch alphabet:
+	--
+	Aa (Ää), Bb, Cc, Dd, Ee (Ëë), Ff, Gg, Hh, Ii (Ïï), (Ĳĳ), Jj, Kk, Ll, Mm, Nn,
+	Oo (Öö), Pp, Qq, Rr, Ss, Tt, Uu (Üü), Vv, Ww, Xx, Yy, Zz
+	--
+	The ligature Ĳ is ordered as I+J in dictionaries, but as Y in phone directories (cf. nl_NL_phone.)
+
+	The digraph IJ behaves like a separate letter for capitalisation. In
+	alphabetical order, IJ may not be distinguished from with Y (usual for
+	telephone directories), or it may come between ii and ik (which is common in
+	dictionaries). In Dutch primary education the (more common) digraph IJ often
+	replaces the (less common) Y as the 25th letter of the alphabet.
+
+	*/
+
+	"Ĳ": "==IJ",	"ĳ": "==ij",

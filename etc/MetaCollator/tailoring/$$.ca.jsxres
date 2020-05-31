@@ -1,0 +1,32 @@
+/*******************************************************************************
+
+		Name:           ca
+		Desc:           Catalan (Spain)
+		Path:           /etc/MetaCollator/tailoring/$$.ca.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Catalan alphabet:
+	--
+	Aa (Àà), Bb, Cc (Çç), Dd, Ee (Éé, Èè), Ff, Gg, Hh, Ii (Íí, Ïï), Jj, [Kk], Ll, Mm, Nn,
+	Oo (Óó, Òò), Pp, Qq, Rr, Ss, Tt, Uu (Úú, Üü), Vv, [Ww], Xx, [Yy], Zz
+	--
+	L·L is ordered as L+L. E.g 	['tèlex', 'tel·lur', 'tel·luri', 'teló']
+	--
+	& LL << l·l <<< L·l <<< L·L
+	*/
+
+	"l·l" : ">2LL", "L·l" : ">3l·l", "L·L" : ">3L·l",

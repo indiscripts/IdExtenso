@@ -1,0 +1,74 @@
+/*******************************************************************************
+
+		Name:           ln_phonetic
+		Desc:           Lingala [Phonetic]
+		Path:           /etc/MetaCollator/tailoring/$$.ln_phonetic.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200308 (YYMMDD)
+		Modified:       200308 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] https://en.wikipedia.org/wiki/Lingala#Alphabet
+	Lingala alphabet:
+	--
+	Aa (ÁÂǍáâǎ), Bb, Cc, Dd, Ee, Ɛɛ (Ɛ́Ɛ̂Ɛ̌ɛ́ɛ̂ɛ̌), Ff, Gg, Gbgb, Hh, Ii (ÍÎǏíîǐ), Kk, Ll,
+	Mm, Mbmb, Mpmp, Nn, Ndnd, Ngng, Nknk, Nsns, Ntnt, Nyny, Nznz, oo, Ɔɔ (Ɔ́Ɔ̂Ɔ̌ɔ́ɔ̂ɔ̌),
+	Pp, Rr, Ss, Tt, Uu (Úú), Vv, Ww, Yy, Zz
+	--
+	& E < ɛ <<< Ɛ
+	& O < ɔ <<< Ɔ
+	--
+	# Phonetic rules:
+	& G < gb <<< gB <<< Gb <<< GB
+	& K < kp <<< kP <<< Kp <<< KP
+	& M < mb <<< mB <<< Mb <<< MB
+	    < mf <<< mF <<< Mf <<< MF
+	    < mp <<< mP <<< Mp <<< MP
+	    < mv <<< mV <<< Mv <<< MV
+	& N < nd <<< nD <<< Nd <<< ND
+	    < ng <<< nG <<< Ng <<< NG
+	    < ngb <<< ngB <<< nGb <<< nGB <<< Ngb <<< NgB <<< NGB
+	    < nk <<< nK <<< Nk <<< NK
+	    < ns <<< nS <<< Ns <<< NS
+	    < nt <<< nT <<< Nt <<< NT
+	    < ny <<< nY <<< Ny <<< NY
+	    < nz <<< nZ <<< Nz <<< NZ
+	& S < sh <<< sH <<< Sh <<< SH
+	& T < ts <<< tS <<< Ts <<< TS
+	*/
+	
+	"ɛ": ">1E",  "Ɛ": ">3ɛ",
+	"ɔ": ">1O",  "Ɔ": ">3ɔ",
+
+	// =========
+
+	"gb": ">1G",   "gB": ">3gb",  "Gb": ">3gB",  "GB": ">3Gb",
+	"kp": ">1K",   "kP": ">3kp",  "Kp": ">3kP",  "KP": ">3Kp",
+	// ---
+	"mb": ">1M",   "mB": ">3mb",  "Mb": ">3mB",  "MB": ">3Mb",
+	"mf": ">1MB",  "mF": ">3mf",  "Mf": ">3mF",  "MF": ">3Mf",
+	"mp": ">1MF",  "mP": ">3mp",  "Mp": ">3mP",  "MP": ">3Mp",
+	"mv": ">1MP",  "mV": ">3mv",  "Mv": ">3mV",  "MV": ">3Mv",
+	// ---
+	"nd": ">1N",   "nD": ">3nd",  "Nd": ">3nD",  "ND": ">3Nd",
+	"ng": ">1ND",  "nG": ">3ng",  "Ng": ">3nG",  "NG": ">3Ng",
+	"ngb": ">1NG", "ngB": ">3ngb", "nGb": ">3ngB", "nGB": ">3nGb", "Ngb": ">3nGB",  "NgB": ">3Ngb",  "NGB": ">3NgB",
+	"nk": ">1NGB",  "nK": ">3nk",  "Nk": ">3nK",  "NK": ">3Nk",
+	"ns": ">1NK",  "nS": ">3ns",  "Ns": ">3nS",  "NS": ">3Ns",
+	"nt": ">1NS",  "nT": ">3nt",  "Nt": ">3nT",  "NT": ">3Nt",
+	"ny": ">1NT",  "nY": ">3ny",  "Ny": ">3nY",  "NY": ">3Ny",
+	"nz": ">1NY",  "nZ": ">3nz",  "Nz": ">3nZ",  "NZ": ">3Nz",
+	// ---
+	"sh": ">1S",  "sH": ">3sh",  "Sh": ">3sH",  "SH": ">3Sh",
+	"ts": ">1T",  "tS": ">3ts",  "Ts": ">3tS",  "TS": ">3Ts",

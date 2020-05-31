@@ -1,0 +1,44 @@
+/*******************************************************************************
+
+		Name:           yo_benin
+		Desc:           Yoruba [Benin]
+		Path:           /etc/MetaCollator/tailoring/$$.yo_benin.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200309 (YYMMDD)
+		Modified:       200309 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] en.wikipedia.org/wiki/Yoruba_language#Writing_system
+	In Benin, Yoruba uses a different orthography. The Yoruba alphabet was
+	standardized along with other Benin languages in the National Languages
+	Alphabet by the National Language Commission in 1975, and revised in 1990
+	and 2008 by the National Center for Applied Linguistics.
+	
+	Yoruba [Benin] alphabet:
+	--
+	Aa, Bb, Dd, Ee, Ɛɛ, Ff, Gg, Gbgb, Hh, Ii, Jj, Kk, Kpkp, Ll, Mm, Nn, Oo, Ɔɔ, Pp,
+	Rr, Ss, Shsh, Tt, Uu, Ww, Yy
+	--
+	& E < ɛ  <<< Ɛ
+	& G < gb <<< Gb <<< GB
+	& K < kp <<< Kp <<< KP
+	& O < ɔ  <<< Ɔ
+	& S < sh <<< Sh <<< SH
+ 	*/
+
+	"ɛ"  : ">1E",  "Ɛ"  : ">3ɛ",
+	"gb" : ">1G",  "Gb" : ">3gb", "GB" : ">3Gb",
+	"kp" : ">1K",  "Kp" : ">3kp", "KP" : ">3Kp",
+	"ɔ"  : ">1O",  "Ɔ"  : ">3ɔ",
+	"sh" : ">1S",  "Sh" : ">3sh", "SH" : ">3Sh",

@@ -1,0 +1,34 @@
+/*******************************************************************************
+
+		Name:           es_tradi
+		Desc:           Spanish [Traditional] (Spain) == ast Asturian (Spain) == gl Galician (Spain)
+		Path:           /etc/MetaCollator/tailoring/$$.es_tradi.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Spanish (Traditional) alphabet:
+	--
+	Aa (Áá), Bb, Cc, CHch, Dd, Ee (Éé), Ff, Gg, Hh, Ii (Íí), Jj, [Kk], Ll, LLll,
+	Mm, Nn, Ññ, Oo (Óó), Pp, Qq, Rr, Ss, Tt, Uu (Úú, Üü), Vv, [Ww], Xx, Yy, Zz
+	--
+	& C < ch <<< Ch <<< CH
+	& L < ll <<< Ll <<< LL
+	& N < ñ <<< Ñ
+	*/
+
+	"ch" : ">1C", "Ch" : ">3ch", "CH" : ">3Ch",
+	"ll" : ">1L", "Ll" : ">3ll", "LL" : ">3Ll",
+	"ñ" : ">1N", "Ñ" : ">3ñ",

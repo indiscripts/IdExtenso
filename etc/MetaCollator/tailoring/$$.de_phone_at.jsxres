@@ -1,0 +1,42 @@
+/*******************************************************************************
+
+		Name:           de_phone_at
+		Desc:           German [Phonebook/Austria] (Austria)
+		Path:           /etc/MetaCollator/tailoring/$$.de_phone_at.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       200528 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	German alphabet:
+	--
+	Aa (Ää), Bb, Cc, Dd, Ee (Éé), Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn,
+	Oo (Öö), Pp, Qq, Rr, Ss (ß), Tt, Uu (Üü), Vv, Ww, Xx, Yy, Zz
+	--
+	& a < ä <<< Ä
+	& o < ö <<< Ö
+	& u < ü <<< Ü
+	& ss < ß <<< \u1E9E
+	*/
+
+	// From EOR
+	"Æ": "==AE",	"æ": "==ae",
+	"Ĳ": "==IJ",	"ĳ": "==ij",
+	"Œ": "==OE",	"œ": "==oe",
+
+	// Phonebook specific
+	"ä" : ">1a", "Ä" : ">3ä",
+	"ö" : ">1o", "Ö" : ">3ö",
+	"ü" : ">1u", "Ü" : ">3ü",
+	"ß" : ">1ss", "\u1E9E" : ">3ß",

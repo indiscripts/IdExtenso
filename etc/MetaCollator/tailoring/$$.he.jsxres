@@ -1,0 +1,33 @@
+/*******************************************************************************
+
+		Name:           he
+		Desc:           Hebrew
+		Path:           /etc/MetaCollator/tailoring/$$.he.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200308 (YYMMDD)
+		Modified:       200308 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] icu/../he.xml
+	---
+	In principle:
+	 "GERESH just before APOSTROPHE (secondary difference)
+	 GERSHAYIM just before QUOTATION MARK (secondary difference)"
+	& [before2] ' << \u05F3
+	& [before2] " << \u05F4
+	
+	In practice a `==` rule sounds sufficient.
+	*/
+	"\u05F3" : "=='",         // GERESH == `'`
+	"\u05F4" : "==\"",        // GERSHAYIM == `"`

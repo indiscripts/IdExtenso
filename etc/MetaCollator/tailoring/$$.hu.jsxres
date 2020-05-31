@@ -1,0 +1,73 @@
+/*******************************************************************************
+
+		Name:           hu
+		Desc:           Hungarian (Hungary)
+		Path:           /etc/MetaCollator/tailoring/$$.hu.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       160104 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Hungarian alphabet:
+	--
+	Aa (Áá), Bb, Cc, CScs, Dd, DZdz, DZSdzs, Ee (Éé), Ff, Gg, GYgy, Hh, Ii (Íí),
+	Jj, Kk, Ll, LYly, Mm, Nn, NYny, Oo (Óó), Öö (Őő), Pp, [Qq], Rr, Ss, SZsz,
+	Tt, TYty, Uu (Úú), Üü (Űű), Vv, [Ww], [Xx], [Yy], Zz, ZSzs
+	--
+	& C < cs <<< Cs <<< CS
+	& D < dz <<< Dz <<< DZ
+	    < dzs <<< Dzs <<< DZS
+	& G < gy <<< Gy <<< GY
+	& L < ly <<< Ly <<< LY
+	& N < ny <<< Ny <<< NY
+	& O < ö <<< Ö << ő <<< Ő
+	& S < sz <<< Sz <<< SZ
+	& T < ty <<< Ty <<< TY
+	& U < ü <<< Ü << ű <<< Ű
+	& Z < zs <<< Zs <<< ZS
+	
+	& CSCS <<< ccs <<< Ccs <<< CCS
+	& DZDZ <<< ddz <<< Ddz <<< DDZ
+	& DZSDZS <<< ddzs <<< Ddzs <<< DDZS
+	& GYGY <<< ggy <<< Ggy <<< GGY
+	& LYLY <<< lly <<< Lly <<< LLY
+	& NYNY <<< nny <<< Nny <<< NNY
+	& SZSZ <<< ssz <<< Ssz <<< SSZ
+	& TYTY <<< tty <<< Tty <<< TTY
+	& ZSZS <<< zzs <<< Zzs <<< ZZS
+	*/
+
+	"cs" : ">1C", "Cs" : ">3cs", "CS" : ">3Cs",
+	"dz" : ">1D", "Dz" : ">3dz", "DZ" : ">3Dz",
+	"dzs" : ">1DZ", "Dzs" : ">3dzs", "DZS" : ">3Dzs",
+	"gy" : ">1G", "Gy" : ">3gy", "GY" : ">3Gy",
+	"ly" : ">1L", "Ly" : ">3ly", "LY" : ">3Ly",
+	"ny" : ">1N", "Ny" : ">3ny", "NY" : ">3Ny",
+	"ö" : ">1O", "Ö" : ">3ö",
+	"ő" : ">2Ö", "Ő" : ">3ő",
+	"sz" : ">1S", "Sz" : ">3sz", "SZ" : ">3Sz",
+	"ty" : ">1T", "Ty" : ">3ty", "TY" : ">3Ty",
+	"ü" : ">1U", "Ü" : ">3ü",
+	"ű" : ">2Ü", "Ű" : ">3ű",
+	"zs" : ">1Z", "Zs" : ">3zs", "ZS" : ">3Zs",
+
+	"ccs" : ">3CSCS", "Ccs" : ">3ccs", "CCS" : ">3Ccs",
+	"ddz" : ">3DZDZ", "Ddz" : ">3ddz", "DDZ" : ">3Ddz",
+	"ddzs" : ">3DZSDZS", "Ddzs" : ">3ddzs", "DDZS" : ">3Ddzs",
+	"ggy" : ">3GYGY", "Ggy" : ">3ggy", "GGY" : ">3Ggy",
+	"lly" : ">3LYLY", "Lly" : ">3lly", "LLY" : ">3Lly",
+	"nny" : ">3NYNY", "Nny" : ">3nny", "NNY" : ">3Nny",
+	"ssz" : ">3SZSZ", "Ssz" : ">3ssz", "SSZ" : ">3Ssz",
+	"tty" : ">3TYTY", "Tty" : ">3tty", "TTY" : ">3Tty",
+	"zzs" : ">3ZSZS", "Zzs" : ">3zzs", "ZZS" : ">3Zzs",

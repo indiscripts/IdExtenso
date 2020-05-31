@@ -1,0 +1,35 @@
+/*******************************************************************************
+
+		Name:           ln
+		Desc:           Lingala
+		Path:           /etc/MetaCollator/tailoring/$$.ln.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200308 (YYMMDD)
+		Modified:       200308 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] https://en.wikipedia.org/wiki/Lingala#Alphabet
+	Lingala alphabet:
+	--
+	Aa (ÁÂǍáâǎ), Bb, Cc, Dd, Ee, Ɛɛ (Ɛ́Ɛ̂Ɛ̌ɛ́ɛ̂ɛ̌), Ff, Gg, Hh, Ii (ÍÎǏíîǐ), Kk, Ll,
+	Mm, Nn, oo, Ɔɔ (Ɔ́Ɔ̂Ɔ̌ɔ́ɔ̂ɔ̌), Pp, Rr, Ss, Tt, Uu (Úú), Vv, Ww, Yy, Zz
+	--
+	& E < ɛ <<< Ɛ
+	& O < ɔ <<< Ɔ
+	
+	# Cf `ln_phonetic` for the full implementation
+	*/
+	
+	"ɛ": ">1E",  "Ɛ": ">3ɛ",
+	"ɔ": ">1O",  "Ɔ": ">3ɔ",

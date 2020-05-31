@@ -1,0 +1,39 @@
+/*******************************************************************************
+
+		Name:           yo
+		Desc:           Yoruba (Nigeria)
+		Path:           /etc/MetaCollator/tailoring/$$.yo.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        200309 (YYMMDD)
+		Modified:       200309 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] en.wikipedia.org/wiki/Yoruba_language#Writing_system
+	Yoruba alphabet:
+	--
+	Aa, Bb, Dd, Ee, Ẹẹ, Ff, Gg, Gbgb, Hh, Ii, Jj, Kk, Ll, Mm, Nn, Oo, Ọọ, Pp,
+	Rr, Ss, Ṣṣ, Tt, Uu, Ww, Yy
+	
+	(See also yo_benin.)
+	--
+	& E < ẹ  <<< Ẹ
+	& G < gb <<< Gb <<< GB
+	& O < ọ  <<< Ọ
+	& S < ṣ  <<< Ṣ
+ 	*/
+
+	"ẹ" : ">1E",  "Ẹ" : ">3ẹ",
+	"gb" : ">1G",  "Gb" : ">3gb", "GB" : ">3Gb",
+	"ọ" : ">1O",  "Ọ" : ">3ọ",
+	"ṣ" : ">1S",  "Ṣ" : ">3ṣ",

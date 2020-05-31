@@ -1,0 +1,41 @@
+/*******************************************************************************
+
+		Name:           ha
+		Desc:           Hausa (Sahel)
+		Path:           /etc/MetaCollator/tailoring/$$.ha.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] https://en.wikipedia.org/wiki/Hausa_language#Boko_(Latin)
+	---
+	Hausa's modern official orthography is a Latin-based alphabet called boko,
+	which was introduced in the 1930s
+	
+	& B < ɓ <<< Ɓ
+	& D < ɗ <<< Ɗ
+	& K < ƙ <<< Ƙ
+	& S < sh <<< Sh <<< SH
+	& T < ts <<< Ts <<< TS
+	& Y < ƴ <<< ʼy <<< ''y <<< Ƴ <<< ʼY <<< ''Y
+
+	*/
+
+	"ɓ" : ">1B", "Ɓ" : ">3ɓ",
+	"ɗ" : ">1D", "Ɗ" : ">3ɗ",
+	"ƙ" : ">1K", "Ƙ" : ">3ƙ",
+	"sh" : ">1S", "Sh" : ">3sh", "SH" : ">3Sh",
+	"ts" : ">1T", "Ts" : ">3ts", "TS" : ">3Ts",
+	"ƴ" : ">1Y", "ʼy" : ">3ƴ", "''y" : ">3ʼy", "Ƴ" : ">3''y", "ʼY" : ">3Ƴ", "''Y" : ">3ʼY",

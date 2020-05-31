@@ -1,0 +1,32 @@
+/*******************************************************************************
+
+		Name:           nl_phone
+		Desc:           Dutch [Phonebook] (Netherlands)
+		Path:           /etc/MetaCollator/tailoring/$$.nl_phone.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Dutch alphabet:
+	--
+	Aa (Ää), Bb, Cc, Dd, Ee (Ëë), Ff, Gg, Hh, Ii (Ïï), (Ĳĳ), Jj, Kk, Ll, Mm, Nn,
+	Oo (Öö), Pp, Qq, Rr, Ss, Tt, Uu (Üü), Vv, Ww, Xx, Yy, Zz
+	--
+	The ligature Ĳ is ordered as Y in phone directories.
+
+	*/
+
+	"Ĳ": "==Y",
+

@@ -1,0 +1,48 @@
+/*******************************************************************************
+
+		Name:           cy
+		Desc:           Welsh (United Kingdom)
+		Path:           /etc/MetaCollator/tailoring/$$.cy.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       200306 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Welsh alphabet:
+	--
+	Aa (Áá, Àà, Ââ, Ää), Bb, Cc, CHch, Dd, DDdd, Ee (Éé, Èè, Êê, Ëë),
+	Ff, FFff, Gg, NGng, Hh, Ii (Íí, Ìì, Îî, Ïï), [Jj], [Kk], Ll, LLll, Mm, Nn,
+	Oo (Óó, Òò, Ôô, Öö), Pp, PHph, [Qq], Rr, RHrh, Ss, Tt, THth, Uu (Úú, Ùù, Ûû, Üü), [Vv],
+	Ww (Ẃẃ, Ẁẁ, Ŵŵ, Ẅẅ), [Xx], Yy (Ýý, Ỳỳ, Ŷŷ, Ÿÿ), [Zz]
+	--
+	& C < ch <<< Ch <<< CH
+	& D < dd <<< Dd <<< DD
+	& F < ff <<< Ff <<< FF
+	& G < ng <<< Ng <<< NG
+	& L < ll <<< Ll <<< LL
+	& P < ph <<< Ph <<< PH
+	& R < rh <<< Rh <<< RH
+	& T < th <<< Th <<< TH
+	
+	[REF] http://www.evertype.com/alphabets/welsh.pdf
+	*/
+	
+	"ch" : ">1C", "Ch" : ">3ch", "CH" : ">3Ch",
+	"dd" : ">1D", "Dd" : ">3dd", "DD" : ">3Dd",
+	"ff" : ">1F", "Ff" : ">3ff", "FF" : ">3Ff",
+	"ng" : ">1G", "Ng" : ">3ng", "NG" : ">3Ng",
+	"ll" : ">1L", "Ll" : ">3ll", "LL" : ">3Ll",
+	"ph" : ">1P", "Ph" : ">3ph", "PH" : ">3Ph",
+	"rh" : ">1R", "Rh" : ">3rh", "RH" : ">3Rh",
+	"th" : ">1T", "Th" : ">3th", "TH" : ">3Th",

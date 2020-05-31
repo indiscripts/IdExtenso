@@ -1,0 +1,53 @@
+/*******************************************************************************
+
+		Name:           EOR
+		Desc:           European Ordering Rules
+		Path:           /etc/MetaCollator/tailoring/$$.EOR.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Warning: this tailoring may be obsolete!
+
+	EOR Latin alphabet:
+	Aa, Bb, Cc, Dd, Ee, Ff, Gg, Hh, Ii, Jj, Kk, Ll, Mm, Nn,
+	Oo, Pp, Qq, Rr, Ss, Tt, Uu, Vv, Ww, Xx, Yy, Zz, Þþ
+	
+	EOR Greek alphabet:
+	Αα, Ββ, Γγ, Δδ, Εε, Ϝ, Ϛ, Ζζ, Ηη, Θθ, Ιι, Κκ, Λλ, Μμ, Νν,
+	Ξξ, Οο, Ππ, Ϟ, Ρρ, Σσ, Ττ, Υυ, Φφ, Χχ, Ψψ, Ωω, Ϡ
+
+	Rules:
+	Ligatures Æ, Ĳ, Œ, and ß are resp. ordered as A+E, I+J, O+E, and s+s
+
+	& E << ə <<< Ə
+	& I << ı
+	& K << ĸ
+	& N << ŋ <<< Ŋ
+	& T << ŧ <<< Ŧ
+	& TH << þ <<< Þ
+	*/
+
+	"Æ": "==AE",	"æ": "==ae",
+	"Ĳ": "==IJ",	"ĳ": "==ij",
+	"Œ": "==OE",	"œ": "==oe",
+	"ß": "==ss",
+	// ---
+	"ə": ">2E",		"Ə": ">3ə",
+	"ı": ">2I",
+	"ĸ": ">2K",
+	"ŋ": ">2N",		"Ŋ": ">3ŋ",
+	"ŧ": ">2T",		"Ŧ": ">3ŧ",
+	"þ": ">2TH",	"Þ": ">3þ",

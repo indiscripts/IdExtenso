@@ -1,0 +1,37 @@
+/*******************************************************************************
+
+		Name:           br
+		Desc:           Breton (France)
+		Path:           /etc/MetaCollator/tailoring/$$.br.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160101 (YYMMDD)
+		Modified:       160103 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	[REF] "Le breton de poche", D. Kervella. 
+	Breton alphabet:
+	--
+	Aa (Àà, Ââ), Bb, [Cc], CHch, C'Hc'h, Dd, Ee (Éé, Êê), Ff, Gg, Hh, Ii, Jj,
+	Kk, Ll, Mm, Nn (Ññ), Oo (Ôô), Pp, [Qq], Rr, Ss, Tt, Uu (Ùù, Ûû, Üü),
+	Vv, Ww, [Xx], Yy, Zz
+	--
+	& C < ch <<< Ch <<< CH
+	    < c'h <<< C'h <<< C'H
+	*/
+
+	"ch" : ">1C", "Ch" : ">3ch", "CH" : ">3Ch",
+	"c'h" : ">1CH", "C'h" : ">3c'h", "C'H" : ">3C'h",
+	"c\u02BCh" : "==c'h", "C\u02BCh" : "==C'h", "C\u02BCH" : "==C'H",
+	"c\u2019h" : "==c'h", "C\u2019h" : "==C'h", "C\u2019H" : "==C'H",
+	

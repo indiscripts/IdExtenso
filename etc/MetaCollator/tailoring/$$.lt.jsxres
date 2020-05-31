@@ -1,0 +1,42 @@
+/*******************************************************************************
+
+		Name:           lt
+		Desc:           Lithuanian (Lithuania)
+		Path:           /etc/MetaCollator/tailoring/$$.lt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        160104 (YYMMDD)
+		Modified:       200307 (YYMMDD)
+
+*******************************************************************************/
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+	Lithuanian alphabet:
+	--
+	Aa (Ąą), Bb, Cc, Čč, Dd, Ee (Ęę, Ėė), Ff, Gg, Hh, Ii (Įį, Yy), Jj, Kk, Ll, Mm, Nn,
+	Oo, Pp, [Qq], Rr, Ss, Šš, Tt, Uu (Ųų, Ūū), Vv, [Ww], [Xx], Zz, Žž
+	--
+	Ogonek is ordered before dot above [REM: should be implemented for foreign letters.]
+	--
+	& A << ą <<< Ą
+	& C < č <<< Č
+	& E << ę <<< Ę << ė <<< Ė
+	& I << y <<< Y
+	& S < š <<< Š
+	& Z < ž <<< Ž
+	*/
+	"ą" : ">2A", "Ą" : ">3ą",       // [ADD200307]
+	"č" : ">1C", "Č" : ">3č",
+	//"ę" : ">2E", "Ę" : ">3ę",		// allready satisfied in root weights
+	"ė" : ">2Ę", "Ė" : ">3ė",
+	"y" : ">2I", "Y" : ">3y",
+	"š" : ">1S", "Š" : ">3š",
+	"ž" : ">1Z", "Ž" : ">3ž",
