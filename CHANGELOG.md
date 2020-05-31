@@ -1,4 +1,6 @@
 ##### [200531]
+  - [**Collator**](/etc/$$.Collator.jsxlib): New extra module that implements a simplified version of the Unicode Collation Algorithm (UCA) in ExtendScript. You can test it using [CollatorTester](/tests/CollatorTester.jsx)
+  - [**MetaCollator**](/etc/$$.MetaCollator.jsxlib): Meta-module for rebuilding [**Collator**](/etc/$$.Collator.jsxlib) resources if needed. See [tools/RebuildCollator.jsx](/tools/RebuildCollator.jsx) for a ready-to-use tool.
   - [**YALT**](/etc/$$.Yalt.jsxlib): The default [YALT package](/etc/Yalt/$$.yalt.jsxres) now offers 300+ essential translation strings in `FR`, `DE`, `SP`, `IT`, `RU`. Most are inherited from InDesign L10N strings so they fit the conventions of the application.
   - Useful improvement of the main `YALT()` function -- aka `__()` -- which now _sanitize_ any missing argument. That is, if a YALT pattern specifies _%i_ placeholders but you don't supply the corresponding args, those `undefined` variables are automatically coerced into an empty string, instead of the string `"undefined"`. For example, calling `__("abc%1xyz")` without the _%1_ extra parameter will now return `"abcxyz"`. (In the previous version, `"abcundefinedxyz"` would have been returned.)
 
