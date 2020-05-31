@@ -1,3 +1,6 @@
+##### [200531]
+  - [**YALT**](/etc/$$.Yalt.jsxlib): The default [YALT package](/etc/Yalt/$$.yalt.jsxres) now offers 300+ essential translation strings in `FR`, `DE`, `SP`, `IT`, `RU`. Most are inherited from InDesign L10N strings so they fit the conventions of the application.
+
 ##### [200530]
   - [**DateFormat**](/etc/$$.DateFormat.jsxlib): Versioning and slight refinements.
 
