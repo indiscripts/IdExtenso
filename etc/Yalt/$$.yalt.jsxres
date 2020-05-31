@@ -184,6 +184,7 @@
 	Items # Eléments # Elemente # Elementos # Elementi # Элементы
 	Keyword # Mot-clé # Stichwort # Palabra clave # Parola chiave # Ключевое слово
 	Keywords # Mots-clés # Stichwörter # Palabras clave # Parole chiave # Ключевые слова
+	Language # Langue # Sprache # Idioma # Lingua # Язык
 	Layer # Calque # Ebene # Capa # Livello # Слой
 	Layers # Calques # Ebenen # Capas # Livelli # Слои
 	Layout # Mise en page # Layout # Maquetación # Layout # Макет
@@ -254,7 +255,7 @@
 	Tools # Outils # Werkzeuge # Herramientas # Strumenti # Инструменты
 	Topic # Rubrique # Thema # Tema # Argomento # Тема
 	Transparency # Transparence # Transparenz # Transparencia # Trasparenza # Прозрачность
-	Type%1 # Texte # Eingabe # Texto # Testo # Текст
+	Type # Texte # Eingabe # Texto # Testo # Текст
 	Typing # Saisie # Eingabe # Escribir # Immissione # Ввод текста
 	Utilities # Utilitaires # Hilfsprogramme # Utilidades # Utilità # Служебные программы
 	Weight # Epaisseur # Stärke # Grosor # Spessore # Толщина
