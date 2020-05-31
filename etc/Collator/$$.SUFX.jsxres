@@ -1,0 +1,26 @@
+/*******************************************************************************
+
+		Name:           SUFX
+		Desc:           Tailor Keys Suffixes
+		Path:           etc/Collator/$$.SUFX.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource of the Collator module (map).
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        200521 (YYMMDD)
+		Modified:       200531 (YYMMDD)
+
+*******************************************************************************/
+
+	{
+	_phone     : { def:0, ptn:"%1 (phonebook)"         },
+	_phone_at  : { def:0, ptn:"%1 (phonebook/Austria)" },
+	_modern    : { def:1, ptn:"%1 (modern)"            },
+	_tradi     : { def:0, ptn:"%1 (traditional)"       },
+	_phonetic  : { def:0, ptn:"%1 (phonetic)"          },
+	_std       : { def:1, ptn:"%1 (standard)"          },
+	_benin     : { def:0, ptn:"%1 (Benin)"             },
+	}
