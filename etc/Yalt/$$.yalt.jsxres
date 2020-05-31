@@ -9,9 +9,9 @@
 		Kind:           Resource
 		API:            ---
 		DOM-access:     NO
-		Todo:           adding other locales!
+		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       180513 (YYMMDD)
+		Modified:       200531 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,7 +19,7 @@
 	// NOTICE
 	//==========================================================================
 
-	// Supported locales: <EN> FR DE ES.
+	// Supported locales: <EN> FR DE ES IT RU.
 	// Feel free to correct, or to add new locales, as long as
 	// you don't change the keys (1st column.) Each translation
 	// string must have the following format, in a single line:
@@ -30,51 +30,306 @@
 	//==========================================================================
 
 """
-	/*<YALT> # FRENCH # GERMAN # SPANISH
-	%1: # %1 : # %1: # %1:
-	%1: %2 # %1 : %2 # %1: %2 # %1: %2
-	%1! # %1 ! # %1! # %1!
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
 
-	================================
+	============================================== PUNCTUATION, INTERJECTIONS, SHORT TERMS...
 
-	Yes # Oui # Ja # Sí
-	No # Non # Nein # No
-	N/A # N/A # n. zutr. # N/D
-	OK # OK # OK # OK
+	%1: # %1 : # %1: # %1: # %1: # %1:
+	%1: %2 # %1 : %2 # %1: %2 # %1: %2 # %1: %2 # %1: %2
+	%1! # %1 ! # %1! # %1! # %1! # %1!
+	N/A # N/A # n. zutr. # N/D # N/D # Нет данных
+	Untitled-%1 # Sans titre-%1 # Unbenannt-%1 # Sin título-%1 # Senza titolo-%1 # Безымянный-%1
 
-	================================
+	OK # OK # OK # OK # OK # Ладно
+	Yes # Oui # Ja # Sí # Sì # Да
+	No # Non # Nein # No # No # Нет
 
-	Cancel # Annuler # Abbrechen # Cancelar
-	Close # Fermer # Schließen # Cerrar
-	Create # Créer # Erstellen # Crear
-	Update # Actualiser # Aktualisieren # Actualizar
-	Reset # Réinitialiser # Zurücksetzen # Restablecer
+	More... # Plus... # Mehr... # Más... # Altro... # Еще...
+	New... # Nouveau... # Neu... # Nuevo... # Nuovo... # Новый...
+	Previous # Précédent # Zurück # Anterior # Precedente # Предыдущее
+	Next # Suivant # Weiter # Siguiente # Successivo # Следующее
 
-	================================
+	============================================== BASIC VERBS (INFINITIVE)
 
-	Starting up %1... # Démarrage de %1... # %1 wird gestartet... # Inicializando %1...
-	Powered by %1 # Produit par %1 # Erstellt mit %1 # Generado por %1
-	InDesign returned the following error: # InDesign a renvoyé l'erreur suivante : # InDesign hat einen Fehler zurückgegeben: # InDesign devolvió el siguiente error:
-	%1 encountered a serious issue: # %1 a rencontré un problème critique : # %1 hat einen Fehler zurückgegeben: # %1 encontró un problema grave:
-	About %1 # À propos de %1 # Über %1 # Acerca de %1
+	Activate # Activer # Aktivieren # Activar # Attiva # Активировать
+	Add # Ajouter # Hinzufügen # Añadir # Aggiungi # Добавить
+	Apply # Appliquer # Anwenden # Aplicar # Applica # Применить
+	Browse # Parcourir # Durchsuchen # Explorar # Sfoglia # Обзор
+	Buy # Acheter # Kaufen # Comprar # Comprare # Купить
+	Cancel # Annuler # Abbrechen # Cancelar # Annulla # Отмена
+	Change # Modifier # Ändern # Cambiar # Modifica # Изменить
+	Choose # Sélectionner # Wählen # Elegir # Scegli # Выбрать
+	Clear # Effacer # Löschen # Borrar # Cancella # Очистить
+	Close # Fermer # Schließen # Cerrar # Chiudi # Закрыть
+	Confirm # Confirmer # Bestätigen # Confirmar # Conferma # Подтвердить
+	Continue # Continuer # Fortfahren # Continuar # Continua # Продолжить
+	Convert # Convertir # Konvertieren # Convertir # Converti # Преобразовать
+	Copy # Copier # Kopieren # Copiar # Copia # Скопировать
+	Create # Créer # Erstellen # Crear # Crea # Создать
+	Customize # Personnaliser # Anpassen # Personalizar # Personalizza # Настроить
+	Cut # Couper # Ausschneiden # Cortar # Taglia # Вырезать
+	Deactivate # Désactiver # Deaktivieren # Desactivar # Disattiva # Деактивировать
+	Define # Définir # Definieren # Definir # Definisci # Определить
+	Delete # Supprimer # Löschen # Eliminar # Elimina # Удалить
+	Disable # Désactiver # Deaktivieren # Desactivar # Disattiva # Отключить
+	Download # Télécharger # Herunterladen # Descargar # Scarica # Загружать
+	Duplicate # Dupliquer # Duplizieren # Duplicar # Duplica # Создать дубликат
+	Edit # Modifier # Bearbeiten # Edición # Modifica # Редактировать
+	Embed # Incorporer # Einbetten # Incrustar # Incorpora # Встроить
+	Enable # Activer # Aktivieren # Activar # Attiva # Включить
+	Export # Exporter # Exportieren # Exportar # Esporta # Экспорт
+	Find # Rechercher # Suchen # Buscar # Trova # Найти
+	Fix # Corriger # Lösung # Reparar # Correggi # Исправление
+	Generate # Générer # Generieren # Generar # Genera # Генерировать
+	Get Started # Commencer # Jetzt beginnen # Introducción # Introduzione # Начать
+	Group # Associer # Gruppieren # Agrupar # Raggruppa # Сгруппировать
+	Hide # Masquer # Ausblenden # Ocultar # Nascondi # Скрыть
+	Ignore # Ignorer # Ignorieren # Ignorar # Ignora # Игнорировать
+	Import # Importer # Importieren # Importar # Importa # Импорт
+	Include # Inclure # Einschließen # Incluir # Includi # Включить
+	Insert # Insérer # Einfügen # Insertar # Inserisci # Вставить
+	Invert # Inverser # Umkehren # Invertir # Inverti # Инверсия
+	Load # Charger # Laden # Cargar # Carica # Загрузить
+	Lock # Verrouiller # Fixieren # Bloquear # Blocca # Блокировать
+	Log In # Se connecter # Einloggen # Iniciar sesión # Accedere # Войти
+	Log Out # Se déconnecter # Ausloggen # Cerrar sesión # Disconnettere # Выйти
+	Manage # Gérer # Verwalten # Administrar # Gestisci # Управление
+	Maximize # Agrandir # Maximieren # Maximizar # Massimizza # Развернуть
+	Merge # Fusionner # Verbinden # Combinar # Unisci # Объединить
+	Minimize # Réduire # Minimieren # Minimizar # Riduci a icona # Свернуть
+	Open # Ouvrir # Öffnen # Abrir # Apri # Открыть
+	Optimize # Optimiser # Optimieren # Optimizar # Ottimizza # Оптимизировать
+	Override # Remplacer # Übergehen # Ignorar # Ignora # Переопределить
+	Overwrite # Remplacer # Überschreiben # Sobrescribir # Sovrascrivi # Перезаписать
+	Package # Assembler # Verpacken # Empaquetar # Pacchetto # Упаковать
+	Paste # Coller # Einfügen # Pegar # Incolla # Вставить
+	Place # Importer # Platzieren # Colocar # Inserisci # Поместить
+	Preserve # Conserver # Beibehalten # Conservar # Mantieni # Сохранить
+	Preview # Aperçu # Vorschau # Previsualizar # Anteprima # Просмотр
+	Purchase # Acheter # Kaufen # Comprar # Acquistare # Приобрести
+	Quit # Quitter # Beenden # Salir # Esci # Выход
+	Recover # Récupérer # Wiederherstellen # Recuperar # Recupera # Восстановить
+	Redo # Rétablir # Wiederholen # Rehacer # Ripeti # Повторить
+	Refresh # Rafraîchir # Aktualisieren # Actualizar # Aggiorna # Обновить
+	Reject # Ignorer # Ablehnen # Rechazar # Rifiuta # Отклонить
+	Relink # Rééditer le lien # Erneut verknüpfen # Reenlazar # Ricollega # Связать заново
+	Remove # Supprimer # Entfernen # Quitar # Rimuovi # Удалить
+	Rename # Renommer # Umbenennen # Cambiar nombre # Rinomina # Переименовать
+	Reorder # Réorganiser # Neu anordnen # Reordenar # Riordina # Упорядочить заново
+	Repeat # Répéter # Wiederholen # Repetir # Ripeti # Повторить
+	Replace # Remplacer # Ersetzen # Reemplazar # Sostituisci # Заменить
+	Reset # Réinitialiser # Zurück # Restaurar # Reimposta # Сброс
+	Resize # Redimensionner # Größe ändern # Redimensionar # Ridimensiona # Изменить размер
+	Restart # Recommencer # Neu beginnen # Reiniciar # Riavvia # Начать с начала
+	Restore # Restaurer # Wiederherstellen # Restaurar # Ripristina # Восстановить
+	Resume # Reprendre # Fortsetzen # Reanudar # Riprendi # Возобновить
+	Retry # Réessayer # Erneut versuchen # Reintentar # Riprova # Повторить попытку
+	Reverse # Inverser # Umkehren # Inversión # Inverti # Инверсия
+	Revert # Rétablir # Zurückkehren # Volver # Ripristina # Восстановить
+	Rotate # Rotation # Drehen # Rotar # Ruota # Поворот
+	Run # Exécuter # Ausführen # Ejecutar # Esegui # Выполнить
+	Save # Enregistrer # Speichern # Guardar # Salva # Сохранить
+	Scale # Mettre à l'échelle # Skalieren # Escala # Ridimensiona # Масштаб
+	Search # Rechercher # Suchen # Buscar # Cerca # Искать
+	Select # Sélectionner # Auswählen # Seleccionar # Seleziona # Выберите
+	Send # Envoyer # Senden # Enviar # Invia # Отправить
+	Set # Définir # Einstellen # Ajustar # Imposta # Определить
+	Show # Afficher # Einblenden # Mostrar # Mostra # Показать
+	Sign In # Se connecter # Anmelden # Iniciar sesión # Accedi # Войти
+	Sign Out # Se déconnecter # Abmelden # Cerrar sesión # Esci # Выйти
+	Skip # Ignorer # Überspringen # Omitir # Ignora # Пропустить
+	Sort # Trier # Sortieren # Ordenar # Ordina # Сортировать
+	Start # Démarrer # Starten # Iniciar # Inizia # Начать
+	Stop # Arrêter # Anhalten # Detener # Interrompi # Остановить
+	Switch # Changer # Wechseln # Cambiar # Cambia # Переключиться
+	Sync # Synchroniser # Synchronisieren # Sincronizar # Sincronizza # Синхронизировать
+	Test # Tester # Testen # Probar # Prova # Тестировать
+	Transform # Transformer # Transformieren # Transformar # Trasforma # Трансформирование
+	Type In # Saisir # Eingeben # Escribir # Digitare # Печатать
+	Undo # Annuler # Rückgängig # Deshacer # Annulla # Отменить
+	Ungroup # Dissocier # Gruppierung aufheben # Desagrupar # Separa # Разгруппировать
+	Unlink # Rompre le lien # Verknüpfung aufheben # Desvincular # Scollega # Отменить связь
+	Unlock # Déverrouiller # Entsperren # Desbloquear # Sblocca # Разблокировать
+	Update # Actualiser # Aktualisieren # Actualizar # Aggiornare # Обновить
+	Write # Écrire # Schreiben # Escribir # Scrivere # Написать
+	Zoom In # Agrandir # Einzoomen # Aumentar # Ingrandire # Увеличение
+	Zoom Out # Réduire # Auszoomen # Reducir # Ridurre # Уменьшение
 
-	================================
+	============================================== BASIC NOUNS AND INDESIGN CONCEPTS
 
-	Version # Version # Version # Versión
-	Release # Édition # Ausgabe # Lanzamiento
-	License # Licence # Lizenz # Licencia
-	User # Utilisateur # Benutzer # Usuario
-	Email # Courriel # E-Mail # Correo electr.
-	Host # Hôte # Host # Host
-	System # Système # Betriebssystem # Sistema
-	Developed by # Développement # Entwickler # Autor
-	Designed by # Design # Designer # Diseñador
-	Localization # Localisation # Lokalisierung # Localización
-	Localization (%1) # Localisation (%1) # Lokalisierung (%1) # Localización (%1)
-	Support # Support tech. # Support # Soporte
-	Copyright # Copyright # Copyright # Copyright
+	Application # Application # Anwendung # Aplicación # Applicazione # Приложение
+	Applications # Applications # Anwendungen # Aplicaciones # Applicazioni # Приложения
+	Color # Couleur # Farbe # Color # Colore # Цвет
+	Colors # Couleurs # Farben # Colores # Colori # Цвета
+	Description # Description # Beschreibung # Descripción # Descrizione # Описание
+	Document # Document # Dokument # Documento # Documento # Документ
+	Documents # Documents # Dokumente # Documentos # Documenti # Документы
+	Effects # Effets # Effekte # Efectos # Effetti # Эффекты
+	File # Fichier # Datei # Archivo # File # Файл
+	Files # Fichiers # Dateien # Archivos # File # Файлы
+	Folder # Dossier # Ordner # Carpeta # Cartella # Папка
+	Folders # Dossiers # Ordner # Carpetas # Cartelle # Папки
+	Font # Police # Schriftart # Fuente # Font # Шрифт
+	Fonts # Polices # Schriftarten # Fuentes # Font # Шрифты
+	Format # Format # Format # Formato # Formato # Формат
+	Glyph # Glyphe # Glyphe # Pictograma # Glifo # Глиф
+	Glyphs # Glyphes # Glyphen # Pictogramas # Glifi # Глифы
+	Graphic # Image # Grafik # Gráfico # Elemento grafico # Графика
+	Graphics # Graphiques # Grafiken # Gráficos # Grafica # Графика
+	Height # Hauteur # Höhe # Altura # Altezza # Высота
+	Image # Image # Bild # Imagen # Immagine # Изображение
+	Images # Images # Bilder # Imágenes # Immagini # Изображения
+	Info # Informations # Informationen # Información # Informazioni # Информация
+	Item # Elément # Element # Elemento # Elemento # Элемент
+	Items # Eléments # Elemente # Elementos # Elementi # Элементы
+	Keyword # Mot-clé # Stichwort # Palabra clave # Parola chiave # Ключевое слово
+	Keywords # Mots-clés # Stichwörter # Palabras clave # Parole chiave # Ключевые слова
+	Layer # Calque # Ebene # Capa # Livello # Слой
+	Layers # Calques # Ebenen # Capas # Livelli # Слои
+	Layout # Mise en page # Layout # Maquetación # Layout # Макет
+	Length # Longueur # Länge # Longitud # Lunghezza # Длина
+	Letter # Lettre # Letter # Carta # Lettera # Letter
+	Level # Niveau # Ebene # Nivel # Livello # Уровень
+	Line # Ligne # Linie # Línea # Linea # Линия
+	Lines # Lignes # Zeilen # Líneas # Righe # Строки
+	Links # Liens # Verknüpfungen # Vínculos # Collegamenti # Связи
+	List # Liste # Liste # Lista # Elenco # Список
+	Lists # Listes # Listen # Listas # Elenchi # Списки
+	Margins # Marges # Ränder # Márgenes # Margini # Поля
+	Master # Gabarit # Musterseite # Página maestra # Mastro # Шаблон
+	Masters # Gabarits # Musterseiten # Páginas maestras # Mastro # Шаблоны
+	Menu # Menu # Menü # Menú # Menu # Меню
+	Menus # Menus # Menüs # Menús # Menu # Меню
+	Metadata # Métadonnées # Metadaten # Metadatos # Metadati # Метаданные
+	Miscellaneous # Divers # Diverse # Varios # Varie # Разное
+	Monitor # Moniteur # Monitor # Monitor # Monitor # Монитор
+	Name # Nom # Name # Nombre # Nome # Имя
+	Object # Objet # Objekt # Objeto # Oggetto # Объект
+	Objects # Objets # Objekte # Objetos # Oggetti # Объекты
+	Options # Options # Optionen # Opciones # Opzioni # Параметры
+	Output # Sortie # Ausgabe # Salida # Output # Вывод
+	Page # Page # Seite # Página # Pagina # Страница
+	Page Item # Elément de page # Seitenelement # Elemento de página # Elemento pagina # Элемент страницы
+	Page Items # Eléments de page # Seitenobjekte # Elementos de página # Elementi pagina # Элементы страницы
+	Pages # Pages # Seiten # Páginas # Pagine # Страницы
+	Palette # Palette # Palette # Paleta # Palette # Палитра
+	Parameters # Paramètres # Parameter # Parámetros # Parametri # Критерии
+	Password # Mot de passe # Kennwort # Contraseña # Password # Пароль
+	Passwords # Mots de passe # Kennwörter # Contraseñas # Password # Пароли
+	Preferences # Préférences # Voreinstellungen # Preferencias # Preferenze # Установки
+	Profile # Profil # Profil # Perfil # Profilo # Профиль
+	Properties # Propriétés # Eigenschaften # Propiedades # Proprietà # Свойства
+	Query # Requête # Abfrage # Consulta # Interrogazione # Запрос
+	Sample # Echantillon # Beispiel # Muestra # Esempio # Образец
+	Scope # Etendue # Bereich # Ámbito # Validità # Диапазон
+	Script # Script # Skript # Script # Script # Сценарий
+	Scripts # Scripts # Skripte # Scripts # Script # Сценарии
+	Selected Text # Texte sélectionné # Ausgewählter Text # Texto seleccionado # Testo selezionato # Выделенный текст
+	Selection # Sélection # Auswahl # Selección # Selezione # Выделенный фрагмент
+	Settings # Paramètres # Einstellungen # Configuración # Impostazioni # Настройки
+	Shortcut # Raccourci # Tastaturbefehl # Atajo # Scelta rapida # Комбинация клавиш
+	Size # Taille # Größe # Tamaño # Dimensione # Размер
+	Source # Source # Quelle # Origen # Sorgente # Источник
+	Spread # Planche # Druckbogen # Pliego # Abbondanza positiva # Разворот
+	Spreads # Planches # Druckbögen # Pliegos # Pagine affiancate # Развороты
+	State # Etat # Status # Estado # Stato # Состояние
+	Status # Etat # Status # Estado # Stato # Статус
+	Stories # Articles # Textabschnitte # Artículos # Brani # Материалы
+	Story # Article # Textabschnitt # Artículo # Brano # Материал
+	Stroke # Contour # Kontur # Trazo # Traccia # Обводка
+	Style # Style # Format # Estilo # Stile # Стиль
+	Styles # Styles # Formate # Estilos # Stili # Стили
+	Summary # Synthèse # Übersicht # Resumen # Riepilogo # Сводка
+	Swatch # Nuance # Farbfeld # Muestra # Campione # Образец
+	Swatches # Nuancier # Farbfelder # Muestras # Campioni # Образцы
+	System # Système # System # Sistema # Sistema # Системная
+	Table # Tableau # Tabelle # Tabla # Tabella # Таблица
+	Tables # Tableaux # Tabellen # Tablas # Tabelle # Таблицы
+	Text # Texte # Text # Texto # Testo # Текст
+	Text Content # Contenu du texte # Textinhalt # Contenido de texto # Contenuto testo # Текстовое содержимое
+	Text Frame # Bloc de texte # Textrahmen # Marco de texto # Cornice di testo # Текстовый фрейм
+	Text Frames # Blocs de texte # Textrahmen # Marcos de texto # Cornici di testo # Текстовые фреймы
+	Tint # Teinte # Farbton # Matiz # Tonalità # Оттенок
+	Title # Titre # Titel # Título # Titolo # Заголовок
+	Tools # Outils # Werkzeuge # Herramientas # Strumenti # Инструменты
+	Topic # Rubrique # Thema # Tema # Argomento # Тема
+	Transparency # Transparence # Transparenz # Transparencia # Trasparenza # Прозрачность
+	Type%1 # Texte # Eingabe # Texto # Testo # Текст
+	Typing # Saisie # Eingabe # Escribir # Immissione # Ввод текста
+	Utilities # Utilitaires # Hilfsprogramme # Utilidades # Utilità # Служебные программы
+	Weight # Epaisseur # Stärke # Grosor # Spessore # Толщина
+	Width # Largeur # Breite # Anchura # Larghezza # Ширина
 
-	================================
+	============================================== PRODUCT, INTERACTION, PROCESSING
+
+	Help # Aide # Hilfe # Ayuda # Aiuto # Справка
+	Home # Accueil # Start # Inicio # Home # Домашняя страница
+	Learn More # En savoir plus # Weitere Informationen # Más información # Ulteriori informazioni # Подробнее
+	More Info # Plus d'infos # Mehr Informationen # Más información # Più informazioni # Подробнее
+	More Options # Plus d'options # Mehr Optionen # Más opciones # Più opzioni # Больше
+	See also # Voir aussi # Siehe auch # Véase también # Vedere anche # См. также
+
+	User # Utilisateur # Benutzer # Usuario # Utente # Пользователь
+	User Name # Nom d'utilisateur # Benutzername # Nombre de usuario # Nome utente # Имя пользователя
+	Full Name # Nom complet # Vollständiger Name # Nombre completo # Nome completo # Полное имя
+	Hello %1! # Bonjour %1 ! # Hallo %1! # ¡Hola, %1! # Salve %1! # Здравствуйте, %1!
+	Welcome... # Bienvenue... # Willkommen... # Bienvenida... # Benvenuti... # Приветствие...
+	Unknown User # Utilisateur indéterminé # Unbekannter Benutzer # Usuario desconocido # Utente sconosciuto # Неизвестный пользователь
+	Unknown User Name # Nom d'utilisateur inconnu # Unbekannter Benutzername # Nombre de usuario desconocido # Nome ut. sconosciuto # Неизвестное имя пользователя
+	Enter password # Mot de passe # Kennwort eingeben # Escribir contraseña # Inserisci password # Введите пароль
+	Enter Text # Saisir du texte # Text eingeben # Introducir texto # Immettete il testo # Введите текст
+	Sample text # Exemple # Beispieltext # Texto de ejemplo # Esempio # Образец текста
+	Login # Connexion # Login # Inicio de sesión # Login # Вход
+	Logout # Déconnexion # Logout # Cerrar sesión # Disconnessione # Выход
+
+	Please Wait... # Veuillez patienter... # Bitte warten... # Espere... # Attendete... # Подождите...
+	Waiting... # En attente... # Warten... # Esperando... # In attesa... # Подождите...
+	Starting up %1... # Démarrage de %1... # %1 wird gestartet... # Iniciando %1... # Avvio %1 in corso... # Запуск %1...
+	Updating %1... # Mise à jour de %1... # %1 wird aktualisiert... # Actualizando %1... # Aggiornamento di %1 in corso... # Обновление %1...
+	Downloading %1... # Téléchargement de %1... # Laden von %1... # Descargando %1... # Scaricamento di %1... # Загрузка %1...
+	Checking... # Vérification... # Überprüfen... # Comprobando... # Verifica... # Проверка...
+	Importing... # Importation... # Importieren... # Importando... # Importazione... # Импорт...
+	Searching... # Recherche... # Suchvorgang läuft ... # Buscando... # Ricerca in corso... # Поиск...
+	Opening document... # Ouverture du document... # Dokument wird geöffnet... # Abriendo documento... # Apertura documento in corso... # Открытие документа...
+	Saving... # Enregistrement... # Speichern... # Guardando... # Salvataggio... # Сохранение...
+
+	Done # Terminé # Fertig # Hecho # Fatto # Готово
+	Undo %1 # Annuler %1 # Rückgängig: %1 # Deshacer %1 # Annulla %1 # Отменить %1
+	Use Defaults # Utiliser les paramètres par défaut # Standards verwenden # Usar valores por defecto # Usa impostazioni predefinite # Использовать значения по умолчанию
+	Show this alert again? # Toujours afficher ce message ? # Diese Meldung wieder anzeigen? # ¿Mostrar esta alerta de nuevo? # Desiderate che questo messaggio venga visualizzato anche in futuro? # Показывать это сообщение снова?
+	Don't show again # Ne plus afficher # Nicht mehr anzeigen # No volver a mostrar # Non mostrare più # Не показывать снова
+
+	License # Licence # Lizenz # Licencia # Licenza # Лицензия
+	Licensed to: %1 # Licence : %1 # Lizenznehmer: %1 # Otorgado a: %1 # Prodotto concesso su licenza a: %1 # Владелец лицензии: %1
+	Version # Version # Version # Versión # Versione # Версия
+	Version %1 # Version %1 # Version %1 # Versión %1 # Versione %1 # Версия %1
+	Release # Édition # Ausgabe # Lanzamiento # Release # Выпуск
+	Modification Date # Date de modification # Änderungsdatum # Fecha de modificación # Data di modifica # Дата последней правки
+	Feature # Fonctionnalité # Feature # Función # Funzionalità # Функция
+	Design # Conception # Design # Diseño # Progettazione # Оформление
+	Designer # Designer # Designer # Diseñadorde # Designer # Верстальщик
+	Developer # Développeur # Entwickler # Desarrollador # Sviluppatore # Разработчик
+	Engineer # Ingénieur # Softwaretechniker # Ingeniero # Tecnico # Технический сценарий
+	Copyright # Copyright # Copyright # Copyright # Copyright # Авторское право
+	Legal Notices # Mentions légales # Rechtliche Hinweise # Avisos legales # Info legali # Юридическая информация
+	Tech Support # Support techn. # Support # Apoyo técnico # Assistenza tecnica # Помощь
+	Feedback # Commentaire # Feedback # Mensaje # Feedback # Обратная связь
+	Suggestion # Suggestion # Vorschlag # Sugerencia # Suggerimento # Предложение
+	Email # Courriel # E-Mail # Correo electr. # E-mail # Эл. почта
+	Email to: %1 # Envoyer par e-mail à : %1 # Senden an: %1 # Enviar correo a: %1 # E-mail a: %1 # Отправить письмо: %1
+	Submit # Envoyer # Senden # Enviar # Invia # Отправить
+	Messages # Messages # Meldungen # Mensajes # Messaggi # Сообщения
+	Report # Rapport # Bericht # Informe # Resoconto # Отчет
+	Review # Avis # Rezension # Reseña # Recensione # Отзыв
+	Subject # Objet # Betreff # Asunto # Oggetto # Тема
+
+	Error # Erreur # Fehler # Error # Errore # Ошибка
+	Error! #  Erreur ! #  Fehler! #  Error. #  Errore! #  Ошибка!
+	Errors # Erreurs # Fehler # Errores # Errori # Ошибки
+	Warning # Avertissement # Warnung # Aviso # Avvertimento # Внимание
+	Warnings # Avertissements # Warnungen # Avisos # Avvisi # Предупреждения
+	Invalid name # Nom incorrect # Ungültiger Name # Nombre no válido # Nome non valido # Недопустимое имя
+	Invalid entry # Entrée incorrecte # Ungültige Eingabe # Entrada no válida # Valore specificato non valido # Некорректный вход
 
 	</YALT>*/
 """
