@@ -1,0 +1,44 @@
+/*******************************************************************************
+
+		Name:           Collator::YALT
+		Desc:           Yalt strings (resource of the Collator module.)
+		Path:           /etc/Collator/$$.yalt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        200525 (YYMMDD)
+		Modified:       200531 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	// Supported locales: <EN> FR DE SP IT RU.
+	// Feel free to correct, or to add new locales, as long as
+	// you don't change the keys (1st column.) Each translation
+	// string must have the following format, in a single line:
+	// key # trL1 # trL2 # etc (placeholders %1 to %9 allowed.)
+
+	//==========================================================================
+	// DATA  (keep the starting and ending triple quotes)
+	//==========================================================================
+
+"""
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
+
+	%1 (phonebook) # %1 (annuaire) # %1 (Telefonbuch) # %1 (guía telefónica) # %1 (elenco telefonico) # %1 (телефонная книга)
+	%1 (phonebook/Austria) # %1 (annuaire/Autriche) # %1 (Telefonbuch/Österreich) # %1 (guía telefónica/Austria) # %1 (elenco telefonico/Austria) # %1 (телефонная книга/Австрия)
+	%1 (modern) # %1 (moderne) # %1 (modern) # %1 (moderno) # %1 (moderno) # %1 (современный)
+	%1 (traditional) # %1 (traditionnel) # %1 (traditionell) # %1 (tradicional) # %1 (tradizionale) # %1 (традиционный)
+	%1 (phonetic) # %1 (phonétique) # %1 (phonetisch) # %1 (fonética) # %1 (fonetica) # %1 (фонетический)
+	%1 (standard) # %1 (standard) # %1 (standard) # %1 (estándar) # %1 (standard) # %1 (стандартная)
+	%1 (Benin) # %1 (Bénin) # %1 (Benin) # %1 (Benín) # %1 (Benin) # %1 (Бенин)
+	
+	</YALT>*/
+"""
