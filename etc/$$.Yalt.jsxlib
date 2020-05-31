@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       180513 (YYMMDD)
+		Modified:       200531 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 180513, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 200531, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -96,7 +96,7 @@
 
 	({
 		DEFZ : +(Locale.INTERNATIONAL_ENGLISH_LOCALE), // Default Yalt-Locale ID (1st column.)
-		KPFX : '_',                                    // Key prefix.
+		KPFX : '_',                                    // Key prefix, shouldn't change. (IMPORTANT: single character string!)
 
 		YBEG : '<YALT>',                               // Opening tag.
 		YEND : '</YALT>',                              // Closing tag.
@@ -232,43 +232,82 @@
 			}
 		},
 
-		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  o,k,z,c)
+		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  u,o,k,z,c)
 		//----------------------------------
 		// (Localization routine.) A reference to this function is assigned
 		// to `$.global.__` at including stage (as shown above) so the localization
 		// tool is already 'connected'--although not yet 'active.'
 		// [CHG170316] No longer use `arguments` to avoid [workspace] pollution.
+		// [ADD200531] Sanitize missing arguments (x1,x2...) so empty strings
+		// are sent rather than "undefined". Useful if your pattern contains %i
+		// placeholders that have no corresponding arguments.
 		// ---
 		// [REM] Although declared 'private' this function cannot rely on `this` for
 		// referencing the private module zone, as it is invoked from the outside.
 		{
-			// [CHG180513] Handle terminators  `:`  `.`  `!`
+			// [ADD200531]
+			// ---
+			u = void 0;
+			u===x1 && (x1=''); u===x2 && (x2=''); u===x3 && (x3='');
+			u===x4 && (x4=''); u===x5 && (x5=''); u===x6 && (x6='');
+			u===x7 && (x7=''); u===x8 && (x8=''); u===x9 && (x9='');
+
+			// [CHG180513] Handle terminators `:`  `.`  `!`  (•)
 			// ---
 			while( s )
 			{
+				// If `s` already has a full registered key `k==_s`,
+				// take the match and break.
+				// ---
 				if( (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) )
 				{
 					s = o[k];
 					break;
 				}
 
-				if( -1 == ":.!".indexOf(c=s.charAt(-1+(z=s.length))) || s == '%1'+c )
+				// If `s` doesn't end with a • take it as such and break.
+				// (For safety we also break here if `s` is strictly the string `%1•`
+				// but has not been identified as an existing key at the previous step.)
+				// ---
+				if( -1 == ":.!".indexOf(c=s.charAt(-1+(z=s.length))) || (s == '%1'+c) )
 				{
 					break;
 				}
 
-				if( o.hasOwnProperty(k=k.substr(0,z)) )
+				// ---
+				// From here `s` has the form `xyz•` (`k`::`_xyz•`) and has no specific match.
+				// But maybe `_xyz` alone is a key...
+				// ---
+
+				if( o.hasOwnProperty(k=k.slice(0,z)) )
 				{
+					// (a) If `_xyz` is a registered key, apply it as such and put the result into `s`.
+					// E.g  s=="Size of %1 is:"   (k=="_Size of %1 is")
+					// -->  s=="La taille de MyVar1 est"  (FR)
+					// ---
 					s = o[k];
 					0 <= s.indexOf('%') && (s=$.global.localize.apply(null, [s,x1,x2,x3,x4,x5,x6,x7,x8,x9]));
 				}
 				else
 				{
-					s = k.substr(1);
+					// (b) Otherwise, removes the final • from `s`. Trick: extract `k.slice(1)`.
+					// E.g. s=="BwXurgZ %1 is:"   (k=="_BwXurgZ %1 is")
+					// -->  s=="BwXurgZ %1 is"
+					// ---
+					s = k.slice(1);
 				}
 
-				k = callee.µ['~'].KPFX + "%1" + c;
+				// Change k into `_%1•`, takes the formatter (if any) and apply it to `s`.
+				// Assuming the formatter is "%1 :",
+				// in case (a) `s` ------> "La taille de MyVar1 est :"
+				// in case (b) `s` ------> "BwXurgZ %1 is :"
+				// (If no formatter is found, just concatenate `s` and •.)
+				// ---
+				k = k.charAt(0) + "%1" + c;
 				s = o.hasOwnProperty(k) ? $.global.localize(o[k],s) : (s+c);
+
+				// Note that `s` may still contain %i placeholders at the end.
+				
 				break;
 			}
 
@@ -301,7 +340,8 @@
 		// activate() can be explicitly invoked later, which reduces processing.
 		// [REM] As long as Yalt is not activated, the global __() function
 		// simply works as a basic formatter.
-		// [CHG180308] The below code now reflects the recommended pattern:
+		// [CHG180308] The below code reflects the recommended pattern
+		// if additional YALT packages are to be added *after* $$.load().
 		// E.g.
 		//      #include '$$.jsxinc'
 		//      #include 'etc/$$.Yalt.jsxlib'
