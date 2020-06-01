@@ -50,7 +50,7 @@ _Demonstrates:_
 
 ##### [`CollatorTester.jsx`](CollatorTester.jsx)
 
-Live-test IdExtenso's ***Collator*** module in various languages.
+Experiment IdExtenso's ***Collator*** module in various languages.
 
 ![CollatorTester screenshot](CollatorTester.png)
 
