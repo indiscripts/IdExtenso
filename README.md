@@ -18,7 +18,7 @@
 
 * Are you concerned with localizing your scripts in various languages?
 
-…and always making sure that the environment (OS, InDesign version, locale, script engine) is properly addressed?
+…and always making sure that the environment (OS, InDesign version, locale, script engine) is properly identified and managed?
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will you get started, and a huge set of additional modules will help you implement more complex features.
 
