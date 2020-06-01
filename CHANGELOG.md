@@ -1,6 +1,6 @@
 ## 2.00601
   - Stabilized version (June 1, 2020) including latest fixes, improvements, and additions.
-  - Added extra info in [Root/errors](/core/Root/$$.errors.jsxinc).
+  - Added extra info in [Root/errors](/core/Root/$$.errors.jsxinc), plus some coding refinements.
   - Recent fix: `String.prototype.lastIndexOf()` patched (CS4.)
 
 ##### [200531]
