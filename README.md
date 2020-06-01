@@ -28,7 +28,7 @@ The framework supports ExtendScript from version `3.92` to `4.5` and InDesign fr
 
 ### What *IdExtenso* Is Not
 
-***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not contain a bunch of _JS sugars_ easily findable in other distributions. It does not pretend to form a *library* in the narrow sense. Instead, it brings you a consistent workspace. It wouldn't make sense to use ***IdExtenso*** in small projects not involving keywords like localization, performance, UI, modularity, cross-version compatibility, settings management.
+***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not contain a bunch of _JS sugars_ easily findable in other distributions. It does not pretend to form a *library* in the narrow sense. Instead, it brings you a consistent workspace. It wouldn't make sense to use ***IdExtenso*** in small projects not involving keywords like localization, performance, ScriptUI, modularity, cross-version compat., settings management.
 
 -----
 
