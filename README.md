@@ -1,4 +1,4 @@
-# *IdExtenso*  2.00228
+# *IdExtenso*  2.00601 (Core: 177KB)
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -10,17 +10,25 @@
 
 ### Overview
 
-***IdExtenso*** is a work-in-progress API dedicated to ExtendScript developers looking for a robust solution in the particular field of InDesign scripting. Think of it as a toolbox based on efficient and growing building blocks.
+***IdExtenso*** is a complete ExtendScript/InDesign scripting framework. It provides a robust toolbox based on efficient building blocks.
 
-Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects? Would you like to trace your debug messages in a log file the easy way? And always making sure that the environment (operating system, InDesign version, locale, script engine) is properly addressed? ***IdExtenso*** natively provides these features as they are parts of its core structure.
+* Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects?
 
-The framework is designed to support ExtendScript from version `3.92` to `4.5` and InDesign from `v.6.0` (CS4) to `15.x` (CC2020) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, and so much more.
+* Would you like to trace your debug messages in a log file the easy way?
+
+* Are you concerned with localizing your scripts in various languages?
+
+…and always making sure that the environment (OS, InDesign version, locale, script engine) is properly addressed?
+
+***IdExtenso*** addresses these needs, and many more. Its core structure will you get started, and a huge set of additional modules will help you implement more complex features.
+
+The framework supports ExtendScript from version `3.92` to `4.5` and InDesign from `v.6.0` (CS4) to `15.x` (CC2020) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, etc.
 
 -----
 
 ### What *IdExtenso* Is Not
 
-***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not offer a bunch of _JS sugars_ easily findable in other distributions. So it does not pretend to form a *library* in the narrow sense. It is about building a complete workspace. It wouldn't make sense to use it in small projects that don't involve features like localization, performance testing, user interface, modularity, compatibility, settings management.
+***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not contain a bunch of _JS sugars_ easily findable in other distributions. It does not pretend to form a *library* in the narrow sense. Instead, it brings you a consistent workspace. It wouldn't make sense to use ***IdExtenso*** in small projects not involving keywords like localization, performance, UI, modularity, cross-version compatibility, settings management.
 
 -----
 
@@ -28,15 +36,17 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 
 - As fast and optimized as we can.
 
-- Light-weight and maintaining the `[[global]]` scope as clean as possible.
+- Light-weight core package.
 
-- Smart support of persistent engines created via the `#targetengine` directive.
+- Leaving the `[[global]]` scope as clean as possible.
 
-- Still works fine in a `JSXBIN` export of your final project.
+- Smart support of persistent engines (`#targetengine` directive.)
 
-- Fixes various compatibility issues regarding ExtendScript and/or InDesign DOM versions.
+- Curates various ExtendScript bugs and InDesign DOM compatibility issues.
 
-- Offers a growing number of extra modules that you can plug at wish through `#include`. Among the available modules present in the `/etc` branch, give a look at: **[Yalt](/etc/$$.Yalt.jsxlib)** (localization engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[MD5](/etc/$$.MD5.jsxlib)**, **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, etc.
+- Still works fine in your `JSXBIN` exports!
+
+- Growing number of extra modules that you can plug at wish through `#include`. Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, etc.
 
 -----
 
@@ -56,7 +66,7 @@ The framework is designed to support ExtendScript from version `3.92` to `4.5` a
 
 5. After your `#include` directives, *DO NOT FORGET* to invoke `$$.load()`.
 
-Congratulations! You're now ready to use ***IdExtenso*** in your script!
+Congratulations! You're now ready to fuel your scripts with ***IdExtenso***!
 
 > *Tip*. — Use `$$.help()` at any point of your code to discover and browse the API of the included modules (including core features.) 
 
