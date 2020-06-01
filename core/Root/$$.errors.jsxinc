@@ -9,9 +9,9 @@
 		Kind:           Part of the Root module.
 		API:            beep() logErrors error()=>[[global]] receiveError()
 		DOM-access:     ---
-		Todo:           Refine receiveError ; more tests!
+		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       181128 (YYMMDD)
+		Modified:       200601 (YYMMDD)
 
 *******************************************************************************/
 
@@ -49,7 +49,7 @@
 	----------------------------------------------------------------------------
 	* Tells whether the property is standard (YES) or non-standard (NO).
 	
-	Native Error subtypes in ExtendScript (CS4).
+	Native Error subtypes in ExtendScript (from CS4).
 	----------------------------------------------------------------------------
 	CLASS*          STD  PURPOSE
 	----------------------------------------------------------------------------
@@ -77,9 +77,9 @@
 	----------------------------------------------------------------------------
 	ACCESS       CAST   NOTE
 	----------------------------------------------------------------------------
-	$.error      Error  The most recent run-time error information. Assigning
-	                    error text to this property generates a run-time error;
-	                    however, the preferred way to generate a run-time error
+	$.error      Error  The most recent runtime error information. Assigning
+	                    error text to this property generates a runtime error;
+	                    however, the preferred way to generate a runtime error
 	                    is to throw an Error object.
 	$.fileName    STR   Full path, URI-encoded, of the script file being
 	                    executed. This property is more reliable than
@@ -258,46 +258,59 @@
 	
 	({
 
-		ELOG: function(/*Error&*/e,/*?str*/rawStack,  $$,s)
+		ELOG: function(/*Error&*/e,/*?str*/rawStack,  $$,t,s,x)
 		//----------------------------------
 		// (Error-Log.) Conditionally log an error, whatever its origin.
+		// [ADD200601] Extra info.
 		// [ADD180318] Made this snippet available as a private routine,
 		// so it's now callable from `receiveError` based on the raw
 		// contents of $.stack (-> rawStack.)
-		// ---
 		// If Log is available and non-MUTE, warn the error.
 		// If logErrors is ON, force the logger to wake up.
 		// ---
-		// [REM] Being a core module, Log is available as soon as
-		// it is included, that is, almost instantly. However, we
-		// want to make `error()` very secure and always callable.
-		// So we check whether $$.Log is already there.
-		// ---
-		// => undefined
+		// => undef
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			
+			// Being a core module, Log is available as soon as
+			// included, that is, almost instantly. However, since
+			// `error()` requires high security, we explicitly check
+			// that $$.Log is functional.
+			// ---
 			if( 'function' != typeof $$.Log ) return;
-
-			if( !($$.Log() || ($$.logErrors && $$.Log.warn(true))) ) return;
 			
-			s = e.managed ? e.stack :
-				( rawStack && rawStack.split(RegExp.LINEs).join(' :: ') );
+			// Rem: $$.Log() => -1 (trace) | 0 (mute) | +1 (warn)
+			// ---
+			t = $$.Log() || ($$.logErrors && $$.Log.warn(true));
+			if( !t ) return;
+			
+			// Get the stack (it's already formatted if `e.managed`.)
+			// ---
+			s = e.managed
+			? e.stack
+			: ( rawStack && rawStack.split(RegExp.LINEs).join(' :: ') );
+			
+			// [ADD200601] Extra info.
+			// ---
+			x = e.managed
+			? __("Engine: %1 - File: %2 - Location: %3", e.engine, e.fileName, e.where||"<unknown>.")
+			: __("Engine: %1 - File: %2 - Line: %3.", $.engineName, e.fileName, e.line||"<unknown>");
 
 			// Do not take the risk of over-erroring.
 			// ---
 			try
 			{
-				$$.Log.warn(__("%1 > %2%3Stack: %4",
-					e.managed ? 'ERROR (managed)' : 'ERROR (wild)',
-					e.message,
-					$$.newLine + $$.Log.spaces,
-					s || '<empty>'
+				$$.Log.warn(__("ERROR > [%1] %2%3%4%3Stack: %5"
+					, e.managed ? "Managed" : "Wild"
+					, e.message
+					, $$.newLine + $$.Log.spaces
+					, x
+					, s || "<empty>."
 					));
+
 				e.logged=1;
 			}
-			catch(_){}
-
+			catch(_){ }
 		},
 
 	})
@@ -309,7 +322,9 @@
 	[PUBLIC]
 
 	({
-		beep: 'function' == typeof $.global.beep ? function beep_(){ $.global.beep() } : function beep_(){},
+		beep: 'function' == typeof $.global.beep
+		? function beep_(){ $.global.beep() }
+		: function beep_(){ },
 
 		// Whether errors must be forced to warn (even in MUTE log mode.)
 		// This property is actually determined at loading time according
@@ -319,7 +334,7 @@
 
 		error: function error_S_r_(/*str*/msg,/*?ref|str*/src,  $$,a,i,s,p,fn,fx,jb,e)
 		//----------------------------------
-		// Throw a managed exception with additional information.
+		// Throw a managed Error with additional information.
 		// [CHG171024] Improved stack parsing and file resolver.
 		// [FIX181018] Fixed a typo.
 		// [ADD181128] Made [[global]] thanks to copy().
@@ -327,12 +342,12 @@
 		// msg :: Nude error message (might be localized.)
 		// src :: (opt.) Module, function or file where the error occured.
 		//        [ADD171023] If `src` is a string, use it as source identifier.
+		// ---
+		// => [this function doesn't return since it always throws an error]
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 
-			// Parsing the stack.
-			// ---
-			// [REM] $.stack has the form:
+			// Parsing `$.stack`. It has the form:
 			// [<file>]\n ([<number>]\n)? (<func>(<args>?)\n)+ error_S_r_(<args>)\n
 			// The presence of [<number>] indicates a jsxbin in the stack.
 			// E.g "[My Script.bin.jsx]\n[210]\nMyTestFunc()\n"
@@ -347,28 +362,44 @@
 
 			for( fn=fx=jb='', i=a.length ; i-- ; )
 			{
-				if( !(s=a[i]) ){ a.splice(i,1); continue; } // [FIX181018] split->splice !!!
-				if( -1 == (p='])'.indexOf(s.substr(-1))) ) continue;
-				if( p ){ fn||(fn=s.substr(0,s.indexOf('('))); continue; }
-				s = s.substr(1,s.length-2);
-				('-'+s===''+-s) ? (jb||(jb=s)) : (i||(fx=s));
+				if( !(s=a[i].trim()).length )
+				{
+					a.splice(i,1);
+					continue;
+				}
+				switch( '])'.indexOf(s.slice(-1)) )
+				{
+					case 0: // <MustBeEmpty>[xyz]
+						if( '[' != s.charAt(0) ) break;
+						s = s.slice(1,-1);
+						
+						// (a) xyz is a numeral => jb=xyz (if not defined)
+						// (b) otherwise        => fx=xyz (only if i==0)
+						// ---
+						'-'+s === ''+-s         // Quick numeral test!
+						? ( jb || (jb=s) )
+						: (  i || (fx=s) );
+						break;
+
+					case 1: // xyz(...)  =>  fn=xyz (if not defined)
+						fn || ( 0 < (p=s.indexOf('(')) && (fn=s.slice(0,p)) );
+						break;
+
+					default:;
+				}
 			}
 
-			// Attempt to retrieve a full, valid & readable pathname.
-			// By default, use $$.Env.runningScript as a hint.
-			// [REM] Usually, $.fileName is not reliable at this point, as
-			// it stupidly returns the *present* file `.../$$.errors.jsxinc`
-			// Anyway it can still be helpful in a JSXBIN stream.
-			// => fx  ::  str [OK]  |  "" [KO]
+			// Attempt to retrieve a full, valid, readable pathname.
+			// Uses $$.Env.runningScript as a hint. In general `$.fileName`
+			// isn't reliable at this point as it returns the *present* file
+			// `.../$$.errors.jsxinc`; anyway it's helpful in a JSXBIN stream.
+			// => fx  ::  str [OK]  |  '' [KO]
 			// ---
-
 			while( (!fx) || (!File(fx).exists) )
 			{
-				// It is almost certain that we reach this block,
-				// since `fx` is ordinarily a simple *file name*
-				// with no parent path.
+				// This block is quite certainly entered as `fx` is
+				// ordinarily a simple filename with no parent path.
 				// ---
-
 				s = 'function' == typeof $$.Env ? $$.Env.runningScript : $.fileName;
 				if( !s ){ fx=''; break; }
 
@@ -381,8 +412,8 @@
 					break;
 				}
 				
-				// Last chance: test whether `fx` refers to a file
-				// present in the parent folder of the running script...
+				// Last chance: test whether `fx` refers to a file that
+				// belongs to the parent folder of the running script.
 				// ---
 				if( (s=File(s).parent).exists && File(s=s.fullName+'/'+fx).exists )
 				{
@@ -432,7 +463,7 @@
 				case 'function':
 					// Some function has been passed in. It might be either
 					// (a) a module, (b) a module func, (c) any func.
-					// In case (a) we use `fn` as a guess.
+					// In case (a) we use `fn` as a hint.
 					// ---
 					// [REM] What makes the algorithm a bit obscure here
 					// is the attempt to provide the most informative
@@ -455,14 +486,14 @@
 					// src :: module | ''  ;  fn :: funcName | ''
 					// ---
 
-					// Express `fn` as <mod>.<fKey> (if possible.)
+					// Express `fn` as <mod>.<fKey> if possible.
 					// ---
 					while( src && (s=fn) )
 					{
 						// Simple case:
 						// src[funcKey] === funcKey_signature(){}
 						// ---
-						0 < (i=fn.indexOf('_')) && (s=fn.substr(0,i));
+						0 < (i=fn.indexOf('_')) && (s=fn.slice(0,i));
 						if( fn===(src[s]||0).name ){ s='.'+s; break; }
 
 						// Hard case (parsing `__path__`)
@@ -472,9 +503,9 @@
 						// ---
 						s = '/' + src + '/';
 						i = p.indexOf(s);
-						if( -1===i || s===p.substr(i) ){ s=''; break; }
-						s = p.substr(i+s.length);
-						(i = '~/' == s.substr(0,2) ? '.~' : '') && (s=s.substr(2));
+						if( -1===i || s===p.slice(i) ){ s=''; break; }
+						s = p.slice(i+s.length);
+						(i = '~/' == s.slice(0,2) ? '.~' : '') && (s=s.slice(2));
 						if( fn===((i?src['~']:src)[s]||0).name ){ s=i+'.'+s; break; }
 						s = ''; break;
 					}
@@ -513,7 +544,7 @@
 			// ---
 			e.where = src;
 			
-			// [CHG180318] Conditional log error routine. (Code refactoring.)
+			// [CHG180318] Conditional log error routine.
 			// ---
 			callee.µ['~'].ELOG(e);
 			throw e;
@@ -522,13 +553,12 @@
 	
 		receiveError: function receiveError_$Error$_(/*Error*/e)
 		//----------------------------------
-		// [CHG171024] Prompt any error.
+		// Prompt any error.
 		{
 			if( e.managed )
 			{
-				// [REM] Conditional Log already processed -- cf `error()`.
+				// ELOG already processed -- cf `error()`.
 				// ---
-
 				alert([
 					e.message,
 					'________________________________________\r',
