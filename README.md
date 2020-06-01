@@ -10,7 +10,7 @@
 
 ### Overview
 
-***IdExtenso*** is a complete ExtendScript/InDesign scripting framework. It provides a robust toolbox based on efficient building blocks.
+***IdExtenso*** is a complete ExtendScript/InDesign scripting framework. It also provides a rich toolbox, based on stackable building blocks.
 
 * Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects?
 
