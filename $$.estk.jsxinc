@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       200228 (YYMMDD)
+		Modified:       200601 (YYMMDD)
 
 *******************************************************************************/
 
@@ -38,12 +38,12 @@
 	in ExtendScript ToolKit (however Photoshop can't run it due to incompatibili-
 	ties with ScriptUI's listbox implementation.)
 	
-	Thanks to this special patch you may use CORE modules like `JSON` or `Log`
+	Thanks to this special patch you can enjoy CORE modules like `JSON` or `Log`
 	in your scripts, and even extra modules like `Yalt`, `MD5`, `BigInt`...
 
 	However, keep in mind that IdExtenso is primarily thought to automate
-	InDesign so DOM-oriented modules and functions (`$$.Env`, `$$.Dom`...)
-	will either stop working, or return irrelevant results.
+	InDesign, hence DOM-oriented modules and functions (`$$.Env`, `$$.Dom`...)
+	will either stop working or return irrelevant data.
 
 	*/
 
