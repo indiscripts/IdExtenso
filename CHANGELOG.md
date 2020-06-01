@@ -1,3 +1,8 @@
+## 2.00601
+  - Stabilized version (June 1, 2020) including latest fixes, improvements, and additions.
+  - Added extra info in [Root/errors](/core/Root/$$.errors.jsxinc).
+  - Recent fix: `String.prototype.lastIndexOf()` patched (CS4.)
+
 ##### [200531]
   - [**Collator**](/etc/$$.Collator.jsxlib): New extra module that implements a simplified version of the Unicode Collation Algorithm (UCA) in ExtendScript. You can test it using [CollatorTester](/tests/CollatorTester.jsx)
   - [**MetaCollator**](/etc/$$.MetaCollator.jsxlib): Meta-module for rebuilding [**Collator**](/etc/$$.Collator.jsxlib) resources if needed. See [tools/RebuildCollator.jsx](/tools/RebuildCollator.jsx) for a ready-to-use tool.
