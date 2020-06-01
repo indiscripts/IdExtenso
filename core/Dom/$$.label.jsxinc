@@ -11,7 +11,7 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           ---
 		Created:        170324 (YYMMDD)
-		Modified:       170324 (YYMMDD)
+		Modified:       200601 (YYMMDD)
 
 *******************************************************************************/
 
@@ -52,42 +52,50 @@
 	[PUBLIC]
 
 	({
-
 		fromLabel : function fromLabel_D_S_x_X(/*dom*/osp,/*str*/label,/*any=undefined*/defRet)
 		//----------------------------------
-		// Read osp's label and return the un-serialized data.
-		// [REM] Supports singular spec only.
+		// Extract the label of a DOM component and return the unserialized data.
+		// `osp`    Singular object specifier (plural spec *not supported*.)
+		// `label`  Label string.
+		// `defRet` Default return value if the label cannot be extracted.
+		// ---
+		// => any [OK] | defRet [KO]
 		{
-			// Assertions.
+			// Checkpoints.
 			// ---
-			( osp===Object(osp) && ('extractLabel' in osp) ) ||
-				$.global[callee.µ.__root__].error("Invalid 'osp' argument.",callee);
-			label ||
-				$.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
+			( osp===Object(osp) && osp.isValid && ('extractLabel' in osp) )
+			|| $.global[callee.µ.__root__].error("Invalid 'osp' argument. Should be a valid DOM object.",callee);
+
+			label
+			|| $.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
 	
 			// Default ret.
 			// ---
 			('undefined'==typeof defRet) && (defRet=void 0);
 			
-			return callee.µ['~'].FLBL(osp,label,defRet);
+			return callee.µ['~'].FLBL(osp, String(label), defRet);
 	
 		}.copy('..'),
 	
-		toLabel : function toLabel_D_S_X_S(/*dom*/osp,/*str*/label,/*any*/x)
+		toLabel : function toLabel_D_S_X_S(/*dom*/osp,/*str*/label,/*any*/data)
 		//----------------------------------
-		// Serialize x (thru JSON) and save it into osp as a label.
-		// Supports collective specifier.
-		// => serialized string.
+		// Serialize data *thru JSON* and save the string into osp as a label.
+		// `osp`    Any object specifier (plural spec *supported*.)
+		// `label`  Label string.
+		// `data`   Any value, object, etc, to be serialized.
+		// [REM] Supports collective specifier.
+		// ---
+		// => str [serialized string]
 		{
-			// Assertions.
+			// Checkpoints.
 			// ---
-			( osp===Object(osp) && ('insertLabel' in osp) ) ||
-				$.global[callee.µ.__root__].error("Invalid 'osp' argument.",callee);
-			label ||
-				$.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
+			( osp===Object(osp) && osp.isValid && ('insertLabel' in osp) )
+			|| $.global[callee.µ.__root__].error("Invalid 'osp' argument. Should be a valid DOM object.",callee);
+
+			label
+			|| $.global[callee.µ.__root__].error("Empty 'label' argument.",callee);
 	
-			return callee.µ['~'].TLBL(osp,label,x);
+			return callee.µ['~'].TLBL(osp,label,data);
 	
 		}.copy('..'),
-
 	})
