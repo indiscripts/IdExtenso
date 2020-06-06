@@ -1,3 +1,19 @@
+##### [200606]
+- [**JSON**](/core/$$.JSON.jsxlib): Added support of _rich arrays_ in `~.['\x01Array']`. A "rich array" is an Array object whose `length` is lower than `__count__`, that is, having additional properties beyond '0', '1'... indices. E.g:
+
+~~~~
+var arr = [10,20,30];
+arr.name = "Hello";
+~~~~
+
+In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.)
+
+Hence the string `$$.JSON(arr)` will look like:
+
+`'(function(o){o.__proto__=[].__proto__;return o})({"0":10,"1":20,"2":30,"name":"Hello"})'`
+
+which evaluates to a quasi-array _arr_ (`arr instanceof Array` is true, `arr.length` is 3, etc.), although `arr.__class__` is "Object" (read-only) and `arr.toSource()` cannot work.
+
 ## 2.00601
   - Stabilized version (June 1, 2020) including latest fixes, improvements, and additions.
   - Added extra info in [Root/errors](/core/Root/$$.errors.jsxinc), plus some code refinements.
