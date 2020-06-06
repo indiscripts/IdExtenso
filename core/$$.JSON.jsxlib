@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       180413 (YYMMDD)
+		Modified:       200606 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 180413, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 200606, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -84,6 +84,8 @@
 	Indeed, due to an implementation error regarding the '===' operator,
 	`UnitValue(0.5,'pt')===null` is true (!) The LAVE routine has been
 	updated to work around this bug.
+	
+	[FIX200606] Support of "rich arrays". See ~.['\x01Array']
 
 	*/
 
@@ -574,21 +576,37 @@
 		//----------------------------------
 		// Regular Array loop.
 		{
+			// [FIX200606] Special case for "Rich Array."
+			// ---
+			// A "rich array" is an Array object whose `length` is lower than `__count__`,
+			// that is, having additional properties beyond '0', '1'... indices.
+			// In this particular case, a regular Object is created (all properties are
+			// then explicitly set), and `__proto__` is set to Array.prototype.__proto__, so
+			// the evalResult behaves as a regular Array (all Array members are inherited.)
+			// However, `evalResult.__class__` is "Object" (read-only) and
+			//          `evalResult.toSource()` cannot work.
+			// ---
+			if( x.__count__ > x.length )
+			{
+				s = this['\x01Object'](x);
+				return '(function(o){o.__proto__=[].__proto__;return o})(' + s + ')';
+			}
+
 			if( this.REFS(x) ) return '[/*cycle*/]';
+
 			this.INLP = 1;
 
 			dq = this.INDT = (q=this.INDT)+this.SPCE;
 			sp = this.SPCE ? ' ' : '';
 
 			for( z=(a=[]).length, n=x.length, i=-1, sz=0 ; ++i < n ; sz+=(a[z++]=this.LAVE(x[i])).length );
-			
 			s = 0===z ? '[]' :
 			(
 				( dq && (10 < z || 15*z < sz) ) ?
 				( '[' + this.NEWL + dq + a.join(',' + this.NEWL + dq) + this.NEWL + q + ']' ) :
 				( '[' + sp + a.join(','+sp) + sp + ']' )
 			);
-			
+
 			return (a.length=0),(this.INDT=q),s;
 		},
 
