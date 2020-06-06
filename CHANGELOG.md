@@ -10,7 +10,7 @@ In this particular case, a regular Object is created (all properties are then ex
 
 `'(function(o){o.__proto__=[].__proto__;return o})({"0":10,"1":20,"2":30,"name":"Hello"})'`
 
-which evaluates to a quasi-array _arr_ (`arr instanceof Array` is true, `arr.length` is 3, etc.), although `arr.__class__` is "Object" (read-only) and `arr.toSource()` cannot work.
+which evaluates to a quasi-array _arr_ (`arr instanceof Array` is true, `arr.length` is 3, etc.), although `arr.__class__` is still "Object" (read-only) and `arr.toSource()` cannot work.
 
 ## 2.00601
   - Stabilized version (June 1, 2020) including latest fixes, improvements, and additions.
