@@ -1,5 +1,5 @@
 ##### [200606]
-- [**JSON**](/core/$$.JSON.jsxlib): Added support of _rich arrays_ in `~.['\x01Array']`. A "rich array" is an Array object whose `length` is lower than `__count__`, that is, having additional properties beyond '0', '1'... indices. E.g:
+[**JSON**](/core/$$.JSON.jsxlib): Added support of _rich arrays_ in `~.['\x01Array']`. A "rich array" is an Array object whose `length` is lower than `__count__`, that is, having additional properties beyond '0', '1'... indices. E.g:
 
 ~~~~
 var arr = [10,20,30];
