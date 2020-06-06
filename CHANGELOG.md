@@ -6,9 +6,7 @@ var arr = [10,20,30];
 arr.name = "Hello";
 ~~~~
 
-In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.)
-
-Hence the string `$$.JSON(arr)` will look like:
+In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.) The string `$$.JSON(arr)` will now look like:
 
 `'(function(o){o.__proto__=[].__proto__;return o})({"0":10,"1":20,"2":30,"name":"Hello"})'`
 
