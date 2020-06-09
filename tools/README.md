@@ -177,6 +177,8 @@ Translates [ScriptUI Dialog Builder](https://scriptui.joonas.me) JSON bundle int
 
 • More on SDB here: https://github.com/joonaspaakko/ScriptUI-Dialog-Builder-Joonas
 
+• Online tool: https://scriptui.joonas.me
+
 ---
 
 ##### [`SelToPng.jsx`](SelToPng.jsx)
