@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Refine/adjust special SDB properties...
 		Created:        200606 (YYMMDD)
-		Modified:       200609 (YYMMDD)
+		Modified:       200610 (YYMMDD)
 
 *******************************************************************************/
 
@@ -95,7 +95,7 @@
 			// ---
 			z += '\t';
 			r[r.length] = callee.RPAD(z,'properties:') + callee.MKPP(sty) + ',';
-			for( k in sty ) sty.hasOwnProperty(k) && null!==(v=sty[k]) && (v=callee.VSTR(v,k)) && (r[r.length] = callee.RPAD(z, k+':') + v + ',');
+			for( k in sty ) sty.hasOwnProperty(k) && null!==(v=sty[k]) && (v=callee.VSTR(v,k)).length && (r[r.length] = callee.RPAD(z, k+':') + v + ',');
 		}
 		// Need to close some brackets?
 		// ---
@@ -226,7 +226,7 @@
 		VSTR: function(/*any*/v,/*key*/k,  r,t)
 		//----------------------------------
 		// (Value-String.)
-		// => str
+		// => str [OK]  |  '' [KO]
 		{
 			switch( k )
 			{
@@ -258,7 +258,7 @@
 					// SDB provides margins in TRBL order; SUI expects LTRB.
 					r = v instanceof Array
 					? __("[%4,%1,%2,%3]",v[0]>>>0,v[1]>>>0,v[2]>>>0,v[3]>>>0)
-					: ( v>>>0 );
+					: ('' + ( v>>>0 ));
 					break;
 
 				default:
