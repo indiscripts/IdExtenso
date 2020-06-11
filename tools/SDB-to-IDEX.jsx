@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Refine/adjust special SDB properties...
 		Created:        200606 (YYMMDD)
-		Modified:       200610 (YYMMDD)
+		Modified:       200611 (YYMMDD)
 
 *******************************************************************************/
 
@@ -204,6 +204,7 @@
 					case 'windowType' : b=1; pp.type = t.toLowerCase(); break;
 					case 'bounds':      b=1; pp.bounds = t instanceof Array ? t.slice() : $$.clone(t); break;
 					case 'listItems':   b=1; pp.items = t instanceof Array ? t.slice() : t.split(LI_SPLIT); break;
+					case 'scrollable':  b=1; pp.scrolling = t; break; // [FIX200611] SDB `scrollable` means EditText `scrolling`
 					default:            (b=RE.test(k)) && (pp[k]=t);
 				}
 				b && delete sty[k];
@@ -220,7 +221,7 @@
 		.setup
 		({
 			RE_ARGS : /^text|image|icon|file|value|minvalue|maxvalue$/,
-			RE_NOQUO: /"(name|type|bounds|items|text|image|icon|file|value|minvalue|maxvalue|su1PanelCoordinates|maximizeButton|minimizeButton|independent|closeButton|borderless|borderStyle|truncate|multiline|scrolling)"(?=:)/g,
+			RE_NOQUO: /"(name|type|bounds|items|text|image|icon|file|value|minvalue|maxvalue|su1PanelCoordinates|maximizeButton|minimizeButton|independent|closeButton|borderless|borderStyle|truncate|multiline|scrolling|scrollable)"(?=:)/g,
 		}),
 		
 		VSTR: function(/*any*/v,/*key*/k,  r,t)
@@ -259,6 +260,11 @@
 					r = v instanceof Array
 					? __("[%4,%1,%2,%3]",v[0]>>>0,v[1]>>>0,v[2]>>>0,v[3]>>>0)
 					: ('' + ( v>>>0 ));
+					break;
+				
+				case 'enabled':
+					// [ADD200611] Only required if set to false.
+					r = v ? '' : 'false';
 					break;
 
 				default:
