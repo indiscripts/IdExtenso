@@ -1,3 +1,6 @@
+##### [200611]
+[**ModalScript**](/etc/$$.ModalScript.jsxlib): Added a public (`changeLocaleTo(iLocale)`)[/etc/ModalScript/$$.public.jsxinc] method in order to reflect the equivalent feature already available in [BasicScript](/etc/$$.BasicScript.jsxlib). This routine just reactivates **YALT** to a different locale, i.e, it basically calls `$$.Yalt.activate(iLocale)`.
+
 ##### [200606]
 [**JSON**](/core/$$.JSON.jsxlib): Added support of _rich arrays_ in `~.['\x01Array']`. A "rich array" is an Array object whose `length` is lower than `__count__`, that is, having additional properties beyond '0', '1'... indices. E.g:
 
