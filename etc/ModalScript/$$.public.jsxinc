@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190331 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       200611 (YYMMDD)
 
 *******************************************************************************/
 
@@ -63,4 +63,21 @@
 			Window.prototype.getValueKey  = I._GV_;
 			Window.prototype.getStringKey = I._GS_;
 		},
+
+		changeLocaleTo: function changeLocaleTo_i$locale$_(/*uint|LocaleID=auto*/iLocale,  I,$$,t)
+		// ---------------------------------
+		// [ADD200611] Re-activate Yalt to a different locale. Unlike its BasicScript
+		// counterpart, this method simply provides an alias of `$$.Yalt.activate(iLocale)`.
+		// It should be called before Dialog values be populated, typically in an onLoad
+		// handler or at onActive stage (Context.)
+		// ---
+		// E.g: µ.changeLocaleTo(Locale.GERMAN_LOCALE);
+		// => undef
+		{
+			I = callee.µ['~'];
+			$$ = $.global[callee.µ.__root__];
+			
+			I.YALT && $$.Yalt && $$.Yalt.activate(iLocale);
+		},
+
 	})
