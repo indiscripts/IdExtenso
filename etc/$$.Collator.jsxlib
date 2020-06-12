@@ -7,17 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module
-		API:            =sort() setTailor() getTailor()
+		API:            =sort() setTailor() getTailor() findTailor()
 		                getRichList() selectLanguage()
 		                getLocaleKey() localeSort()
 		DOM-access:     NO
 		Todo:           testing tailored languages
 		Created:        151228 (YYMMDD)
-		Modified:       200531 (YYMMDD)
+		Modified:       200612 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200531, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200612, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1146,6 +1146,14 @@
 			CUR_TK: 'ROOT',
 		}),
 
+		findTailor: function findTailor_S_K(/*str*/isoKey)
+		//----------------------------------
+		// If isoKey is a tailorKey, return it; otherwise return the best matching tailorKey (if found.)
+		// => key [OK]  |  '' [KO]
+		{
+			return callee.µ['~'].ITOK(String(isoKey||'ROOT')) || '';
+		},
+
 		getTailor: function getTailor_K()
 		//----------------------------------
 		// Return the active tailor key.
@@ -1161,7 +1169,7 @@
 		// or may support in the future. The returned Array is an entity with extra
 		// mappings:
 		//    `_<LocName>`         => <TailorKey>
-		//    `=<TailorOrIsoKey>   => <LocName>
+		//    `=<TailorOrIsoKey>`  => <LocName>
 		//    `§<LocName>`         => <NativeName>
 		// [REM] By default indices 0 to 2 are predefined as follows:
 		//       0 => <ROOT> ; 1 => <EOR> ; 2 => '-' 
