@@ -1,3 +1,6 @@
+##### [200612]
+[**Collator**](/etc/$$.Collator.jsxlib): Added `findTailor`, a generic public method for translating an _isoKey_ into a valid _tailorKey_. (See the private routine `~.ITOK`.)
+
 ##### [200611]
 [**ModalScript**](/etc/$$.ModalScript.jsxlib): Added a public [`changeLocaleTo(iLocale)`](/etc/ModalScript/$$.public.jsxinc) method in order to reflect the equivalent feature already available in [BasicScript](/etc/$$.BasicScript.jsxlib). This routine just reactivates **YALT** to a different locale, i.e, it basically calls `$$.Yalt.activate(iLocale)`.
 
