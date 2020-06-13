@@ -12,6 +12,7 @@ arr.name = "Hello";
 
 will be stringified `'(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})([10,20,30],{"name":"Hello"})'`.
 
+This enhancement is required in various contexts, in particular when one needs to clone a rich array and send the result to a ScriptUI `ListBox`. Indeed this control expects a true `Array` class at construction time. A fake entity based on `__proto__` alteration wouldn't be recognized.
 
 ##### [200612]
 [**Collator**](/etc/$$.Collator.jsxlib): Added `findTailor(iso)`, a generic public method for translating an _isoKey_ into a valid _tailorKey_. (See the private routine `~.ITOK`.) Unlike `setTailor()`, `findTailor()` does not change the current tailoring rules.
