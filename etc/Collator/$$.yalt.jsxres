@@ -39,6 +39,10 @@
 	%1 (phonetic) # %1 (phonétique) # %1 (phonetisch) # %1 (fonética) # %1 (fonetica) # %1 (фонетический)
 	%1 (standard) # %1 (standard) # %1 (standard) # %1 (estándar) # %1 (standard) # %1 (стандартная)
 	%1 (Benin) # %1 (Bénin) # %1 (Benin) # %1 (Benín) # %1 (Benin) # %1 (Бенин)
+
+	Default Unicode Collation [DUCET] # Classement Unicode [DUCET] # Default Unicode Collation [DUCET] # Default Unicode Collation [DUCET] # Default Unicode Collation [DUCET] # Default Unicode Collation [DUCET]
+	European Ordering Rules [EOR] # Europe [EOR] # Europa [EOR] # Europa [EOR] # Europa [EOR] # Европа [EOR]
+
 	
 	</YALT>*/
 """
