@@ -27,7 +27,7 @@ var arr = [10,20,30];
 arr.name = "Hello";
 ~~~~
 
-<ins> > New workaround, see [200613]</ins>
+> New workaround, see [200613]
 
 <del>In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.) The string `$$.JSON(arr)` will now look like:</del>
 
