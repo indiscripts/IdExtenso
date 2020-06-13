@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages
 		Created:        151228 (YYMMDD)
-		Modified:       200612 (YYMMDD)
+		Modified:       200613 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200612, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200613, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -933,7 +933,7 @@
 			callee.µ.localeSort(q,2,1);
 			q.unshift
 			(
-				__("Default [DUCET]"),
+				__("Default Unicode Collation [DUCET]"),
 				__("European Ordering Rules [EOR]"),
 				"-"
 			);
@@ -1163,7 +1163,7 @@
 			return callee.µ.setTailor.CUR_TK;
 		},
 		
-		getRichList: function getRichList_b_Ë(/*bool=0*/SIMPLE_ARR,  a)
+		getRichList: function getRichList_t_ËA(/*-1|0|1*/RET_MODE,  a)
 		//----------------------------------
 		// Get the array of YALT-localized languages that Collator actually supports
 		// or may support in the future. The returned Array is an entity with extra
@@ -1174,13 +1174,19 @@
 		// [REM] By default indices 0 to 2 are predefined as follows:
 		//       0 => <ROOT> ; 1 => <EOR> ; 2 => '-' 
 		// Since the returned entity is a reference, make sure you won't alter it. If
-		// you need a simple, mutable array, set the SIMPLE_ARR flag. In that case
+		// you need a simple, mutable array, set RET_MODE to 1. In that case
 		// index-2 element ('-') is removed
+		// [ADD200613] Use RET_MODE == -1 to get a full clone of the rich array instead.
 		// ---
-		// => str[]& + extra keys
+		// => str[]& | str[]
 		{
 			a = callee.µ['~'].LIST();
-			SIMPLE_ARR && (a=a.slice()).splice(2,1);
+			switch( RET_MODE||0 )
+			{
+				case  1: a = a.slice().splice(2,1); break;
+				case -1: a = $.global[callee.µ.__root__].clone(a);
+				default:;
+			}
 			return a;
 		},
 		
