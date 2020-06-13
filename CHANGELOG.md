@@ -1,3 +1,18 @@
+##### [200613]
+[**JSON**](/core/$$.JSON.jsxlib): A more accurate solution has been found for dealing with rich arrays. The JSON string now evaluates to an actual `Array` object with additional properties, based on the following pattern:
+
+`(function(a,o...){...})([...],{...})`
+
+For example, the _arr_ array originally defined by
+
+~~~~
+var arr = [10,20,30];
+arr.name = "Hello";
+~~~~
+
+will be stringified `'(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})([10,20,30],{"name":"Hello"})'`.
+
+
 ##### [200612]
 [**Collator**](/etc/$$.Collator.jsxlib): Added `findTailor(iso)`, a generic public method for translating an _isoKey_ into a valid _tailorKey_. (See the private routine `~.ITOK`.) Unlike `setTailor()`, `findTailor()` does not change the current tailoring rules.
 
@@ -12,11 +27,13 @@ var arr = [10,20,30];
 arr.name = "Hello";
 ~~~~
 
-In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.) The string `$$.JSON(arr)` will now look like:
+<ins> > New workaround, see [200613]</ins>
 
-`'(function(o){o.__proto__=[].__proto__;return o})({"0":10,"1":20,"2":30,"name":"Hello"})'`
+<del>In this particular case, a regular Object is created (all properties are then explicitly set), and `__proto__` is set to `Array.prototype.__proto__`, so the evaluated result behaves as a regular array (all usual `Array` members are inherited.) The string `$$.JSON(arr)` will now look like:</del>
 
-which evaluates to a quasi-array _arr_ (`arr instanceof Array` is true, `arr.length` is 3, etc.), although `arr.__class__` is still "Object" (read-only) and `arr.toSource()` cannot work.
+<del>`'(function(o){o.__proto__=[].__proto__;return o})({"0":10,"1":20,"2":30,"name":"Hello"})'`</del>
+
+<del>which evaluates to a quasi-array _arr_ (`arr instanceof Array` is true, `arr.length` is 3, etc.), although `arr.__class__` is still "Object" (read-only) and `arr.toSource()` cannot work.</del>
 
 ## 2.00601
   - Stabilized version (June 1, 2020) including latest fixes, improvements, and additions.
