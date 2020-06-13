@@ -1,5 +1,7 @@
 ##### [200613]
-[**JSON**](/core/$$.JSON.jsxlib): A more accurate solution has been found for dealing with rich arrays. The JSON string now evaluates to an actual `Array` object with additional properties, based on the following pattern:
+- [**Collator**](/etc/$$.Collator.jsxlib): Added the parameter `RET_MODE` in `getRichList()`. You can now get a full clone of the _rich array_ language list.
+
+- [**JSON**](/core/$$.JSON.jsxlib): A more accurate solution has been found for dealing with rich arrays. The JSON string now evaluates to an actual `Array` object with additional properties, based on the following pattern:
 
 `(function(a,o...){...})([...],{...})`
 
