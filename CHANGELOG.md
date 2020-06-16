@@ -1,3 +1,6 @@
+##### [200616]
+- [**Collator**](/etc/$$.Collator.jsxlib): Enhanced (and simplified!) `~.SPLT` routine. The separator `U+FFFD` is no longer used by default while splitting the input string into keys. It has side effects and no application in the present implementation. (However the option is still available through the 3rd parameter `SPLIT_BY_FFFD`.)
+
 ##### [200613]
 - [**Collator**](/etc/$$.Collator.jsxlib): Added the parameter `RET_MODE` in `getRichList()`. You can now get a full clone of the _rich array_ language list.
 
