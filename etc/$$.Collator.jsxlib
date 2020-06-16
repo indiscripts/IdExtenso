@@ -11,13 +11,13 @@
 		                getRichList() selectLanguage()
 		                getLocaleKey() localeSort()
 		DOM-access:     NO
-		Todo:           testing tailored languages
+		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       200613 (YYMMDD)
+		Modified:       200616 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200613, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200616, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -484,11 +484,16 @@
 	[PRIVATE]
 	
 	({
-		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,  F,a)
+		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a)
 		//----------------------------------
 		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
-		// on `callee.CUR_MTCH`. Non-measurable characters are replaced by `\uFFFD`;
-		// each elem of the returned array is a key having 1, 2, or more characters.
+		// on `callee.CUR_MTCH`.
+		// [CHG200616] If `SPLIT_BY_FFFD` is set, non-measurable characters are
+		// replaced by `\uFFFD`, remaining as a special separator having the max
+		// weight. But *this is no longer the default approach* as it seems more
+		// relevant to purely ignore non-measurable elements (in order to prevent
+		// issues with line terminators, ill-formed strings, etc.)
+		// Each elem of the returned array is a key having 1, 2, or more characters.
 		// (n-grams with n>2 usually appear in tailoring, cf ~.TLRM AND ~.TMAP.)
 		// [REM] `callee.CUR_MTCH` is either a tailored regex, or the default ~.MTCH.
 		// The caller is responsible to set `CUR_MTCH` as expected.
@@ -496,32 +501,48 @@
 		// For saving performance, the returned array is volatile and its `length`
 		// property *is not updated* ; use `<ret>.SIZE` instead when needed. You
 		// can set `UPD_LENGTH` to 1 to force the update of `<ret>.length` when
-		// absolutely necessary, but keep in mind that's more time-consuming.
+		// absolutely necessary (that's more time-consuming.)
 		// ---
 		// `this` :: ~
 		// => str[]&  [VOLATILE]  + .SIZE 
 		{
 			// Init.
 			// ---
-			F = callee.REPL;
-			F.OFS = (a=F.RET).SIZE = 0;
-			
+			F = callee[ SPLIT_BY_FFFD ? 'REPL' : 'REPL_FFFD' ]; // [CHG200616]
+			SPLIT_BY_FFFD && (F.OFS=0);
+			(a=F.RET).SIZE = 0;
+
 			// Trick: we use a 'fake' replacement function, its actual job is
 			// to digest the successive matches captured by the regex and to
 			// update accordingly its internal array `F.RET`. (See callee.REPL.)
 			// ---
 			s.replace(callee.CUR_MTCH, F);
-			
+
 			// Time-consuming in ExtendScript but sometimes needed.
 			// ---
 			UPD_LENGTH && a.length != a.SIZE && (a.length=a.SIZE);
-
 			return a;
 		}
 		.setup
 		({
 			REPL: function($match,$offset,_,q,z)
 			//----------------------------------
+			// Replace callback that always returns '' (important!)
+			// `$match`  :: Current match found in the input.
+			// `$offset` :: Index of $match in the input, noting that the
+			//              input is dynamically reduced, from left to right,
+			//              as every incoming match <M> is replaced by ''
+			// ---
+			// => ''
+			{
+				return (q[z=(q=callee.RET).SIZE]=$match), (q.SIZE=1+z), '';
+			}
+			.setup({ RET:[] }),
+
+			REPL_FFFD: function($match,$offset,_,q,z)
+			//----------------------------------
+			// [REM200616] Old version -- no longer used by default.
+			// ---
 			// Replace callback that always returns '' (important!)
 			// `$match`  :: Current match found in the input.
 			// `$offset` :: Index of $match in the input, noting that the
@@ -793,7 +814,7 @@
 				}
 				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
 			}
-			
+
 			return s1;
 		},
 	})
@@ -1078,7 +1099,8 @@
 		// [REM] In principle the character U+0000 ('\0') is not allowed in input
 		// strings since it is used internally. Anyway if a string has the form
 		// "xyz\0abc" (where \0 denotes the last occurence of U+0000), it will be
-		// sorted as such then finally changed into "abc".
+		// sorted as such then finally changed into "abc". [REM200616] Note that
+		// an input of the form "xyz\0\0" will lead to an empty output ("").
 		// ---
 		// => arr&
 		{
