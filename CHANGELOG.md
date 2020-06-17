@@ -1,5 +1,5 @@
 ##### [200617]
-- [**Collator**](/etc/$$.Collator.jsxlib): Since `String.prototype.replace()` is unsafe (in ExtendScript) as soon as `'\0'` is involved, input strings are now sanitized before splitting.
+- [**Collator**](/etc/$$.Collator.jsxlib): Since `String.prototype.replace()` is unsafe (in ExtendScript) as soon as `'\0'` is involved, input strings are now sanitized before splitting. (In particular, this prevents casual infinite loops in CS4!)
 
 ##### [200616]
 - [**Collator**](/etc/$$.Collator.jsxlib): Enhanced (and simplified!) `~.SPLT` routine. The separator `U+FFFD` is no longer used by default while splitting the input string into keys. It had side effects and no application in the present implementation. (However the option is still available through the 3rd parameter `SPLIT_BY_FFFD`.)
