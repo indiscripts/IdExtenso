@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       200616 (YYMMDD)
+		Modified:       200617 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200616, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200617, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -484,10 +484,12 @@
 	[PRIVATE]
 	
 	({
-		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a)
+		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a,p)
 		//----------------------------------
 		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
 		// on `callee.CUR_MTCH`.
+		// [FIX200617] Removes any U+0000 from `s` before extracting keys in
+		// order to prevent `string.replace(...)` bugs.
 		// [CHG200616] If `SPLIT_BY_FFFD` is set, non-measurable characters are
 		// replaced by `\uFFFD`, remaining as a special separator having the max
 		// weight. But *this is no longer the default approach* as it seems more
@@ -511,6 +513,15 @@
 			F = callee[ SPLIT_BY_FFFD ? 'REPL' : 'REPL_FFFD' ]; // [CHG200616]
 			SPLIT_BY_FFFD && (F.OFS=0);
 			(a=F.RET).SIZE = 0;
+			
+			// [FIX200617] The replace method has various issues with U+0000
+			// in ExtendScript (and many still have to be fixed in CC.) In CS4,
+			// `str.replace(...)` becomes definitely *unsafe* whenever `str`
+			// contains '\0'. In particular this may lead to infinite loop with
+			// complex regexes. So, we have to remove any '\0' from the string
+			// *before* extracting measurable matches.
+			// ---
+			for( p=0 ; 0 <= (p=s.indexOf('\0',p)) ; s=s.slice(0,p)+s.slice(1+p) );
 
 			// Trick: we use a 'fake' replacement function, its actual job is
 			// to digest the successive matches captured by the regex and to
@@ -535,7 +546,7 @@
 			// ---
 			// => ''
 			{
-				return (q[z=(q=callee.RET).SIZE]=$match), (q.SIZE=1+z), '';
+				return (q=callee.RET), (q[z=q.SIZE]=$match), (q.SIZE=1+z), '';
 			}
 			.setup({ RET:[] }),
 
