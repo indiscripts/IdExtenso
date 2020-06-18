@@ -1,4 +1,7 @@
 ##### [200618]
+
+- Updated European Ordering Rules (EOR), cf [MetaCollator/tailoring/$$.EOR.jsxres](/etc/MetaCollator/tailoring/$$.EOR.jsxres) reflected in [Collator/TLRM](/etc/Collator/$$.TLRM.jsxres).
+
 - [**Collator**](/etc/$$.Collator.jsxlib)`.sort()`: Refinement of the rules regarding input/ouput processing when incoming data contain `\0`. A more consistent solution is adopted:
 
 If an input string matches the pattern `"abc\0...\0xyz"`, where the first (resp. last) `\0` denotes the first (resp. last) occurence of U+0000, then:   
