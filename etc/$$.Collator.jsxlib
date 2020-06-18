@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       200617 (YYMMDD)
+		Modified:       200618 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200617, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200618, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -488,8 +488,9 @@
 		//----------------------------------
 		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
 		// on `callee.CUR_MTCH`.
-		// [FIX200617] Removes any U+0000 from `s` before extracting keys in
-		// order to prevent `string.replace(...)` bugs.
+		// [FIX200617] [CHG200618] Removes any `\0...` suffix from `s` before
+		// extracting keys. This both prevents `string.replace(...)` bugs and
+		// statisfies the rule (1) specified in `µ.sort()`.
 		// [CHG200616] If `SPLIT_BY_FFFD` is set, non-measurable characters are
 		// replaced by `\uFFFD`, remaining as a special separator having the max
 		// weight. But *this is no longer the default approach* as it seems more
@@ -514,14 +515,9 @@
 			SPLIT_BY_FFFD && (F.OFS=0);
 			(a=F.RET).SIZE = 0;
 			
-			// [FIX200617] The replace method has various issues with U+0000
-			// in ExtendScript (and many still have to be fixed in CC.) In CS4,
-			// `str.replace(...)` becomes definitely *unsafe* whenever `str`
-			// contains '\0'. In particular this may lead to infinite loop with
-			// complex regexes. So, we have to remove any '\0' from the string
-			// *before* extracting measurable matches.
+			// [CHG200618] Removes any '\0...' suffix before extracting keys.
 			// ---
-			for( p=0 ; 0 <= (p=s.indexOf('\0',p)) ; s=s.slice(0,p)+s.slice(1+p) );
+			0 <= (p=s.indexOf('\0')) && (s=s.slice(0,p));
 
 			// Trick: we use a 'fake' replacement function, its actual job is
 			// to digest the successive matches captured by the regex and to
@@ -1107,11 +1103,14 @@
 		//                parameter is false by default, meaning that variable
 		//                elements (spaces, line breaks, etc) are purely ignored.
 		// ---
-		// [REM] In principle the character U+0000 ('\0') is not allowed in input
-		// strings since it is used internally. Anyway if a string has the form
-		// "xyz\0abc" (where \0 denotes the last occurence of U+0000), it will be
-		// sorted as such then finally changed into "abc". [REM200616] Note that
-		// an input of the form "xyz\0\0" will lead to an empty output ("").
+		// [CHG200618] The character U+0000 ('\0') is in principle not allowed in input
+		// strings as it is used internally. However, if a string matches "abc\0...\0xyz",
+		// where the first (resp. last) `\0` denotes the first (resp. last) occurence of
+		// U+0000, then:
+		// (1) Only the `abc` part (prefix) will be considered while computing collation
+		//     keys, the next characters being *entirely ignored*.
+		// (2) Only the `xyz` part (suffix) *will be present* in the output array. Note
+		//     that an input of the form "abc...\0" will lead to an empty output ("").
 		// ---
 		// => arr&
 		{
