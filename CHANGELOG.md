@@ -1,3 +1,10 @@
+##### [200618]
+- [**Collator**](/etc/$$.Collator.jsxlib)`.sort()`: Refinement of the rules regarding input/ouput processing when incoming data contain `\0`. A more consistent solution is adopted:
+
+If an input string matches the pattern `"abc\0...\0xyz"`, where the first (resp. last) `\0` denotes the first (resp. last) occurence of U+0000, then:   
+1. Only the `abc` part (prefix) will be considered while computing collation keys, the next characters being *entirely ignored*.   
+2. Only the `xyz` part (suffix) *will be present* in the output array. Note that an input of the form `"abc...\0"` will lead to an empty output ("").
+
 ##### [200617]
 - [**Collator**](/etc/$$.Collator.jsxlib): Since `String.prototype.replace()` is unsafe (in ExtendScript) as soon as `'\0'` is involved, input strings are now sanitized before splitting. (In particular, this prevents casual infinite loops in CS4!)
 
