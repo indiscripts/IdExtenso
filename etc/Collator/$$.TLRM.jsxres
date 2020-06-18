@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        200215 (YYMMDD)
-		Modified:       200531 (YYMMDD)
+		Modified:       200618 (YYMMDD)
 
 *******************************************************************************/
 
@@ -20,7 +20,7 @@
 
 
 	/*
-	EOR          : European Ordering Rules                  [CHG160103]
+	EOR          : European Ordering Rules                  [CHG200618]
 	af           : Afrikaans (South Africa)                 [CHG160103]
 	ast          : Asturian (Spain)                         [CHG160103] Alias from es_tradi
 	az           : Azerbaijani (Azerbaijan)                 [CHG160103]
@@ -33,7 +33,7 @@
 	cy           : Welsh (United Kingdom)                   [CHG200306]
 	da           : Danish (Denmark)                         [CHG200307]
 	de_phone     : German [Phonebook] (Germany)             [CHG160104]
-	de_phone_at  : German [Phonebook/Austria] (Austria)     [CHG200306]
+	de_phone_at  : German [Phonebook/Austria] (Austria)     [CHG200528]
 	dsb          : Lower Sorbian (Germany)                  [CHG160103]
 	ee           : Ewe (Ghana, Togo)                        [CHG200307]
 	en           : English                                  [CHG160103]
@@ -94,7 +94,7 @@
 	*/
 
 	{
-	'EOR'          : {"\xC6":"==AE","A\uF8F0E":"==\xC6","\xE6":"==ae","a\uF8F0e":"==\xE6","\u0132":"==IJ","IJ":"==\u0132","\u0133":"==ij","ij":"==\u0133","\u0152":"==OE","O\uF8F0E":"==\u0152","\u0153":"==oe","o\uF8F0e":"==\u0153","\xDF":"==ss","s\uF8F0s":"==\xDF","\u0259":">2E","\u018F":">3\u0259","\u0131":">2I","\u0138":">2K","\u014B":">2N","\u014A":">3\u014B","\u0167":">2T","\u0166":">3\u0167","\xFE":">2TH","\xDE":">3\xFE"},
+	'EOR'          : {"\xC6":"==AE","A\uF8F0E":"==\xC6","\xE6":"==ae","a\uF8F0e":"==\xE6","\u0132":"==IJ","IJ":"==\u0132","\u0133":"==ij","ij":"==\u0133","\u0152":"==OE","O\uF8F0E":"==\u0152","\u0153":"==oe","o\uF8F0e":"==\u0153","\xDF":"==ss","s\uF8F0s":"==\xDF","\u0149":"==\u2019n","\u02BCn":"==\u0149","\u0259":">2E","\u018F":">3\u0259","\u0131":">2I","\u0138":">2K","\u014B":">2N","\u014A":">3\u014B","\u0167":">2T","\u0166":">3\u0167","\xFE":">2TH","\xDE":">3\xFE"},
 	'af'           : {"\u0149":">2N","\u02BCn":"==\u0149"},
 	'ast'          : {"ch":">1C","Ch":">3ch","CH":">3Ch","ll":">1L","Ll":">3ll","LL":">3Ll","\xF1":">1N","n\u0303":"==\xF1","\xD1":">3\xF1","N\u0303":"==\xD1"},
 	'az'           : {"\xE7":">1C","c\u0327":"==\xE7","\xC7":">3\xE7","C\u0327":"==\xC7","\u0259":">1E","\u018F":">3\u0259","\u011F":">1G","g\u0306":"==\u011F","\u011E":">3\u011F","G\u0306":"==\u011E","x":">1H","X":">3x","\u0131":">1X","I":">3\u0131","q":">1K","Q":">3q","\xF6":">1O","o\u0308":"==\xF6","\xD6":">3\xF6","O\u0308":"==\xD6","\u015F":">1S","s\u0327":"==\u015F","\u015E":">3\u015F","S\u0327":"==\u015E","\xFC":">1U","u\u0308":"==\xFC","\xDC":">3\xFC","U\u0308":"==\xDC","\u04D9":">1\u0415","\u04D8":">3\u04D9","\u042B":">1\u0418","\u044B":">3\u042B"},
