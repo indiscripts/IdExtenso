@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       200531 (YYMMDD)
+		Modified:       200630 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 200531, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 200630, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -24,10 +24,9 @@
 
 	/*
 
-	Yalt is a simple and efficient localization module. Use
-	addPackage(str) to extend the translation map, then call
-	activate() to make the strings available in the addressed
-	languages.
+	Yalt is a simple and efficient localization module. Use addPackage(str) to
+	extend the translation map, then call activate() to make the strings available
+	in the addressed languages.
 
 	The typical format of a Yalt package is as follows,
 	
@@ -37,56 +36,58 @@
 	      // etc
 	      </YALT>
 
-	where mapped strings are separated by ` # `, that is,
-	<SPACE><HASH><SPACE>.
+	where mapped strings are separated by ` # `, that is, <SPACE><HASH><SPACE>.
+
+	[REM] From Yalt 2.00630 you can write any translation string in a separate
+	      line starting with `<spacing># `, where <spacing> denotes zero or more
+	      spacing characters (space or tab.) E.g,
 	
-	The first line has the form:
+	      Collect All Threaded Frames
+	      # Récupérer tous les blocs liés
+	      # Alle verketteten Rahmen aufnehmen
+	      # Recopilar todos los marcos enlazados
+
+	      (This format makes long strings more readable.)
+
+	The first line of a Yalt package has the form:
 	
 	      <YALT> # LOCALE_1 # LOCALE_2 . . .
-	
-	which determines a column for each supported locale.
-	The first column represents the default locale, which
-	is ENGLISH_LOCALE. Then, LOCALE_1, LOCALE_2, LOCALE_i
-	are the InDesign names of the other locales with
-	respect to the Locale enumeration. (The `_LOCALE`
-	suffix is optional.)
+
+	which determines a column for each supported locale. The first column represents
+	the default locale, which is ENGLISH_LOCALE. Then, LOCALE_1, LOCALE_2, LOCALE_i
+	are the InDesign names of the other locales with respect to the Locale
+	enumeration. (The `_LOCALE` suffix is optional.)
 	
 	Once Yalt is activated, use the syntax
 	
 	      __("My English string")
 	
-	to refer to the translation of that string in the current
-	Yalt locale. Thanks to this mechanism, you can write
-	your entire project using default English strings, and
-	deal separately with the localization package. (Strings
-	that have no match in the active locale will remain as
-	passed in.)
+	to refer to the translation of that string in the current Yalt locale. Thanks to
+	this mechanism, you can write your entire project using default English strings,
+	and deal separately with the localization package. (Strings that have no match
+	in the active locale will remain as passed in.)
 	
-	Yalt also supports %1 to %9 placeholders, for example,
-	mapped strings such as
+	Yalt also supports %1 to %9 placeholders, for example, mapped strings such as
 	
 	      Hi %1, how are you? # Bonjour %1, comment vas-tu ?
 
-	lead the syntax __("Hi %1, how are you?", "Bob") to
-	translate into `Bonjour Bob, comment vas-tu ?` in the
-	corresponding locale.
+	lead the syntax __("Hi %1, how are you?", "Bob") to translate into
+	`Bonjour Bob, comment vas-tu ?` in the corresponding locale.
 	
-	Empty lines, lines that starts with `//`, or lines that
-	don't contain the ` # ` separator are ignored. Also,
-	the whole Yalt package string can be nested in open and
-	closing comment tags, i.e <SLASH><STAR> and <STAR><SLASH>.
+	Empty lines, lines that starts with `//`, or lines that don't contain the ` # `
+	separator are ignored. Also, the whole Yalt package string can be nested in open
+	and closing comment tags, i.e <SLASH><STAR> and <STAR><SLASH>.
 	
-	The recommended way to add a Yalt package from within a
-	module is to create a private `YALT` key as follows:
+	The recommended way to add a Yalt package from within a module is to create a
+	private `YALT` key as follows:
 	
 	      YALT : $$.Yalt && $$.Yalt.addPackage
 	      (
 	      #include 'MyModule/$$.yalt.jsxres'
 	      ),
 
-	where the file $$.yalt.jsxres simply contains the
-	localization package enclosed in triple quotes. See
-	the DateFormat module for an example.
+	where the file $$.yalt.jsxres simply contains the localization package enclosed in
+	triple quotes. See the DateFormat module for an example.
 	
 	About Yalt activation options, see detail in the API.
 
@@ -125,35 +126,37 @@
 			const BEG = this.YBEG,
 				  END = this.YEND,
 				  SEP = this.YSEP,
-				  //TMP = this.YTMP, [DEL180308]
 				  COM = this.YCOM,
 				  DCR = this.YDCR,
 				  ESC = this.YESC,
 				  // ---
 				  KX = this.KPFX,
 				  COL = callee.Q||(callee.Q=[]);
+			
+			// [ADD200630] Support multiline translations.
+			// ---
+			const RE_NL_SEP = RegExp("(\\r\\n|\\r|\\n)[ \\t]*" + RegExp.escape(SEP.slice(1)), 'g');
 	
 			// Maps a col. number to a locale ID
 			// ---
 			COL[0] = this.DEFZ;
 			COL.length = 1;
 			
-			// Parse the input string
-			// [REM] Why did I need to replace LINES by TMP (\x01),
-			// then split along TMP? Cannot remember...
-			// [CHG180308] Old code:
-			// a = s.trim().replace(RegExp.LINEs,TMP).split(TMP);
-			a = s.trim().split(RegExp.LINEs);
-			
+			// Parse the input string.
+			// [CHG200630] Support multiline translations.
+			// ---
+			//a = s.trim().split(RegExp.LINEs);
+			a = s.trim().replace(RE_NL_SEP, SEP).split(RegExp.LINEs);
+
 			for( r=0, n=a.length, b=0, i=-1 ; ++i < n ; )
 			{
-				if( !(s=a[i].trim())                              // Empty line after cleaning: CONTINUE.
-				 || b && ~s.indexOf(END) && (b=0,COL.length=1)    // End tag found: turn parsing OFF, reset columns, CONTINUE.
-				 || !~s.indexOf(SEP)                              // No separator found in the line: CONTINUE.
-				 || !s.indexOf(COM)                               // Line starts w/ comment marker: CONTINUE.
-				 || !s.indexOf(DCR) && !(s=s.substr(2).ltrim())   // Line starts w/ decorator marker: ltrim, if empty CONTINUE.
-				 || (b ? !(k=(t=s.split(SEP))[0]):s.indexOf(BEG)) // Empty key in ON mode, or no starting BEG tag in OFF mode: CONTINUE
-				 )
+				if( !(s=a[i].trim()).length                                // Empty line after cleaning: CONTINUE.
+				|| ( b && ~s.indexOf(END) && (b=0,COL.length=1) )          // End tag found: turn parsing OFF, reset columns, CONTINUE.
+				|| !~s.indexOf(SEP)                                        // No separator found in the line: CONTINUE.
+				|| !s.indexOf(COM)                                         // Line starts w/ comment marker: CONTINUE.
+				|| ( !s.indexOf(DCR) && !(s=s.slice(DCR.length).ltrim()) ) // Line starts w/ decorator marker: ltrim, if empty CONTINUE.
+				|| ( b ? !(k=(t=s.split(SEP))[0]):s.indexOf(BEG) )         // Empty key in ON mode, or no starting BEG tag in OFF mode: CONTINUE
+				)
 				continue;
 
 				if( b )
