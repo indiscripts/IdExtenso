@@ -1,4 +1,4 @@
-##### [200531]
+##### [200630]
   - [**YALT**](/etc/$$.Yalt.jsxlib): In order to make long strings more readable you can now write any translation string in a separate line starting with `<spacing># `, where `<spacing>` denotes zero or more spacing characters (space or tab.) Here is an example of valid multiline L10N string:
 
 ~~~~
