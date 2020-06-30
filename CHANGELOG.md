@@ -1,3 +1,13 @@
+##### [200531]
+  - [**YALT**](/etc/$$.Yalt.jsxlib): In order to make long strings more readable you can now write any translation string in a separate line starting with `<spacing># `, where `<spacing>` denotes zero or more spacing characters (space or tab.) Here is an example of valid multiline L10N string:
+
+~~~~
+	Collect All Threaded Frames
+	# Récupérer tous les blocs liés
+	# Alle verketteten Rahmen aufnehmen
+	# Recopilar todos los marcos enlazados
+~~~~
+
 ##### [200618]
 
 - Updated European Ordering Rules (EOR), cf [MetaCollator/tailoring/$$.EOR.jsxres](/etc/MetaCollator/tailoring/$$.EOR.jsxres) reflected in [Collator/TLRM](/etc/Collator/$$.TLRM.jsxres).
