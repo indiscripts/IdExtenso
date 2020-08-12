@@ -15,12 +15,20 @@ $$.Yalt.addPackage
 """
 	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
 
-	Ignore Punctuation # Ignorer la ponctuation # Interpunktion ignorieren # Ignorar la puntuación # Ignora la punteggiatura # Игнорировать Пунктуация
-	Sort Depth # Profondeur de tri # Sortierstufe # Nivel de ordenación # Livello di ordinamento # Уровень сортировки
+	Punctuation Marks # Ponctuation # Satzzeichen # Puntuación # Punteggiatura # Знаки препинания
+	(Ignore) # (Ignorer) # (Ignorieren) # (Ignorar) # (Ignora) # (Игнорировать)
+	Unicode Collation # Classement Unicode # Unicode-Sortierung # Intercalación Unicode # Unicode # Сортировка Unicode
+	Letter-by-Letter # Lettre par lettre # Buchstabe für Buchstabe # Letra por letra # Lettera per lettera # Письмо-на-письма
+	Word-by-Word # Mot par mot # Wort für Wort # Palabra por palabra # Parola per parola # Слово за слово
+
+	Case # Casse # Groß-/Kleinschreibung # Mayús./minús. # Maiuscole/minuscole # Регистр
+	Uppercase first # Majuscules en premier # Zuerst Großbuchstaben # Mayúsculas primero # Prima le maiuscole # Сначала прописное
+	Lowercase first # Minuscules en premier # Zuerst Kleinbuchstaben # Minúsculas primero # Prima le minuscole # Сначала строчные
 	
-	Ignore case and diacritics # Ignorer casse et diacritiques # Großschreibung und diakritische Zeichen ignorieren # Ignorar mayús./minús. y signos diacríticos # 1 - Ignora maiuscole/minuscole e segni diacritici # Игнорировать регистр и диакритические
-	Ignore case # Ignorer la casse # Großschreibung ignorieren # Ignorar mayús./minús. # Ignora maiuscole/minuscole # Игнорировать регистр
-	Full Sort # Tri complet # Voll sortieren # Ordenar completa # Sorta completa # Полный сортировать
+	Ignore diacritics # Ignorer les diacritiques # Diakritische Zeichen ignorieren # Ignorar signos diacríticos # Ignora e segni diacritici # Игнорировать диакритические знаки
+	Sort numbers # Trier les nombres # Nummern sortieren # Ordenar números # Ordina i numeri # Сортировать числа
+
+	Output # Sortie # Ausgabe # Salida # Output # Вывод
 
 	</YALT>*/
 """
@@ -31,7 +39,7 @@ $$.Yalt.addPackage
 $$.load();
 
 // =============================================================================
-// CollatorTester [200531]
+// CollatorTester [200531] [200812]
 // Live-test IdExtenso's collation module in various languages.
 // ---
 // Demonstrates:
@@ -84,17 +92,29 @@ try
 		this.window.Info.text = bullet + nv + '  [' + tk + ']';
 	};
 	
-	UI.ON_BCLK = function onClick(  w,ed,a)
+	UI.ON_BCLK = function onClick(  w,ed,a,cs,dc,lvl,pc,nm)
 	//----------------------------------
 	// this :: Button [`Sort`]
 	{
 		w = this.window;
 
-		ed = w.Strings;
-		a = ed.text.split(RegExp.LINEs);
+		a = w.Input.text.split(RegExp.LINEs);
 
-		$$.Collator(a,1+w.Level.selection.index,!w.IgnorePunct.value);
-		ed.text = a.join('\r');
+		cs = w.Case.selection.index;   // L3  -> 0:Ignore | 1: UpperFirst | 2:LowerFirst
+		dc = !w.IgnoreDiac.value;      // L2
+		lvl = dc ? (cs?3:2) : (cs?4:1);
+
+		pc = w.Punct.selection.index;  // 0:Ignore | 1: UCA | 2:LBL | 3:WBW
+		nm = w.Numb.value;
+		$$.Collator
+		(a
+			, lvl
+			, [0,1,'LBL','WBW'][pc]
+			, { sortNumbers:nm , upperFirst:1==cs }
+		);
+
+		w.Output.text = a.join('\r');
+		ScriptUI.setFocus(w.Quit);
 	};
 	
 	// UI resource object.
@@ -112,9 +132,9 @@ try
 		{
 			properties:                 { },
 			margins:                    0,
-			spacing:                    40,
+			spacing:                    30,
 			orientation:                'column',
-			alignChildren:              ScriptUI.CT,
+			alignChildren:              ScriptUI.LT,
 
 			Group$GpLang:
 			{
@@ -127,7 +147,6 @@ try
 					properties:         { text:__("Language:") },
 					optimalSize:        { width:220, height:24 },
 				},
-
 				DropDownList$List:
 				{
 					properties:         { items:$$.Collator.getRichList() },
@@ -148,30 +167,59 @@ try
 				margins:                0,
 				spacing:                6,
 				orientation:            'column',
+				alignChildren:              ScriptUI.LT,
 
-				StaticText$0:
+				StaticText$1:
 				{
-					properties:         { text:__("Sort Depth:") },
+					properties:         { text:__("Punctuation Marks:") },
 					optimalSize:        { width:220, height:24 },
 				},
-
-				DropDownList$Level:
+				DropDownList$Punct:
 				{
 					properties:         { items:
 						[
-						__( "(%1) %2", '1', __("Ignore case and diacritics") ),
-						__( "(%1) %2", '2', __("Ignore case") ),
-						__( "(%1) %2", '3', __("Full Sort") )
+						__( "(Ignore)" ),
+						__( "Unicode Collation" ),
+						__( "Letter-by-Letter" ),
+						__( "Word-by-Word" ),
 						] },
 					optimalSize:        { width:220, height:24 },
 					selection:          2,
 				},
 
-				CheckBox$IgnorePunct:
+
+				StaticText$2:
 				{
-					properties:         { text:__("Ignore Punctuation") },
-					optimalSize:        { height:24 },
-					alignment:          ScriptUI.RC,
+					properties:         { text:__("Case:") },
+					optimalSize:        { width:220, height:24 },
+				},
+				DropDownList$Case:
+				{
+					properties:         { items:
+						[
+						__( "(Ignore)" ),
+						__( "Uppercase first" ),
+						__( "Lowercase first" ),
+						] },
+					optimalSize:        { width:220, height:24 },
+					selection:          0,
+				},
+				
+				Group$EMPTY:
+				{
+					properties:         {},
+					optimalSize:        { width:20, height:20 },
+				},
+
+				Checkbox$IgnoreDiac:
+				{
+					properties:         { text:__("Ignore diacritics") },
+					value:              true,
+				},
+
+				Checkbox$Numb:
+				{
+					properties:         { text:__("Sort numbers") },
 					value:              true,
 				},
 
@@ -207,9 +255,23 @@ try
 			spacing:                    16,
 			orientation:                'column',
 
-			EditText$Strings:
+			EditText$Input:
 			{
 				properties:             { text:UI.TEST_ITEMS.split('|').join('\r'), multiline:true },
+				optimalSize:            { width:200, height:320 },
+			},
+		},
+
+		Panel$2:
+		{
+			properties:                 { text:__("Output:"), },
+			margins:                    UI.MARGINS,
+			spacing:                    16,
+			orientation:                'column',
+
+			EditText$Output:
+			{
+				properties:             { text:'', multiline:true, readonly:true },
 				optimalSize:            { width:200, height:320 },
 			},
 		},
