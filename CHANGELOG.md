@@ -1,3 +1,7 @@
+##### [200618]
+
+- [**Collator**](/etc/$$.Collator.jsxlib): Added sort options and many refinements (_letter-by-letter_ and _word-by-word_ systems, stable sort, _upperFirst_ mode at level 3, ability to sort separate digit sequences as numbers.)
+
 ##### [200630]
   - [**YALT**](/etc/$$.Yalt.jsxlib): In order to make long strings more readable you can now write any translation string in a separate line starting with `<spacing># `, where `<spacing>` denotes zero or more spacing characters (space or tab.) Here is an example of valid multiline L10N string:
 
