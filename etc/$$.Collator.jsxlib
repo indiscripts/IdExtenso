@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       200618 (YYMMDD)
+		Modified:       200812 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200618, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200812, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -400,6 +400,7 @@
 	J. Tauber's Python Collator:    github.com/jtauber/pyuca
 	Linguistic Collation (SAS)      support.sas.com/resources/papers/linguistic_collation.pdf
 	Comparing with JS Collators     dev.to/aumayeung/comparing-non-english-strings-with-javascript-collators-57bf
+	ISKO: Alphabetization           www.isko.org/cyclo/alphabetization
 
 	*/
 
@@ -484,13 +485,13 @@
 	[PRIVATE]
 	
 	({
-		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a,p)
+		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a,i,ks,n)
 		//----------------------------------
 		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
 		// on `callee.CUR_MTCH`.
 		// [FIX200617] [CHG200618] Removes any `\0...` suffix from `s` before
 		// extracting keys. This both prevents `string.replace(...)` bugs and
-		// statisfies the rule (1) specified in `µ.sort()`.
+		// satisfies the rule (1) specified in `µ.sort()`.
 		// [CHG200616] If `SPLIT_BY_FFFD` is set, non-measurable characters are
 		// replaced by `\uFFFD`, remaining as a special separator having the max
 		// weight. But *this is no longer the default approach* as it seems more
@@ -517,7 +518,11 @@
 			
 			// [CHG200618] Removes any '\0...' suffix before extracting keys.
 			// ---
-			0 <= (p=s.indexOf('\0')) && (s=s.slice(0,p));
+			0 <= (i=s.indexOf('\0')) && (s=s.slice(0,i));
+			
+			// Preprocessing.
+			// ---
+			for( i=-1, n=(ks=callee.PREP).SIZE ; ++i < n ; s=this[ks[i]](s) );
 
 			// Trick: we use a 'fake' replacement function, its actual job is
 			// to digest the successive matches captured by the regex and to
@@ -579,6 +584,10 @@
 			.setup({ RET:[], OFS:0, OUT:String.fromCharCode(0xFFFD) }),
 			
 			CUR_MTCH: µ['~'].MTCH,
+			
+			// Array of preprocessing routines (~ keys.)
+			// ---
+			PREP: [].setup({ SIZE:0 }),
 		}),
 		
 		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,k,keys,op,rf,m,i,t,w,b)
@@ -618,6 +627,7 @@
 			const WM = this.WMAP;
 			const MAX1 = parseInt(WM['\uFFFD'],36)>>>16; // Maximal L1 weight
 			const CHR = String.fromCharCode;
+			this.SPLT.PREP.SIZE = 0;
 
 			keys = [];
 			for( k in TL )
@@ -720,15 +730,20 @@
 			DATA:  {},
 			WARNS: [],
 		}),
-
-		WG_3: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,s2,s3,n,i,k,ws,x,t,p)
+		
+		WG_3: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*bool=0*/RV3,  s1,s2,s3,n,i,k,ws,x,t,p)
 		//----------------------------------
-		// (Weight-1-to-3.) Get the Weight String associated to the array
-		// of input keys for L1-L3 comparison. Result has the form
+		// (Weight-1-to-3.) Alpha+Diacritics+Case. Get the Weight String associated
+		// to the array of input keys for L1-L3 comparison. Result has the form
 		//          "<S1><0><S2><0><S3>"
 		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// ---
 		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
 		// `IGNORE_VARS` :: Ignore variable elements.
+		// `wRemap`      :: Optional object for remapping particular weight sequences
+		//                  (old_WS=>new_WS.) Used to customize variable elems.
+		// `RV3`         :: [ADD200812] Reverse L3 weights.
+		// ---
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
 		// `this` :: ~
 		// ---
@@ -740,31 +755,41 @@
 
 			for( s1=s2=s3='', n=keys.SIZE, i=-1 ; ++i < n ; )
 			{
-				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
-				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
-				
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;               // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];               // Get (tailored or default) weight seq.
+				wRemap && wRemap.hasOwnProperty(ws) && (ws=wRemap[ws]);  // [ADD200708]
+
 				do
 				{
-					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					x = parseInt(ws,36);                                 // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
 					if( IGNORE_VARS && (1&x) ) continue;
-					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
-					(t=0xFF&(x>>>8)) && (s2+=CHR(t));	              // add only if t!=0 (level2)
-					(t=0x7F&(x>>>1)) && (s3+=CHR(t));				  // add only if t!=0 (level3)
+					(t=x>>>16) && (s1+=CHR(t));                          // add only if t!=0 (level1)
+					(t=0xFF&(x>>>8)) && (s2+=CHR(t));                    // add only if t!=0 (level2)
+					(t=0x7F&(x>>>1)) && (s3+=CHR(RV3?(0x80-t):t));       // add only if t!=0 (level3)
 				}
-				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 
 			return s1 + '\0' + s2 + '\0' + s3;
 		},
 
-		WG_2: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,s2,n,i,k,ws,x,t,p)
+		/*
+		An implementation may allow the maximum level to be set to a smaller level than
+		the available levels in the collation element array. For example, if the maximum
+		level is set to 2, then level 3 and higher weights are not appended to the sort
+		key. Thus any differences at levels 3 and higher will be ignored, effectively
+		ignoring any such differences in determination of the final result for the
+		string comparison.
+		*/
+
+		WG_2: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,  s1,s2,n,i,k,ws,x,t,p)
 		//----------------------------------
-		// (Weight-1-to-2.) Get the Weight String associated to the array
-		// of input keys for L1-L2 comparison. Result has the form
+		// (Weight-1-to-2.) Alpha+Diacritics. Get the Weight String associated
+		// to the array of input keys for L1-L2 comparison. Result has the form
 		//          "<S1><0><S2>"
 		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
-		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
-		// `IGNORE_VARS` :: Ignore variable elements.
+		// ---
+		// -> See WG_3 for additional params.
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
 		// `this` :: ~
 		// ---
@@ -776,29 +801,65 @@
 
 			for( s1=s2='', n=keys.SIZE, i=-1 ; ++i < n ; )
 			{
-				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
-				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
-				
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;               // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];               // Get (tailored or default) weight seq.
+				wRemap && wRemap.hasOwnProperty(ws) && (ws=wRemap[ws]);  // [ADD200708]
+
 				do
 				{
-					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					x = parseInt(ws,36);                                 // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
 					if( IGNORE_VARS && (1&x) ) continue;
-					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
-					(t=0xFF&(x>>>8)) && (s2+=CHR(t));	              // add only if t!=0 (level2)
+					(t=x>>>16) && (s1+=CHR(t));                          // add only if t!=0 (level1)
+					(t=0xFF&(x>>>8)) && (s2+=CHR(t));                    // add only if t!=0 (level2)
 				}
-				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 			
 			return s1 + '\0' + s2;
 		},
 
-		WG_1: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,  s1,n,i,k,ws,x,t,p)
+		WG_4: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*bool=0*/RV3,  s1,s3,n,i,k,ws,x,t,p)
 		//----------------------------------
-		// (Weight-1.) Get the Weight String associated to the array
-		// of input keys for L1 comparison. Result has the form
-		//          (\uHHHH)+
-		// `TM`          :: Active weight map (TMAP.DATA or ~.WMAP)
-		// `IGNORE_VARS` :: Ignore variable elements.
+		// (Weight-1-and-3.) [ADD200812] Alpha+Case (special routine that ignores L2 only.)
+		// Get the Weight String associated to the array of input keys for L1+L3 comparison.
+		// Result has the form "<S1><0><S3>"
+		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// ---
+		// -> See WG_3 for additional params.
+		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
+		// `this` :: ~
+		// ---
+		// => str   :: <L1_Weights>\0<L3_Weights>
+		{
+			const CHR = String.fromCharCode;
+			const ZR = this.ZROS;
+			const WM = this.WMAP;
+
+			for( s1=s3='', n=keys.SIZE, i=-1 ; ++i < n ; )
+			{
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;               // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];               // Get (tailored or default) weight seq.
+				wRemap && wRemap.hasOwnProperty(ws) && (ws=wRemap[ws]);  // [ADD200708]
+
+				do
+				{
+					x = parseInt(ws,36);                                 // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					if( IGNORE_VARS && (1&x) ) continue;
+					(t=x>>>16) && (s1+=CHR(t));                          // add only if t!=0 (level1)
+					(t=0x7F&(x>>>1)) && (s3+=CHR(RV3?(0x80-t):t));       // add only if t!=0 (level3)
+				}
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
+			}
+			
+			return s1 + '\0' + s3;
+		},
+
+		WG_1: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,  s1,n,i,k,ws,x,t,p)
+		//----------------------------------
+		// (Weight-1.) Alpha-Only. Get the Weight String associated to the array
+		// of input keys for L1 comparison. Result has the form (\uHHHH)+
+		// ---
+		// -> See WG_3 for additional params.
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
 		// `this` :: ~
 		// ---
@@ -810,20 +871,133 @@
 
 			for( s1='', n=keys.SIZE, i=-1 ; ++i < n ; )
 			{
-				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;            // Ignore zero-weight keys.
-				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];            // Get (tailored or default) weight seq.
-				
+				if( 0 <= ZR.indexOf(k=keys[i]) ) continue;               // Ignore zero-weight keys.
+				ws = TM.hasOwnProperty(k) ? TM[k] : WM[k];               // Get (tailored or default) weight seq.
+				wRemap && wRemap.hasOwnProperty(ws) && (ws=wRemap[ws]);  // [ADD200708]
+
 				do
 				{
-					x = parseInt(ws,36);                              // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+					x = parseInt(ws,36);                                 // x :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
 					if( IGNORE_VARS && (1&x) ) continue;
-					(t=x>>>16) && (s1+=CHR(t));						  // add only if t!=0 (level1)
+					(t=x>>>16) && (s1+=CHR(t));                          // add only if t!=0 (level1)
 				}
-				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)) );
+				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 
 			return s1;
 		},
+	})
+
+	//==========================================================================
+	// PREPROCESSING [ADD200709]
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		UNVA: function(/*obj*/TM,/*`(KKKK[=<])+`*/vKeys,  WM,a,n,b,i,k,x,r,t,s,j)
+		//----------------------------------
+		// (UnVar.) Map the weight string of each `vKeys` class
+		// to a new weight string whose V flag is zeroed. Make sure that
+		// the resulting weights are ordered as specified in `vKeys`.
+		// => new { wsOld => wsNew }
+		{
+			WM = this.WMAP;
+			
+			a = vKeys.split(callee.RINF);
+			n = a.length;
+
+			for
+			(
+				b=Array(n), i=-1 ;
+				++i < n ;
+				(k = callee[a[i].slice(0,4)].charAt(0)),
+				(x = parseInt(TM[k]||WM[k],36)),
+				((1&x)&&(x^=1)),
+				(b[i]=x>>>0)
+			);
+			b.sort(callee.COMP);
+
+			r = {};
+			for( i=-1 ; ++i < n ; )
+			{
+				x = b[i].toString(36);
+				t = a[i].split(callee.REQU);
+				while( s=t.shift() )
+				{
+					s = callee[s]||'';
+					for( j=-1 ; ++j < s.length ; k=s.charAt(j), r[TM[k]||WM[k]]=x );
+				}
+			}
+
+			return r;
+		}
+		.setup
+		({
+			COMP: function(x,y){ return x < y ? -1 : +(x!=y) },
+			RINF: /\</g,
+			REQU: /\=/g,
+
+			// Spaces and hyphens classes used in Word-by-Word system.
+			// ---
+			SPCE: ' \u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200A\u205F\xA0\u2007\u202F',
+			HYPH: '-\uFF0D\uFE63\u058A\u2010\u2010\u2011\u2011\u2012\u2013\u2014\u2015',
+
+			// Left-parentheses and commas classes used in Word-by-Word and Letter-by-Letter systems.
+			// ---
+			LPAR: '(\uFF08\uFE59\u207D\u208D',
+			CMMA: ',\uFF0C\uFE50\uFE10',
+		}),
+
+		ZPAD: function(/*str*/s)
+		//----------------------------------
+		// (Zero-Padding.)
+		{
+			return s.replace(callee.REGX, callee.REPL);
+		}
+		.setup
+		({
+			REGX: /(?:\.|\b)\d+(?:\.\d|\b)/g,
+			REPL: function($m,p,s,z)
+			//----------------------------------
+			{
+				// $m :: #+ | #+.# | .#+
+				// ---
+				0 <= (p=$m.indexOf('.')) ? ( s=$m.slice(p), p=$m.slice(0,p) ) : ( s='', p=$m );
+				
+				// Prepend '000..'
+				// ---
+				p.length < (z=callee.ZROS).length && (p=z.concat(p).slice(-z.length));
+				
+				return p + s;
+			}
+			.setup
+			({
+				ZROS: '000000000000',
+			}),
+		}),
+		
+		PLBL: function(/*str*/s,F,re)
+		//----------------------------------
+		// (Preprocess-Letter-by-Letter.)
+		// Remove *initial* left-parentheses and commas.
+		{
+			F = this.UNVA;
+			re = callee.REGX || (callee.REGX=RegExp('^['+RegExp.escape(F.LPAR+F.CMMA)+']+', 'g'));
+			return s.replace(re,'');
+		},
+
+		PWBW: function(/*str*/s,F,re)
+		//----------------------------------
+		// (Preprocess-Word-by-Word.)
+		// Remove *initial* left-parentheses, commas, spaces and hyphens.
+		{
+			F = this.UNVA;
+			re = callee.REGX || (callee.REGX=RegExp('^['+RegExp.escape(F.HYPH+F.SPCE+F.LPAR+F.CMMA)+']+', 'g'));
+			return s.replace(re,'');
+		},
+
 	})
 
 	//==========================================================================
@@ -1088,21 +1262,40 @@
 	[PUBLIC]
 	
 	({
-		sort: function sort_L_ý_b_L(/*str[]&*/arr,/*1|2|3=1*/level,/*bool=0*/PUNCT_SENSITIVE,  $$,I,WG,TM,i,t)
+		sort: function sort_L_ý_bk_o_L(/*str[]&*/arr,/*1|2|3|4=1*/level,/*bool|'LBL'|'WBW'=0*/punctMode,/*{}=0*/ops,  $$,I,WG,TM,noVar,i,t,o)
 		//----------------------------------
-		// Sort alphabetically an array of strings based on the active tailoring rules.
-		// `arr`       :: Input/ouput array to be reordered.
-		// `level`     :: Depth of the collation algorithm:
-		//                3 - Deep sort.
-		//                2 - Ignore case variants (and similar L3 diffs.)
-		//                1 - (Default) Ignore case and diacritics variants
-		//                    (L2 and L3 levels.)
-		// `PUNCT_SENSITIVE` ::
-		//                If set, take care of 'variable' collation elements,
-		//                i.e punctuation signs and similar characters. This
-		//                parameter is false by default, meaning that variable
-		//                elements (spaces, line breaks, etc) are purely ignored.
+		// Sort alphabetically an array of *at most 65,534* strings based on the active tailoring rules.
+		// A stable sort is performed by default, that is, original ranks are preserved for strings that
+		// share the same ordering key. (If a stable sort is not required, set `ops.nonStable`.)
 		// ---
+		// `arr`          :: Input/ouput array to be reordered.
+		// `level`        :: Depth of the collation algorithm:
+		//                1 - L1 (default) -> Ignores case/L3 and diacritics/L2 differences.
+		//                2 - L1+L2        -> Ignores case/L3 diffs, but orders diacritics/L2 diffs.
+		//                3 - L1+L2+L3     -> Full sort.
+		//                4 - L1+L3        -> Ignore diacritics/L2 diffs, but orders case/L3 diffs.
+		//                                    [ADD200812] Added to allow case-centered sorts.
+		// `punctMode`    :: Manages 'variable' elements (mostly punctuation marks.)
+		//                falsy  -> Ignores all variable elements (punctuation marks,
+		//                          spaces, line breaks, etc). Default option.
+		//                truthy -> Takes care of variable elems with respect to their
+		//                          respective weight (*<L1>.1.1)
+		//                'LBL'  -> Letter-by-Letter system: ignores variable elems
+		//                          but left-parentheses and commas (in that order.)
+		//                'WBW'  -> Word-by-Word system: ignores variable elems
+		//                          but left-parentheses, commas, and spaces/hyphens;
+		//                          spaces and hyphens are then considered equivalent.
+		// `ops`          :: Additional options supplied as an object:
+		//  .sortNumbers  (bool) Whether separate digits sequence should be interpreted
+		//                as numbers, and ordered. Default is false.
+		//  .nonStable    (bool) Whether stable sort is not required. Default is false.
+		//  .upperFirst   (bool) If set, L3 weights will be sorted in reverse order.
+		//                Default is false ; this option has no effect if level < 3.
+		// ---
+		// [ADD200812] Added level 4 and `ops.upperFirst`.
+		// [ADD200811] Added stability.
+		// [CHG200709] Added `ops` arg -> `ops.sortNumbers`.
+		// [CHG200709] Changed `PUNCT_SENSITIVE` arg into `punctMode` with more options.
 		// [CHG200618] The character U+0000 ('\0') is in principle not allowed in input
 		// strings as it is used internally. However, if a string matches "abc\0...\0xyz",
 		// where the first (resp. last) `\0` denotes the first (resp. last) occurence of
@@ -1117,18 +1310,66 @@
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			I = callee.µ['~'];
 			
-			2===level || 3===level || (level=1);
-
-			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Sorting the string list at level %2 (%3 elements.)",callee.µ,level,arr.length));
-
+			2===level || 3===level || 4===level || (level=1);
 			WG = I['WG_'+level];
-
 			(TM=I.TMAP.DATA).__count__ || (TM=I.WMAP);
-			
-			for( i=arr.length ; i-- ; (t=arr[i]), arr[i]=WG.call(I,I.SPLT(t),TM,!PUNCT_SENSITIVE) + '\0' + t );
-			arr.sort();
-			for( i=arr.length ; i-- ; (t=arr[i]), arr[i]=t.slice(1+t.lastIndexOf('\0')) );
 
+			// Preprocessing.
+			// ---
+			const PP = I.SPLT.PREP;
+			i = 0;
+			ops || (ops={});
+			ops.sortNumbers && (PP[i++]='ZPAD');
+
+			// [ADD200708] Parse punctMode.
+			// ---
+			switch( punctMode )
+			{
+				case 'LBL':
+					o = I.UNVA( TM, 'LPAR<CMMA' );
+					PP[i++]='PLBL';
+					noVar=1; // Ignores other variable elems.
+					break;
+				case 'WBW':
+					o = I.UNVA( TM, 'LPAR<CMMA<SPCE=HYPH' );
+					PP[i++]='PWBW';
+					noVar=1; // Ignores other variable elems.
+					break;
+				default:
+					o = 0;
+					noVar = punctMode ? 0 : 1;
+			}
+			PP.SIZE = i;
+
+			// [ADD200812] Uppercase first (i.e reverse L3 weights.)
+			// Note: has no effect if level < 3.
+			// ---
+			const RV3 = ops.upperFirst ? 1 : 0;
+
+			// [ADD200811] Stable sort?
+			// ---
+			const SB = ops.nonStable ? 0 : String.fromCharCode;
+
+			// Sort.
+			// ---
+			(+$$.trace) && $$.Log.chrono().trace(__("%1 > Sorting the string list at level %2 (%3 elements.)",callee.µ,level,arr.length));
+			// ---
+			for
+			(
+				i=arr.length ;
+				i-- ;
+				(t=arr[i]),
+				arr[i] = WG.call(I, I.SPLT(String(t)), TM, noVar, o, RV3) + (SB?SB(0,1+i):'') + '\0' + t
+			);
+			arr.sort();
+			for
+			(
+				i=arr.length ;
+				i-- ;
+				(t=arr[i]),
+				arr[i] = t.slice(1+t.lastIndexOf('\0'))
+			);
+			// ---
 			(+$$.trace) && $$.trace(__("%1 > Collation completed in %2 ms.",callee.µ,+$$.Log.chrono));
 			
 			return arr;
@@ -1280,10 +1521,10 @@
 			},
 		}),
 
-		localeSort:  function localeSort_L_ý_b_L(/*str[]&*/arr,/*1|2|3=1*/level,/*bool=0*/PUNCT_SENSITIVE,  µ,bkp)
+		localeSort:  function localeSort_L_ý_bk_o_L(/*str[]&*/arr,/*1|2|3|4=1*/level,/*bool|'LBL'|WBW'=0*/punctMode,/*{}=0*/ops,  µ,bkp)
 		//----------------------------------
 		// Sort alphabetically an array of strings based on the current locale ($$.Env.locale.)
-		// (The parameters are detailed in `µ.sort`.)
+		// -> All parameters are detailed in `µ.sort`.
 		// This function *temporarily* switches the tailoring rules, then restore them.
 		// [REM] Since CJK collation is not supported, the DUCET is used as a fallback.
 		// ---
@@ -1298,7 +1539,7 @@
 			
 			// Sort.
 			// ---
-			µ.sort(arr,level,PUNCT_SENSITIVE);
+			µ.sort(arr,level,punctMode||0,ops||0);
 
 			// Restore.
 			// ---
