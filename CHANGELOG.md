@@ -1,4 +1,4 @@
-##### [200618]
+##### [200812]
 
 - [**Collator**](/etc/$$.Collator.jsxlib): Added sort options and many refinements (_letter-by-letter_ and _word-by-word_ systems, stable sort, _upperFirst_ mode at level 3, ability to sort separate digit sequences as numbers.)
 
