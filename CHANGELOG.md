@@ -1,3 +1,7 @@
+##### [200923]
+
+- [`Ext/regexp`](/core/Ext/$$.regexp.jsxinc): added `RegExp.fromCodeRanges()` (static), an experimental routine that allows you to build `RegExp` patterns from an array of Unicode codepoints and/or range of codepoints, including characters beyond U+FFFF that then require UTF16 encoding of surrogate pairs. See the [detailed description](https://github.com/indiscripts/IdExtenso/blob/master/core/Ext/%24%24.regexp.jsxinc#L629).
+
 ##### [200812]
 
 - [**Collator**](/etc/$$.Collator.jsxlib): Added sort options and many refinements (_letter-by-letter_ and _word-by-word_ systems, stable sort, _upperFirst_ mode at level 3, ability to sort separate digit sequences as numbers.)
