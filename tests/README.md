@@ -186,6 +186,19 @@ _Demonstrates:_
 
 ---
 
+##### [`RegexFromCodeRanges.jsx`](RegexFromCodeRanges.jsx)
+
+A useful static routine available in the `RegExp` object.
+
+_Demonstrates:_
+   
+* Converting a set of code ranges into a RegExp pattern.
+* Limitations (surrogate pairs must be consistent, i.e share the same base.)
+* Basic internationalization (decimal point, etc.)
+* Producing a regex that captures misc. symbols and pictographs (from U+1F300 to U+1F5FF).
+
+---
+
 ##### [`ScriptUIBuilder.jsx`](ScriptUIBuilder.jsx)
 
 Build a powerful ScriptUI interface with no effort.
