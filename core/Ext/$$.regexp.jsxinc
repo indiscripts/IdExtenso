@@ -7,12 +7,12 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:    STATIC  escape()
+		API:    STATIC  escape() fromCodeRanges()
 		         PROTO  flags() toSource() ==()
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       171205 (YYMMDD)
+		Modified:       200923 (YYMMDD)
 
 *******************************************************************************/
 
@@ -621,3 +621,142 @@
 		
 		return s;
 	};
+
+	//==========================================================================
+	// RegExp.fromCodeRanges()  [static]
+	//==========================================================================
+
+	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*bool*/OUT_GLOBAL_REGEX,  a,r,X,Y,i,t,n,x,y,X,Y)
+	//----------------------------------
+	// [ADD200921] Given an array of code ranges, create a RegExp pattern
+	// that captures the corresponding characters. Every codepoint can be
+	// specified either as a hex string ('7F', '00D6', '10AAAA'), or as a
+	// u24 integer (127, 0xD6, 0x10AAAA) up to 0x10FFFF. Then any range is
+	// specified either as a `hex..hex` string ('41..7F', 'FE00-FEFF',
+	// 'E11AA..E11FF'), or as an array of two elements, e.g [0x41,0x7F],
+	// ['FE00','FEFF'], or [0xE11AA,'E11FF']. The arg `codeRanges` is an
+	// array of such elements (a single string or number is supported though.)
+	// The function returns a pattern (str) of the form <CLASS>(|<SURROG>)*,
+	// where <CLASS> is a regular class pattern e.g `[\u0009\u0041-\u005A]`
+	// and every <SURROG> a surrogate pair (e.g `\uD835\uDCD0`) or range,
+	// e.g `\uD835[\uDCD0-\uDCFF]`. The output string can be evaluated to
+	// a RegExp using typically `(eval( '(/' + <output> + '/)' ))`. Note that
+	// every `\uHHHH` in the output is a literal string of 6 characters, it
+	// actually contains the backslash character (`\`), the `u` letter, etc.
+	// Also, every hexadecimal digit is in uppercase form.
+	// If `OUT_GLOBAL_REG` is truthy, returns a global RegExp instead of a
+	// string.
+	// ---
+	// [WIP200923] This function is intended to output UTF16 surrogate pairs if
+	// needed. E.g the range '1D7AA..1D7C2' results in `\uD835[\uDFAA-\uDFC2]`.
+	// However, the present implementation only supports *consistent* ranges
+	// for high codepoints, that is, ranges of surrogate pairs that share the
+	// same *base* (first UTF16 code unit): `<BASE>[<INIT>-<END>]`.
+	// If the starting and the ending codepoint don't have the same base, as in
+	// `1D4D0..1F090` (i.e \uD835\uDCD0 to \uD83C\uDC90), then an out-of-range
+	// error is thrown.
+	// ---
+	// E.g
+	//    fromCodeRanges("41..7F")
+	//      => `[\u0041-\u007F]`
+	//    fromCodeRanges( [0x9,'0041..005A',[0xC0,0xD6],['D8','DE'],'0100'] )
+	//      => `[\u0009\u0041-\u005A\u00C0-\u00D6\u00D8-\u00DE\u0100\u0102]`
+	//    fromCodeRanges( ['1D4D0..1D4FF', [0x10FF00, 0x10FFFF]] )
+	//      => `\uD835[\uDCD0-\uDCFF]|\uDBFF[\uDF00-\uDFFF]`
+	//    fromCodeRanges( ['1F300..1F3FF', '1F400..1F4FF','1F500..1F5FF'], true)
+	//      => /\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDCFF]|\uD83D[\uDD00-\uDDFF]/g
+	// ---
+	// => str|RegExp [OK]  |  false [KO]
+	{
+		a = codeRanges instanceof Array ? codeRanges : [codeRanges];
+		const MF = Math.floor;
+
+		for( r={simple:'',surrog:''}, X={hi:0,lo:0}, Y={hi:0,lo:0}, i=-1 ; ++i < a.length ; )
+		{
+			t = a[i];
+			'string'==typeof t && (t=t.split('..'));
+			
+			if( t instanceof Array )
+			{
+				if( !(n=t.length) ) continue;
+				x = t[0];
+				y = 2 <= n && t[1];
+			}
+			else
+			{
+				x = t;
+				y = false;
+			}
+			
+			x = 'number'==typeof x ? (x>>>0) : parseInt(x,16);
+			if( isNaN(x) || 0x10FFFF < x ) continue;
+			
+			if( y )
+			{
+				y = 'number'==typeof y ? (y>>>0) : parseInt(y,16);
+				( isNaN(y) || y <= x || 0x10FFFF < y ) && (y=false);
+			}
+			
+			// ---
+			// Represent either the character X (if the codepoint `x`
+			// is alone), or the range X..Y (if `y` is defined too.)
+			// ---
+
+			if( 0xFFFF < x )
+			{
+				x -= 0x10000;
+				X.hi = 0xD800 + MF(x/0x400);
+				X.lo = 0xDC00 +   (x%0x400);
+			}
+			else
+			{
+				X.hi = 0;
+				X.lo = x;
+			}
+
+			// Single character (either simple or surrogate pair.)
+			// ---
+			if( !y )
+			{
+				t = X.lo.toHexa('\\u',4);
+				X.hi ? ( r.surrog += '|' + X.hi.toHexa('\\u',4) + t ) : ( r.simple += t );
+				continue;
+			}
+			
+			// Simple character range?
+			// ---
+			if( 0xFFFF >= y )
+			{
+				r.simple += X.lo.toHexa('\\u',4) + '-' + y.toHexa('\\u',4);
+				continue;
+			}
+
+			// Complex range including surrogate pair(s).
+			// ---
+			y -= 0x10000;
+			Y.hi = 0xD800 + MF(y/0x400);
+			Y.lo = 0xDC00 +   (y%0x400);
+			
+			// [REM] The present routine only supports consistent ranges (X.hi==Y.hi).
+			// ---
+			if( X.hi===Y.hi )
+			{
+				t = X.hi.toHexa('\\u',4);
+				r.surrog += '|' + t + '[' + X.lo.toHexa('\\u',4) + '-' + Y.lo.toHexa('\\u',4) + ']';
+			}
+			else
+			{
+				// "... is out of range" error
+				Error.runtimeError(41,__("Code point [%1 =%2%3]",(0x10000+y).toHexa('U+'),Y.hi.toHexa('\\u',4),Y.lo.toHexa('\\u',4)));
+			}
+		}
+		
+		(t=r.simple) && (t='['+t+']');
+		r = t + r.surrog;
+		'|'===r.charAt(0) && (r=r.slice(1));
+		
+		if( !r.length ) return false;
+
+		return OUT_GLOBAL_REGEX ? (eval('(/'+r+'/g)')) : r;
+	};
+	
