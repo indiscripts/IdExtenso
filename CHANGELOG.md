@@ -1,3 +1,11 @@
+##### [201005]
+
+- [`Ext/regexp`](/core/Ext/$$.regexp.jsxinc): Improved `RegExp.fromCodeRanges()`. The function now manages large ranges of surrogate pairs and optimizes the result. For example,
+~~~~
+RegExp.fromCodeRanges('1F5F4..20AD2')
+-> \uD83D[\uDDF4-\uDFFF]|[\uD83E-\uD841][\uDC00-\uDFFF]|\uD842[\uDC00-\uDED2]
+~~~~
+
 ##### [200923]
 
 - [`Ext/regexp`](/core/Ext/$$.regexp.jsxinc): added `RegExp.fromCodeRanges()` (static), an experimental routine that allows you to build `RegExp` patterns from an array of Unicode codepoints and/or range of codepoints, including characters beyond U+FFFF that then require UTF16 encoding of surrogate pairs. See the [detailed description](https://github.com/indiscripts/IdExtenso/blob/master/core/Ext/%24%24.regexp.jsxinc#L629).
