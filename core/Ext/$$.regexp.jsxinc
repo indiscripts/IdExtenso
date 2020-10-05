@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       200923 (YYMMDD)
+		Modified:       201005 (YYMMDD)
 
 *******************************************************************************/
 
@@ -628,7 +628,7 @@
 
 	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*bool*/OUT_GLOBAL_REGEX,  a,r,X,Y,i,t,n,x,y,X,Y)
 	//----------------------------------
-	// [ADD200921] Given an array of code ranges, create a RegExp pattern
+	// [UPD201005] Given an array of code ranges, create a RegExp pattern
 	// that captures the corresponding characters. Every codepoint can be
 	// specified either as a hex string ('7F', '00D6', '10AAAA'), or as a
 	// u24 integer (127, 0xD6, 0x10AAAA) up to 0x10FFFF. Then any range is
@@ -643,18 +643,12 @@
 	// a RegExp using typically `(eval( '(/' + <output> + '/)' ))`. Note that
 	// every `\uHHHH` in the output is a literal string of 6 characters, it
 	// actually contains the backslash character (`\`), the `u` letter, etc.
-	// Also, every hexadecimal digit is in uppercase form.
-	// If `OUT_GLOBAL_REG` is truthy, returns a global RegExp instead of a
-	// string.
+	// Also, every hexadecimal digit is in uppercase form. If `OUT_GLOBAL_REG`
+	// is truthy, returns a global RegExp rather than a string.
 	// ---
-	// [WIP200923] This function is intended to output UTF16 surrogate pairs if
-	// needed. E.g the range '1D7AA..1D7C2' results in `\uD835[\uDFAA-\uDFC2]`.
-	// However, the present implementation only supports *consistent* ranges
-	// for high codepoints, that is, ranges of surrogate pairs that share the
-	// same *base* (first UTF16 code unit): `<BASE>[<INIT>-<END>]`.
-	// If the starting and the ending codepoint don't have the same base, as in
-	// `1D4D0..1F090` (i.e \uD835\uDCD0 to \uD83C\uDC90), then an out-of-range
-	// error is thrown.
+	// [CHG200924] This function manages UTF16 surrogate pairs if needed. E.g
+	// the range '1D7AA..1D7C2' results in `\uD835[\uDFAA-\uDFC2]`. Larger
+	// ranges are now supported as well, e.g `1F5F4..20AD2`.
 	// ---
 	// E.g
 	//    fromCodeRanges("41..7F")
@@ -663,13 +657,15 @@
 	//      => `[\u0009\u0041-\u005A\u00C0-\u00D6\u00D8-\u00DE\u0100\u0102]`
 	//    fromCodeRanges( ['1D4D0..1D4FF', [0x10FF00, 0x10FFFF]] )
 	//      => `\uD835[\uDCD0-\uDCFF]|\uDBFF[\uDF00-\uDFFF]`
-	//    fromCodeRanges( ['1F300..1F3FF', '1F400..1F4FF','1F500..1F5FF'], true)
-	//      => /\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDCFF]|\uD83D[\uDD00-\uDDFF]/g
+	//    fromCodeRanges( "1F5F4..20AD2", true )
+	//      => /\uD83D[\uDDF4-\uDFFF]|[\uD83E-\uD841][\uDC00-\uDFFF]|\uD842[\uDC00-\uDED2]/
 	// ---
 	// => str|RegExp [OK]  |  false [KO]
 	{
 		a = codeRanges instanceof Array ? codeRanges : [codeRanges];
+
 		const MF = Math.floor;
+		const UH = callee.UHEX;
 
 		for( r={simple:'',surrog:''}, X={hi:0,lo:0}, Y={hi:0,lo:0}, i=-1 ; ++i < a.length ; )
 		{
@@ -718,8 +714,9 @@
 			// ---
 			if( !y )
 			{
-				t = X.lo.toHexa('\\u',4);
-				X.hi ? ( r.surrog += '|' + X.hi.toHexa('\\u',4) + t ) : ( r.simple += t );
+				X.hi
+				? ( r.surrog += '|' + UH(X.hi) + UH(X.lo) )
+				: ( r.simple += UH(X.lo) );
 				continue;
 			}
 			
@@ -727,36 +724,68 @@
 			// ---
 			if( 0xFFFF >= y )
 			{
-				r.simple += X.lo.toHexa('\\u',4) + '-' + y.toHexa('\\u',4);
+				r.simple += UH(X.lo, y);
 				continue;
 			}
 
-			// Complex range including surrogate pair(s).
+			// [ADD200924] x <= 0xFFFF  ->  split x..Y into x..'FFFF' + '10000'..Y
+			// ---
+			if( X.hi == 0 )
+			{
+				r.simple += UH(x,0xFFFF);                   // x..'FFFF'
+				
+				// Reset X to 0x10000 and normalize.
+				// ---
+				x = 0;                                      // By subtracting 0x10000.
+				X.hi = 0xD800;
+				X.lo = 0xDC00;
+			}
+
+			// ---
+			// Dealing with complex range based on two surrogate pairs.
+			// ---
+
+			// Normalize Y.
 			// ---
 			y -= 0x10000;
 			Y.hi = 0xD800 + MF(y/0x400);
 			Y.lo = 0xDC00 +   (y%0x400);
 			
-			// [REM] The present routine only supports consistent ranges (X.hi==Y.hi).
+			// [ADD200924] Feed `surrog` until X.hi == Y.hi.
 			// ---
-			if( X.hi===Y.hi )
-			{
-				t = X.hi.toHexa('\\u',4);
-				r.surrog += '|' + t + '[' + X.lo.toHexa('\\u',4) + '-' + Y.lo.toHexa('\\u',4) + ']';
-			}
-			else
-			{
-				// "... is out of range" error
-				Error.runtimeError(41,__("Code point [%1 =%2%3]",(0x10000+y).toHexa('U+'),Y.hi.toHexa('\\u',4),Y.lo.toHexa('\\u',4)));
-			}
+			( X.hi < Y.hi && 0xDC00 < X.lo )
+			&& ( (r.surrog += '|' + UH(X.hi) + UH(X.lo, 0xDFFF, 1)), ++X.hi, X.lo=0xDC00 );
+			
+			( (t=0xDFFF > Y.lo) || X.hi < Y.hi )
+			&& ( (r.surrog += '|' + UH(X.hi, -t+Y.hi, 1) + UH(0xDC00, 0xDFFF, 1)), X.hi=Y.hi );
+
+			t && (r.surrog += '|' + UH(X.hi) + UH(X.lo, Y.lo, 1));
+
+			// [DEL200924] Out-of-range error no longer fired.
+			// Error.runtimeError(41,__("Code point [%1 =%2%3]",(0x10000+y).toHexa('U+'),Y.hi.toHexa('\\u',4),Y.lo.toHexa('\\u',4)));
 		}
 		
-		(t=r.simple) && (t='['+t+']');
+		(t=r.simple) && (6 < t.length) && (t='['+t+']');    // [ADD200925] Class only if `r.simple` has more than 6 chars.
 		r = t + r.surrog;
 		'|'===r.charAt(0) && (r=r.slice(1));
 		
 		if( !r.length ) return false;
 
 		return OUT_GLOBAL_REGEX ? (eval('(/'+r+'/g)')) : r;
-	};
+	}
+	.setup
+	({
+		UHEX: function(/*u16*/a,/*?u16*/b,/*bool=0*/BRACKETS)
+		//----------------------------------
+		// [ADD200924] Utility of `fromCodeRanges`.
+		// (1) `a` alone OR `a==b` -> `\uAAAA`
+		// (2) `a < b`             -> `\uAAAA-\uBBBB`
+		// If BRACKETS, returns `[\uAAAA-\uBBBB]` in case (2).
+		// => str
+		{
+			b = b && a < b ? ('-'+b.toHexa('\\u',4)) : '';
+			a = a.toHexa('\\u',4) + b;
+			return BRACKETS && b.length ? ( '[' + a + ']' ) : a;
+		},
+	});
 	
