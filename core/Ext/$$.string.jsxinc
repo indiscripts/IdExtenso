@@ -10,7 +10,7 @@
 		API:  static:   SourceEscapes fromCodePoint() fromUTF8() fromBase64()
 		                random() levenDist() levenFilter()
 		       proto:   codePointAt() toUTF8() toBase64() toSource()
-		                split() [CS4] lastIndexOf() [CS4]
+		                split() [CS4] lastIndexOf() [CS4] subReplace()
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                rpad() lpad() stripSpaces() charSet()
@@ -19,7 +19,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       200526 (YYMMDD)
+		Modified:       201025 (YYMMDD)
 
 *******************************************************************************/
 
@@ -714,6 +714,61 @@
 		};
 	}
 
+	//==========================================================================
+	// [ADD201025] String.prototype.subReplace()
+	//==========================================================================
+
+	String.prototype.subReplace = function subReplace(/*RegExp|str*/what,/*str|fct*/rpl,/*?RegExp*/where,/*bool=0*/OUTSIDE,  M,B,S,n,p,i,t,z,q)
+	//----------------------------------
+	// Replace `what` by `rpl` inside (or outside) the matches of `where`. This
+	// method performs replacements only in specific substrings determined by a
+	// regular expression:
+	// - if OUTSIDE is false (or missing,) the replacement is processed in
+	//   every substring captured by `where` (the outside is preserved.)
+	// - if OUTSIDE is true, the replacement is processed out of the
+	//   substrings captured by `where` (the inside is preserved.)
+	// The 1st and 2nd parameters are defined as in `String.prototype.replace()`
+	// and have the same meaning/behavior. The regular expression `where` only
+	// delineates the scope of replacement--as specified above. It may involve
+	// multiple substrings provided it has the global flag (as in /.../g);
+	// otherwise it will capture at most one matching substring.
+	// ---
+	// E.g    "abc<def><ghi>no<uv>".subReplace(/[aeiou]/gi, '#', /<[^>]+>/g, 0)
+	//     -> "abc<d#f><gh#>no<#v>"   // replacements processed inside <...>
+	//
+	//        "abc<def><ghi>no<uv>".subReplace(/[aeiou]/gi, '#', /<[^>]+>/g, 1)
+	//     -> "#bc<def><ghi>n#<uv>"   // replacements processed outside <...>
+	// ---
+	// => str
+	{
+		n = where && ((M=this.match(where))||0).length;
+		if( !n ) return this.replace(what,rpl);
+
+		// Deal with non-global regex (=single match.)
+		// ---
+		( 'RegExp'==where.__class__ && 'g'==where.toString().slice(-1) )
+		|| (M.length=n=1);
+
+		B = OUTSIDE ? 0 : 1;
+		S = ['',''];
+		for( p=0, i=-1 ; ++i < n ; )
+		{
+			t = S[1] = M[i];
+			if( !(z=t.length) ) continue;
+
+			q = this.indexOf(t,p);
+			S[0] = p < q ? this.slice(p,q) : (q=p, '');
+			
+			(t=S[B]).length && (S[B]=t.replace(what,rpl));
+			M[i] = S.join('');
+			p = q + z;
+		}
+
+		(t = p < this.length ? this.slice(p) : '').length
+		&& ( B || (t=t.replace(what,rpl)) );
+
+		return M.join('') + t;
+	};
 
 	//==========================================================================
 	// String.prototype.asPath() ; ...toPath(str) ; ...relativePath(str)
