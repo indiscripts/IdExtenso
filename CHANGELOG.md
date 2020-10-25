@@ -1,3 +1,14 @@
+##### [201025]
+
+- [`Ext/string`](/core/Ext/$$.string.jsxinc): Added a convenient `String.prototype.subReplace()` method that performs replacements only in specific substrings determined by a regular expression. In the following example, the replacement `/a(\d+)/g -> "X$1"` is processed only in `<...>` sub-regions:
+
+~~~~
+"a12<a34>a567<a998>".subReplace( /a(\d+)/g, "X$1", /<[^>]+>/g )
+-> a12<X34>a567<X998>
+~~~~
+
+A 4th parameter (boolean) can be supplied that specifies whether replacements must be processed *outside* the sub-regions (default being *inside*.)
+
 ##### [201005]
 
 - [`Ext/regexp`](/core/Ext/$$.regexp.jsxinc): Improved `RegExp.fromCodeRanges()`. The function now manages large ranges of surrogate pairs and optimizes the result. For example,
