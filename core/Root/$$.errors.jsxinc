@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       200601 (YYMMDD)
+		Modified:       201111 (YYMMDD)
 
 *******************************************************************************/
 
@@ -437,7 +437,7 @@
 			// ---
 			e.engine  = $.engineName;       // Current engine.
 			e.jsxbin  = jb;                 // JsxBin ID (str.)
-			e.stack   = a.join(' :: ');     // Parsed stack.
+			e.stack   = a.join(' :: ').replace(/(,undefined)+\)/g,')'); // [CHG201111] Cosmetics: remove meaningless undefined args.
 			// ---
 			e.where   = '';                 // Pending.
 			e.logged  = 0;                  // Pending.
@@ -564,7 +564,8 @@
 					'________________________________________\r',
 					__("Engine:\t%1", e.engine + (e.jsxbin && (' JSXBIN: <'+e.jsxbin+'>')) ),
 					__("Where:\t%1", e.where ? e.where : '<unknown>'),
-					__("Stack:\t%1", e.stack),
+					// [CHG201111] Cosmetics: truncate long stack for display.
+					__("Stack:\t%1", 'function' == typeof String.prototype.trunc ? String(e.stack).trunc(120,'\r\t\u2026\r\t',1) : e.stack),
 					__("Logged:\t%1", e.logged),
 					__("File:\t%1", e.fileName || '<unknown>')
 				].join('\r'));
