@@ -1,3 +1,7 @@
+##### [201111]
+
+- [`Root/error`](/core/Root/$$.error.jsxinc): Made `error()` and `receiveError()` less verbose on displaying the stack.
+
 ##### [201025]
 
 - [`Ext/string`](/core/Ext/$$.string.jsxinc): Added a convenient `String.prototype.subReplace()` method that performs replacements only in specific substrings determined by a regular expression. In the following example, the replacement `/a(\d+)/g -> "X$1"` is processed only in `<...>` sub-regions:
