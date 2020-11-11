@@ -11,7 +11,7 @@
 -> a12<X34>a567<X998>
 ~~~~
 
-A 4th parameter (boolean) can be supplied that specifies whether replacements must be processed *outside* the sub-regions (default being *inside*.)
+A 4th parameter (boolean) can be supplied, it then specifies whether replacements must be processed *outside* the sub-regions (default being *inside*.)
 
 ##### [201005]
 
