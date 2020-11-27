@@ -1,6 +1,8 @@
-##### [201127]
-
-- [`Ext/math`](/core/Ext/$$.math.jsxinc): In ExtendScript CS4/CS5 (InDesign versions <= 7.0) `Math.min(...)` and `Math.max(...)` weren't supporting more than two arguments. In particular, the `Math.max.call(null, [1,2,3,4,5])` trick (resp. `Math.min...`) can't be used in these older script engines. The present snippet provides a patch that makes all scripts consistent regarding `Math.min` and `Math.max`. (Returned values comply with _ECMA-262_ rules.)
+## 2.01127
+  - Stabilized version (November 27, 2020) including latest fixes, improvements, and additions.
+  - Cosmetic changes in [Root/errors](/core/Root/$$.errors.jsxinc).
+  - Recent patches and additions: `String.prototype.subReplace()` ; `RegExp.fromCodeRanges()`.
+  - [`Ext/math`](/core/Ext/$$.math.jsxinc): In ExtendScript CS4/CS5 (InDesign versions <= 7.0) `Math.min(...)` and `Math.max(...)` weren't supporting more than two arguments. In particular, the `Math.max.call(null, [1,2,3,4,5])` trick (resp. `Math.min...`) can't be used in these older script engines. The present snippet provides a patch that makes all scripts consistent regarding `Math.min` and `Math.max`. (Returned values comply with _ECMA-262_ rules.)
 
 ##### [201111]
 
