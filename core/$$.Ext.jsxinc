@@ -14,7 +14,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        160731 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       201127 (YYMMDD)
 
 *******************************************************************************/
 
@@ -31,6 +31,7 @@
 	`#include` directives, as some methods (e.g `Object.prototype.setup`) may
 	be invoked at include time.
 	
+	[ADD201127] Added $$.math.jsxinc
 	[CHG190120] ScriptUI stuff is included from a distinct snippet: SUI.jsxinc
 
 	*/
@@ -66,6 +67,10 @@
 	// Redefine Number.prototype.toSource.
 	// ---
 	#include 'Ext/$$.number.jsxinc'
+
+	// [201127] Patch `Math.min`, `Math.max` if needed.
+	// ---
+	#include 'Ext/$$.math.jsxinc'
 
 	// Add Enumeration & Enumerator features,
 	// in particular repair .toSource() in CS5+.
