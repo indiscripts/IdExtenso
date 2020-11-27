@@ -1,0 +1,52 @@
+/*******************************************************************************
+
+		Name:           math
+		Desc:           Fixes or improves Math features (static methods.)
+		Path:           /core/Ext/$$.math.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext.
+		API:            min() max()   [CS4/CS5 patches]
+		DOM-access:     ---
+		Todo:           ---
+		Created:        201127 (YYMMDD)
+		Modified:       201127 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// Math.max(x,y,...) ; Math.min(x,y,...)
+	// [REM] In ExtendScript CS4 and CS5 (INDD <= 7.0) the `min` and `max`
+	// methods don't support more than two arguments. This patch solves the pb.
+	//==========================================================================
+
+	3===Math.max(1,2,3) || (Math.max = function max(  a,i,r,t)
+	//----------------------------------
+	// Math.max(3,5)          => 5
+	// Math.max(3,5,7,9)      => 9
+	// Math.max()             => -Infinity
+	// Math.max(3,'ab')       => NaN
+	// Math.max(-2,false)     => 0
+	// ---
+	// => Number [OK]  |  NaN [KO]
+	{
+		a=[].slice.call(arguments);
+		for( t=r=-1/0, i=a.length ; i-- && !isNaN(t=a[i]) ; r < t && (r=+t) );
+		return isNaN(t) ? +t : r;
+	});
+
+	1===Math.min(3,2,1) || (Math.min = function min(  a,i,r,t)
+	//----------------------------------
+	// Math.min(3,5)          => 3
+	// Math.min(9,8,7,6)      => 6
+	// Math.min()             => +Infinity
+	// Math.min(3,'ab')       => NaN
+	// Math.min(2,true)       => 1
+	// ---
+	// => Number [OK]  |  NaN [KO]
+	{
+		a=[].slice.call(arguments);
+		for( t=r=1/0, i=a.length ; i-- && !isNaN(t=a[i]) ; r > t && (r=+t) );
+		return isNaN(t) ? +t : r;
+	});
