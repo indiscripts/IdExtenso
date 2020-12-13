@@ -1,0 +1,74 @@
+/*******************************************************************************
+
+		Name:           Page
+		Desc:           Page-related API of the Dom module.
+		Path:           /core/Dom/$$.page.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Dom module.
+		API:            parentPage() -> $$
+		DOM-access:     YES
+		Todo:           ---
+		Created:        201212 (YYMMDD)
+		Modified:       201213 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		parentPage: ($$.idVersion(7) ? function parentPage_D_$Page$BÃ(/*Item|Guide*/item,  a,i,p,t)
+		//----------------------------------
+		// Get the parent page of `item`, which must be either a DOM object with bounds,
+		// or a Guide. This function supports plural input--e.g myDoc.ovals.everyItem()--
+		// and in such case it returns an array if more than one object is involved.
+		// `false` is returned if `item` doesn't belong to a Page or is presently hidden.
+		// ---
+		// item :: PageItem|SplineItem|Oval|Rectangle|GraphicLine|Polygon|Group|TextFrame|EndnoteTextFrame
+		//         Guide|HtmlItem|MediaItem|Movie|Sound|SVG|ImportedPage|EPSText|Graphic|PICT|WMF|PDF|EPS|Image
+		//         FormField|Button|MultiStateObject|CheckBox|ComboBox|ListBox|RadioButton|TextBox|SignatureField
+		// ---
+		// => Page[] [OK]  |  false [KO]  |  (Page|false)[]  [PLURAL]
+		{
+			// In CS5/CS6/CC, the `parentPage` property is available.
+			// ---
+			a = item.parentPage;
+
+			if( a && (a instanceof Array) )for( i=a.length ; i-- ; a[i] || (a[i]=false) );
+
+			return a||false;
+		}
+		: function parentPage_D_$Page$B(/*Item|Guide*/item,  a,i,p,t)
+		{
+			// In CS4, the `parentPage` property is not available but we can then use the fact that
+			// in this version `item.parent` returns a *Page* object for 'top' items that meet page
+			// boundaries. Hence a bottom->top algorithm (similar to parentSpread) will do the job :-)
+			// ---
+
+			// Checkpoints.
+			// ---
+			( item && item.isValid && (item.hasOwnProperty('visibleBounds') || item instanceof Guide) )
+			|| $.global[callee.µ.__root__].error("Invalid 'item' argument. Should be a valid PageItem or Guide.",callee);
+
+			// Supports plural item.
+			// ---
+			(a=item.parent) instanceof Array || ( a=[a] );
+
+			for( i=a.length ; i-- ; a[i]=p||false )
+			for
+			(
+				p = a[i] ;
+				p && 'Page' != (t=p.constructor.name) && (( 'Spread' == t || 'MasterSpread' == t ) ? (p=false) : 1) ;
+				p = 'Document' != t && 'Application' != t && (p.hasOwnProperty('parentTextFrames')?(p.parentTextFrames[0]||0):p).parent
+			);
+			
+			return 1 < a.length ? a : a[0];
+
+		}).copy('..'),
+	
+	})
