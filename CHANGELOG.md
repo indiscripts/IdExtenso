@@ -1,3 +1,13 @@
+##### [201213]
+
+- The core [**Dom**](/core/$$.Dom.jsxlib) module now provides two essential functions `$$.Dom.parentSpread(item)` and `$$.Dom.parentPage(item)` that were highly expected in many InDesign scripts. This routines have aliases at the root level so you can siply call `$$.parentSpread(...)`, resp. `$$.parentPage(...)`. They support DOM objects that fit the `parentPage` property in CS5/CS6/CC:
+
+> PageItem, SplineItem, Oval, Rectangle, GraphicLine, Polygon, Group, TextFrame, EndnoteTextFrame,
+> Guide, HtmlItem, MediaItem, Movie, Sound, SVG, ImportedPage, EPSText, Graphic, PICT, WMF, PDF, EPS, Image,
+> FormField, Button, MultiStateObject, CheckBox, ComboBox, ListBox, RadioButton, TextBox, SignatureField.
+
+Note that `$$.parentPage()` is available in whatever version, including CS4 :-) Also, `$$.parentSpread(...)` and `$$.parentPage(...)` can work on plural specifiers, e.g `myDoc.ovals.everyItem()`, and will then return, if relevant, an array rather than a single object.
+
 ## 2.01127
   - Stabilized version (November 27, 2020) including latest fixes, improvements, and additions.
   - Cosmetic changes in [Root/errors](/core/Root/$$.errors.jsxinc).
