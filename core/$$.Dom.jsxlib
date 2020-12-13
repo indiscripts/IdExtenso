@@ -1,22 +1,23 @@
 /*******************************************************************************
 
 		Name:           Dom
-		Desc:           Core DOM-related routines.
+		Desc:           Essential DOM-related routines.
 		Path:           /core/$$.Dom.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module
 		API:            fromLocaleStr() toLocaleStr() -> $$
-		                fromLabel() toLabel() -> $$
+		                fromLabel() toLabel()         -> $$
+		                parentSpread() parentPage()   -> $$
 		DOM-access:     YES [INDD]
-		Todo:           test.jsx.
+		Todo:           ---
 		Created:        150705 (YYMMDD)
-		Modified:       180311 (YYMMDD)
+		Modified:       201213 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Dom', 180311, ''))
+;eval(__(MODULE, $$, 'Dom', 201213, ''))
 
 	//==========================================================================
 	// NOTICE
@@ -71,3 +72,8 @@
 	// fromLabel ; toLabel
 	// ---
 	#include "Dom/$$.label.jsxinc"
+
+	// parentSpread ; parentPage
+	// ---
+	#include "Dom/$$.spread.jsxinc"
+	#include "Dom/$$.page.jsxinc"
