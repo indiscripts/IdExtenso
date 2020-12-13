@@ -1,0 +1,58 @@
+/*******************************************************************************
+
+		Name:           Spread
+		Desc:           Spread-related API of the Dom module.
+		Path:           /core/Dom/$$.spread.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Dom module.
+		API:            parentSpread() -> $$
+		DOM-access:     YES
+		Todo:           ---
+		Created:        201212 (YYMMDD)
+		Modified:       201213 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		parentSpread: function parentSpread_D_$Spread$BÃ(/*Item|Guide*/item,  a,i,p,t)
+		//----------------------------------
+		// Get the parent spread of `item`, which must be either a DOM object with bounds,
+		// or a Guide. This function supports plural input--e.g myDoc.ovals.everyItem()--
+		// and in such case it returns an array if more than one object is involved.
+		// `false` is returned if `item` is hidden.
+		// ---
+		// item :: PageItem|SplineItem|Oval|Rectangle|GraphicLine|Polygon|Group|TextFrame|EndnoteTextFrame
+		//         Guide|HtmlItem|MediaItem|Movie|Sound|SVG|ImportedPage|EPSText|Graphic|PICT|WMF|PDF|EPS|Image
+		//         FormField|Button|MultiStateObject|CheckBox|ComboBox|ListBox|RadioButton|TextBox|SignatureField
+		// ---
+		// => Spread|MasterSpread [OK]  |  false [KO]  |  (Spread|false)[]  [PLURAL]
+		{
+			// Checkpoints.
+			// ---
+			( item && item.isValid && (item.hasOwnProperty('visibleBounds') || item instanceof Guide) )
+			|| $.global[callee.µ.__root__].error("Invalid 'item' argument. Should be a valid PageItem or Guide.",callee);
+
+			// Supports plural item.
+			// ---
+			(a=item.parent) instanceof Array || (a=[a]);
+			for( i=a.length ; i-- ; a[i]=p||false )
+			for
+			(
+				p = a[i] ;
+				p && 'Spread' != (t=p.constructor.name) && 'MasterSpread' != t ;
+				p = 'Document' != t && 'Application' != t && (p.hasOwnProperty('parentTextFrames')?(p.parentTextFrames[0]||0):p).parent
+			);
+			
+			return 1 < a.length ? a : a[0];
+
+		}.copy('..'),
+	
+	})
