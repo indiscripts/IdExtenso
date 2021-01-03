@@ -1,3 +1,7 @@
+##### [210103]
+
+- [ScriptUI/events](/etc/ScriptUI/$$.events.jsxinc) snippet added in the `etc` branch. Provides the function `ScriptUI.event()` and advanced tools and tricks for manipulating `Event`, `UIEvent`, `MouseEvent`, and `KeyboardEvent` instances at the ScriptUI level.
+
 ##### [201213]
 
 - The core [**Dom**](/core/$$.Dom.jsxlib) module now provides two essential functions `$$.Dom.parentSpread(item)` and `$$.Dom.parentPage(item)` that were highly expected in many InDesign scripts. This routines have aliases at the root level so you can siply call `$$.parentSpread(...)`, resp. `$$.parentPage(...)`. They support DOM objects that fit the `parentPage` property in CS5/CS6/CC:
