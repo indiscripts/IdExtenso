@@ -8,10 +8,11 @@
 		Core:           NO
 		Kind:           Snippet
 		API:  ScriptUI. layoutDeclare() layoutHandler()
+		                + adds the `_layout` key handler, cf ScriptUI.builder().
 		DOM-access:     ---
 		Todo:           ---
 		Created:        171112 (YYMMDD)
-		Modified:       190303 (YYMMDD)
+		Modified:       210103 (YYMMDD)
 
 *******************************************************************************/
 
