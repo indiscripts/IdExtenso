@@ -1,0 +1,417 @@
+/*******************************************************************************
+
+		Name:           Events
+		Desc:           Tools for managing ScriptUI events.
+		Path:           /etc/ScriptUI/$$.events.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.event()
+		                (Event|UIEvent|MouseEvent|KeyboardEvent).prototype.toSource()
+		                $$.JSON['~']['\x02'(Event|UIEvent|MouseEvent|KeyboardEvent)]
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190220 (YYMMDD)
+		Modified:       210103 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	1. BASICS
+
+	This snippet deals with `Event`, `UIEvent`, `MouseEvent` and `KeyboardEvent`
+	classes (ScriptUI.) The hierarchical diagram is, in principle,
+	
+	                                     +----   MouseEvent
+	      Event   <----   UIEvent   <----¦
+	                                     +----   KeyboardEvent
+
+	but each particular event is only an `instanceof` its specific class.
+	For example,
+	
+	      myMouseEvent instanceof MouseEvent    // true
+	      myMouseEvent instanceof UIEvent       // false!
+	      myMouseEvent instanceof Event         // false!
+
+	Both `Event()` and `UIEvent()` are always available in the [[global]] scope
+	and can be called as a constructor:
+	
+	      var ev1 = new Event();                // OK
+	      var ev2 = new UIEvent();              // OK
+
+	but the `MouseEvent` and `KeyboardEvent` functions are not available yet.
+	To have them in the [[global]] scope we use 'wake-up statements' like:
+
+	      ScriptUI.events.createEvent('MouseEvent').constructor;
+	      ScriptUI.events.createEvent('KeyboardEvent').constructor;
+
+	Then we get:
+	
+	      MouseEvent===MouseEvent.prototype.constructor;       // true
+	      KeyboardEvent===KeyboardEvent.prototype.constructor; // true
+
+	Nevertheless, neither `MouseEvent()` nor `KeyboardEvent()` can be called
+	as a constructor. `ScriptUI.events.createEvent(<class>)` is still required
+	to create a new event of the desired class. Once created, the event can be
+	'initialized' using respectively:
+
+	      ev.initMouseEvent()
+	or
+	      ev.initKeyboardEvent()
+
+	[REM] ScriptUI only supports 'keydown' and 'keyup' as native KeyboardEvent
+	      types; 'keypress' is not triggered from UI components.
+
+	[REM] Do not confuse ScriptUI-related events with InDesign DOM events: Event,
+	      DocumentEvent, MutationEvent, ImportExportEvent, PrintEvent, IdleEvent...
+	[REF] indiscripts.com/post/2013/05/indesign-scripting-forum-roundup-4#hd4sb3
+
+
+	2. EVENT API
+
+	All prototyped properties of an event are *READ-ONLY*, but you can load
+	extra properties in an existing instance before dispatching the event.
+	
+	The below table shows both documented and undocumented properties and
+	methods of event classes. We use the following abbreviations:
+	
+	     'E' for `Event`       ;    'U' for `UIEvent`
+	     'M' for `MouseEvent`  ;    'K' for `KeyboardEvent`
+
+	EUMK   type              str   Any predefined *or custom* type, lowercase.
+	EUMK   eventPhase        str   One of 'none', 'target', 'capture', 'bubble'.
+	EUMK   timeStamp         Date  Time stamp of the event.
+	       ---------------------------------------------------------------------
+	EUMK   captures          bool  [DEPRECATED.] Always true at construction (?)
+	EUMK   bubbles           bool  Can bubble.
+	EUMK   cancelable        bool  Can be canceled -> see preventDefault().
+	       ---------------------------------------------------------------------
+	EUMK   target            obj   Dispatcher.
+	EUMK   currentTarget     obj   Listener.
+	       relatedTarget     ?obj  [DEPRECATED.] Undefined in CC.
+	       ---------------------------------------------------------------------
+	EUMK   NOT_DISPATCHING    0    (constant) Means 'none'
+	EUMK   CAPTURING_PHASE    1    (constant) Means 'capture'
+	EUMK   AT_TARGET          2    (constant) Means 'target'
+	EUMK   BUBBLING_PHASE     3    (constant) Means 'bubble'
+	       ---------------------------------------------------------------------
+	 UMK   view              ?obj  ScriptUI element "that the event relates to."
+	 UMK   detail            ?int  "Click count for a mouse click event."
+	       ---------------------------------------------------------------------
+	  MK   ctrlKey           bool  Whether the [Ctrl]  key is down.
+	  MK   altKey            bool  Whether the [Alt]   key is down.
+	  MK   shiftKey          bool  Whether the [Shift] key is down.
+	  MK   metaKey           bool  Whether the [Meta]  key is down.
+	       ---------------------------------------------------------------------
+	  M    button            uint  0:left, 1:middle, 2:right, 3:back, 4:forward
+	  M    screenX           int   Horizontal offset in screen coordinates.
+	  M    screenY           int   Vertical offset in screen coordinates.
+	  M    clientX           uint  Horizontal coord. in client area.
+	  M    clientY           uint  Vertical coord. in client area.
+	       ---------------------------------------------------------------------
+	   K   keyName           str   [TODO]
+	   K   keyIdentifier     str   [TODO]
+	   K   keyLocation       int   One of -1 (not specified), or 0, 1, 2, 3.
+	   K   DOM_KEY_LOCATION_STANDARD  0
+	   K   DOM_KEY_LOCATION_LEFT      1
+	   K   DOM_KEY_LOCATION_RIGHT     2
+	   K   DOM_KEY_LOCATION_NUMPAD    3
+	       =====================================================================
+	E      new Event(<args>)     => Event [ctor]
+	       Create a new Event instance. All args are optional; if specified
+	       they must match the following order:
+
+	         type       (str='event') Type of the event, e.g 'custom'.
+	         bubbles    (bool=false)  Whether it bubbles (default is FALSE!)
+	         cancelable (bool=false)  Whether it is cancelable (default is FALSE!)
+	       ---------------------------------------------------------------------
+	 U     new UIEvent(<args>)     => UIEvent [ctor]
+	       Create a new UIEvent instance. All args are optional; if specified
+	       they must match the following order:
+
+	         type       (str='')      Type of the event, e.g 'custom'.
+	         bubbles    (bool=false)  Whether it bubbles (default is FALSE!)
+	         cancelable (bool=false)  Whether it is cancelable (default is FALSE!)
+	         view       (any=undef)   Should be a SUI component but `undefined` is
+	                                  recommended.
+	         detail     (int=1)       Intended to specify a click count.
+	       ---------------------------------------------------------------------
+	EUMK   preventDefault() => undef  If cancelable, prevents the default action.
+	                                  However, many 'cancelable' events are not
+	                                  fully cancelable. For example, the effect
+	                                  of 'keydown' in listboxes can be inhibited
+	                                  in CC but not entirely in CS: Up/Down keys
+	                                  are still interpreted as navigation keys.
+	EUMK   stopPropagation()=> undef  Stops the propagation of the event.
+	       ---------------------------------------------------------------------
+	 UMK   initEvent(type...)     Use `new Event(type...)` for creation.
+	                              Use `ev.initEvent(type)` to update timeStamp.
+	 UMK   initUIEvent(type...)   Use `new UIEvent(type...)` for creation.
+	                              Use `ev.initUIEvent(type)` to update timeStamp.
+	       ---------------------------------------------------------------------
+	  MK   getModifierState('Control'|'Shift'|'Alt'|'Meta') => bool
+	       Whether the specified modifier is down for this event. For example,
+	       `ev.getModifierState('Shift')` is equivalent to `ev.shiftKey`.
+	       ---------------------------------------------------------------------
+	  M    initMouseEvent(<args>) => undef
+	       Initialize a fresh MouseEvent instance, or update an existing one.
+	       All args are optional; if specified they must match this order:
+
+	         type       (str='')      Type of the event, e.g 'click'.
+	         bubbles    (bool=false)  Whether it bubbles (default is FALSE.)
+	         cancelable (bool=false)  Whether it is cancelable (default is FALSE.)
+	         view       (any=undef)   Should be a SUI component, undef recommended.
+	         <unknown>  (int|undef)   Unknown argument! detail? Must be int or undef.
+	         screenX    (int=0)       Screen X coord.
+	         screenY    (int=0)       Screen Y coord.
+	         clientX    (int=0)       Client X coord.
+	         clientY    (int=0)       Client Y coord.
+	         ctrlKey    (bool=false)  Whether the [Ctrl]  key is down.
+	         altKey     (bool=false)  Whether the [Alt]   key is down.
+	         shiftKey   (bool=false)  Whether the [Shift] key is down.
+	         metaKey    (bool=false)  Whether the [Meta]  key is down.
+	         button     (uint=0)      Mouse button (0|1|2).
+	       ---------------------------------------------------------------------
+	   K   initKeyboardEvent(<args>) => undef
+	       [REM] This method doesn't comply with the original W3C specification.
+	       Initialize a freshly created KeyboardEvent instance, or update an existing
+	       one. Exactly seven arguments are required, in that order:
+
+	         type       (str)         Type: 'keydown', 'keyup', or custom.
+	         bubbles    (bool=false)  Whether it bubbles (default is FALSE.)
+	         cancelable (bool=false)  Whether it is cancelable (default is FALSE.)
+	         <unknown>  (any)         Unknown argument!
+	         keyName    (str)         Sets the keyName value, e.g 'S' or '7'
+	         modList    (str)         Space-separated string of modifier key names:
+	                                  ((Alt|Control|Shift|Meta) )+, or empty.
+	         keyLocation(int)         Sets the keyLocation value
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		//==========================================================================
+		// [190221] ScriptUI.event()
+		//==========================================================================
+
+		ScriptUI.event = function event(/*str*/type,/*event&|'E'|'U'|'M'|'K'='U'*/base,/*?event|{}*/options,  b,BB,CC,HOP,r,k)
+		//----------------------------------
+		// Create or update an event. Updating an event must be considered experimental, it
+		// is safer to create a new one for dispatching. If `base` is supplied as an Event,
+		// it is *updated* and returned. If base is a character ('E'|'U'|'M'|'K') the corres-
+		// ponding event class is invoked for construction (Event, UIEvent, MouseEvent, or
+		// KeyboardEvent). The `options` object, if provided, specifies regular or extra event
+		// properties. To clone an event, use the form `ScriptUI.event(type,char,originalEvent)`
+		// where char is the event letter (E|U|M|K) or class name `originalEvent.__class__`.
+		// ---
+		// `type`      :: The type (str) of the event to build. Either regular or custom.
+		// `base`      :: Existing event, or string among 'E', 'U', 'M', 'K'. If undefined,
+		//                'U' is assumed (=> UIEvent.)
+		// `options`   :: If specified, a set of properties to be assigned to the new event.
+		//                The `options` object takes precedence over `base` given as Event.
+		//                Prototyped keys -- e.g `bubbles`, `detail` or `button` -- are
+		//                pre-assigned during event construction, while extra properties
+		//                are post-assigned.
+		//                By default, `bubbles` and `cancelable` are set to TRUE.
+		// ---
+		// => new Event|UIEvent|MouseEvent|KeyboardEvent  |  base& [UPD]
+		{
+			( 'string'==typeof type && type.length )
+			|| error(__("Invalid type argument (%1). Should be a non-empty string.",typeof type),callee);
+			
+			// b    :: true [base is Object]  |  false [base is a letter]
+			// base :: base& | char
+			(b=base===Object(base)) || (base=String(base||'U').charAt(0).toUpperCase());
+			
+			options===Object(options) || (options={});
+
+			HOP = 'hasOwnProperty';
+			
+			BB = !!( options[HOP](k='bubbles')    ? options[k] : (base[HOP](k) ? base[k] : true) );
+			CC = !!( options[HOP](k='cancelable') ? options[k] : (base[HOP](k) ? base[k] : true) );
+			
+			switch( b ? base.__class__ : base )
+			{
+				case 'MouseEvent':
+				case 'M':
+					( base instanceof callee.M_EVENT ) || (base=0);
+					r = base || ScriptUI.events.createEvent('MouseEvent');
+					r.initMouseEvent(type, BB, CC
+						,   ( options[HOP](k='view')       ? options[k] : base[k] ) || void 0
+						, void 0 // unknown arg
+						, 0|( options[HOP](k='screenX')    ? options[k] : base[k] )
+						, 0|( options[HOP](k='screenY')    ? options[k] : base[k] )
+						, 0|( options[HOP](k='clientX')    ? options[k] : base[k] )
+						, 0|( options[HOP](k='clientY')    ? options[k] : base[k] )
+						, !!( options[HOP](k='ctrlKey')    ? options[k] : base[k] )
+						, !!( options[HOP](k='altKey')     ? options[k] : base[k] )
+						, !!( options[HOP](k='shiftKey')   ? options[k] : base[k] )
+						, !!( options[HOP](k='metaKey')    ? options[k] : base[k] )
+						,   ( options[HOP](k='button')     ? options[k] : base[k] )>>>0
+					);
+					break;
+
+				case 'KeyboardEvent':
+				case 'K':
+					( base instanceof callee.K_EVENT ) || (base=0);
+					r = base || ScriptUI.events.createEvent('KeyboardEvent');
+					r.initKeyboardEvent(type, BB, CC
+						, void 0 // unknown arg
+						, String( options[k='keyName'] || base[k] || '' )
+						, callee.MOD_LIST( options[k='modList'] || base[k] )
+						, 0|( options[HOP](k='keyLocation') ? options[k] : base[k] )
+					);
+					break;
+
+				case 'Event':
+				case 'E':
+					( base instanceof Event ) || (base=0);
+					r = base || new Event(type);
+					r.initEvent(type, BB, CC);
+					break;
+
+				default:
+					( base instanceof UIEvent ) || (base=0);
+					r = base || new UIEvent(type);
+					r.initUIEvent(type, BB, CC
+						,   ( options[HOP](k='view')       ? options[k] : base[k] ) || void 0
+						, 0|( options[HOP](k='detail') ? options[k] : (base[HOP][k] ? base[k] : 1) )
+					);
+			}
+			
+			if( !options.__count__ ) return r;
+			for( k in options )
+			{
+				options[HOP](k) && !(k in r) && (r[k]=options[k]);
+			}
+			return r;
+		}
+		.setup
+		({
+			// --- Wake up MouseEvent function.
+			M_EVENT: ScriptUI.events.createEvent('MouseEvent').constructor,
+			// --- Wake up KeyboardEvent function.
+			K_EVENT: ScriptUI.events.createEvent('KeyboardEvent').constructor,
+
+			MOD_LIST: function(s)
+			//----------------------------------
+			// Sanitize the `modList` argument.
+			{
+				if( !s ) return '';
+				s = String(s).toLowerCase();
+				return (
+					( 0 <= s.indexOf('alt') ? ' Alt' : '' ) +
+					( 0 <= s.indexOf('control') || 0 <= s.indexOf('ctrl') ? ' Control' : '' ) +
+					( 0 <= s.indexOf('shift') || 0 <= s.indexOf('shft') ? ' Shift' : '' ) +
+					( 0 <= s.indexOf('meta') ? ' Meta' : '' )
+					).slice(1);
+			},
+		});
+
+		//==========================================================================
+		// [190220] (Event|UIEvent|MouseEvent|KeyboardEvent).prototype.toSource()
+		//==========================================================================
+
+		Event.prototype.toSource =
+		UIEvent.prototype.toSource = 
+		ScriptUI.event.M_EVENT.prototype.toSource =
+		ScriptUI.event.K_EVENT.prototype.toSource =
+		function toSource(/*-1|0|1=0*/MODE,  t,r,PP,k)
+		//----------------------------------
+		// Return the stringified trace of an event.
+		// this :: Event | UIEvent | MouseEvent | KeyboardEvent
+		// ---
+		// MODE == -1  -->  Shortest form :: "{ type, eventPhase, target[, detail] }"
+		//          0  -->  Default form  :: "{ type/*class*/, eventPhase, target[, detail], <specific-properties> }"
+		//         +1  -->  Full form     :: "{ type/*class*/, eventPhase, target[, detail], <specific-properties>,
+		//                                      bubbles, cancelable, captures, timeStamp, currentTarget[, view] }"
+		// ---
+		// All ScriptUI components (ev.target, ev.currentTarget, ev.view) are replaced by their class name.
+		// All values pass through uneval or toSource, so the output string supports eval().
+		// ---
+		// Example: myUIEvent.toSource(1)
+		//      =>  { type:"mousedown"/*MouseEvent*/, eventPhase:"target", target:"ListBox",
+		//            detail:1, altKey:false, button:2, clientX:28, clientY:48, ctrlKey:false,
+		//            metaKey:false, screenX:1005, screenY:572, shiftKey:false,
+		//            relatedTarget:undefined, bubbles:true, cancelable:true, captures:true,
+		//            timeStamp:(new Date(1550701288600)), currentTarget:"ListBox", view:"ListBox" }
+		// => str
+		{
+			// Supports only the classes: Event | UIEvent | MouseEvent | KeyboardEvent
+			// ---
+			if( !callee.RE_EVNS.test(t=this.__class__) ) return {}.toSource.call(this);
+
+			MODE |= 0;
+
+			// Shortest form.
+			// ---
+			r = __("type:%1, eventPhase:%2, target:%3"
+				, String(this.type).toSource() + (0 <= MODE ? __("/*%1*/",t) : '')
+				, String(this.eventPhase).toSource()
+				, this.target && String(this.target.__class__).toSource()
+				);
+			
+			this.hasOwnProperty('detail') && r += __(", detail:%1"
+				, uneval(this.detail)
+				);
+			
+			if( 0 > MODE ) return __("{ %1 }", r);
+			
+			// Default form: add specific properties s.t. button, clientX, clientY,
+			// screenX, screenY, altKey, ctrlKey, metaKey, shiftKey...
+			// ---
+			PP = callee.RE_PROPS;
+			for( k in this )
+			{
+				this.hasOwnProperty(k) && !PP.test(k) && RegExp.JSID.test(k)
+				&& ( r += __(", %1:%2", k, uneval(this[k])) );
+			}
+
+			if( 0===MODE ) return __("{ %1 }", r);
+
+			// Full form: add bubbles, cancelable, captures, timeStamp, currentTarget[, view]
+			// ---
+			r += __(", bubbles:%1, cancelable:%2, captures:%3, timeStamp:%4, currentTarget:%5"
+				, !!this.bubbles
+				, !!this.cancelable
+				, !!this.captures
+				, uneval(this.timeStamp)
+				, this.currentTarget && String(this.currentTarget.__class__).toSource()
+				);
+			
+			this.hasOwnProperty('view') && r += __(", view:%1"
+				, this.view && String(this.view.__class__).toSource()
+				);
+
+			return __("{ %1 }", r);
+		}
+		.setup
+		({
+			RE_EVNS:  RegExp("^(?:Event|UIEvent|MouseEvent|KeyboardEvent)$"),
+			RE_PROPS: RegExp("^(?:view|detail|captures|bubbles|cancelable|currentTarget|eventPhase|"
+				+"target|timeStamp|type|NOT_DISPATCHING|CAPTURING_PHASE|AT_TARGET|BUBBLING_PHASE)$"),
+		});
+		
+		$$.JSON['~']['\x02Event'] =
+		$$.JSON['~']['\x02UIEvent'] =
+		$$.JSON['~']['\x02MouseEvent'] =
+		$$.JSON['~']['\x02KeyboardEvent'] =
+		function(/*obj*/x,  t)
+		// ---------------------------------
+		// (JSON-Hook.) [ADD210103] Here the `this` context is $$.JSON['~']
+		// and x is *probably* a event instance (as x.constructor.name is
+		// one of the event class names.)
+		{
+			if( !x ) return ''; // KO
+			t = x.constructor;
+			return (t===Event||t===UIEvent||t===ScriptUI.event.M_EVENT||t===ScriptUI.event.K_EVENT) ? x.toSource() : '';
+		};
+
+	}
