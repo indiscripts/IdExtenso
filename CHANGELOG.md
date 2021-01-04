@@ -1,3 +1,7 @@
+##### [210104]
+
+- [`Ext/string`](/core/Ext/$$.string.jsxinc): In pure JavaScript the `charAt` method can pick a U+0000 character, e.g `"x\0y".charAt(1)` returns `"\0"`. But in ExtendScript an empty string is returned whenever `charAt` should output `"\0"`. [`Ext/string`](/core/Ext/$$.string.jsxinc) hacks `String.prototype.charAt` in order to fix the problem.
+
 ##### [210103]
 
 - [ScriptUI/events](/etc/ScriptUI/$$.events.jsxinc) snippet added in the `etc` branch. Provides the function `ScriptUI.event()` and advanced tools and tricks for manipulating `Event`, `UIEvent`, `MouseEvent`, and `KeyboardEvent` instances at the ScriptUI level.
