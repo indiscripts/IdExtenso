@@ -10,7 +10,8 @@
 		API:  static:   SourceEscapes fromCodePoint() fromUTF8() fromBase64()
 		                random() levenDist() levenFilter()
 		       proto:   codePointAt() toUTF8() toBase64() toSource()
-		                split() [CS4] lastIndexOf() [CS4] subReplace()
+		                split() [CS4] lastIndexOf() [CS4] charAt()
+		                subReplace()
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
 		                rpad() lpad() stripSpaces() charSet()
@@ -19,7 +20,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       201025 (YYMMDD)
+		Modified:       210104 (YYMMDD)
 
 *******************************************************************************/
 
@@ -711,6 +712,32 @@
 			&& ( 'undefined'==typeof pos || n <= (pos|=0) || 0 > pos )
 			&& (pos=n-1);
 			return  n ? String.__lastIndexOf__.call(this,sub,pos) : -1;
+		};
+	}
+
+	//==========================================================================
+	// [ADD210104] String.prototype.charAt [patch]
+	//==========================================================================
+
+	/*
+
+	In JS the `charAt` method can pick a U+0000 character, e.g "x\0y".charAt(1)
+	returns "\0". But in ExtendScript an empty string is returned whenever
+	`charAt` should output "\0". The below code fixes that.
+
+	*/
+
+	if( "\0" !== "x\0y".charAt(1) )
+	{
+		// Backup of the native method => String.__charAt__
+		// ---
+		String.__charAt__ = String.prototype.charAt;
+		
+		String.prototype.charAt = function charAt(/*?uint*/pos,  r)
+		//----------------------------------
+		{
+			r = String.__charAt__.call(this,pos);
+			return ( r.length || (!this.length) || 0!==this.charCodeAt(pos) ) ? r : '\0';
 		};
 	}
 
