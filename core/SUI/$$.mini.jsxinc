@@ -7,13 +7,13 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Snippet (part of /SUI.)
-		API:            ScriptUI.FT LT CT RT FC LC CC RC FB LB CB RB (alignments.)
-		                ScriptUI.isWidget() getIndex()
-		                forceRedraw() setFocus()
+		API:            ScriptUI alignments (LT, RT, etc)
+		                ScriptUI.isWidget() .getIndex()
+		                ScriptUI.forceRedraw() .setFocus()
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       190308 (YYMMDD)
+		Modified:       210105 (YYMMDD)
 
 *******************************************************************************/
 
@@ -133,7 +133,7 @@
 	{
 		a = ScriptUI.isWidget(x) && !(x instanceof Window) && (x.parent||0).children;
 		if( !a ) return -1;
-		for( i=a.length ; i-- && x!==a[i] ; );
+		for( i=a.length||0 ; i-- && x!==a[i] ; );
 		return i;
 	},
 
@@ -154,6 +154,11 @@
 	// [REM] Since forceRedraw is based on a trick that temporarily hits
 	// the size of the widget, it may initiate a `resize` event on containers.
 	// This does not involve the layout manager though.
+	// ---
+	// [REM210105] ListItem instances (in listboxes or dropdownlists) may have
+	// an `image` property but it remains an open problem to *update* such
+	// image. Indeed the property seems read-only (CS/CC) as soon as it has
+	// been set. Of course `forceRedraw` cannot bypass that particular issue.
 	// ---
 	// => 1 [OK]  |  0 [KO]
 	{
@@ -184,6 +189,7 @@
 	.setup
 	({
 		DT: $$.inCC ? 1 : 0,
+
 		LBOX: function(/*ListBox*/wg,  o,a,i,t)
 		//----------------------------------
 		// [190217] ListBox redraw.
@@ -199,6 +205,7 @@
 			}
 			return 0;
 		},
+
 		LIST: function(/*DropDownList|ListBox*/wg,  t)
 		//----------------------------------
 		// [190217] Any list redraw (fallback.)
@@ -233,7 +240,7 @@
 	// [CHG190308] Group and Panel objects don't provide the `active`
 	// property natively, which makes it difficult to implicity activate
 	// the main or the first control within a `wg` container. To bypass
-	// this limitation, I've removed the ('active' in wg) condition ;
+	// this limitation we have removed the ('active' in wg) condition ;
 	// instead, a generic algorithm deals with containers that don't own
 	// an `active` property. Note that you can still declare, set and
 	// watch the `active` key for advanced components that provide a
@@ -249,8 +256,8 @@
 		// [CHG190307] Added ACTIVE_CHILD algo.
 		// ---
 		wg.hasOwnProperty('active')
-			? ( wg.active = true )
-			: ( wg = callee.ACTIVE_CHILD(wg)||w );
+		? ( wg.active = true )
+		: ( wg = callee.ACTIVE_CHILD(wg)||w );
 
 		w.remove(t);
 		return wg;
@@ -260,12 +267,12 @@
 		ACTIVE_CHILD: function(/*Container*/wg,  a,re,n,i,c)
 		//----------------------------------
 		// [190308] Recursive child-focusing algo.
-		// [REM] The input MUST be a container in the state:
+		// [REM] The input MUST be a container in the state
 		// enabled AND visible AND not-activable.
 		// => Widget [OK-ACTIVE]  |  0 [KO]
 		{
 			if( !(a=wg.children) ) return 0;
-			for( re=callee.RE_EXCL_TYPES, n=a.length, i=-1 ; ++i < n ; )
+			for( re=callee.RE_EXCL_TYPES, n=a.length||0, i=-1 ; ++i < n ; )
 			{
 				c = a[i];
 				if( (!c.enabled) || (!c.visible) || (re.test(c.type)) ) continue;
