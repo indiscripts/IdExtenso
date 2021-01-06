@@ -9,11 +9,11 @@
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
 		                engineState() runCount() idEngine() inBinStream() scriptsPanel()
-		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
+		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$ canToolkit()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ; app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190602 (YYMMDD)
+		Modified:       210106 (YYMMDD)
 
 *******************************************************************************/
 
@@ -47,7 +47,15 @@
 		
 		// Name of the current ExtendScript engine.
 		// ---
-		ENGI : String($.engineName),
+		ENGI: String($.engineName),
+
+		ESTK: function(  BT)
+		//----------------------------------
+		// [ADD210106] ESTK status (from BridgeTalk.)
+		// => 'BUSY' | 'IDLE' | 'PUMPING' | 'ISNOTRUNNING' | 'ISNOTINSTALLED' | 'UNDEFINED'
+		{
+			return (BT=$.global.BridgeTalk) ? BT.getStatus('estoolkit') : 'UNDEFINED';
+		},
 
 		BSTK: function()
 		//----------------------------------
@@ -69,7 +77,7 @@
 			callee.Q || (callee.Q=/(?:^|[\r\n]+) *\[(\d+)\] *[\r\n]/);
 			return ($.stack.match(callee.Q)||'')[1];
 		},
-
+		
 		SPRF: function(/*0|1*/UPDATE,  q,t,v)
 		//----------------------------------
 		// (Script-Prefs.)
@@ -377,6 +385,16 @@
 			b || (t.enableRedraw=false);
 			
 			return r;
+		}
+		.copy('..'),
+		
+		canToolKit : function canToolKit_B()
+		//----------------------------------
+		// [210106] Whether ExtendScript Toolkit is available and presently running.
+		// ---
+		// => 1 [OK]  |  0 [KO]
+		{
+			return +('IDLE'==callee.µ['~'].ESTK());
 		}
 		.copy('..'),
 
