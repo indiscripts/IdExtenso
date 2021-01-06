@@ -8,12 +8,12 @@
 		Core:           YES
 		Kind:           Module
 		API:            =log() spaces onUnload() init() push()
-		                mute() $$.mute() trace() $$.trace() warn() $$.warn()
+		                mute()->$$ trace()->$$ warn()->$$
 		                show() chrono()
 		DOM-access:     NO
 		Todo:           WINDOW device.
 		Created:        150502 (YYMMDD)
-		Modified:       171024 (YYMMDD)
+		Modified:       210106 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,7 +32,7 @@
 	// WARN mode can only warn.
 	// ---
 
-;eval(__(MODULE, $$, 'Log', 171024, 'log'))
+;eval(__(MODULE, $$, 'Log', 210106, 'log'))
 
 	[PRIVATE]
 	
@@ -54,6 +54,7 @@
 		PRLG : "=======  New Logging Stage:  %1 (%2) =======",
 		MDLG : "%1  [%2]  %3",
 		EPLG : "-------  End Logging Stage:  %1 (%2) -------"+$$.newLine+$$.newLine,
+		
 	})
 	
 	[PRIVATE]
@@ -64,29 +65,35 @@
 		FPSH : function(/*str*/s,  ff)
 		//----------------------------------
 		// Inconditionnaly push a new line into the FILE device.
-		// => 1 on success ; 0 on error.
+		// => 1 [OK]  |  0 [ERROR]
 		{
 			ff = callee.Q || (callee.Q=new File(this.FPTH));
 			return $$.File.appendUTF8(ff,s,1) ? 1 : 0;
 		},
 
-		WPSH : function(/*str*/s,  ff,b)
+		WPSH : function(/*str*/s)
 		//----------------------------------
 		// Inconditionnaly push a new line into the WINDOW device, if available.
-		// => 1 on success ; 0 on non-fatal error.
-		// [not implemented yet]
+		// => 1 [OK]  |  0 [KO]
 		{
-			return 0;
+			// [210106] For the time being, use the ESTK console if available.
+			// ---
+			$.writeln(s);
+			return 1;
 		},
 
-		PUSH : function F(/*str*/s)
+		PUSH : function(/*str*/s)
 		//----------------------------------
-		// Inconditionnaly push a new line into the device(s)
-		// [TODO]
+		// Inconditionnaly push a new line into the available device(s).
+		// => 1 [OK]  |  0 [ERROR]
 		{
-			this.WPSH(s);
+			callee.CAN_ESTK && this.WPSH(s);
 			return this.FPSH(s);
-		},
+		}
+		.setup
+		({
+			CAN_ESTK:0, // Updated from µ.init
+		}),
 
 		SFMT : function(/*0|1*/RESET,/*0|1*/DMS_ONLY,  q,dt,ymd,hms,dms)
 		//----------------------------------
@@ -99,6 +106,8 @@
 		// (1) if DMS_ONLY is ON,
 		// RESET   => '0'
 		// !RESET  => '<xxx>ms' where <xxx> is the ms delta
+		// ---
+		// => str
 		{
 			dt = new Date;
 			
@@ -151,16 +160,16 @@
 	({
 		WCAN : function()
 		//----------------------------------
-		// Whether curLevel can warn  => -1 | 0 | +1
-		// [REM] Do not rely on `this`.
+		// Whether curLevel can warn. [REM] Do not rely on `this`.
+		// => -1|+1 [OK]  |  0 [KO]
 		{
 			return callee.µ['~'].LCUR;
 		},
 
 		TCAN : function()
 		//----------------------------------
-		// Whether curLevel can trace => -1 | 0
-		// [REM] Do not rely on `this`.
+		// Whether curLevel can trace. [REM] Do not rely on `this`.
+		// => -1 [OK]  |  0 [KO]
 		{
 			return -(-1==callee.µ['~'].LCUR);
 		},
@@ -170,7 +179,7 @@
 		// Change Level. Change the current level to nv.
 		// nv :: -1:TRACE (full log) | 0:MUTE | +1:WARN (only warnings)
 		// If nv is missing, select the last active level in use.
-		// => new level
+		// => -1|0|+1 [NEW LEVEL]
 		{
 			// Coerce nv into {-1,0,+1}
 			// ---
@@ -225,7 +234,13 @@
 		// `logLevel` :: string or number reflecting the Log level. In case
 		// `logLevel` is passed as a string, only the 1st character matters
 		// ('T'|'M'|'W'), and it is case-insensitive.
+		// ---
+		// => undef
 		{
+			// [ADD210106] Use the ESTK console if available.
+			// ---
+			callee.µ['~'].PUSH.CAN_ESTK = $.global[callee.µ.__root__].canToolKit();
+
 			// Invalidate the Log file.
 			// ---
 			delete callee.µ['~'].FPSH.Q;
@@ -242,6 +257,7 @@
 		onUnload : function onUnload_()
 		//----------------------------------
 		// Just because it's cleaner to do so.
+		// => undef
 		{
 			delete callee.µ['~'].FPSH.Q;
 		},
@@ -254,10 +270,11 @@
 			return callee.µ['~'].CGLV(0);
 		}.copy('..'),
 	
-		push : function push_S_(/*str*/s)
+		push : function push_S_B(/*str*/s)
 		//----------------------------------
 		// Inconditionally push s into the current devices
 		// (whatever the current level, incl. mute.)
+		// => 1 [OK]  |  0 [KO]
 		{
 			return callee.µ['~'].PUSH(s);
 		},
@@ -271,8 +288,8 @@
 		// (+$$.trace) && $$.trace(msg=function(){/*heavy process*/})
 		// will entirely skip the function call if trace is deactivated.
 		// ---
-		// +$$.warn   => -1 | 0 | +1  (non-zero in TRACE and WARN mode)
-		// +$$.trace  => -1 | 0       (non-zero only in TRACE mode)
+		// (+$$.warn)   => -1 | 0 | +1  (non-zero in TRACE and WARN mode)
+		// (+$$.trace)  => -1 | 0       (non-zero only in TRACE mode)
 		// ---
 
 		trace : function trace_S$true$_T(/*str|true*/s,  I)
@@ -281,12 +298,14 @@
 		// => -1
 		// (2) Otherwise, push the message iff current level===-1 (TRACE)
 		// => -1 if the message has been actually traced, 0 otherwise.
-		// (3) In valueOf form, that is, `trace.valueOf()` or `+trace`,
+		// (3) In valueOf form, that is, `trace.valueOf()` or `(+$$.trace)`,
 		//     tell whether trace is supported in the current state.
 		//     E.g  `if( +$$.trace ){ do_trace_stuff() }`
 		// ---
 		// [REM] As this methods expects one argument, undefined will
 		// finally coerce into String(undefined).
+		// ---
+		// => -1 [OK]  |  0 [KO]
 		{
 			I = callee.µ['~'];
 			return true===s ? I.CGLV(-1) :
@@ -295,7 +314,9 @@
 					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[-1], s))
 					&& -1
 				);
-		}.setup({ valueOf:µ['~'].TCAN }).copy('..'),
+		}
+		.setup({ valueOf:µ['~'].TCAN })
+		.copy('..'),
 
 		warn : function warn_S$true$_T(/*str|true*/s,  I)
 		//----------------------------------
@@ -303,12 +324,14 @@
 		// => +1
 		// (2) Otherwise, push the message iff cur. level!==0 (TRACE or WARNG)
 		// => +1 if the message has been actually warned, 0 otherwise.
-		// (3) In valueOf form, that is, `warn.valueOf()` or `+warn`,
+		// (3) In valueOf form, that is, `warn.valueOf()` or `(+$$.warn)`,
 		//     tell whether warn is supported in the current state.
 		//     E.g  `if( +$$.warn ){ do_warn_stuff() }`
 		// ---
 		// [REM] As this methods expects one argument, undefined will
 		// finally coerce into String(undefined).
+		// ---
+		// => +1 [OK]  |  0 [KO]
 		{
 			I = callee.µ['~'];
 			return true===s ? I.CGLV(+1) :
@@ -317,7 +340,9 @@
 					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[+1], s))
 					&& +1
 				);
-		}.setup({ valueOf:µ['~'].WCAN }).copy('..'),
+		}
+		.setup({ valueOf:µ['~'].WCAN })
+		.copy('..'),
 
 		log : function log_s_T(/*?str*/s,  I,v)
 		//----------------------------------
@@ -326,6 +351,8 @@
 		// (2) Otherwise: log the message iff current level!==0,
 		//     (the message is then labelled using the current level.)
 		// => -1 (actually traced) | 0 (nop) | +1 (actually warned)
+		// ---
+		// => -1 | 0 | +1
 		{
 			I = callee.µ['~'];
 			return 'undefined' == typeof s ? I.LCUR :
@@ -339,6 +366,8 @@
 		show : function show_(  ff)
 		//----------------------------------
 		// Open the log in the default editor attached to '.log' files.
+		// ---
+		// => undef
 		{
 			// Do not rely on ~.FPSH.Q, recreate the File ref instead.
 			// ---
@@ -348,7 +377,7 @@
 			}
 		},
 
-		chrono : (function chrono_$Log$()
+		chrono : function chrono_$Log$()
 		//----------------------------------
 		// (1) On call, triggers a basic stopwatch and
 		// returns the Log module itself.
@@ -361,13 +390,15 @@
 		//     $$.Log.chrono().trace("Start process.");
 		//     do_stuff();
 		//     $$.Log.trace(__("Done in %1 ms.",+$$.Log.chrono));
+		// ---
+		// => µ
 		{
-			callee.Q = Date.now();
-			return callee.µ;
-		})
-		.setup({
+			return (callee.Q=Date.now()), callee.µ;
+		}
+		.setup
+		({
 			Q: Date.now(),
-			valueOf: function(){ return Date.now()-this.Q },
+			valueOf:  function(){ return Date.now()-this.Q },
 			toString: function(){ return String(Date.now()-this.Q) },
 		}),
 
