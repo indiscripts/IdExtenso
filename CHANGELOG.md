@@ -2,7 +2,7 @@
 
 - The [**Env**](/core/$$.Env.jsxlib) module now checks ExtendScript Toolkit's status via `BridgeTalk` (see `~.ESTK()` in [/script.jsxinc](/core/Env/$$.script.jsxinc).) This information is reported in `$$.Env.summary()`. Also, the new `canToolKit()` method tells whether ESTK is in the place and presently running.
 
-- The [**Log**](/core/$$.Log.jsxlib) module now outputs trace and/or warn messages in the ESTK console if you openened it before running the script. This is useful to get instant feedback while debugging. (The log file is still processed in parallel.)
+- The [**Log**](/core/$$.Log.jsxlib) module now outputs trace and/or warn messages in the ESTK console if you opened it before running the script. This is useful to get instant feedback while debugging. (The log file is still processed in parallel.)
 
 ##### [210104]
 
