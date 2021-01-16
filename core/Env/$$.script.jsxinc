@@ -9,11 +9,13 @@
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
 		                engineState() runCount() idEngine() inBinStream() scriptsPanel()
-		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$ canToolkit()->$$
-		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ; app.properties.activeScriptUndoMode
+		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
+		                uiLevel()->$$ canToolkit()->$$
+		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ;
+		                      app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       210106 (YYMMDD)
+		Modified:       210116 (YYMMDD)
 
 *******************************************************************************/
 
@@ -265,12 +267,16 @@
 			t = callee.µ['~'].ENST;
 			return AS_STRING ? callee.Q[t] : t;
 
-		}.setup(
-		{Q:{
+		}
+		.setup
+		({
+			Q:
+			{
 			'-1': 'non-persistent',
-			 '0': 'persistent/processed',
-			 '1': 'persistent/first-call'
-		}}),
+			'0' : 'persistent/processed',
+			'1' : 'persistent/first-call'
+			}
+		}),
 
 		runCount: function runCount_I()
 		//----------------------------------
@@ -385,6 +391,35 @@
 			b || (t.enableRedraw=false);
 			
 			return r;
+		}
+		.copy('..'),
+		
+		uiLevel : function uiLevel$B$_(/*0|false|1|true*/restore,  I,bk,t)
+		//----------------------------------
+		// [210116] Mute/restore user interaction level.
+		// `restore` ::  0|false  -> Set user interaction level to NEVER_INTERACT
+		//               1|true   -> Restore the original user interaction level
+		// [REM] In order to minimize DOM commands this method relies on internal
+		// `Env` data, that is `~.UILV()` backup. Use it to temporarily mute
+		// ID alerts while opening or processing documents, then call `uiLevel(1)`
+		// to go back to the registered ui level. (If the script has been loaded
+		// in NEVER_INTERACT state, this method has no effect.)
+		// ---
+		// => undef
+		{
+			I = callee.µ['~'];
+
+			bk = I.UILV();
+			if( 'NEVER_INTERACT' == I.UL2S[bk] ) return;              // Nothing to do (already in mute mode.)
+
+			t = -(0===restore||false===restore)                       // -1 :: MUTE
+			 || +(1===restore||true===restore);                       // +1 :: RESTORE
+
+			if( !t ) return;                                          // Ignore exotic arg.
+
+			app.scriptPreferences.userInteractionLevel = 0 > t ?
+			+UserInteractionLevels.NEVER_INTERACT
+			: bk;
 		}
 		.copy('..'),
 		
