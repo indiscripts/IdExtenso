@@ -1,3 +1,17 @@
+## 2.10116
+  - Stabilized version (January 16, 2021) including latest patches and additions.
+  - Added in [**Env**](/core/$$.Env.jsxlib) the `uiLevel()` method that makes it easy to mute/restore _user interaction level_ while opening or processing documents. Typical use:
+
+~~~~
+// [REM] `$$.Env.uiLevel` is exposed in `$$`
+$$.uiLevel(0); // mute user interactions
+app.open(myArrayOfInddFiles);
+$$.uiLevel(1); // restore
+~~~~
+
+  - Recent additions: `$$.Env.canToolKit()` (so `$$.Log` can now operate in ESTK console as well) ; `ScriptUI.event()` ; `$$.Dom.parentSpread(item)` and `$$.Dom.parentPage(item)` (exposed in `$$`).
+  - `String.prototype.charAt()` fixed so it can pick U+0000.
+
 ##### [210106]
 
 - The [**Env**](/core/$$.Env.jsxlib) module now checks ExtendScript Toolkit's status via `BridgeTalk` (see `~.ESTK()` in [/script.jsxinc](/core/Env/$$.script.jsxinc).) This information is reported in `$$.Env.summary()`. Also, the new `canToolKit()` method tells whether ESTK is in the place and presently running.
@@ -14,7 +28,7 @@
 
 ##### [201213]
 
-- The core [**Dom**](/core/$$.Dom.jsxlib) module now provides two essential functions `$$.Dom.parentSpread(item)` and `$$.Dom.parentPage(item)` that were highly expected in many InDesign scripts. This routines have aliases at the root level so you can siply call `$$.parentSpread(...)`, resp. `$$.parentPage(...)`. They support DOM objects that fit the `parentPage` property in CS5/CS6/CC:
+- The core [**Dom**](/core/$$.Dom.jsxlib) module now provides two essential functions `$$.Dom.parentSpread(item)` and `$$.Dom.parentPage(item)` that were highly expected in many InDesign scripts. This routines have aliases at the root level so you can simply call `$$.parentSpread(...)`, resp. `$$.parentPage(...)`. They support DOM objects that fit the `parentPage` property in CS5/CS6/CC:
 
 > PageItem, SplineItem, Oval, Rectangle, GraphicLine, Polygon, Group, TextFrame, EndnoteTextFrame,
 > Guide, HtmlItem, MediaItem, Movie, Sound, SVG, ImportedPage, EPSText, Graphic, PICT, WMF, PDF, EPS, Image,
