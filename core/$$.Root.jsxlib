@@ -9,9 +9,8 @@
 		Kind:           Module.
 		API:            =load() unload() getLoadStamp()
 		                resolve() isModule() spin() isLoaded() isBooting()
-		                kill() clone()
-		                uid() beep() error() receiveError() success()
-		                help()
+		                kill() clone() uid() beep() error() receiveError()
+		                success() help()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
