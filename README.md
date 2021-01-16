@@ -1,4 +1,4 @@
-# *IdExtenso*  2.01127  (core: 182KB)
+# *IdExtenso*  2.10116  (core: 186KB)
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -10,7 +10,7 @@
 
 ### Overview
 
-***IdExtenso*** is a complete ExtendScript/InDesign scripting framework. It also provides a rich toolbox, based on stackable building blocks.
+***IdExtenso*** is a complete ExtendScript/InDesign scripting framework for all CC/CS6/CS5/CS4 environments. It provides a rich toolbox, based on stackable building blocks.
 
 * Do you need a clean JSON formatter that *really* supports ExtendScript oddities and InDesign DOM objects?
 
