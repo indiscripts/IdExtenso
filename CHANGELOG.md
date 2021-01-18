@@ -1,3 +1,6 @@
+##### [210118]
+  - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Improved `ScriptUI.setFocus()`, which now supports a 2nd argument (`NoRetWin`) that tells the function to return `0` if the Window is finally made active as a fallback.
+
 ## 2.10116
   - Stabilized version (January 16, 2021) including latest patches and additions.
   - Added in [**Env**](/core/$$.Env.jsxlib) the `uiLevel()` method that makes it easy to mute/restore _user interaction level_ while opening or processing documents. Typical use:
