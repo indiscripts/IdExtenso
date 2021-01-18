@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210105 (YYMMDD)
+		Modified:       210118 (YYMMDD)
 
 *******************************************************************************/
 
@@ -219,10 +219,11 @@
 
 	//==========================================================================
 	// [190124] ScriptUI.setFocus()
-	// [190308] Improved ; new type of returned value.
+	// [190308] Improved: new type of returned value.
+	// [210118] Improved: NoRetWin arg ; checks RE_EXCL_TYPES upstream.
 	//==========================================================================
 
-	ScriptUI.setFocus = function setFocus(/*Widget*/wg,  w,t)
+	ScriptUI.setFocus = function setFocus(/*Widget*/wg,/*bool*/NoRetWin,  w,t,re)
 	//----------------------------------
 	// Forcibly set the focus on `wg`, if possible.
 	// - Returns 0 if no focus change could be achieved due to either
@@ -231,12 +232,13 @@
 	//   `wg` itself, or one of its children. The Window instance is
 	//   returned in case the focus has changed *but* no activable
 	//   control has been found in wg's scope.
+	// [ADD210118] If `NoRetWin` is set, return 0 in the latter case
+	// (instead of the Window instance.)
 	// [REM] In many circumstances the command `wg.active=true` doesn't
 	// work as expected, in particular if `wg` is already registered as
 	// active although not having the focus. The trick used here is to
 	// create and activate a temporary control outside wg's area, then
 	// remove it.
-	// [FIX190225] Fixed OK return.
 	// [CHG190308] Group and Panel objects don't provide the `active`
 	// property natively, which makes it difficult to implicity activate
 	// the main or the first control within a `wg` container. To bypass
@@ -254,17 +256,21 @@
 		(t=w.add('edittext')).active = true;
 
 		// [CHG190307] Added ACTIVE_CHILD algo.
+		// [CHG210118] Refinement (taking RE_EXCL_TYPES into account.)
 		// ---
-		wg.hasOwnProperty('active')
+		re = callee.RE_EXCL_TYPES;
+		wg.hasOwnProperty('active') && !re.test(wg.type)
 		? ( wg.active = true )
-		: ( wg = callee.ACTIVE_CHILD(wg)||w );
+		: ( wg = callee.ACTIVE_CHILD(wg,re)||w );
 
 		w.remove(t);
-		return wg;
+		return (NoRetWin && wg===w) ? 0 : wg;
 	}
 	.setup
 	({
-		ACTIVE_CHILD: function(/*Container*/wg,  a,re,n,i,c)
+		RE_EXCL_TYPES: /^(?:progressbar|scrollbar|slider|statictext)$/i,
+
+		ACTIVE_CHILD: function(/*Container*/wg,/*RegExp*/reExclTypes,  a,re,n,i,c)
 		//----------------------------------
 		// [190308] Recursive child-focusing algo.
 		// [REM] The input MUST be a container in the state
@@ -272,15 +278,14 @@
 		// => Widget [OK-ACTIVE]  |  0 [KO]
 		{
 			if( !(a=wg.children) ) return 0;
-			for( re=callee.RE_EXCL_TYPES, n=a.length||0, i=-1 ; ++i < n ; )
+			for( n=a.length||0, i=-1 ; ++i < n ; )
 			{
 				c = a[i];
-				if( (!c.enabled) || (!c.visible) || (re.test(c.type)) ) continue;
+				if( (!c.enabled) || (!c.visible) || reExclTypes.test(c.type) ) continue;
 				if( c.hasOwnProperty('active') ){ c.active = true; return c; }
-				if( c=callee(c) ) return c;
+				if( c=callee(c,reExclTypes) ) return c;
 			}
 			return 0;
 		}
-		.setup({ RE_EXCL_TYPES: /^(?:progressbar|scrollbar|slider|statictext)$/i }),
 	});
 
