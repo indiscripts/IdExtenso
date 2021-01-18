@@ -7,21 +7,74 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Snippet.
-		API:            
+		API:            [cf subfiles]
 		DOM-access:     ---
 		Todo:           ---
 		Created:        190120 (YYMMDD)
-		Modified:       190120 (YYMMDD)
+		Modified:       210118 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
-	// BACKGROUND
+	// NOTICE
 	//==========================================================================
 
 	/*
 
-	Previous IdExtenso versions were including basic ScriptUI features from
+	The SUI snippet extends the `ScriptUI` object as follows:
+	
+	----------------------------------------------------------------------------
+	NEW ScriptUI KEY    DESCRIPTION
+	----------------------------------------------------------------------------
+	.FT .LT .CT .RT     Resp. fill-top,    left-top,    center-top,    right-top.
+	.FC .LC .CC .RC     Resp. fill-center, left-center, center-center, right-center.
+	.FB .LB .CB .RB     Resp. fill-bottom, left-bottom, center-bottom, right-bottom.
+	.FF .LF .CF .RF     Resp. fill-fill,   left-fill,   center-fill,   right-fill.
+	----------------------------------------------------------------------------
+	.isWidget(x)        Whether x is a ScriptUI control or widget, incl. Window.
+	                 => true | false
+	----------------------------------------------------------------------------
+	.getIndex(x)        Index of the widget x in its parent.children array.
+	                 => uint [OK]  |  -1 [KO]
+	----------------------------------------------------------------------------
+	.forceRedraw(x)     Force widget x to redraw (i.e to trigger its onDraw handler.)
+	                 => 1 [OK]  |  0 [KO]
+	----------------------------------------------------------------------------
+	.setFocus(x,noWin)  Set the focus on the widget x if possible, or any activable
+	                    child otherwise. Tell which component is finally active.
+	                    If `noWin` is set, returns 0 if Window is finally made
+	                    active as a fallback.
+	                 => Widget [OK]  |  Window [FALLBACK]  |  0 [KO]
+	----------------------------------------------------------------------------
+	.builder(res,?par)  Create a ScriptUI component -- simple control or full Window --
+	                    within a container (par) and based on a 'resource object' res.
+	                    If no parent is provided, create a Window instance.
+	                    (See details in $$.builder.jsxinc.)
+	                 => par [IF SUPPLIED] | new Window
+	----------------------------------------------------------------------------
+	.isHidden(x,?exp)   Whether the widget x is hidden for whatever reason (exp=0)
+	                    or 'in person' (exp=1). Uses the special __state__ property
+	                    created from `.builder()` ; if that property is not
+	                    available, isHidden(x) simply returns `+!(x.visible)`.
+	                 => 1 [HIDDEN]  |  0 [NOT-HIDDEN]
+	----------------------------------------------------------------------------
+	.isDisabled(x,?exp) Whether the widget x is disabled for whatever reason (exp=0)
+	                    or 'in person' (exp=1). Note that hidden implies disabled.
+	                    Uses the special __state__ property created from `.builder()`,
+	                    If that property is not available, isDisabled(x) simply
+	                    returns `+!(x.enabled)`.
+	                 => 1 [HIDDEN]  |  0 [NOT-HIDDEN]
+	----------------------------------------------------------------------------
+	.addKeyHandler(k,h) Add a 'key handler' to the builder mechanism -- h being a
+	                    fct(<widget>,<value>,<key>) -- so that `<widget>[k]=value`
+	                    is interpreted `h.call( <context>, <widget>, value, k )`.
+	                 => callee   ;  i.e. ScriptUI.addKeyHandler
+	----------------------------------------------------------------------------
+	.removeKeyHandler(k) Remove the 'key handler' associated to k.
+	                 => undefined
+	----------------------------------------------------------------------------
+
+	[REM] Previous IdExtenso versions were including basic ScriptUI features from
 	the `Ext` snippet, that is, before having `$$.Env` available. Since various
 	SUI settings have to fit environment data ($$.inCC, $$.inMac, etc) it is
 	better to include the present snippet *after* $$.Env.jsxinc.
