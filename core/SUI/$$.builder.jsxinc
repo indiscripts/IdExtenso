@@ -8,11 +8,12 @@
 		Core:           YES
 		Kind:           Snippet (part of /SUI.)
 		API:            ScriptUI.builder()
-		                isHidden() isDisabled() addKeyHandler() removeKeyHandler()
+		                ScriptUI.isHidden() .isDisabled()
+		                ScriptUI.addKeyHandler() .removeKeyHandler()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190311 (YYMMDD)
+		Modified:       210124 (YYMMDD)
 
 *******************************************************************************/
 
@@ -287,7 +288,11 @@
 	      `<myStaticText>.addEventListener('mousedown', <func>)`
 	
 	where <func> denotes the passed function.
-
+	
+	[ADD210124] If multiple event types have to be associated to a single
+	listener, you can now concatenate the keys and have a single declaration:
+	
+	      _blur_focus:    function onBlurFocus(ev){ . . . }
 
 	6. Factories.
 	----------------------------------
@@ -533,6 +538,8 @@
 	[190310] Made inner functions distinct resources for readability;
 	         added state watching and management --> ~.WSTA.
 	[190311] Added the `optimalSize` shortcut.
+	[210124] Added the ability to attach *multiple* event keys to
+	         a single handler: `_focus_blur: function onFocusBlur(){...}`
 
 	*/
 
