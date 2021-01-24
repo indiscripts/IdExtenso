@@ -10,10 +10,11 @@
 		API:            ScriptUI alignments (LT, RT, etc)
 		                ScriptUI.isWidget() .getIndex()
 		                ScriptUI.forceRedraw() .setFocus()
+		                ScriptUI.callback()
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210118 (YYMMDD)
+		Modified:       210124 (YYMMDD)
 
 *******************************************************************************/
 
@@ -289,3 +290,38 @@
 		}
 	});
 
+	ScriptUI.callback = function callback(/*Widget*/wg,/*str|str[]*/evType,/*fct|0*/oldFunc,/*fct|0*/newFunc,  i)
+	//----------------------------------
+	// [ADD210124] Remove and/or attach event listeners to the widget `wg`
+	// for the specified event type (or array of event types).
+	// - If `oldFunc` is a function, remove it as an event listener
+	//   for the specified event type(s)
+	// - If `newFunc` is a function, add it as an event listener
+	//   for the specified event type(s)
+	// [REM] This helper is typically invoked from 'watch' functions of custom
+	// components (cf factories) that manage event handlers. For example, a property
+	// like `myWidget.onChange` is processed through a watch function that receives
+	// the key ('onChange'), the old value and the new value, in (k,ov,nv) order.
+	// Then the watcher can just invoke the present routine this way:
+	//       if( k=='onChange' ) ScriptUI.callback(this,['change'],ov,nv);
+	// Note that your custom event handler (now associated to myWidget.onChange)
+	// will actually receive the event as first argument (the 'change' event here)
+	// and have its `this` context set to `myWidget`. This allows you to implement
+	// in a single function body a generic event handler that reacts with respect
+	// to the incoming event type, target, etc.
+	// ---
+	// E.g   ScriptUI.callback(myEditText, ['focus','blur'], 0, myFocusBlurHandler)
+	// ---
+	// => undef
+	{
+		if( 'function' == typeof oldFunc )
+		{
+			(evType instanceof Array) || (evType=[evType]);
+			for( i=evType.length ; i-- ; wg.removeEventListener(evType[i],oldFunc) );
+		}
+		if( 'function' == typeof newFunc )
+		{
+			(evType instanceof Array) || (evType=[evType]);
+			for( i=evType.length ; i-- ; wg.addEventListener(evType[i],newFunc) );
+		}
+	};
