@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       201005 (YYMMDD)
+		Modified:       210124 (YYMMDD)
 
 *******************************************************************************/
 
@@ -333,6 +333,48 @@
 	CS4, CS5, and CS6--while String.prototype.match() seems to work.
 
 	Workaround. - Rewrite the prototyped methods wherever needed! [TODO]
+
+
+	8. SPLIT ISSUE WITH ENDING PATTERNS [from a discussion w/ Ariel Walden]
+	__________________________________________________________________
+
+	In JavaScript, the result of `"ab".split("b")` or `"ab".split(/b/)`
+	should be `["a",""]` in either case. However, in ExtendScript:
+	
+	      "ab".split("b")     // => ["a",""]  (OK)
+	      "ab".split(/b/)     // => ["a"]     (KO)
+
+	It looks like this bug specifically occurs when the RegExp --here /b/--
+	matches the end of the input string. For some reason, the final empty
+	string that we then would expect is omitted.
+
+	[NOTE] We don't know why `"ab".split("b")` (string argument) returns the
+	correct result while supplying an equivalent RegExp fires the bug. This
+	suggests that when the split separator is passed as a string, it is not
+	converted into a RegExp instance behind the scenes and ExtendScript
+	probably uses a dedicated algorithm for string- (vs. regex-) splitting.
+
+	A contrario,
+
+	      "ab".split("a")     // => ["","b"]  (OK)
+	      "ab".split(/a/)     // => ["","b"]  (OK)
+
+	Complementary tests:
+
+	      "abb".split(/b/)    // ["a",""]     (KO)
+	      "abbb".split(/b/)   // ["a","",""]  (KO)
+	      etc
+	
+	always lacking the final empty string.
+
+	Also, `"abbb".split(/b$/)` returns `["a"]` instead of `["abb",""]`. This
+	definitely shows that ExtendScript has troubles with ending patterns.
+	
+	Workaround. - Fixing `String.prototype.split` with a RegExp as 1st argument
+	would likely require complex extra checks... I don't see any simple way to
+	patch the native method for the time being.
+
+	[REF] https://tc39.es/ecma262/#sec-string.prototype.split
 
 	*/
 
