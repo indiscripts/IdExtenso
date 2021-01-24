@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       210124 (YYMMDD)
 
 *******************************************************************************/
 
@@ -43,8 +43,8 @@
 	the partial specs `{ width:uint }` or { height:uint }`.
 	
 	The `optimalSize` dimensions are then loaded in both `preferredSize` and
-	`minimumSize`. (The property `optimalSize` is not created in the resulting
-	UI component.)
+	`minimumSize`. The property `optimalSize` remains implicit: it is not
+	registered as such in the resulting UI component.
 
 	*/
 
@@ -68,10 +68,12 @@
 		// Convert special event keys into addEventListener statement.
 		// k :: `_move` | `_mouseup` | `_keydown` | etc       -> no capture phase
 		// [CHG190331] Changed event type detection method.
+		// [CHG210124] Support of multiple event keys.
 		// ---
-		if( 2 < k.length && 'function'==typeof x && (t=callee.EV_KEYS[k]) )
+		if( 2 < k.length && 'function'==typeof x && callee.RE_EVNS.test(k) )
 		{
-			wg.addEventListener(t,x);
+			(t=k.split('_')).shift();             // t :: [evType1,evType2...]
+			ScriptUI.callback(wg, t, 0, x);
 			return;
 		}
 		
@@ -126,31 +128,11 @@
 	.setup
 	({
 		Q_SIZE:  [ '', 'preferredSize' ], // Manage `optimalSize`
-		EV_KEYS:
-		{
-			_move:      'move',
-			_moving:    'moving',
-			_resize:    'resize',
-			_resizing:  'resizing',
-			_show:      'show',
-			_close:     'close',
-			// ---
-			_focus:     'focus',
-			_blur:      'blur',
-			_change:    'change',
-			_changing:  'changing',
-			// ---
-			_click:     'click',
-			_mousedown: 'mousedown',
-			_mouseup:   'mouseup',
-			_mousemove: 'mousemove',
-			_mouseover: 'mouseover',
-			_mouseout:  'mouseout',
-			// ---
-			_enterKey:  'enterKey',
-			_keydown:   'keydown',
-			_keyup:     'keyup',
-		},
+		
+		// [CHG210124] Manage multiple event keys thru RegExp.
+		// ---
+		RE_EVNS: RegExp('^(?:_move|_moving|_resize|_resizing|_show|_close|_focus|_blur|_change|_changing|_click|_mousedown|_mouseup|_mousemove|_mouseover|_mouseout|_enterKey|_keydown|_keyup)+$'),
+
 		RE_SIZE: RegExp('^(?:preferredS|minimumS|maximumS|optimalS|s)ize$'),
 		EXTERN:  {},
 	}),
