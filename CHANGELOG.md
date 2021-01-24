@@ -1,3 +1,14 @@
+##### [210124]
+  - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.callback()`, a helper that removes and/or attaches event listeners for specified event type(s).
+  
+  - [`SUI/builder`](/core/SUI/$$.builder.jsxinc) now provides the option to associate multiple events to a single listener in one line, e.g
+  
+    ~~~~
+    _blur_focus:    function onBlurFocus(ev){ . . . }
+    ~~~~
+
+    You just have to concatenate one or several supported keys among `_move`, `_moving`, `_resize`, `_resizing`, `_show`, `_close`, `_focus`, `_blur`, `_change`, `_changing`, `_click`, `_mousedown`, `_mouseup`, `_mousemove`, `_mouseover`, `_mouseout`, `_enterKey`, `_keydown`, `_keyup`.
+
 ##### [210118]
   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Improved `ScriptUI.setFocus()`, which now supports a 2nd argument (`NoRetWin`) that tells the function to return `0` if the Window is finally made active as a fallback.
 
