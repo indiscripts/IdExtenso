@@ -7,13 +7,79 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Snippet.
-		API:            [cf subfiles]
+		API:  ScriptUI. FT LT CT RT FC LC CC RC FB LB CB RB FF LF CF RF
+		                isWidget() getIndex() forceRedraw() setFocus()
+		                builder() isHidden() isDisabled()
+		                addKeyHandler() removeKeyHandler()
+		                callback()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        190120 (YYMMDD)
-		Modified:       210118 (YYMMDD)
+		Modified:       210127 (YYMMDD)
 
 *******************************************************************************/
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+	
+	/*
+
+	OVERVIEW: SCRIPTUI WIDGETS AND CONSTRUCTORS
+	__________________________________________________________________
+	
+	Available ScriptUI constructors (all reachable from $.global) are:
+	
+	      Containers:  Window, Group, Panel, Image*
+	      Texts:       StaticText, EditText
+	      Lists:       ListBox, DropDownList, TreeView
+	      Buttons:     Button, IconButton, Checkbox, RadioButton
+	      Misc.:       ListItem, Scrollbar, Progressbar, Slider...
+
+	* Image is a special container that only allows one ScriptUIImage
+	  element (Image.children remains empty though.)
+
+	1. A general JS fact must be kept in mind regarding ScriptUI objects.
+	Do not confuse
+	      (i)  a not-owned property
+	and
+	      (ii) an owned property which is set to `undefined`,
+
+	In both cases obj[key]===undefined, but in case (ii) we also have
+	`obj.hasOwnProperty(key)`.
+
+	2. Default widget properties are primarily *static*, that is,
+	available in the constructor itself (e.g `StaticText.preferredSize`)
+	and *not* available in the prototype. Hence, checking whether
+	a property is *native* involves the syntax
+	
+	      `<constructor>.hasOwnProperty(key)`
+
+	[REM] In CS4/5 ExtendScript can't visit function key/value pairs using
+	`for( key in func ) ...`, so default properties of <constructor> are
+	not browsable. For the same reason `<constructor>.reflect.properties`
+	doesn't help in CS4/5. However `<constructor>.hasOwnProperty()` still
+	works:
+	
+	      Window.hasOwnProperty('preferredSize'); // => true in CS4-CC
+
+	3. Apart from `Window`, constructors can't be called explicitly,
+	since ScriptUI expects the declaration:
+	
+	      `myWidget = myContainer.add(<type>, . . .)`
+	
+	The way ScriptUI constructors are involved during widget creation
+	is not clearly exposed. In particular, we have to check when and
+	how native properties are copied in the actual widget, and whether
+	the set of *creation properties* (`widget.properties`) is delt with.
+	
+	4. About native properties, rewriting either `<constructor>.<key>`
+	or `...prototype.<key>` does not have the desired effect. Instances
+	usually inherit from native settings at creation stage. (Most native
+	properties are `undefined` at the constuctor level though.)
+	Anyway, *adding* new properties/methods to the prototype is OK.
+
+	*/
 
 	//==========================================================================
 	// NOTICE
@@ -71,6 +137,10 @@
 	                 => callee   ;  i.e. ScriptUI.addKeyHandler
 	----------------------------------------------------------------------------
 	.removeKeyHandler(k) Remove the 'key handler' associated to k.
+	                 => undefined
+	----------------------------------------------------------------------------
+	.callback(x,evt,oldFunc,newFunc) Remove and/or attach event listeners to the
+	                    widget `x` for the specified event type(s) `evt`.
 	                 => undefined
 	----------------------------------------------------------------------------
 
