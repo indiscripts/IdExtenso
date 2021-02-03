@@ -1,3 +1,7 @@
+##### [210203]
+
+- [**Web**](/etc/$$.Web.jsxlib): Fixed redirection issue, automatic `http -> https` redir is now supported. Relaxed the non-modalstate condition in InDesign >= CS5 (7.0) since it has been found that `app.doScript` can work in modal state from that ID version. Huge redesign of the [HTTP Secure (Win) snippet](/etc/Web/$$.HttpSecure.Win.jsxinc), made safer and more compact. _(Still searching how to manage timeout here…)_
+
 ##### [210124]
   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.callback()`, a helper that removes and/or attaches event listeners for specified event type(s).
   
