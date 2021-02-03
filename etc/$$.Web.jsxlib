@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =get() parseURI() browse()
 		DOM-access:     YES (if https involved.)
-		Todo:           make `wantText` automatic if not supplied
+		Todo:           make `wantText` smart if not supplied ; timeout issues...
 		Created:        170403 (YYMMDD)
-		Modified:       200228 (YYMMDD)
+		Modified:       210203 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 200228, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 210203, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -40,7 +40,11 @@
 	         in VBS and parsed in JS.
 	[190322] Full rewrite; splitted parts into snippets.
 	[200228] Fixed a typo in `HttpSocket` (was causing a not-a-function error.)
-	
+	[210202] Fixed redirection issue. Allows automatic http->https redir.
+	         Relax the non-modalState condition in ID >= CS5 (7.0).
+	[210203] Rewritten `HttpSecure.Win` (safer and more compact) ;
+	         now addresses `wantText`.
+
 	*/
 
 	// Uri parsing -> public `parseURI()`method.
@@ -78,7 +82,7 @@
 		// If something goes wrong (invalid URI, cannot connect to server,
 		// target unavailable, etc.), an `error` key is added to the result
 		// and describes the issue. An actual (fatal) error is thrown if you
-		// don't send `uri` as a string, or if https is invoked in modal state.
+		// don't send `uri` as a string or something else went wrong.
 		// ---
 		// `wantText` :: Whether the target is expected in text type.
 		// If VOLATILE is on, put the result in a temporary cache
@@ -167,10 +171,10 @@
 					break;
 				}
 
-				// https needed? allowed?
+				// https needed? access allowed?
 				// ---
 				hSec = 'https'==tg.protocol;
-				if( hSec && app.modalState )
+				if( hSec && (!callee.CAN_MODAL) && app.modalState )
 				{
 					$$.error(__("Cannot access https target in app modal state."),callee);
 				}
@@ -183,7 +187,10 @@
 				// Call the getter.
 				// ---
 				code = µ['~'][hSec?'HSEC':'HGET'](ret, tg, (+$$.trace)&&$$.Log.trace);
-				if( 1!==code ) break;
+
+				// [FIX210202] Quit only if code strictly negative, allows 301 redir!
+				// ---
+				if( 0 > code ) break;
 
 				// Status?
 				// ---
@@ -271,6 +278,12 @@
 				/*-3*/  'EXIT',
 				/*-4*/  'URI',
 			),
+			
+			// [210202] It looks like `app.doScript` can in fact
+			// be invoked in modal state (e.g, dialog box) from
+			// ID CS5. So the non-modal condition can be relaxed :-)
+			// ---
+			CAN_MODAL : $$.domVersion(7),
 
 			RESP : function(/*{ status,statusCode,headers,data,?error }&*/r,  o,k)
 			//----------------------------------
