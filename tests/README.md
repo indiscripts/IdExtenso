@@ -91,6 +91,16 @@ _Demonstrates:_
 
 ---
 
+##### [`GetWebText.jsx`](GetWebText.jsx)
+
+Download a text through `http(s)`. Result is shown either in the active selection (if any) or in trace console.   
+
+_Demonstrates:_
+   
+* `$$.Web(url, 1)` with `wantText` option turned on.
+
+---
+
 ##### [`InstantDialog.jsx`](InstantDialog.jsx)
 
 InDesign DOM dialog fast, easy, and with automatic localization.
