@@ -49,10 +49,10 @@
 	what the server sent, this may appear as binary-encoded data (UTF-8, UCS-2,
 	UCS-4, Shift_JIS, and so on).
 	
-	[REM] In older implementation we tried to escape `responseBody` from within
-	the script using `Escape()` -- converts Unicode characters (and below) to
-	%HH or %uHHHH, except for A-Z, a-z, 0-9, and _ * - . + / @. Unfortunately
-	this wasn't working in all contexts :-/
+	[REM] We still try to escape `responseBody` from within the script using
+	`Escape()` -- converts Unicode characters (and below) to %HH or %uHHHH,
+	except for A-Z, a-z, 0-9, and _ * - . + / @. This method was temporarily
+	suspected to cause issues, but it seems it was a wrong interpretation...
 
 	responseText :: Represents only one of several forms in which the HTTP response
 	can be returned. IXMLHTTP attempts to decode the response into a Unicode string.
