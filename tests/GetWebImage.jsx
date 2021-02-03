@@ -15,8 +15,8 @@
 $$.load(-1);
 
 // =============================================================================
-// GetWebImage [171024] [190322]
-// Download a remote PNG (through http) and load it in a ScriptUI dialog.
+// GetWebImage [171024] [190322] [210203]
+// Download a remote PNG through http or https and load it in a ScriptUI dialog.
 // The user can now click the image to open the URL in a navigator.
 // ---
 // Demonstrates:
@@ -31,14 +31,23 @@ try
 {
 	const url = "http://indiscripts.com/blog/public/IndiscriptsLogo.png";
 	
-	// GET url (via HTTP/1.x transaction.)
+	// GET url.
 	// ---
-	var img = $$.Web(url);
+	var img = $$.Web(url, 0);
 	
 	if( img.error )
 	{
 		$$.error(img.error);
 	}
+	
+	// [ADD210203] Check PNG signature.
+	// ---
+	if( 0 != img.data.indexOf('\x89\x50\x4E\x47\x0D\x0A\x1A\x0A') )
+	{
+		$$.trace( __("Downloaded data: %1", img.data.toSource()) );
+		$$.error( __("Invalid PNG string: %1", img.data.rtrunc(50).toSource() ) );
+	}
+	
 	
 	// Show how the stringified PNG looks like (-> log trace.)
 	// ---
@@ -49,6 +58,7 @@ try
 	// TRACE and WARN mode --while trace() does nothing in MUTE mode.
 	// ---
 	$$.trace( __("PNG data: %1", img.data.toSource()) );
+
 
 	// Push the downloaded PNG in a ScriptUI dialog :-)
 	// ---
