@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210124 (YYMMDD)
+		Modified:       210225 (YYMMDD)
 
 *******************************************************************************/
 
@@ -81,6 +81,39 @@
 		FF : ['fill',   'fill'],
 		CF : ['center', 'fill'],
 	});
+
+	// [ADD210225] Detect HDI scaling factors that affect some ScriptUI coordinates.
+	// HDI_SCALING is an array of two factors -- [X_FACTOR, Y_FACTOR] -- that should
+	// normally be [1,1]. In some environments (in particular Win10 with UI scaling
+	// applied on HiDPI monitor) the factors can be higher, e.g [1.5, 1.5] in 150%
+	// UI scaling. Having these values helps solve inconsistencies in ScriptUI:
+	// ----------------------------------------------------------------------------
+	// 1a. window.location|size|bounds
+	//     return SCREEN dimensions but expect SUI coordinates! So, setting win.size
+	//     (resp. location) to their actual value will increase them by SUI_SCALING
+	//     -- win.layout.layout(1) has the same side effect.
+	// 1b. window.windowBounds (WB)
+	//     return SCREEN coordinates relative to the window itself, so WB.left and
+	//     WB.right are zero and WB.width  = WB.right  = win.width  (sreen dims)
+	//                           WB.bottom = WB.height = win.height (sreen dims)
+	// ----------------------------------------------------------------------------
+	// 2a. widget.location|size|bounds*
+	//     return and expect SUI coordinates. (The same is true for minimumSize,
+	//     maximumSize, preferredSize properties.)
+	// 2b. widget.windowBounds* (wb)
+	//     return width|height in SUI dims and left|top in SCREEN dims!
+	//     right and bottom are then irrelevant since
+	//                                        SUI      SCREEN
+	//                          wb.right  = wb.left + wb.width
+	//                          wb.bottom = wb.top  + wb.heigth
+	//  * widget not being a Window.
+	;ScriptUI.HDI_SCALING = (function(w)
+	{
+		(w=new Window('palette','')).margins=0;
+		w.add('group').minimumSize=[500,500];
+		w.layout.layout(1);
+		return [w.size[0]/500,w.size[1]/500];
+	})();
 
 	//==========================================================================
 	// ScriptUI.isWidget() .getIndex()
