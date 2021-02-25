@@ -1,3 +1,6 @@
+##### [210225]
+  - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.HDI_SCALING`, an array of two factors `[<xFactor>,<yFactor>]` that reflect how ScriptUI coordinates are sometimes affected in HiDPI displays. `ScriptUI.HDI_SCALING` should normally be `[1,1]`. In some environments (esp. Win10 with UI scaling applied) the factors can be higher, e.g `[1.5, 1.5]` in 150% UI scaling. Knowing these factors helps solve various inconsistencies altering ScriptUI coordinates.
+
 ##### [210203]
 
 - [**Web**](/etc/$$.Web.jsxlib): Fixed redirection issue, automatic `http -> https` redir is now supported. Relaxed the non-modalstate condition in InDesign >= CS5 (7.0) since it has been found that `app.doScript` can work in modal state from that ID version. Huge redesign of the [HTTP Secure (Win) snippet](/etc/Web/$$.HttpSecure.Win.jsxinc), made safer and more compact. _(Still searching how to manage timeout here…)_
