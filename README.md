@@ -1,4 +1,4 @@
-# *IdExtenso*  2.10116  (core: 186KB)
+# *IdExtenso*  2.10322  (core: 187KB)
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -22,7 +22,7 @@
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will you get started, and a huge set of additional modules will help you implement more complex features.
 
-The framework supports ExtendScript from version `3.92` to `4.5` and InDesign from `v.6.0` (CS4) to `16.x` (CC2021) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, etc.
+The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `16.x` (CC2021) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, etc.
 
 -----
 
@@ -30,7 +30,7 @@ The framework supports ExtendScript from version `3.92` to `4.5` and InDesign fr
 
 ***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not contain a bunch of _JS sugars_ easily findable in other distributions. And it does not pretend to form a *library* in the narrow sense.
 
-There is no reason to use ***IdExtenso*** in small projects. If your InDesign script doesn't require performance tricks, ScriptUI workarounds, localization features, high modularity, cross-version compatibility, advanced settings management... then the workspace we have designed here is probably not for you.
+***IdExtenso*** is not designed for small projects. If your InDesign script does not require performance tricks, ScriptUI workarounds, localization features, high modularity, cross-version compatibility, advanced settings management... then the workspace we have designed here is not for you.
 
 -----
 
