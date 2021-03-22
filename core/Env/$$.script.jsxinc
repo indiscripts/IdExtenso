@@ -15,7 +15,7 @@
 		                      app.properties.activeScriptUndoMode
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       210116 (YYMMDD)
+		Modified:       210322 (YYMMDD)
 
 *******************************************************************************/
 
@@ -356,9 +356,11 @@
 		}
 		.copy('..'),
 		
-		globalEvent : function globalEvent_e()
+		globalEvent : function globalEvent_e(/*bool=0*/ALLOW_PREVIOUS_EVENT,  ev,s)
 		//----------------------------------
-		// [190203] Return the DOM global event (if available), or zero.
+		// [CHG210322] Prevent a persistent engine from returning an event already
+		// processed by this function (unless ALLOW_PREVIOUS_EVENT is truthy.)
+		// [ADD190203] Return the DOM global event (if available), or zero.
 		// [REM] The global variable `evt` is automatically set when the current script
 		// is invoked as an event handler (e.g from a MenuAction listener.)
 		// [REM] This method is made available straight from `$$`.
@@ -369,8 +371,17 @@
 		// ---
 		// => Event [OK]  |  0 [KO]
 		{
-			return $.global.evt || 0;
+			if( !(ev=$.global.evt) ) return 0;
+
+			// Take a stamp of that event.
+			// ---
+			s = (ev.hasOwnProperty('eventType')?ev.eventType:'noop')
+			  + '_' + (ev.hasOwnProperty('id')?ev.id:'0')
+			  + '_' + (ev.hasOwnProperty('timeStamp')?(+ev.timeStamp):(+new Date));
+
+			return s === callee.STAMP ? (ALLOW_PREVIOUS_EVENT?ev:0) : ((callee.STAMP=s), ev);
 		}
+		.setup({ STAMP:'' })
 		.copy('..'),
 
 		tempRedraw : function tempRedraw_F_o_x(/*fct*/userFunc,/*context=null*/cx,  t,b,r)
