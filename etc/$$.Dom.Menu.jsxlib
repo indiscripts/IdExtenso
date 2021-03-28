@@ -1,0 +1,848 @@
+/*******************************************************************************
+
+		Name:           Menu
+		Desc:           Access and manage InDesign Menus/MenuItems/ScriptMenuActions
+		Path:           /etc/$$.Dom.Menu.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =get() getMenu() getMenuItem() setAction()
+		DOM-access:     YES
+		Todo:           is it relevant to provide a startup-script utility here?
+		Created:        210325 (YYMMDD)
+		Modified:       210328 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210328, 'getMenuItem'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+		Menu/submenu/menuitem validation is a critical task for any script that
+		customizes the InDesign interface. The present module provides consistent
+		tools for that purpose.
+
+
+		0 - BASICS
+		________________________________________________________________________
+
+		InDesign menu components form a complex topic, mainly because Menu and
+		Submenu containers have no `id` property (unlike MenuItem instances)
+		and must be accessed through *localized* names. Also, menus and submenus
+		are application-persistent while ScriptMenuAction items are not, which
+		means that a custom MenuItem or Submenu object must be managed with
+		great caution regarding its installation, lifecycle, and event handling.
+		
+		The DOM exposes more than 130 top-level menus, the main one (`$ID/Main`)
+		being referenced at index 0: app.menus[0]. The other top-level menus (i.e,
+		whose contructor is `Menu`) are contextual popups like $ID/RtMouseDefault,
+		$ID/GlyphPanelPopup and similar things. The `app.menus` collection cannot
+		be augmented from the scripting system. This is not, however, a stable and
+		reliable set, due to possible user customization and localization issues.
+
+		Disregarding MenuSeparator elements, every Menu or Submenu parents a set
+		of menu components, each of which being either a Submenu or a MenuItem.
+		A MenuItem can be regarded as a terminal node (leaf) while a Submenu is
+		a new parent for new components. The recursive model is summarized below:
+		
+		       Menus
+		        |-- Submenus
+		             |-- Submenus
+		                  |-- etc
+		             |-- MenuItems
+		        |-- MenuItems
+		
+		The essential distinction between Menus and Submenus is, the former
+		collection is locked while the latter can be extended using the
+		`...submenus.add()` command:
+		
+		     <Submenus>.add(title::str, at::LocationsOptionsEnum, ref::MenuElement,
+		                  {properties} )
+		
+		The `$ID/Main` menu (app.menus[0]) represents the abstract container of the
+		InDesign menubar. Its submenus typically are File, Edit, Layout, Type,
+		Object, Table, View, Window, Help (these are the respective Submenu names in
+		EN locale.)
+
+		[REM] A critical fact about the Submenu class is that it exposes a `remove()`
+		method, meaning that a script could actually remove any built-in Submenu.
+		The same is true for the MenuItem object.
+
+		Note that the main Menu contains no direct MenuItem (all its children
+		are Submenu components.) However, a script can add MenuItem elements into
+		any existing Menu or Submenu, using the `(Menu|Submenu).menuItems.add()`
+		command.
+
+		     <MenuItems>.add(associatedMenuAction::MenuAction, at::LocationOptions,
+		                   ref::MenuElement, {properties} )
+		
+		The first argument, of type MenuAction or ScriptMenuAction, must be
+		identified before invoking the `add` method. The huge set of all native
+		menu actions is available in `app.menuActions` (addressing ~3500 items in
+		CC 2020 vs. ~2000 items in CS4.) A script can also define and reference
+		additional menu actions thru the `app.scriptMenuActions` collection.
+		Both MenuAction and ScriptMenuAction instances have an `id`, and other
+		properties like `name`, `title` and `area` (see below), `checked` and
+		`enabled` (bool) and a `label` container.
+
+
+		1 - ACCESSING (KNOWN) MENU COMPONENTS
+		________________________________________________________________________
+
+		In many scenarios, you need to access a specific MenuItem or Submenu
+		already available in the InDesign interface in order to use it as a
+		reference for creating a custom menu component BEFORE or AFTER the
+		identified one. Problem is, accessing such a 'target' is not obvious,
+		since Submenu and MenuItem instances undergo localization. So we
+		cannot provide an 'agnostic' specifier like
+		
+		       `/menu[@name="knowName"]/submenu[<etc>]/menu-item[<etc>]`
+		
+		which would be the secure mechanism. Instead, we often use locale-
+		independent key strings (like `$ID/RtMouseLayout`, etc) and resolve
+		commands like
+		
+		       app.menus.itemByName(...).submenus.itemByName()...
+		
+		Unfortunately, these commands are notoriously unsafe and still require
+		strong validation checkpoints, involving `myStuff.isValid` at each level.
+		And even there, key strings may point out to wrong elements or just fail
+		to access a valid target.
+		
+		In the Russian version of InDesign CS4/CS5/CS6, for instance, it has been
+		shown that many menu specifiers were purely broken due to the presence of
+		double quotes `"` in the localized names. This bug makes it tricky to access
+		native menus like `$ID/RtMouseDefault`.
+		
+		[REM] The localized name of that menu is `Контекстное меню "Текст"`,
+		so the command `app.menus.itemByName("$ID/RtMouseDefault")` indirectly
+		queries `app.menus.itemByName("Контекстное меню "Текст"")`, which fails,
+		probably because of an internal bug related to the inner double quotes.
+		This bug has been solved in CC [thanks to Mikhail Ivanyushin and Kasyan
+		Servetsky for their confirmation on this point.]
+
+		As a side-effect of the above bug, it may happen in CS4/CS5/CS6 that
+
+		       app.menus[index].isValid                    // returns true
+
+		while
+
+		       app.menus[index].getElements()[0].isValid   // returns false (!)
+		
+		The reason is, the `.getElements()[0]` part resolves the by-index specifier
+		into a by-name specifier `/menu[@name="..."]` and the latter form is
+		unfortunately broken! That's one of the rare cases where *resolving* a
+		valid specifier leads to an invalid specifier!
+
+		2 - MENU ACTIONS
+		________________________________________________________________________
+		
+		[SDK] Action: “A piece of functionality that can be called through
+		a menu component or keyboard shortcut.”
+
+		The MenuAction (MA) and ScriptMenuAction (SMA) classes encapsulate
+		commands that can be *invoked* from a MenuItem (if 'associated' to it).
+		However, since any action provides an `invoke` method, a script can also
+		run it directly even if no MenuItem is identified. In general, an action
+		is associated to (and invoked from) a MenuItem through event hendlers,
+		noting that different menu items can target the same action.
+		
+		- The `app.menuActions` collection is locked (no `add` method) and collects
+		  all InDesign built-in commands. A MA can only handle two event types -- 
+		  'beforeInvoke' and 'afterInvoke' -- since its internal process
+		  is determined by the application. MenuAction objects are of course
+		  application-persistent.
+		
+		- By contrast, the `app.scriptMenuActions` collection can be augmented and
+		  is typically used for processing custom menu items. In itself a SMA
+		  does nothing, but it handles four event types:
+		       
+		       'beforeDisplay'  Triggered when a MenuItem pointing out to
+		                        this SMA is about to be shown.
+		       'beforeInvoke'   Triggered before invoking the SMA.
+		       'onInvoke'       Core process of the SMA.
+		       'afterInvoke'    Triggered after invoking the SMA.
+		  
+		  These events are registered using `mySMA.addEventListener(...)` commands.
+		  SMA objects are *session-persistent* (they vanish when you quit InDesign)
+		  so any menu customization must rebuild and re-attach the associated SMA
+		  and MenuItem when a new InDesign session starts. This is usually done
+		  from a startup script (as far as application-persistence is required.)
+
+		  Also, to keep a SMA working during your session, the underlying event
+		  handlers (e.g the 'onInvoke' listener) must either reside in a dedicated
+		  engine (`#targetengine` directive) or be declared as a File, as in
+		  
+		       mySMA.addEventListener('onInvoke', File('path/to/myscript.jsx'))
+		  
+		  In the latter case, the script ('myscript.jsx') that manages the event
+		  does not *require* engine-persistence, but it must be able to react to
+		  the incoming event as any regular event listener.
+		  
+		  [REM] Use `$$.globalEvent()` to identify and manage incoming DOM events.
+		  
+		  [REM] Menu and Submenu instances can react to 'beforeDisplay' events.
+		  “To change the items displayed in a menu, add an eventListener for
+		  the beforeDisplay event. When the menu is selected, the eventListener can
+		  then run a script that enables or disables menu items, changes the wording
+		  of menu item, or performs other tasks related to the menu. This mechanism
+		  is used internally to change the menu listing of available fonts, recent
+		  documents, or open windows.”
+		  
+		  MA and SMA objects exposes an `area` property (str) which specifies the
+		  keyboard shortcut editor (KKBSCE) area. Here is a list of the most usual
+		  areas. Note that all locale-independent keystrings have the form
+		  
+		       "$ID/KBSCE <ZONE>"   or   "$ID/KBSCE <ZONE>: <...> <ZONE>: "
+		                                    (note the trailing space)
+
+		 MAIN AREAS (KEYSTRINGS)                                   PATH
+		==================================================================================
+		'$ID/KBSCE Application menu'                               Application menu (main)
+		'$ID/KBSCE Apple menu'                                     Apple Menu
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE File menu'                                      File
+		'$ID/KBSCE File menu: Manage Workgroup: '                  > Manage Workgroup
+		'$ID/KBSCE File menu: New: '                               > New
+		'$ID/KBSCE File menu: PDF Style: '                         > PDF Export Presets
+		'$ID/KBSCE File menu: Printer Style: '                     > Print Presets
+		'$ID/KBSCE File menu: Document Presets: '                  > Document Presets
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Edit menu'                                      Edit
+		'$ID/KBSCE Edit menu: Preferences: '                       > Preferences
+		'$ID/KBSCE Edit menu: Transparency Blend Space: '          > Transparency Blend Space
+		'$ID/KBSCE Edit menu: Spelling: '                          > Spelling
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Layout menu'                                    Layout
+		'$ID/KBSCE Layout menu: Pages: '                           > Pages
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Type menu'                                      Type
+		'$ID/KBSCE Type menu: NotesSubmenu: '                      > Notes
+		'$ID/KBSCE Type menu: Text Variables: '                    > Text Variables
+		'$ID/KBSCE Type menu: Bulleted & Numbered Lists: '         > Bulleted & Numbered Lists
+		'$ID/KBSCE Type menu: Change Case: '                       > Change Case
+		'$ID/KBSCE Type menu: Size: Other: '                       > Size > Other
+		'$ID/KBSCE Type menu: Type on Path: '                      > Type on Path
+		'$ID/KBSCE Type menu: Insert Break Character: '            > Insert Break Character
+		'$ID/KBSCE Type menu: Insert Special Character: Symbols: ' Type Menu > Insert ... > Symbols
+		'$ID/KBSCE Type menu: Insert Special Character: Markers: ' >> Markers
+		'$ID/KBSCE Type menu: Insert Special Character: Hyphens and Dashes: '>> Hyphens and Dashes
+		'$ID/KBSCE Type menu: Insert Special Character: Quotation Marks: '   >> Quotation Marks
+		'$ID/KBSCE Type menu: Insert Special Character: Other: '   >> Other
+		'$ID/KBSCE Type menu: Insert White Space: '                > Insert White Space
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Object menu'                                    Object
+		'$ID/KBSCE Object menu: Arrange: '                         > Arrange
+		'$ID/KBSCE Object menu: Select: '                          > Select
+		'$ID/KBSCE Object menu: Pathfinder: '                      > Pathfinder
+		'$ID/KBSCE Object menu: Convert Shape: '                   > Convert Shape
+		'$ID/KBSCE Object menu: Paths: '                           > Paths
+		'$ID/KBSCE Object menu: Content: '                         > Content
+		'$ID/KBSCE Object menu: Paths: Convert Point: '            > Paths:Convert Point
+		'$ID/KBSCE Object menu: Display: '                         > Display
+		'$ID/KBSCE Object menu: Fitting: '                         > Fitting
+		'$ID/KBSCE Object menu: Transform: '                       > Transform
+		'$ID/KBSCE Object menu: Transform Again: '                 > Transform Again
+		'$ID/KBSCE Object menu: Anchored Object: '                 > Anchored Object
+		'$ID/KBSCE Object menu: Interactive: '                     > Interactive
+		'$ID/KBSCE Object menu: Effects: '                         > Effects
+		'$ID/KBSCE Object menu: Clipping Path: '                   > Clipping Path
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE View menu'                                      View
+		'$ID/KBSCE View menu: Proof Setup: '                       > Proof Setup
+		'$ID/KBSCE View menu: Screen Mode: '                       > Screen Mode
+		'$ID/KBSCE View menu: Display Performance: '               > Display Performance
+		'$ID/KBSCE View menu: Structure: '                         > Structure
+		'$ID/KBSCE View menu: Grids Guides: '                      > Grids & Guides
+		'$ID/KBSCE View menu: Story Editor: '                      > Story Editor
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Window menu'                                    Window Menu
+		'$ID/KBSCE Window menu: Arrange: '                         > Arrange
+		'$ID/KBSCE Window menu: Workspace: '                       > Workspace
+		'$ID/KBSCE Window menu: Interactive: '                     > Interactive
+		'$ID/KBSCE Window menu: Object & Layout: '                 > Object & Layout
+		'$ID/KBSCE Window menu: Output: '                          > Output
+		'$ID/KBSCE Window menu: Type & Tables: '                   > Type & Tables
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Help menu'                                      Help Menu
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Palette Menus'                                  Panel Menus
+		'$ID/KBSCE Palette Menus: Align: '                         > Align
+		'$ID/KBSCE Palette Menus: Book: '                          > Book
+		'$ID/KBSCE Palette Menus: Bookmarks: '                     > Bookmarks
+		'$ID/KBSCE Palette Menus: Cell Styles: '                   > Cell Styles
+		'$ID/KBSCE Palette Menus: Character Styles: '              > Character Styles
+		'$ID/KBSCE Palette Menus: Character: '                     > Character
+		'$ID/KBSCE Palette Menus: Character: OpenType: '           > Character:OpenType
+		'$ID/KBSCE Palette Menus: Color: '                         > Color
+		'$ID/KBSCE Palette Menus: Control: '                       > Control
+		'$ID/KBSCE Palette Menus: Control: Bridge: '               > Control:Bridge
+		'$ID/KBSCE Palette Menus: Glyph: '                         > Glyph
+		'$ID/KBSCE Palette Menus: Gradient: '                      > Gradient
+		'$ID/KBSCE Palette Menus: Hyperlinks: '                    > Hyperlinks
+		'$ID/KBSCE Palette Menus: Page Transitions: '              > Page Transitions
+		'$ID/KBSCE Palette Menus: Index: '                         > Index
+		'$ID/KBSCE Palette Menus: Info: '                          > Info
+		'$ID/KBSCE Palette Menus: Layout Window Status menu: '     > Layout Window Status
+		'$ID/KBSCE Palette Menus: Library: '                       > Library
+		'$ID/KBSCE Palette Menus: Links: '                         > Links
+		'$ID/KBSCE Palette Menus: Links: Selection: '              > Links:Selection
+		'$ID/KBSCE Palette Menus: Named Grids: '                   > Named Grids
+		'$ID/KBSCE Palette Menus: Navigator: '                     > Navigator
+		'$ID/KBSCE Palette Menus: Object Styles: '                 > Object Styles
+		'$ID/KBSCE Palette Menus: Paragraph Styles: '              > Paragraph Styles
+		'$ID/KBSCE Palette Menus: Paragraph: '                     > Paragraph
+		'$ID/KBSCE Palette Menus: Buttons: '                       > Buttons
+		'$ID/KBSCE Palette Menus: Buttons: Actions: '              > Buttons:Actions
+		'$ID/KBSCE Palette Menus: Object States: '                 > Object States
+		'$ID/KBSCE Palette Menus: Stroke: '                        > Stroke
+		'$ID/KBSCE Palette Menus: Swatches: '                      > Swatches
+		'$ID/KBSCE Palette Menus: Tab: '                           > Tab
+		'$ID/KBSCE Palette Menus: Table Styles: '                  > Table Styles
+		'$ID/KBSCE Palette Menus: Table: '                         > Table
+		'$ID/KBSCE Palette Menus: Tag: '                           > Tags
+		'$ID/KBSCE Palette Menus: Text Wrap: '                     > Text Wrap
+		'$ID/KBSCE Palette Menus: Transform: '                     > Transform
+		'$ID/KBSCE Palette Menus: Effects: '                       > Effects
+		'$ID/KBSCE Palette Menus: Trap Style: '                    > Trap Presets
+		'$ID/KBSCE Palette Menus: Layer: '                         > Layer
+		'$ID/KBSCE Palette Menus: Notes: '                         > Notes
+		'$ID/KBSCE Palette Menus: Thesaurus: '                     > Thesaurus
+		'$ID/KBSCE Palette Menus: Copyfit Info: '                  > Copyfit Info
+		'$ID/KBSCE Palette Menus: Separations Preview: '           > Separations Preview
+		'$ID/KBSCE Palette Menus: Flattener Preview: '             > Flattener Preview
+		'$ID/KBSCE Palette Menus: Assignment: '                    > Assignment
+		'$ID/KBSCE Palette Menus: Scripts: '                       > Scripts
+		'$ID/KBSCE Palette Menus: Preflight: '                     > Preflight
+		'$ID/KBSCE Palette Menus: Preflight: Buttons: '            > Preflight:Buttons
+		'$ID/KBSCE Palette Menus: Conditional Text: '              > Conditional Text
+		'$ID/KBSCE Palette Menus: Change Tracking Toolbar: '       > Track Changes Toolbar
+		'$ID/KBSCE Palette Menus: Actions: '                       > Actions
+		'$ID/KBSCE Palette Menus: Rules: '                         > Rules
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Palette Menus: Pages: '                         Panel Menus > Pages
+		'$ID/KBSCE Palette Menus: Pages: Rotate Spread: '          >> Rotate Spread View
+		'$ID/KBSCE Palette Menus: Pages: Spread Flattening: '      >> Spread Flattening
+		'$ID/KBSCE Palette Menus: Pages: Attributes: '             >> Attributes
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Tools: Magnify Tool: '                          Tools:Magnify
+		----------------------------------------------------------------------------------
+		'$ID/KBSCE Views, Navigation'                              Views, Navigation
+		'$ID/KBSCE Views, Navigation: Horizontal Ruler: '          > Horizontal Ruler
+		'$ID/KBSCE Views, Navigation: Vertical Ruler: '            > Vertical Ruler
+		----------------------------------------------------------------------------------
+		
+		[REF] The full list of standard area names can be found
+		      in the SDK file `ActionDefs.h`.
+
+
+		3 - TITLES VS. NAMES
+		________________________________________________________________________
+		
+		Both menu components (Menu|Submenu|MenuItem) and actions (MA|SMA) have a
+		`.name` and a `.title` property. According to the documentation, `title`
+		is the name “for display in the user interface. (It) includes any ampersand
+		characters (&), which are used to tell the Windows OS to underline the
+		following character in the name for use with the Alt key to navigate to a
+		menu item. Double ampersands are used to display an actual ampersand character
+		in the name. The Mac OS ignores and removes the extra ampersand characters.”
+		
+		[REM] The `name` and `title` properties of any menu component (incl.
+		custom Submenu or MenuItem instances) are read-only. Submenu titles
+		are determined at creation time -- ...submenus.add(myTitle) -- while
+		`MenuItem` titles are inherited from the associated action. In case of
+		a `ScriptMenuAction`, you can dynamically change the `title` (or the name?);
+		it will be reflected as the caption (i.e, title) of the menu item.
+		
+		When a script browses a collection through the `...itemByName()` method,
+		the incoming argument can be ither the `name` or the `title` property.
+		In some InDesign versions or locales, `title` appeared to be safer for
+		certain elements, e.g:
+
+		       var title = "$ID/&New Window";
+		       var name = "$ID/New Window";
+		       app.menuActions.itemByName(title).isValid; // OK
+		       app.menuActions.itemByName(name).isValid;  // KO in Win/CS4/RU
+
+		In many cases the locale-independent keystring has two forms for addres-
+		sing as well the name and the title, e.g "$ID/Revert" and "$ID/&Revert".
+		
+		When multiple strings are returned from `app.findKeyStrings(localStr)`, there
+		is no systematic way of determining which keystring will work in *any* version
+		and environment. Here is an example: the name of the Panel Options menu item
+		is "Panel Options..." in EN versions. Four independent-locale keys match
+		that EN string:
+		
+		       $ID/Palette Options...
+		       $ID/$$$/Menu/AppearancePanelPrefs
+		       $ID/$$$/Menu/MSOPanel/Options
+		       $ID/#LinksUIEditColumnsMenu
+		
+		There are good reasons to suppose that "$ID/Palette Options..." is the safest
+		key, and indeed it should work in all contexts. In a EN-localized version
+		all these four keystrings will of course translate into "Panel Options...",
+		so we could as well send the key "$ID/$$$/Menu/MSOPanel/Options" for accessing
+		the component:
+		
+		       var m = app.menus.everyItem().menuItems
+		              .itemByName("$ID/$$$/Menu/MSOPanel/Options"); // invalid in RU
+		
+		While `m` is valid in EN, it fails in RU because it does not translate into a
+		RU string that matches the RU string obtained from "$ID/Palette Options..."
+		Hence, make sure you always use the most relevant keystring relative to the
+		target(s),
+
+		       var m = app.menus.everyItem().menuItems
+		              .itemByName("$ID/Palette Options...");       // valid in RU
+
+		[REM] In the above example, note that the returned `MenuItem` is a PLURAL
+		specifier, since the "Panel Options..." item is available within several
+		top-level menus!
+		
+		When you create your own `ScriptMenuAction` for a custom `MenuItem`, a good
+		practice is to set both the `name` and the `title` property to the same
+		(localized) value, then to assign the `label` property with a UID string
+		that will help identify the action with certainty:
+		
+		       // Create the menu action.
+		       var mySMA = app.scriptMenuAction.add(myTitle);
+		       
+		       // Normalize properties.
+		       mySMA.properties = { name:myTile, title:myTitle, area:myArea, label:myUID };
+
+		       // Attach event listener(s) (onInvoke, beforeDisplay, etc)
+		       mySMA.addEventListener(...);
+		       
+		       // Create and connect a menuitem
+		       app.menus[0].submenus[...].menuItems.add(mySMA, ...)
+
+		The new MenuItem will then receive the ScriptMenuAction `name` and `title`,
+		which are read-only properties from the MenuItem standpoint.
+
+	*/
+
+	//==========================================================================
+	// MenuItem and ScriptMenuAction Manager.
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		ALLT: function(/*ScriptMenuActions|MenuItems*/host,/*str*/anyTitle,  s,t,a)
+		//----------------------------------
+		// (All-Items-by-Title.) Given a title in the form 'xyz' or 'xyz...',
+		// get *all* valid `host` items whose name matches either 'xyz' or 'xyz...'
+		// Important: this function invokes `getElements()`.
+		// ---
+		// this :: ~
+		// => (ScriptMenuAction|MenuItem)[]  [OK]  |  empty array [KO]
+		{
+			if( !host.length ) return [];
+
+			s = '...'==anyTitle.slice(-3) ? anyTitle.slice(0,-3) : anyTitle;
+
+			// Get all items related to `s` or `s...`
+			// ---
+			t = host.itemByName(s);
+			a = t.isValid ? t.getElements() : [];
+			// ---
+			t = host.itemByName(s+'...');
+			t.isValid && a.push.apply(a,t.getElements());
+			
+			return a;
+		},
+		
+		SMAC: function(/*{title,name,area,label}*/pp,/*File|function*/evHandler,/*str[]*/evTypes,  MA,a,r,t,i)
+		//----------------------------------
+		// (Get/Set-Script-Menu-Action.) Safe menu action getter/setter--called by µ.setAction.
+		// Create the desired menu action if necessary, and attach all required `evTypes`
+		// to `evHandler` (File or function.) If supplied, the string `evTypes` must be a
+		// non-empty sequence in 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke' (case matters!)
+		// This routine checks whether existing action(s) with similar title *AND the same label*
+		// may be already available. In such case, possible duplicates are removed and a single
+		// ScriptMenuAction is returned.
+		// ---
+		// this :: ~
+		// => ScriptMenuAction
+		{
+			MA = app.scriptMenuActions;
+
+			// Get all menu actions related to pp.title (with or without ellipsis.)
+			// ---
+			a = this.ALLT(MA,pp.title);
+
+			// Remove any undesired duplicate.
+			// ---
+			for( r=false ; t=a.pop() ; )
+			{
+				// t :: ScriptMenuAction
+				// ---
+				if( false===r && t.properties.label===pp.label )
+				{
+					r = t;
+					continue;
+				}
+				
+				// Remove dup.
+				// ---
+				if( t.eventListeners.length )
+				{
+					t.eventListeners.everyItem().remove();
+				}
+				t.remove();
+			}
+			
+			// Need to create the menuaction?
+			// ---
+			false===r && (r=MA.add(pp.title));
+			
+			// Always assign valid properties.
+			// ---
+			r.properties = pp;
+			
+			// Re-attach event listeners if necessary.
+			// ---
+			i = (t=r.eventListeners).length;
+			if( (evTypes.length != i) || !callee.MATCH(t,evHandler) )
+			{
+				if( i ){ t.everyItem().remove() }
+				for( i=-1 ; ++i < evTypes.length ; r.addEventListener(evTypes[i], evHandler) );
+			}
+			
+			return r;
+		}
+		.setup
+		({
+			MATCH: function(/*EventListeners*/evls,/*File|function*/h,  t)
+			//----------------------------------
+			// Check whether the 1st event handler in `evls` matches h.
+			// [REM] Deals with function or File instances.
+			// => true [OK]  |  false [KO]
+			{
+				t = (t=evls[0]).isValid && (t.handler||false);
+				return t && ( 'function' == typeof h ? t===h : t.absoluteURI===h.absoluteURI );
+			},
+		}),
+		
+		MITM: function(/*ScriptMenuAction*/smac,/*MenuItem|Submenu*/ref,/*LocationOptionsEnum*/LO,  MI,a,t,r)
+		//----------------------------------
+		// (Set/Check-MenuItem.) Given a valid menu component `ref` and a menu action `smac`,
+		// safely check/set a menuitem, pointing to `smac`, located at `LO` relative to `ref`.
+		// This routine determines whether existing MenuItem(s) with similar title may *already* target
+		// that action. In such case, possible duplicates are removed and a single MenuItem is returned.
+		// Called by µ.setAction
+		// ---
+		// this :: ~
+		// => MenuItem
+		{
+			// Sibling menu items.
+			// ---
+			MI = ref.parent.menuItems;
+			
+			// Get all menu items related to that title (with or without ellipsis.)
+			// ---
+			a = this.ALLT(MI, smac.properties.title);
+			
+			// Remove any undesired duplicate.
+			// ---
+			for( r=false ; t=a.pop() ; t.associatedMenuAction===smac && (r ? t.remove() : (r=t)) );
+
+			// Need to create the menu item?
+			// ---
+			return r || MI.add(smac, LO, ref);
+		},
+	})
+
+	//==========================================================================
+	// Generic Menu Component Accessor
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		INDX: function(/*Menus|Submenus|MenuItems*/M,/*keystr*/ks,/*bool=0*/GET_INDEX,  locName,seq,i)
+		//----------------------------------
+		// Identify an element by index, based on its locale-independent key.
+		// This method solves CS4/CS5/CS6 bugs that caused itemByName to fail
+		// in some InDesign locales (e.g RU.) The component is identified by
+		// index instead. Important: if the result is not FALSE, the returned
+		// index `i` guarantees that `M[i]` is valid although its associated
+		// `.getElements()[0]` is still invalid due to the bug. The underlying
+		// specifier must then keep the form `.../(menu|submenu|menu-item)[i]`
+		// ---
+		// M  :: Non-empty collection of Menus, Submenus or MenuItems.
+		// ks :: Locale-independent key string to be found.
+		// ---
+		// => Menu|Submenu|MenuItem [OK-DOM] | uint [OK-INDEX]  |  false [KO]
+		{
+			locName = app.translateKeyString(ks)||'';
+			if( !locName.length ) return false;             // No locale match of ks.
+
+			// Localized sequence of names :: <X1><name1><X1><name2><X1>...<X1>
+			// ---
+			seq = '\x01' + M.everyItem().name.join('\x01') + '\x01';
+
+			// Does `<X1>locName<X1>` appear in `seq`?
+			// ---
+			i = seq.indexOf('\x01'+locName+'\x01');
+			if( -1 == i ) return false;                     // locName not found.
+			
+			// Calculate the actual index in M.
+			// ---
+			i && (i=seq.slice(0,i).replace(callee.REX1,'').length);
+			return M[i].isValid && ( GET_INDEX ? i : M[i] );
+		}
+		.setup
+		({
+			REX1: /[^\u0001]+/g,
+		}),
+
+		GETM: function(/*Menus|Submenus|MenuItems*/M,/*''|keystr|uint|-1*/ks,  m)
+		//----------------------------------
+		// (Get-Menu-Component.) Return the `ks` item in the collection M, if valid.
+		// - If `ks` is the empty string, returns M.everyItem() if valid.
+		// - If `ks` is an index (uint|-1), returns `M[ks]` if valid.
+		// - If `ks` is a key string (str), returns `M.itemByName(ks)` if valid.
+		// M.everyItem()
+		// => Menu|Submenu|MenuItem [OK-VALID]  |  false [KO]
+		{
+			if( !M.length ) return false;
+			if( ''===ks ) return M.everyItem();
+			m = 'number'==typeof ks ? M[0|ks] : M.itemByName(String(ks));
+			return m.isValid ? m :
+				( callee.TRY_INDX && 'string'==typeof ks && callee.µ['~'].INDX(M,ks) );
+		}
+		.setup
+		({
+			TRY_INDX: !!$$.inCS,
+		}),
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		get: function get_A_b_$Menu$$Submenu$$MenuItem$$false$(/*(str|int)[]*/keys,/*?bool*/WANT_MENUITEM,/*bool=0*/ALLOW_PLURAL_RESULT,  I,M,iMax,i,k,m)
+		// -------------------------------------
+		// Browse the path specified by `keys` and return the corresponding
+		// menu component (Menu|Submenu|MenuItem) if valid. Each elem in the
+		// `keys` array must be either the empty string, a locale-independent
+		// key string or an index (uint|-1). The empty string goes one level
+		// deeper in the collection of menus or submenus, so you can reach a
+		// sublevel without explicitly providing all parent node(s), as in
+		//     µ.get( [0, '', '$ID/CCase Cmd'] )   => Change Case Submenu
+		// Otherwise, each supplied key string or index is used to target a
+		// specific subcomponent. Submenus are explored until the last key is
+		// reached. Then,
+		// - if WANT_MENUITEM is truthy, the final object is searched in the
+		//   `menuItems` collection from the current level;
+		// - if WANT_MENUITEM is falsy (excl. undefined), the final object is
+		//   searched in the `submenus` collection from the current level;
+		// - if WANT_MENUITEM is undefined (default), both submenus and
+		//   menuItems are considered--in that order--and the first valid
+		//   component is returned.
+		// FALSE is returned if an invalid object is encountered at some point.
+		// The result is guaranteed to specify a SINGULAR specifier unless
+		// ALLOW_PLURAL_RESULT is truthy. Thus, by default a singular DOM object
+		// is returned. In particular, if the last `keys` elem is empty, leading
+		// to an `...everyItem()` form, the first element is returned via
+		// `...getElements()[0]`. If this is not what you expect, set the
+		// ALLOW_PLURAL_RESULT flag to keep full control over the result.
+		// [REM] The methods `µ.getSubmenu()` and `µ.getMenuItem()` both invoke
+		// the present routine by setting accordingly the WANT_MENUITEM argument.
+		// In principle it is faster to process explicit requests based on
+		// non-empty keys and targetting a specific type (MenuItem vs. Submenu.)
+		// ---
+		// => valid Menu|Submenu|MenuItem [OK]  |  false [KO]
+		{
+			( keys && keys instanceof Array && keys.length )
+			|| error(__("%1 > Invalid `keys` argument (%2). Should be a non-empty array of key strings.",callee.µ,keys),callee);
+
+			I = callee.µ['~'];
+
+			// Get the parent.
+			// ---
+			for
+			(
+				M=(m=app).menus, iMax=keys.length-1, i=-1 ;
+				++i < iMax && (m=I.GETM(M,keys[i])) ;
+				M = m.submenus
+			);
+
+			if( false===m ) return false;
+			
+			k = keys[i];
+			
+			m = WANT_MENUITEM
+			? I.GETM(m.menuItems,k) :
+			( I.GETM(M,k) || 'undefined' != typeof WANT_MENUITEM || I.GETM(m.menuItems,k) );
+			
+			ALLOW_PLURAL_RESULT
+			|| ( m && (m.name) instanceof Array && (m=m.getElements()[0]) );
+
+			return m;
+		},
+
+		getMenu: function getMenu_A_$Submenu$$Menu$(/*str[]*/keys,/*bool=0*/ALLOW_PLURAL_RESULT)
+		// -------------------------------------
+		// Browse the path specified by `keys` and return the corresponding
+		// Menu/Submenu, if valid. (See the `get` method for more detail.)
+		// E.g  µ.getSubmenu( ['$ID/Main','','$ID/CCase Cmd'] )  => Submenu (OK)
+		//      µ.getSubmenu( ['$ID/RtMouseDefault'] )           => Menu (OK)
+		//      µ.getSubmenu( [0, '$ID/abcd', 123] )             => FALSE   (KO)
+		// ---
+		// => valid Menu|Submenu [OK]  |  false [KO]
+		{
+			return callee.µ.get(keys,fals,ALLOW_PLURAL_RESULTe);
+		},
+
+		getMenuItem: function getMenuItem_A_$MenuItem$(/*(str|int)[]*/keys,/*bool=0*/ALLOW_PLURAL_RESULT)
+		// -------------------------------------
+		// Browse the path specified by `keys` and return the corresponding
+		// MenuItem, if valid. (See the `get` method for more detail.)
+		// E.g:
+		//  µ.getMenuItem( [0,'','$ID/EditMenu_FindChange'] ) => MenuItem (OK)
+		// ---
+		// => valid MenuItem [OK]  |  false [KO]
+		{
+			return callee.µ.get(keys,true,ALLOW_PLURAL_RESULT);
+		},
+		
+
+		setAction: function setAction_S_a_o_S$false$(/*str*/nameTitle,/*?{ref,pos}[]*/menuRefs,/*?{}*/options,  $$,I,a,re,refs,i,t,pp,o,s,evHandler,evTypes,smac)
+		//----------------------------------
+		// Set and/or get a fully functional ScriptMenuAction specifier, associated to one or several
+		// MenuItem(s) that can be created on-the-fly. A quick check is performed if `menuRefs` is not
+		// supplied. Otherwise, a full check is processed based on `menuRefs` and `options`. The action
+		// and/or its custom menu item(s) are built only if necessary.
+		// `menuRefs`  obj[]          Non-empty array of objects used as reference. Each elem must have
+		//                            the form { ref:Submenu|MenuItem, ?pos:'before'|'after' }
+		//                            where the default `pos` is 'after'.
+		// `options` ::
+		//  .label    str=auto        Action label, if any. Default: `nameTitle`
+		//  .area     ?str            Action area, if any. Default: undefined.
+		//  .handler  fct|File=auto   Event handler. Default: `File($$.Env.runningScript)`
+		//  .events   str=auto        Non-empty sequence in 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke'
+		//                            Default is 'onInvoke'.
+		// Returns the menu action specifier (str) unless something went wrong. FALSE is returned only
+		// if a the 'quick check' fails. If `menuRefs` is supplied, the contract is to return a valid
+		// specifier unless a critical error is encountered, and thrown.
+		// [REM] Call this method to safely install or recover a ScriptMenuAction managed from a *unique
+		// event handler* (persistent function or File), even if multiple event types are addressed (e.g
+		// 'beforeDisplay' and 'onInvoke') and/or if multiple menu items have to be installed.
+		// ---
+		// Example:
+		//     µ.setAction
+		//     ( __("Camel Case"),
+		//       [ {ref:$$.Dom.Menu.getMenuItem([0,'','$ID/CCase Cmd', 3]), pos:'after'} ],
+		//       { area:$$.toLocaleStr('$ID/KBSCE Type menu'), events:'beforeDisplay_onInvoke' }
+		//     );
+		// See the detailed code in ./tests/MenuCamelCase.jsx
+		// ---
+		// => str [ScriptMenuActionSpec]  |  false [KO]  |  ERROR
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			( 'string'==typeof nameTitle && nameTitle.length )
+			|| error( __("%1 > Invalid `nameTitle` arg (%2). Should be a non-empty string.",callee.µ,nameTitle), callee );
+
+			if( menuRefs !== Object(menuRefs) )
+			{
+				a = I.ALLT(app.scriptMenuActions, nameTitle);
+				return a.length ? a[0].toSpecifier() : false;
+			}
+			
+			// In case menuRefs would be supplied as a single menu component, without `pos` info.
+			// ---
+			(menuRefs instanceof Array) || (menuRefs=[menuRefs]);
+			
+			// Checks and sanitizes menuRefs elements -> refs.
+			// ---
+			const DF_POS = callee.LOCS['after'];
+			for( re=callee.RE_REF_CTOR, refs=[], i=-1 ; ++i < menuRefs.length ; )
+			{
+				if( !(o=menuRefs[i]) ) continue;
+				if( o !== Object(o) )
+				{
+					try{ t=resolve(''+o) } catch(_){ t=0 }
+					o = 0;
+				}
+				else
+				{
+					t = o.hasOwnProperty('ref') ? (o.ref||0) : o;
+				}
+				t && re.test(t.constructor.name) && t.isValid &&
+				(
+					s = String((o.hasOwnProperty('pos')&&o.pos)||'').toLowerCase(),
+					refs[refs.length]={ ref:t, pos:callee.LOCS[s]||DF_POS }
+				);
+			}
+			refs.length == menuRefs.length
+			|| $$.warn("%1 > Some menu references have been ignored from %2.",callee.µ,$$.JSON(menuRefs));
+
+			// Properties.
+			// ---
+			options===Object(options) || (options={});
+			pp = { title:nameTitle, name:nameTitle, label:nameTitle };
+			'string' == typeof(t=options.label) && t.length && (pp.label=t);
+			'string' == typeof(t=options.area)  && t.length && (pp.area=t);
+
+			// Other options: handler, events.
+			// ---
+			(evHandler=options.handler) || (evHandler=$$.Env.runningScript);
+			( 'function' == typeof evHandler )
+			|| (evHandler=File(evHandler)).exists
+			|| error( __("%1 > Invalid event handler (%2). Should be a function or an existing script file.",callee.µ,evHandler), callee );
+
+			evTypes = String(options.events||'onInvoke').split(callee.RE_EV_SEP);
+			for
+			(
+				o=callee.EV_TYPES, s='', i=evTypes.length ;
+				i-- ;
+				o.hasOwnProperty(t=evTypes[i].toLowerCase()) && -1==s.indexOf(t=o[t]) ? (evTypes[i]=t, s+='_'+t) : evTypes.splice(i,1)
+			);
+			evTypes.length
+			|| error( __("%1 > Invalid `options.events` string (%2). Should be a subsequence of 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke'.",callee.µ,options.events), callee );
+
+			// Get/set the ScriptMenuAction.
+			// ---
+			smac = I.SMAC(pp, evHandler, evTypes);
+			
+			// Check/set the related MenuItems.
+			// ---
+			for( i=-1 ; ++i < refs.length ; I.MITM(smac, refs[i].ref, refs[i].pos) );
+
+			return smac.toSpecifier();
+		}
+		.setup
+		({
+			RE_REF_CTOR: /^(?:Submenu|MenuItem)$/,
+			RE_EV_SEP:   /_/g,
+			EV_TYPES:
+			{
+				// lowercase  -> correctType
+				// ---
+				afterinvoke:   'afterInvoke',
+				beforedisplay: 'beforeDisplay',
+				beforeinvoke:  'beforeInvoke',
+				oninvoke:      'onInvoke',
+			},
+			LOCS:
+			{
+				before:        +LocationOptions.BEFORE,
+				after:         +LocationOptions.AFTER,
+			}
+		}),
+
+	})
+
