@@ -152,6 +152,20 @@ _Demonstrates:_
 
 ---
 
+##### [`MenuCamelCase.jsx`](MenuCamelCase.jsx)
+
+Full example of installing a custom “Change Case > CamelCase” menu action.
+
+![MenuCamelCase animation](MenuCamelCase.gif)
+
+_Demonstrates:_
+   
+* Using advanced **Dom.Menu** features.   
+* Dealing with engine-persistent script and processing DOM events accordingly via `$$.globalEvent()`.
+* Declaring a custom module using the `eval(__(MODULE, $$, ...))` macro-syntax.
+
+---
+
 ##### [`ParseIntFix.jsx`](ParseIntFix.jsx)
 
 Run some tests on `$.global.parseInt` once patched by IdExtenso. (More detail [here](http://indiscripts.com/post/2019/01/how-to-get-parseint-fixed-in-extendscript).)
