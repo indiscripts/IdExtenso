@@ -1,6 +1,6 @@
 ##### [210328]
 
-- [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib) added, a handy module for accessing and managing `Menu`, `Submenu`, `MenuItem` instances, as well as custom `ScriptMenuAction`. See the BACKGROUND section to get started with **Dom.Menu** features.
+- [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib) added, a handy module for accessing and managing `Menu`, `Submenu`, `MenuItem` instances, as well as custom `ScriptMenuAction`. See the BACKGROUND section to get started with **Dom.Menu** features. See also the [MenuCamelCase demo](/tests#menucamelcasejsx), which implements a custom menu action using `Dom.Menu.setAction()` and more advanced stuff.
 
 ## 2.10322
   - Stabilized version (March 22, 2021) including latest fixes, improvements, and additions.
