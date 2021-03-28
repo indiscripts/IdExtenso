@@ -142,6 +142,16 @@ Cf. [Full article and demo](http://www.indiscripts.com/post/2018/01/how-to-shuff
 
 ---
 
+##### [`MenuAccess.jsx`](MenuAccess.jsx)
+
+Accessing existing menu components (menus, submenus, or menuitems.)
+
+_Demonstrates:_
+   
+* Testing the **Dom.Menu.get()** routine on various paths like `[ 0, '', '$ID/EditMenu_FindChange' ]`, `[ '$ID/Main', 0, '$ID/Open...' ]`, etc.
+
+---
+
 ##### [`ParseIntFix.jsx`](ParseIntFix.jsx)
 
 Run some tests on `$.global.parseInt` once patched by IdExtenso. (More detail [here](http://indiscripts.com/post/2019/01/how-to-get-parseint-fixed-in-extendscript).)
