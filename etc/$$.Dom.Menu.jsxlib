@@ -702,7 +702,7 @@
 		// ---
 		// => valid Menu|Submenu [OK]  |  false [KO]
 		{
-			return callee.µ.get(keys,fals,ALLOW_PLURAL_RESULTe);
+			return callee.µ.get(keys,false,ALLOW_PLURAL_RESULT);
 		},
 
 		getMenuItem: function getMenuItem_A_$MenuItem$(/*(str|int)[]*/keys,/*bool=0*/ALLOW_PLURAL_RESULT)
