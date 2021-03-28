@@ -19,7 +19,7 @@
 
 [PRIVATE]
 ({
-	CAML: function(  tx,a)
+	CAML: function(  tx,a,i)
 	//----------------------------------
 	// Implements the CamelCase routine.
 	{
