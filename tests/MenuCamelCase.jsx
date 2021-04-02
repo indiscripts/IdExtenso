@@ -1,5 +1,5 @@
 // =============================================================================
-// MenuCamelCase [210328]
+// MenuCamelCase [210328] [210402]
 // Simple implementation of Type > Change Case > CamelCase
 // ---
 // The targetengine directive can be commented for testing/debugging.
@@ -15,7 +15,7 @@
 
 #include '../etc/$$.Dom.Menu.jsxlib'
 
-;$$.hasOwnProperty('CamelCase') || eval(__(MODULE, $$, 'CamelCase', 210328, 'onRunning'))
+;$$.hasOwnProperty('CamelCase') || eval(__(MODULE, $$, 'CamelCase', 210402, 'onRunning'))
 
 [PRIVATE]
 ({
@@ -103,7 +103,7 @@
 		{
 			// This shouldn't happen, unless crazy event
 			// managers have been installed in parallel...
-			$$.warn(__("%1 > Invalid or foreign event target!"));
+			$$.warn(__("%1 > Invalid or foreign event target!"), µ);
 			return;
 		}
 
