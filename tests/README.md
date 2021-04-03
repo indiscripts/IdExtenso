@@ -261,6 +261,24 @@ _Demonstrates:_
 
 ---
 
+##### [`ShowEnvironment.jsx`](ShowEnvironment.jsx)
+
+Simply displays the `$$.Env.summary()` string in a box. This (minimal) test script can be executed in various locales, versions, systems and contexts to illustrate the many informations the `$$.Env` module can handle.
+
+* Example 1. The script is in JSXBIN form and executed in macOS 10.13 / InDesign CC 15.1 (dark UI) for the 4th time (`run #4`) in the 'main' engine (non-persistent). DOM version in-sync with InDesign version (15.1), user is _admin_, locale is FRENCH/fr_FR:
+
+![MacOS screenshot](ShowEnv-Mac.png)
+
+* Example 2. The script is in regular JSX form and executed in Windows 10/64 from InDesign CC 16.1 (dark UI) for the 1st time (`run #1`) in a persistent ('myScript') engine. Furthermore, it is executed as a _startup script_ now (feature available from IdExtenso 2.10403). DOM version in-sync with InDesign version (15.1), user is _Moi_, locale is ENGLISH/en_US:
+
+![Windows screenshot](ShowEnv-Win.png)
+
+_Demonstrates:_
+   
+* `$$.Env()` — alias of `$$.Env.summary()`.
+
+---
+
 ##### [`ShowHelp.jsx`](ShowHelp.jsx)
 
 Get help on core and included modules.
