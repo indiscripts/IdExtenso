@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       210322 (YYMMDD)
+		Modified:       210403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -60,11 +60,12 @@
 		G.Enumeration.prototype.toString = function toString(){ return '0' };
 		G.Enumeration.prototype.valueOf =  function valueOf(){ return 0 };
 		// ---
-		G.NothingEnum =           new G.Enumeration;
-		G.Locale =                new G.Enumeration;
-		G.UndoModes =             new G.Enumeration;
-		G.UserInteractionLevels = new G.Enumeration;
-		G.MeasurementUnits =      new G.Enumeration;
+		G.NothingEnum =              new G.Enumeration;
+		G.Locale =                   new G.Enumeration;
+		G.UndoModes =                new G.Enumeration;
+		G.UserInteractionLevels =    new G.Enumeration;
+		G.MeasurementUnits =         new G.Enumeration;
+		G.PerformanceMetricOptions = new G.Enumeration; // [ADD210403]
 
 		// ---
 
