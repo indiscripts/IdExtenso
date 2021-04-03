@@ -8,14 +8,16 @@
 		Core:           YES
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
-		                engineState() runCount() idEngine() inBinStream() scriptsPanel()
+		                engineState() runCount() idEngine() inBinStream() inStartup()
+		                scriptsPanel()
 		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
 		                uiLevel()->$$ canToolkit()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ;
-		                      app.properties.activeScriptUndoMode
+		                      app.properties.activeScriptUndoMode ;
+		                      app.performanceMetric
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       210322 (YYMMDD)
+		Modified:       210403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -122,6 +124,19 @@
 		// Whether the present code is in binary.
 		// ---
 		JXBN : µ['~'].BSTK() ? 1 : 0,                          // 1 (in jsxbin) | 0 (uncompiled)
+		
+		// [ADD210403] Whether the present script is executed as
+		// a 'startup script' *now* (i.e when loading the engine.)
+		// Since `~.STUP` is fixed at engine stage, it won't change
+		// when re-running the script within a persistent engine so
+		// the exact meaning of ~.STUP is, the present script is or
+		// has been executed at startup. Use the method `µ.inStartup()`
+		// to check whether your client script is in startup stage.
+		// => true [STARTUP-SCRIPT]  |  false [NOT-A-STARTUP-SCRIPT]
+		// ---
+		STUP : app.hasOwnProperty('performanceMetric')
+		&& 'function'==typeof app.performanceMetric
+		&& 0===app.performanceMetric(PerformanceMetricOptions.MINISAVE_COUNT),
 
 		// URI path to the 'Scripts Panel' folder (User branch.)
 		// E.g "/(...)/AppData/Roaming/Adobe/InDesign/(...)/en_GB/Scripts/Scripts%20Panel"
@@ -266,7 +281,6 @@
 		{
 			t = callee.µ['~'].ENST;
 			return AS_STRING ? callee.Q[t] : t;
-
 		}
 		.setup
 		({
@@ -277,6 +291,16 @@
 			'1' : 'persistent/first-call'
 			}
 		}),
+
+		inStartup : function inStartup_B()
+		//----------------------------------
+		// [ADD210403] Whether the current code is now being executed
+		// as a startup script, which is entirely determined by
+		// engineState() and ~.STUP.
+		// => 0 [NO]  |  1 [YES]
+		{
+			return callee.µ['~'].ENST && callee.µ['~'].STUP ? 1 : 0;
+		},
 
 		runCount: function runCount_I()
 		//----------------------------------
@@ -303,7 +327,7 @@
 		{
 			return callee.µ['~'].BSTK() ? 1 : 0;
 		},
-
+		
 		scriptsPanel : function scriptsPanel_b_b_b_S$false$(/*bool=0*/APP_BRANCH,/*bool=0*/URI_FORM,/*bool=0*/NO_CHECK,  s)
 		//----------------------------------
 		// [ADD180513] Return the full path of the `Scripts Panel` folder, without
