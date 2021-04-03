@@ -1,3 +1,6 @@
+## 2.10403
+  - Quick update (April 04, 2021) introducing the important `$$.Env.inStartup()` method. This function tells whether the code is presently running “as a startup script”, based on the value of `app.performanceMetric(PerformanceMetricOptions.MINISAVE_COUNT)` and taking into account the engine state. More details in the [`Env/script`](/core/Env/$$.script.jsxinc) snippet. As all other **Env** features, `$$.Env.inStartup()` is now part of the core and will help manage interesting tasks in relation with startup scripts (in particular the InDesign menus and menu actions subsystem.) You can now determine if your program is _now_ running as a startup script from any point of your client script: `$$.Env.inStartup()` will return `1` (yes) or `0` (no) so you can decide, for example, if it is relevant to display a modal alert, go into time-consuming code, etc.
+
 ##### [210328]
 
 - [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib) added, a handy module for accessing and managing `Menu`, `Submenu`, `MenuItem` instances, as well as custom `ScriptMenuAction`. See the BACKGROUND section to get started with **Dom.Menu** features. See also the [MenuCamelCase demo](/tests#menucamelcasejsx), which implements a custom menu action using `Dom.Menu.setAction()` and more advanced stuff.
