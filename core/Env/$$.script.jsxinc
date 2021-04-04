@@ -17,7 +17,7 @@
 		                      app.performanceMetric
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       210403 (YYMMDD)
+		Modified:       210404 (YYMMDD)
 
 *******************************************************************************/
 
@@ -395,8 +395,11 @@
 		// ---
 		// => Event [OK]  |  0 [KO]
 		{
-			if( !(ev=$.global.evt) ) return 0;
-
+			// [FIX210404] Since `ev` is a DOM object, validity check
+			// is also required before accessing any property!
+			// ---
+			if( !(ev=$.global.evt) || (!ev.isValid) ) return 0;
+			
 			// Take a stamp of that event.
 			// ---
 			s = (ev.hasOwnProperty('eventType')?ev.eventType:'noop')
