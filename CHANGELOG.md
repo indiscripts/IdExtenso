@@ -1,4 +1,4 @@
-##### [210328]
+##### [210404]
    - Quick fix of `$$.Env.globalEvent()` in [Env/script](/core/Env/$$.script.jsxinc): added an `isValid` test on the incoming event (since it's a DOM object.)
 
 ## 2.10403
