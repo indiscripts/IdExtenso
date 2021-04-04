@@ -1,3 +1,6 @@
+##### [210328]
+   - Quick fix of `$$.Env.globalEvent()` in [Env/script](/core/Env/$$.script.jsxinc): added an `isValid` test on the incoming event (since it's a DOM object.)
+
 ## 2.10403
   - Quick update (April 04, 2021) introducing the important `$$.Env.inStartup()` method. This function tells whether the code is presently running “as a startup script”, based on the value of `app.performanceMetric(PerformanceMetricOptions.MINISAVE_COUNT)` and taking into account the engine state. More details in the [`Env/script`](/core/Env/$$.script.jsxinc) snippet. As all other **Env** features, `$$.Env.inStartup()` is now part of the core and will help manage interesting tasks in relation with startup scripts (in particular the InDesign menus and menu actions subsystem.) You can now determine if your program is _now_ running as a startup script from any point of your client script: `$$.Env.inStartup()` will return `1` (yes) or `0` (no) so you can decide, for example, if it is relevant to display a modal alert, go into time-consuming code, etc.
 
@@ -14,8 +17,7 @@
   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.HDI_SCALING`, an array of two factors `[<xFactor>,<yFactor>]` that reflect how ScriptUI coordinates are sometimes affected in HiDPI displays. `ScriptUI.HDI_SCALING` should normally be `[1,1]`. In some environments (esp. Win10 with UI scaling applied) the factors can be higher, e.g `[1.5, 1.5]` in 150% UI scaling. Knowing these factors helps solve various inconsistencies altering ScriptUI coordinates.
 
 ##### [210203]
-
-- [**Web**](/etc/$$.Web.jsxlib): Fixed redirection issue, automatic `http -> https` redir is now supported. Relaxed the non-modalstate condition in InDesign >= CS5 (7.0) since it has been found that `app.doScript` can work in modal state from that ID version. Huge redesign of the [HTTP Secure (Win) snippet](/etc/Web/$$.HttpSecure.Win.jsxinc), made safer and more compact. _(Still searching how to manage timeout here…)_
+  - [**Web**](/etc/$$.Web.jsxlib): Fixed redirection issue, automatic `http -> https` redir is now supported. Relaxed the non-modalstate condition in InDesign >= CS5 (7.0) since it has been found that `app.doScript` can work in modal state from that ID version. Huge redesign of the [HTTP Secure (Win) snippet](/etc/Web/$$.HttpSecure.Win.jsxinc), made safer and more compact. _(Still searching how to manage timeout here…)_
 
 ##### [210124]
   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.callback()`, a helper that removes and/or attaches event listeners for specified event type(s).
