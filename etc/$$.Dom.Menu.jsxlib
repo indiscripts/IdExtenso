@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =get() getMenu() getMenuItem() setAction()
+		API:            =get() getMenu() getMenuItem() setAction() removeAction()
 		DOM-access:     YES
 		Todo:           is it relevant to provide a startup-script utility here?
 		Created:        210325 (YYMMDD)
-		Modified:       210328 (YYMMDD)
+		Modified:       210404 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210328, 'getMenuItem'))
+;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210404, 'get'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -458,18 +458,19 @@
 			return a;
 		},
 		
-		SMAC: function(/*{title,name,area,label}*/pp,/*File|function*/evHandler,/*str[]*/evTypes,  MA,a,r,t,i)
+		SMAC: function(/*{title,name,area,label}*/pp,/*File|function*/evHandler,/*str[]|false*/evTypes,  MA,a,r,t,i)
 		//----------------------------------
 		// (Get/Set-Script-Menu-Action.) Safe menu action getter/setter--called by µ.setAction.
 		// Create the desired menu action if necessary, and attach all required `evTypes`
-		// to `evHandler` (File or function.) If supplied, the string `evTypes` must be a
-		// non-empty sequence in 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke' (case matters!)
+		// to `evHandler` (File or function.) The array `evTypes` contains strings among
+		// 'afterInvoke', 'beforeDisplay', 'beforeInvoke', 'onInvoke' (case matters!)
 		// This routine checks whether existing action(s) with similar title *AND the same label*
 		// may be already available. In such case, possible duplicates are removed and a single
 		// ScriptMenuAction is returned.
+		// [ADD210403] If evTypes===false, kill the existing menu action(s).
 		// ---
 		// this :: ~
-		// => ScriptMenuAction
+		// => ScriptMenuAction [OK]  |  -1 [REMOVED]  |  0 [NOOP]
 		{
 			MA = app.scriptMenuActions;
 
@@ -498,6 +499,19 @@
 				t.remove();
 			}
 			
+			// [ADD210403] Remove?
+			// ---
+			if( false===evTypes )
+			{
+				if( false===r ) return 0; // noop
+				if( r.eventListeners.length )
+				{
+					r.eventListeners.everyItem().remove();
+				}
+				r.remove();
+				return -1; // removed
+			}
+
 			// Need to create the menuaction?
 			// ---
 			false===r && (r=MA.add(pp.title));
@@ -530,16 +544,17 @@
 			},
 		}),
 		
-		MITM: function(/*ScriptMenuAction*/smac,/*MenuItem|Submenu*/ref,/*LocationOptionsEnum*/LO,  MI,a,t,r)
+		MITM: function(/*ScriptMenuAction*/smac,/*MenuItem|Submenu*/ref,/*LocationOptionsEnum|false*/LO,  MI,a,t,r)
 		//----------------------------------
-		// (Set/Check-MenuItem.) Given a valid menu component `ref` and a menu action `smac`,
+		// (Set/Check-MenuItem.) Given a menu action `smac` and a valid menu component `ref`,
 		// safely check/set a menuitem, pointing to `smac`, located at `LO` relative to `ref`.
 		// This routine determines whether existing MenuItem(s) with similar title may *already* target
 		// that action. In such case, possible duplicates are removed and a single MenuItem is returned.
 		// Called by µ.setAction
+		// [ADD210403] If LO===false, kill the existing menu item(s).
 		// ---
 		// this :: ~
-		// => MenuItem
+		// => MenuItem [OK]  |  -1 [REMOVED]  |  0 [NOOP]
 		{
 			// Sibling menu items.
 			// ---
@@ -552,6 +567,15 @@
 			// Remove any undesired duplicate.
 			// ---
 			for( r=false ; t=a.pop() ; t.associatedMenuAction===smac && (r ? t.remove() : (r=t)) );
+			
+			// [ADD210403] Remove?
+			// ---
+			if( false===LO )
+			{
+				if( !r ) return 0;
+				r.remove();
+				return -1;
+			}
 
 			// Need to create the menu item?
 			// ---
@@ -724,7 +748,7 @@
 		// MenuItem(s) that can be created on-the-fly. A quick check is performed if `menuRefs` is not
 		// supplied. Otherwise, a full check is processed based on `menuRefs` and `options`. The action
 		// and/or its custom menu item(s) are built only if necessary.
-		// `menuRefs`  obj[]          Non-empty array of objects used as reference. Each elem must have
+		// `menuRefs`  obj[]          Non-empty array of objects used as references. Each elem must have
 		//                            the form { ref:Submenu|MenuItem, ?pos:'before'|'after' }
 		//                            where the default `pos` is 'after'.
 		// `options` ::
@@ -748,7 +772,7 @@
 		//     );
 		// See the detailed code in ./tests/MenuCamelCase.jsx
 		// ---
-		// => str [ScriptMenuActionSpec]  |  false [KO]  |  ERROR
+		// => str [ScriptMenuActionSpec]  |  false [KO-OR-REMOVE]  |  ERROR
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			I = callee.µ['~'];
@@ -844,5 +868,112 @@
 			}
 		}),
 
+		removeAction: function removeAction_S$ScriptMenuAction$_a_sf$File$_B(/*str|ScriptMenuAction*/titleAction,/*?{ref}[]*/menuRefs,/*fct|File|str=auto*/hint,  $$,I,smac,a,t,lbl,evh,i,EQU,re,o,j)
+		//----------------------------------
+		// [ADD210404] Remove a ScriptMenuAction and its dependencies. This method is cleaner,
+		// in principle, that `myScriptMenuAction.remove()`, since it explicitly removes the
+		// related event listeners and menuitems as initially installed by `µ.setAction()`.
+		// Also, it can target a menu action based on its title, label, etc.
+		// ---
+		// `titleAction` (str|DOM)  Title/name of the action, or ScriptMenuAction instance.
+		// `menuRefs`        obj[]  Non-empty array of objects used as references. Each elem
+		//                          must have the form { ref:Submenu|MenuItem }. If this arg
+		//                          is not supplied, the menu items pointing out to the action
+		//                          are not identified and explicitly removed.
+		// `hint`   (fct|File|str)  Either the `label` (str) of the target action, or the event
+		//                          handler (fct|File) used while adding event listeners. If not
+		//                          supplied, this argument is set to File($$.Env.runningScript)
+		// ---
+		// => 1 [OK-REMOVED]  |  0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			
+			// Determine a set of relevant targets.
+			// a :: ScriptMenuAction[] ; length > 0
+			// ---
+			smac = 'ScriptMenuAction'==(titleAction||0).constructor.name && titleAction;
+			if( !smac )
+			{
+				( 'string'==typeof titleAction && titleAction.length )
+				|| error( __("%1 > Invalid `titleAction` arg (%2). Should be a ScriptMenuAction or a non-empty string.",callee.µ,titleAction), callee );
+
+				a = I.ALLT(app.scriptMenuActions, titleAction);
+				if( !a.length ) return 0;
+			}
+			else
+			{
+				if( !smac.isValid )
+				{
+					$$.warn("%1 > Invalid ScriptMenuAction: %2.", callee.µ, smac.toSpecifier());
+					return 0;
+				}
+				a = smac.getElement();
+			}
+
+			// Filter smacs based on hint.
+			// ---
+			hint || (hint=File($$.Env.runningScript));
+			'string' == typeof hint && (t=File(hint)).exists && (hint=t);
+			if( 'function' == typeof(t=hint) || (t=(hint instanceof File)) )
+			{
+				true===t
+				? ( EQU=callee.EQ_FILE, t=hint.absoluteURI )
+				: ( EQU=callee.EQ_FCT );
+				for( i=a.length ; i-- ; EQU(a[i],t) || a.splice(i,1) );
+			}
+			else
+			{
+				t = String(hint);
+				for( i=a.length ; i-- ; t===a[i].properties.label || a.splice(i,1) );
+			}
+			if( !a.length ) return 0;
+
+			// Remove connected MenuItem(s) first.
+			// ---
+			if( menuRefs )
+			{
+				(menuRefs instanceof Array) || (menuRefs=[menuRefs]); // as in µ.setAction()
+				for( re=callee.µ.setAction.RE_REF_CTOR, i=menuRefs.length ; i-- ; )
+				{
+					if( !(o=menuRefs[i]) ) continue;
+					if( o !== Object(o) )
+					{
+						try{ t=resolve(''+o) } catch(_){ t=0 }
+						o = 0;
+					}
+					else
+					{
+						t = o.hasOwnProperty('ref') ? (o.ref||0) : o;
+					}
+					if( (!t) || (!re.test(t.constructor.name)) || !t.isValid ) continue;
+					
+					for( j=a.length ; j-- ; I.MITM(a[j],t,false) ); // false <-> remove menuitems
+				}
+			}
+
+			// Finally, remove the action (and possible dups.).
+			// ---
+			while( smac=a.pop() )
+			{
+				if( (t=smac.eventListeners).length ) t.everyItem().remove();
+				smac.remove();
+			}
+
+			return 1;
+		}
+		.setup
+		({
+			EQ_FILE: function(/*SMA*/smac,/*uri*/s,  t)
+			//----------------------------------
+			{
+				return (t=smac.eventListeners).length && s===(t[0].properties.handler||0).absoluteURI;
+			},
+			EQ_FCT:  function(/*SMA*/smac,/*fct*/f,  t)
+			//----------------------------------
+			{
+				return (t=smac.eventListeners).length && f===t[0].properties.handler;
+			},
+		}),
 	})
 
