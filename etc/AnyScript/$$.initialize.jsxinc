@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Shared part of BasicScript and ModalScript modules.
-		API:            ~.DECL()
+		API:            ~.DECL() ~.YALT ~.EXTN
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190331 (YYMMDD)
-		Modified:       200112 (YYMMDD)
+		Modified:       210405 (YYMMDD)
 
 *******************************************************************************/
 
@@ -115,5 +115,13 @@
 			TYPE:   '',
 			HEAD:   '',
 		}),
+		
+		// [ADD210405] This private key can be set to a function
+		// while 'extending' the corresponding Script module.
+		// ~.EXTN will then receive the `runMode` arg.
+		// It is called before Context activation and can return
+		// false to forcibly quit the script.
+		// ---
+		EXTN: false,
 
 	})
