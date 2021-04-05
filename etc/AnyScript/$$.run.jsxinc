@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190331 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       210405 (YYMMDD)
 
 *******************************************************************************/
 
@@ -19,9 +19,12 @@
 
 	({
 
-		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r)
+		run: function run_ï_(/*int=0*/runMode,  µ,$$,I,r,xtStop)
 		//----------------------------------
 		// Actual entry point of the script.
+		// [ADD210405] Takes care of the private member ~.EXTN,
+		// which can interrupt the script before µ.Context._GO_
+		// This mechanism is used in extended Script modules.
 		{
 			µ = callee.µ;                   // the present module
 			$$ = $.global[µ.__root__];      // agnostic reference
@@ -30,24 +33,39 @@
 			runMode || (runMode=0);
 
 			$$.load(runMode);
-			
+
 			// [ADD190331] Allow to forcibly reset Settings.
 			// ---
 			-2==runMode && callee.RESET($$);
 
 			r = void 0;
+			xtStop = 0;
 			try
 			{
 				$$.idVersion(I.DECL.IDRQ)
 				|| $$.error( __("Unsupported InDesign version. Should be at least %1.",I.DECL.IDRQ) );
-
-				// Go to the context (activate settings.)
+				
+				// [ADD210324] Manages extensibility -> xtStop :: 0|1
 				// ---
-				$$.trace(__("%1 > Starting up the Context in runMode %2...",µ,runMode));
-				r = µ.Context['~']._GO_(runMode);
-				$$.trace(__("%1 > Returned value: <%2>.",µ,r));
+				'function' != typeof I.EXTN ||
+				(
+					$$.trace(__("%1 > Entering extension in runMode %2...",µ,runMode)),
+					r = I.EXTN(runMode),
+					xtStop = +(false===r),
+					$$.trace(__("%1 > Returned value: <%2> -> %3.",µ,r,xtStop?'STOP':'CONTINUE'))
+				);
 
-				// Go to the UI.
+				// Go to the context (activate settings) unless r is strictly false.
+				// [CHG210405] Added the condition.
+				// ---
+				false===r ||
+				(
+					$$.trace(__("%1 > Starting up the Context in runMode %2...",µ,runMode)),
+					r = µ.Context['~']._GO_(runMode),
+					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
+				);
+
+				// Go to the UI unless r is a strict boolean.
 				// ---
 				false===r || (true===r&&(r=1)) ||
 				(
@@ -56,7 +74,7 @@
 					$$.trace(__("%1 > Returned value: <%2>.",µ,r))
 				);
 
-				// Go to the Server.
+				// Go to the Server unless r is a strict boolean.
 				// ---
 				false===r || (true===r&&(r=1)) ||
 				(
@@ -66,15 +84,19 @@
 				);
 
 				// Quit the context (backup if non-FALSE.)
+				// [CHG210405] Takes xtStop into account.
 				// ---
-				$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r));
-				r = µ.Context['~']._QT_(false!==r,runMode);
+				xtStop ? (r = void 0) :
+				(
+					$$.trace(__("%1 > Quitting the Context (backup=%2)...",µ,false!==r)),
+					r = µ.Context['~']._QT_(false!==r,runMode)
+				);
 			}
 			catch(e)
 			{
 				// [CHG180605]
 				// ---
-				if( $$.yesNo(__("An error occured: %1. Do you want to forcibly reset script preferences?",e)) )
+				if( $$.yesNo(__("An error occured: [%1]. Do you want to forcibly reset script preferences?",e)) )
 				{
 					callee.RESET($$);
 					alert(__("Preferences have been reset to defaults. You may consider to run the script again."));
