@@ -1,3 +1,6 @@
+##### [210405]
+   - Added a preliminary step in [AnyScript/run](/etc/AnyScript/$$.run.jsxinc) that checks whether the private member `~.EXTN` is defined and functional. In such case, `~.EXTN(runMode)` is called and if the returned value is `false` the whole script execution is stopped. This block is processed _before_ the regular Context/UI/Server cycle (settings are not _activated_ at that point.) The general purpose of this preliminary step is to bring extensibility to the _AnyScript_ template (on which **BasicScript** and **ModalScript** are based.) A typical use of `~.EXTN` would be to provide menu and/or startup-script installation mechanisms, entirely decoupled from the Context/UI/Server scheme, while offering dedicated event handlers (_hooks_) like `onStartup`, `beforeDisplay`, etc. This will be done in extended modules (coming soon.)
+
 ##### [210404]
    - Quick fix of `$$.Env.globalEvent()` in [Env/script](/core/Env/$$.script.jsxinc): added an `isValid` test on the incoming event (since it's a DOM object.)
 
