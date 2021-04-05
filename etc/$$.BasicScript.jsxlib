@@ -9,10 +9,11 @@
 		Kind:           Module.
 		API:            =run() init() changeLocaleTo()
 		                onEngine() onLoad() onUnload()
+		                Context() UserInterface() Server()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       190331 (YYMMDD)
+		Modified:       210405 (YYMMDD)
 
 *******************************************************************************/
 
@@ -21,7 +22,7 @@
 #include '$$.Dom.Dialog.jsxlib'
 
 ;if( $$.ModalScript ){ alert(__("%1 cannot work with the %2 module.",'BasicScript','ModalScript')); exit(); }
-;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 190331, 'run'))
+;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 210405, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -266,10 +267,10 @@
 	// SUBMODULES
 	//==========================================================================
 
-;$$.BasicScript.hasOwnProperty('Context') || eval(__(MODULE, $$.BasicScript.toSource(), 'Context', 190331))
+;$$.BasicScript.hasOwnProperty('Context') || eval(__(MODULE, $$.BasicScript.toSource(), 'Context', 210405))
 	#include 'AnyScript/$$.context.jsxinc'
 
 	#include 'BasicScript/$$.UserInterface.jsxlib'
 
-;$$.BasicScript.hasOwnProperty('Server') || eval(__(MODULE, $$.BasicScript.toSource(), 'Server', 190331))
+;$$.BasicScript.hasOwnProperty('Server') || eval(__(MODULE, $$.BasicScript.toSource(), 'Server', 210405))
 	#include 'AnyScript/$$.server.jsxinc'
