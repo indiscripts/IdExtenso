@@ -10,17 +10,17 @@
 		API:            =toFile() readBinary() writeBinary()
 		                readUTF8() writeUTF8() appendUTF8()
 		                readUTF16() writeUTF16() appendUTF16()
-		                batchToString()
+		                batchToString() startupAlias()
 		                macLineFeed() winLineFeed() unixLineFeed()
 		                temp() stamp()
 		DOM-access:     NO
 		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       180307 (YYMMDD)
+		Modified:       210407 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 180307, 'toFile'))
+;eval(__(MODULE, $$, 'File', 210407, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -559,6 +559,145 @@
 		{
 			return false;
 		},
+
+		startupAlias: function startupAlias_s$File$_s_sb_b_I(/*File|str=auto*/target,/*str=auto*/aliasName,/*str|false=auto*/checkName,/*bool=0*/REMOVE,  $$,ff,fd,lnk,t,s1,s2,a,tt)
+		//----------------------------------
+		// [ADD210407] Check/create (or remove) an alias of the `target` file in the [startup scripts]
+		// folder (user branch.) Returns 1 if the alias has just been successfully created,
+		// -1 if it already existed, -2 if the target belongs to the startup folder, 0 otherwise.
+		// [REM] No alias is neither created nor removed if `target` itself belongs
+		// to the [startup scripts] folder. In such situation the function returns -2
+		// and the client code should then decide whether `target` has to be moved.
+		// ---
+		// target     :: File or full pathname referring to the target script.
+		//               By default, `$$.Env.runningScript`
+		// aliasName  :: Name of the alias file without suffix. By default,
+		//               use `target` name.
+		// checkName  :: String used for searching similar existing files/aliases,
+		//               usually the lowercase form of the script name. Set this
+		//               argument to FALSE to prevent the function from investigating
+		//               similar files. `checkName` is used for cleaning up remaining
+		//               aliases from previous installations of the script, as it is
+		//               critical to keep one *single* link in the [startup scripts]
+		//               folder. `checkName` then provides a significant, case-insen-
+		//               sitive substring, like "mygreatscript", which can reveal
+		//               matches like "MyGreatScript-1.3" or "MyGreatScript_BETA".
+		//               The function only removes *startup aliases* whose filename
+		//               or target filename matches `checkName`. WARNING: do not
+		//               supply short/common strings like "script" or "do" that would
+		//               likely match foreign filenames.
+		// REMOVE     :: If truthy, remove the alias and return 0.
+		// ---
+		// => 1 [OK]  |  -1 [EXISTS-ALREADY]  |  0 [KO-OR-REMOVED]  |  -2 [TARGET-IN-STARTUP]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			// Target script file, e.g "my/path/to/MyGreatScript.jsx"
+			// ---
+			ff = new File(target||$$.Env.runningScript);
+			if( !ff.exists ) return 0;
+
+			// [REM] The supplied `aliasName` shouldn't contain the suffix
+			// but we append it here. By default, use ff.name --e.g "MyGreatScript.jsx"
+			// ---
+			if( 'string' == typeof aliasName && aliasName.length )
+			{
+				t = ff.name.match(callee.RE_SUFX);
+				t = t ? t[0] : '.jsx';
+				aliasName.slice(-t.length) != t && (aliasName+=t);
+			}
+			else
+			{
+				aliasName = ff.name;
+			}
+
+			// Get/create the startup script folder in the user branch.
+			// In REMOVE case simply returns 0 if the folder doesn't exist.
+			// ---
+			if( !(fd=Folder($$.Env.usrScriptsPath)).exists ) return 0;
+			if( !(fd=Folder(fd+'/startup scripts')).exists && (REMOVE||!fd.create()) ) return 0;
+
+			// Make sure ff is not itself in fd!
+			// ---
+			if( ff.parent.absoluteURI == fd.absoluteURI )
+			{
+				$$.warn(__("%1 > The target %2 belongs to the [startup scripts] folder. The alias cannot be processed.",callee.µ,ff.displayName));
+				return -2;
+			}
+
+			// Does the link already exists?
+			// ---
+			lnk = new File(fd+'/'+aliasName);
+			if( lnk.exists )
+			{
+				// lnk is either a
+				// (1a) true alias pointing out to ff
+				// (1b) true alias connected to another file!
+				// (2)  non-alias file whose name matches aliasName!!
+				// ---
+				if( t = lnk.alias && lnk.resolve() )
+				{
+					// (1a) true alias --> ff
+					// ---
+					if( t.absoluteURI==ff.absoluteURI )
+					{
+						t = REMOVE ? lnk.remove() : true;             // Try to remove in REMOVE case.
+						t || $$.warn(__("%1 > Cannot remove the alias %2 from the [startup scripts] folder.",callee.µ,lnk.displayName));
+						return REMOVE ? 0 : -1;                       // That's the usual case so we won't go deeper.
+					}
+					
+					// (1b) true alias --> not-ff!
+					// ---
+					t = lnk.remove();                                 // Try to remove in any case.
+					if( !t )                                          // Stop here if the foreign alias cannot be removed.
+					{
+						$$.warn(__("%1 > Cannot remove the foreign alias %2 from the [startup scripts] folder.",callee.µ,lnk.displayName));
+						return 0;
+					}
+				}
+				else
+				{
+					// (2) non-alias file MUST be preserved!!
+					// ---
+					$$.warn(__("%1 > A non-alias file %2 already exists in the [startup scripts] folder.",callee.µ,lnk.displayName));
+					return 0;
+				}
+			}
+
+			// The [startup scripts] folder `fd` no longer contains
+			// *trivial* link to ff.
+
+			if( false !== checkName )
+			{
+				// Check whether similar aliases already exist, based on
+				// checkName, and then remove any such alias:
+				//     <similarAliasName> ---->  <anyFile>
+				//     <anyAliasName>     ---->  ff | <similarFile>
+				// ---
+				s1 = String(checkName||File(aliasName).nudeName()).toLowerCase();
+				s2 = String(checkName||ff.nudeName()).toLowerCase();
+				for( a=fd.getFiles() ; t=a.pop() ; )
+				{
+					if( !(t instanceof File) ) continue;
+					if( !t.alias ) continue;
+
+					// --- SimilarAliasName
+					if( 0 <= t.nudeName().toLowerCase().indexOf(s1) ){ t.remove(); continue; }
+
+					// --- SimilarDestinationName ; [REM] the dest might be `ff` itself.
+					if( !(tt=t.resolve()) ) continue;
+					if( 0 <= tt.nudeName().toLowerCase().indexOf(s2) ){ t.remove(); continue; }
+				}
+			}
+			
+			// Create the alias if expected.
+			// ---
+			return (!REMOVE) && lnk.createAlias(ff) ? 1 : 0;
+		}
+		.setup
+		({
+			RE_SUFX: /\.[^.]+$/,
+		}),
 
 		unixLineFeed : function unixLineFeed_()
 		//----------------------------------
