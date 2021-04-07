@@ -1,5 +1,6 @@
 ##### [210407]
    - [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib): Made `removeAction()` a bit safer using a `isValid` checkpoint on `ScriptMenuAction` instance(s).
+   - [**File**](/core/$$.File.jsxlib): Added a generic `startupAlias()` method that will create, check or remove an alias of the `target` script file in the `startup scripts` subfolder of the _user_ branch.
 
 ##### [210405]
    - Added a preliminary step in [AnyScript/run](/etc/AnyScript/$$.run.jsxinc) that checks whether the private member `~.EXTN` is defined and functional. In such case, `~.EXTN(runMode)` is called and if the returned value is `false` the whole script execution is stopped. This block is processed _before_ the regular Context/UI/Server cycle (settings are not _activated_ at that point.) The general purpose of this preliminary step is to bring extensibility to the _AnyScript_ template (on which **BasicScript** and **ModalScript** are based.) A typical use of `~.EXTN` would be to provide menu and/or startup-script installation mechanisms, entirely decoupled from the Context/UI/Server scheme, while offering dedicated event handlers (_hooks_) like `onStartup`, `beforeDisplay`, etc. This will be done in extended modules (coming soon.)
