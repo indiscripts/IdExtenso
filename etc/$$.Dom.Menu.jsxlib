@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =get() getMenu() getMenuItem() setAction() removeAction()
 		DOM-access:     YES
-		Todo:           is it relevant to provide a startup-script utility here?
+		Todo:           ---
 		Created:        210325 (YYMMDD)
-		Modified:       210404 (YYMMDD)
+		Modified:       210407 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210404, 'get'))
+;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210407, 'get'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -956,6 +956,7 @@
 			// ---
 			while( smac=a.pop() )
 			{
+				if( !smac.isValid ) continue; // [ADD210407] Safer
 				if( (t=smac.eventListeners).length ) t.everyItem().remove();
 				smac.remove();
 			}
