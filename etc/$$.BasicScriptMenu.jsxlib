@@ -1,0 +1,39 @@
+/*******************************************************************************
+
+		Name:           BasicScriptMenu
+		Desc:           Facade of a Yalt/Settings/Dialog script with a DOM Menu.
+		Path:           /etc/$$.BasicScriptMenu.jsxlib
+		Require:        BasicScript (included below) ; Dom.Menu (included below)
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (extending $$.BasicScript.)
+		API:            =run() init() changeLocaleTo()
+		                onEngine() onLoad() onUnload()
+		                Context() UserInterface() Server() MenuExtension()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        210405 (YYMMDD)
+		Modified:       210409 (YYMMDD)
+
+*******************************************************************************/
+
+#include '$$.BasicScript.jsxlib'
+#include '$$.Dom.Menu.jsxlib'
+
+;$$.BasicScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.BasicScript.toSource(), 'MenuExtension', 210409, 'callingEvent'))
+	#include 'AnyScript/$$.menu_extension.jsxinc'
+
+;if( $$.isBooting() )
+{
+	($.global.µ=$$.BasicScript)
+
+	[PRIVATE]
+	({
+		EXTN: function(/*int*/runMode)
+		//----------------------------------
+		{
+			return callee.µ.MenuExtension['~']._GO_(runMode,callee.µ);
+		},
+	})
+}
+
