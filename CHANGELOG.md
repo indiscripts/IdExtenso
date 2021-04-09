@@ -1,3 +1,11 @@
+##### [210409]
+   - [**ModalScriptMenu**](/etc/$$.ModalScriptMenu.jsxlib) (resp. [**BasicScriptMenu**](/etc/$$.BasicScriptMenu.jsxlib)) provides a simple and natural extensions of the `ModalScript` (resp. `BasicScript`) module, based on the private `~.EXTN` member introduced in [AnyScript/run](/etc/AnyScript/$$.run.jsxinc). Thanks to this extension mechanism, the Context/UI/Server model now supports an additional `MenuExtension` component that fully manages menu installation and event handling. It is then ultra-easy to attach a menu to an existing `ModalScript` (resp. `BasicScript`). The whole logics is detailed in the [AnyScript/menu_extension](/etc/AnyScript/$$.menu_extension.jsxinc) snippet, which appends four _hooks_ to the system:
+   1. `onStartup(runMode,parentModule)`: Called only if the script is presently running as a startup script.
+   2. `beforeDisplay(runMode,parentModule,scriptMenuAction)`: Called when the `beforeDisplay` event occurs. If defined, this function must return TRUE (resp. FALSE) to enable (resp. disable) the menu item.
+   3. `beforeInvoke(runMode,parentModule,scriptMenuAction`: Called when the `beforeInvoke` event occurs.
+   4. `afterke(runMode,parentModule,scriptMenuAction`: Called when the `afterInvoke` event occurs.
+   > See full example in [tests/BasicScriptMenuDemo.jsx](/tests/BasicScriptMenuDemo.jsx)
+
 ##### [210407]
    - [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib): Made `removeAction()` a bit safer using a `isValid` checkpoint on `ScriptMenuAction` instance(s).
    - [**File**](/core/$$.File.jsxlib): Added a generic `startupAlias()` method that will create, check or remove an alias of the `target` script file in the `startup scripts` subfolder of the _user_ branch.
