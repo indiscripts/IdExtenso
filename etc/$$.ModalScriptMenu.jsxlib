@@ -1,0 +1,38 @@
+/*******************************************************************************
+
+		Name:           ModalScriptMenu
+		Desc:           Facade of a Yalt/Settings/SUI script with a DOM Menu.
+		Path:           /etc/$$.ModalScriptMenu.jsxlib
+		Require:        ModalScript (included below) ; Dom.Menu (included below)
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (extending $$.ModalScript.)
+		API:            =run() init() changeLocaleTo() onEngine()
+		                Context() UserInterface() Server() MenuExtension()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        210324 (YYMMDD)
+		Modified:       210409 (YYMMDD)
+
+*******************************************************************************/
+
+#include '$$.ModalScript.jsxlib'
+#include '$$.Dom.Menu.jsxlib'
+
+;$$.ModalScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.ModalScript.toSource(), 'MenuExtension', 210409, 'callingEvent'))
+	#include 'AnyScript/$$.menu_extension.jsxinc'
+
+;if( $$.isBooting() )
+{
+	($.global.µ=$$.ModalScript)
+
+	[PRIVATE]
+	({
+		EXTN: function(/*int*/runMode)
+		//----------------------------------
+		{
+			return callee.µ.MenuExtension['~']._GO_(runMode,callee.µ);
+		},
+	})
+}
+
