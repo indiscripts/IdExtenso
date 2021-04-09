@@ -34,6 +34,20 @@ _Demonstrates:_
 
 ---
 
+##### [`BasicScriptMenuDemo.jsx`](BasicScriptMenuDemo.jsx)
+
+With just a few additional lines, the previous script “PathNodes” is extended into a BasicScriptMenu, that is, a `BasicScript` component with a `MenuExtension`.
+
+![BasicScriptMenuDemo anim](BasicScriptMenuDemo.gif)
+
+_Demonstrates:_
+   
+* Usage of **BasicScriptMenu** module (settings, localization, UI + MenuExtension).
+* Providing a **Yalt** package in four languages (`EN` + `FR` `DE` `ES`.)
+* **Settings** keys with various lifespans (`RESET`, `SESSION`, `APP`.)
+
+---
+
 ##### [`CheckIEEE754.jsx`](CheckIEEE754.jsx)
 
 Perform tests on `Number.fromIEEE754()` and `Number.prototype.toIEEE754()` functions. This script generates 10,000 random numbers in IEEE754 64bit format and check whether the dedicated routines properly handle them. We used it to benchmark and validate the implementation of `fromIEEE754()` and `toIEEE754()`. Cool thing is, the script double-checks each conversion throughout the `TransformationMatrix` object, which provides a hidden way to encode a Number instance into IEEE754 form. See the code for details.
