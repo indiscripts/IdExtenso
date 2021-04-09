@@ -1,0 +1,430 @@
+/*******************************************************************************
+
+		Name:           MenuExtension
+		Desc:           Menu extension of any script.
+		Path:           /etc/AnyScript/$$.menu_extension.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Shared part of AnyScript.MenuExtension submodule
+		API:            =callingEvent()
+		                MenuSettings onEngine() menuAction() uninstall() installed()
+		        Hooks:  ?onStartup() ?beforeDisplay() ?beforeInvoke() ?afterInvoke()
+		DOM-access:     YES
+		Todo:           ---
+		Created:        210324 (YYMMDD)
+		Modified:       210409 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	This snippet loads the private and public members of the MenuExtension submodule
+	added to the parent script container ($$.ModalScript, $$.BasicScript). It is
+	automatically included from the corresponding template -- cf $$.ModalScriptMenu
+	and $$.BasicScriptMenu.
+	
+	[REM] The private `~._GO_` method below is invoked from the parent module via
+	      its extension function `~.EXTN()`.
+	
+	MenuExtension installs and manage a custom menu action attached to the script.
+	All the functionalities exposed by your ModalScript (resp. BasicScript) remain
+	unchanged, except it now supports an additional `MenuExtension` submodule which
+	specifically deals with menu events.
+	
+	To get a working menu you must redeclare the `.MenuSettings` member as an object
+	before loading IdExtenso. This is typically done by the following code:
+	
+	      <AnyScript>.MenuExtension.MenuSettings = 
+	      {
+	      // my menu settings
+	      }
+	
+	An example is provided in the BasicScriptMenuDemo code (/tests folder),
+
+	      if( $$.isBooting() )
+	      {
+	         // ...
+
+	         ;($.global.µ=$$.BasicScript['MenuExtension'])
+	         [PUBLIC]
+	         ({
+	          MenuSettings:
+	          {
+	          title:         "Path Nodes...",
+	          localizeTitle: 1,
+	          paths:         [ [0,'$ID/&Object','$ID/Paths Menu','$ID/mJoin','before'] ],
+	          startup:       1,
+	          },
+	         })
+
+	         // ...
+	      }
+	
+	The `MenuSettings` object has the following structure:
+	
+		.title (str) -- default: $$.Settings('_$NAME') + '...'
+		    Display name of the menu item. If empty or undefined,
+		    the default title is used, based on $$.Settings.
+
+		.localizeTitle (0|1) -- default: 0.
+		    Whether Yalt must be called on `title`.
+
+		.paths (<PATH>[]) -- default: [[0,-1,'before']]
+		    Array of menu paths determining the position of each
+		    menu item. Each menu path is an array of strings as
+		    specified in `Dom.Menu.get()`, except that a final
+		    string -- 'before' or 'after' -- can be added to set
+		    the position of the new menu item. A path can contain
+		    indices (uint|-1) rather than strings, provided the
+		    exact `index` of the menu component (submenu or
+		    menuitem) is known, relative to its parent collection.
+
+		.label (str) -- default: $$.Settings('_$SUID')
+		    Unique label of the menu action. This string is used
+		    for safely recovering the menu action, it prevents
+		    any confusion with a similar `title`.
+
+		.area (str) -- default: undefined.
+		    Area property of the menu action.
+
+		.startup (0|1|str)  -- default: 0
+		    Whether a startup script alias must be created in order
+		    to make the menu app-persistent. If `startup` is a
+		    non-empty string of length > 2, it will be used as the
+		    alias name. If `startup` is 1 (or true), the alias name
+		    is automatically determined from the script filename.
+		    If `startup` is falsy no alias is created and your menu
+		    won't be app-persistent.
+
+	[REM] The `paths` property allows the client script to install
+	      multiple menuitems, so you can make it responsive to
+	      right-click contextual menus as well.
+	
+	MenuExtension is responsible for installing the menu components,
+	attaching the menu action, etc, and dispatching the related events
+	to custom event handlers (hooks) like `beforeDisplay`, etc. The
+	available hooks are detailed in the next section.
+	
+	*/
+
+	//==========================================================================
+	// HOOKS
+	//==========================================================================
+
+	/*
+
+	onStartup: function onStartup(runMode,parentModule)
+	----------------------------------------------------------------------------
+	`runMode`       :: Script run flag (signed integer.)
+	`parentModule`  :: BasicScript or ModalScript parent module.
+	=> falsy [STOP]  |  truthy [CONTINUE]
+	----------------------------------------------------------------------------
+	Called only if the script is presently running as a startup script. If defined,
+	this function should normally return a falsy value to skip the Context/UI/Server
+	cycle.
+
+
+	beforeDisplay: function beforeDisplay(runMode,parentModule,smac)
+	----------------------------------------------------------------------------
+	`runMode`       :: Script run flag (signed integer.)
+	`parentModule`  :: BasicScript or ModalScript parent module.
+	`smac`          :: ScriptMenuAction
+	=> true [ENABLE]  |  false [DISABLE]
+	----------------------------------------------------------------------------
+	Called when the MenuAction `beforeDisplay` event occurs, that is, when one
+	of the MenuItem(s) it is attached to is about to be shown to the user. If defined,
+	this function must return TRUE (resp. FALSE) to enable (resp. disable) the
+	menuaction. When the action is disabled, the menu item is greyed out.
+	WARNING: Make sure this function runs fast to minimize menu latency.
+
+
+	beforeInvoke: function beforeInvoke(runMode,parentModule,smac)
+	----------------------------------------------------------------------------
+	`runMode`       :: Script run flag (signed integer.)
+	`parentModule`  :: BasicScript or ModalScript parent module.
+	`smac`          :: ScriptMenuAction
+	=> falsy [STOP]  |  truthy [CONTINUE]
+	----------------------------------------------------------------------------
+	Called when the MenuAction `beforeInvoke` event occurs, that is, just before
+	entering a regular invoke step from one of the MenuItem(s) it is attached to.
+	If defined, this function should normally return a falsy value to skip the
+	Context/UI/Server cycle (which is managed at invoke time.)
+
+
+	afterInvoke: function afterInvoke(runMode,parentModule,smac)
+	----------------------------------------------------------------------------
+	`runMode`       :: Script run flag (signed integer.)
+	`parentModule`  :: BasicScript or ModalScript parent module.
+	`smac`          :: ScriptMenuAction
+	=> falsy [STOP]  |  truthy [CONTINUE]
+	----------------------------------------------------------------------------
+	Called when the MenuAction `afterInvoke` event occurs, that is, just after
+	a regular invoke has been processed step from one of the MenuItem(s) it is
+	attached to. If defined, this function should normally return a falsy value
+	to skip the Context/UI/Server cycle (which has been managed at invoke time.)
+
+	*/
+
+	[PRIVATE]
+	
+	({
+		_OK_: false, // Menu action status.
+		_LB_: false, // Menu action label ; expects a unique label for the action, cf µ.MenuSettings.
+		_EV_: '',    // Calling event     ; ''|'onStartup'|'onInvoke'|'beforeDisplay'|'beforeInvoke'|'afterInvoke'  (dynamically set by ~._GO_)
+		_SU_: false, // Startup status    ; expects: 1 [OK] | -1 [ALREADY-THERE] | 0 [KO-OR-REMOVED] | -2 [TARGET-IN-STARTUP]
+
+		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,ev,smac,tpe,r)
+		//----------------------------------
+		// (Go.) Manages the incoming event (if any), calling the appropriate hook
+		// if available and necessary.
+		// - Returns FALSE on 'onStartup', 'beforeDisplay', 'beforeInvoke' and 'afterInvoke'
+		//   except if the onStartup(), beforeInvoke() or afterInvoke() hook returns a
+		//   truthy value, which is then returned, activating the Context/UI/Server stage.
+		// - Returns undefined otherwise, activating the Context/UI/Server stage.
+		// ---
+		// this :: ~
+		// => any [CONTINUE]  |  false [SKIP Context/UI/Server]
+		{
+			$$ = $.global[callee.µ.__root__];                              // Agnostic reference.
+			
+			if( $$.Env.inStartup() )
+			{
+				tpe = 'onStartup';
+				smac = void 0;
+			}
+			else
+			{
+				this._EV_ = '';
+
+				// No menu installed? (cf µ.onEngine.)
+				// ---
+				ev = this._OK_ && $$.globalEvent();                        // If no menu OR no menu event,
+				if( !ev ) return;                                          // GOTO Context/UI/Server (empty event)
+
+				// Does the incoming event target this script
+				// via a valid ScriptMenuAction?
+				// ---
+				smac = ev.target;
+				if( (!smac) || 'ScriptMenuAction' != smac.constructor.name || (!smac.isValid) || this._LB_ !== smac.properties.label )
+				{
+					$$.warn( __("%1 > Invalid or foreign event target!", µ) );
+					return false;                                          // SKIP Context/UI/Server
+				}
+				
+				tpe = ev.eventType;
+			}
+
+			this._EV_ = tpe;
+			if( 'onInvoke' == tpe )
+			{
+				return;                                                    // GOTO Context/UI/Server (event is 'onInvoke')
+			}
+
+			// Set retval to FALSE by default.
+			// ---
+			r = 'function'==typeof(callee.µ[tpe]) ? callee.µ[tpe](runMode,PM,smac) : void 0;
+			
+			// In the particular case of `beforeDisplay`, the value
+			// `r` (if defined) tells whether the action is enabled
+			// and the retval is always FALSE (=SKIP.)
+			// ---
+			if( 'beforeDisplay' == tpe )
+			{
+				smac.enabled = ('undefined' == typeof r) || !!r;           // `r` undefined means no hook available -> enabled==true
+				return false;                                              // SKIP Context/UI/Server (event is 'beforeDisplay')
+			}
+
+			// In 'onStartup', 'beforeInvoke' and afterInvoke cases,
+			// the retval is NON-FALSE iff `r` is truthy.
+			// ---
+			return r || false;
+		},
+	})
+
+	[PUBLIC]
+	
+	({
+		// Expected MenuSettings structure:
+		// {
+		//   title:          str        ; def: ($$.Settings('_$NAME')+'...')
+		//   localizeTitle: ?0|1        ; def: 0
+		//   paths:         <PATH>[]    ; def: [[0,-1,'before']]
+		//   label:         ?str        ; def: $$.Settings('_$SUID')
+		//   area:          ?str        ; def: undefined
+		//   startup:       ?0|1|str    ; def: 0
+		// }
+		// where <PATH> :: [ str|int, str|int, ... , ?('before'|'after') ]
+		// ---
+		MenuSettings: false,
+		
+		onEngine: function onEngine_(  µ,m,t)
+		//----------------------------------
+		// Set/check menu structure and startup alias (if required.)
+		// => undef
+		{
+			µ = callee.µ;
+
+			// Check/set menu action.
+			// m :: 1 [OK] | 0 [KO]
+			// ---
+			m = µ.menuAction();
+
+			// Check/set/remove startup alias.
+			// ---
+			if( t=(µ.MenuSettings||0).startup )
+			{
+				// Make sure the startup alias has at least 3 characters.
+				// ---
+				( 'string' == typeof t && 2 < t.length ) || (t=void 0);
+				
+				// 1 [OK] | -1 [ALREADY] | 0 [KO-OR-REMOVED] | -2 [TARGET-IN-STARTUP]
+				// ---
+				t = $.global[µ.__root__].File.startupAlias(void 0, t, void 0, !m);
+			}
+			
+			µ['~']._SU_ = 0|t;
+		},
+		
+		callingEvent: function callingEvent_S()
+		//----------------------------------
+		// Tells which event type is presently processed (cf ~._EV_). This public method
+		// can be invoked from the client script to react accordingly depending on the
+		// calling event. An empty retval indicates that the script is now executed
+		// from the Scripts panel.
+		// ---
+		// => '' | 'onStartup' | 'onInvoke' | 'beforeDisplay' | 'beforeInvoke' | 'afterInvoke'
+		{
+			return callee.µ['~']._EV_;
+		},
+		
+		menuAction: function menuAction_b_B(/*bool=0*/UNINSTALL,  µ,$$,I,MS,mTitle,mLabel,mArea,mRefs,mEvents,a,i,t,j,s,p,m)
+		//----------------------------------
+		// Check/create/remove the ScriptMenuAction and the related MenuItems according
+		// to `µ.MenuSettings`. (Resets the internal flags ~._OK_, ~._LB_, ~._EV_.)
+		// This method is automatically called from `onEngine`. Usually, you
+		// don't need to call it from the outside, except for uninstalling the
+		// action: set the `UNINSTALL` flag to a truthy value then. In that case,
+		// the startup alias is removed as well (if present.)
+		// ---
+		// => 1 [OK-INSTALLED]  |  0 [KO-NOOP-OR-REMOVED]
+		{
+			µ = callee.µ;
+			$$ = $.global[µ.__root__];
+			I = µ['~'];
+
+			I._EV_ = '';
+			if( UNINSTALL && !I._OK_ ) return 0;
+
+			mLabel = UNINSTALL && I._LB_;
+			I._OK_ = I._LB_ = false;
+
+			MS = µ.MenuSettings;
+			if( MS !== Object(MS) ) return 0;
+			
+			// Title.
+			// ---
+			mTitle = MS.title || ($$.Settings('_$NAME')+'...');
+			if( 'string' != typeof mTitle || (!mTitle.length) ) return 0;
+			MS.localizeTitle && (mTitle=__(mTitle));
+
+			// Unique label.
+			// ---
+			mLabel || (mLabel = MS.label || $$.Settings('_$SUID') || mTitle);
+			if( 'string' != typeof mLabel || (!mLabel.length) ) return 0;
+			UNINSTALL || (I._LB_ = mLabel);
+
+			// Optional area.
+			// ---
+			mArea = MS.area;
+			if( 'string' != typeof mArea ) mArea=void 0;
+
+			// Ref paths ; calling $$.Dom.Menu.getMenuItem(...)
+			// ---
+			a = MS.paths;
+			(a instanceof Array) || (a=[[0,-1,'before']]);
+			if( !a.length ) return;
+			mRefs = [];
+			for( i=-1 ; ++i < a.length ; )
+			{
+				t = a[i];
+				if( !(t instanceof Array) ) continue;
+				if( !(j=t.length) ) continue;
+
+				1 < j && ('after'===(s=t[j-1]) || 'before'===s)
+				? ( p=s, t=t.slice(0,-1), --j )
+				: ( p='after' );
+
+				( m = $$.Dom.Menu.getMenuItem(t) )
+				? $$.trace(__("%1 > MenuItem successfully identified for path [%2].", µ, t) )
+				: $$.warn( __("%1 > Cannot identify the MenuItem for path [%2].", µ, t) );
+				
+				m && mRefs.push({ ref:m, pos:p });
+			}
+			if( !mRefs.length && !UNINSTALL ) return 0;
+			
+			if( UNINSTALL )
+			{
+				$$.Dom.Menu.removeAction(mTitle,mRefs,mLabel)
+				? $$.trace( __("%1 > Menu action successfully uninstalled.", µ) )
+				: $$.warn( __("%1 > Couldn't safely uninstall the menu action.", µ) );
+				
+				if( I._SU_ && (t=MS.startup) )
+				{
+					// Make sure the startup alias has at least 3 characters.
+					// ---
+					( 'string' == typeof t && 2 < t.length ) || (t=void 0);
+					
+					// Remove alias.
+					// ---
+					$$.File.startupAlias(void 0, t, void 0, true); // true <-> remove
+				}
+
+				return 0;
+			}
+			
+			// Supported menu events.
+			// ---
+			mEvents = ['onInvoke'];
+			'function' == typeof(µ.beforeDisplay) && mEvents.push('beforeDisplay');
+			'function' == typeof(µ.beforeInvoke) && mEvents.push('beforeInvoke');
+			'function' == typeof(µ.afterInvoke) && mEvents.push('afterInvoke');
+
+			// Get/set ScriptMenuAction.
+			// ---
+			I._OK_ = !!$$.Dom.Menu.setAction(mTitle,mRefs,
+			{
+				events:  mEvents.join('_'),
+				label:   mLabel,
+				area:    mArea,
+				handler: File($$.Env.runningScript),
+			});
+			
+			I._OK_
+			? $$.trace( __("%1 > Menu action successfully installed.", µ) )
+			: $$.warn( __("%1 > Couldn't install the menu action.", µ) );
+
+			return I._OK_ ? 1 : 0;
+		},
+		
+		uninstall: function uninstall_()
+		//----------------------------------
+		// Shortcut of `µ.menuAction(1)`, which removes the action, menu and startup alias.
+		// ---
+		// => undef
+		{
+			callee.µ.menuAction(1);
+		},
+		
+		installed: function installed_()
+		//----------------------------------
+		// Whether the menu action is presently installed.
+		// => 1 [YES]  |  0 [NO]
+		{
+			return callee.µ['~']._OK_ ? 1 : 0;
+		},
+	})
