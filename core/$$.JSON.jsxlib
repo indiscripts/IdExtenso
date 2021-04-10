@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170306 (YYMMDD)
-		Modified:       200613 (YYMMDD)
+		Modified:       210410 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 200613, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 210410, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -25,29 +25,44 @@
 
 	KNOWN ISSUES WITH DOM OBJECTS.
 	
-	From CS4 to CC 2017 various attempts to access the `properties` of a
-	-shadow-settings spec makes InDesign crash. Paths that end with either
-	"@drop-shadow-settings" or "@inner-shadow-settings" are dangerous and
-	must be bypassed, especially in find/change preferences.
+	1. From CS4 to CC 2017 various attempts to access the `properties` of a
+	   -shadow-settings spec makes InDesign crash. Paths that end with either
+	   "@drop-shadow-settings" or "@inner-shadow-settings" are dangerous and
+	   must be bypassed, especially in find/change preferences.
 	
-	E.g.
+	   E.g.
 	      app.changeObjectPreferences
 	         .strokeTransparencySettings
 	         .dropShadowSettings.properties      // => CRASH
 	
-	But
+	   But
 	      app.pageItemDefaults
 	         .strokeTransparencySettings
 	         .dropShadowSettings.properties      // => OK (?)
 
-	Risk detection might be based on the pattern
+	   Risk detection might be based on the pattern
 	
 	      /@(find|change).+shadow-settings$/
 
 
-	Also, any access to app.scriptPreferences.properties causes InDesign
-	to freeze (infinite loop?) so we must prevent JSON() from expanding
-	the specifier path "/@script-preferences".
+	2. Any access to app.scriptPreferences.properties causes InDesign
+	   to freeze (infinite loop?) so we must prevent JSON() from expanding
+	   the specifier path "/@script-preferences".
+
+
+	3. In CS4/CS5, some locales like RU may lead to invalid name-based
+	   specifiers due to the presence of inner double quotes, e.g
+
+	      /menu[@name="Контекстное меню "Общие""]/menu-item[@id=118791]
+
+	   The above specifier is initially retrieved from a working MenuItem,
+	   which however is reported as invalid and cannot be resolved again
+	   from the broken string. Should JSON encounter such entity, the
+	   `resolve(...)` string would fail when evaluated. Furthermore, any
+	   attempt to access `obj.properties` would cause a runtime "Invalid
+	   object" error.
+
+	   
 
 	*/
 
@@ -119,14 +134,27 @@
 		BRKN : function(/*str*/s)
 		//----------------------------------
 		// Whether s is a 'broken' spec path.
-		// => 1 (broken) | 0 (not-broken)
+		// => 1 [BROKEN] | 0 [NOT-BROKEN]
 		{
 			return +(
 				0 < s.indexOf('script-preferences')
 				||
 				(callee.Q||(callee.Q=/@(find|change).+shadow-settings$/)).test(s)
+				||
+				0 < s.indexOf('[@name="') && callee.DBQT(s)
 			);
-		},
+		}
+		.setup
+		({
+			DBQT: function(/*str*/s)
+			//----------------------------------
+			// [ADD210410] Whether the spec contains inner double quotes in
+			// `[@name=...]` part(s), like in `/menu[@name="Контекстное меню "Общие""]/`
+			// => 1 [YES-BROKEN]  |  0 [NO-OK]
+			{
+				return +(0 <= s.replace(callee.REG||(callee.REG=/(?:\[@name="|"\])/g),'').indexOf('"'));
+			},
+		}),
 
 		EST$ : function($0)
 		//----------------------------------
@@ -205,7 +233,7 @@
 			// Otherwise we take "<spec>" alone--which evals to a string.
 			// ---
 			s = 0 < this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
-			
+
 			// `t` indicates whether we have to prevent the caller
 			// from browsing this obj, and the reason why.
 			// [REM] The tag `ignored` appears if both KDOM<0 and INLP==1,
