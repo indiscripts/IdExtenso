@@ -1,3 +1,6 @@
+##### [210410]
+   - [**JSON**](/core/$$.JSON.jsxlib): Skips invalid name-based specifiers altered by inner double quotes, like `/menu[@name="Контекстное меню "Общие""]/menu-item[@id=118791]`. This InDesign bug occurs in CS4/CS5 and leads to _broken_ DOM paths. `$$.JSON` now detects it and labels such specifiers as “broken”.
+
 ##### [210409]
    - [**ModalScriptMenu**](/etc/$$.ModalScriptMenu.jsxlib) (resp. [**BasicScriptMenu**](/etc/$$.BasicScriptMenu.jsxlib)) provides a simple and natural extensions of the `ModalScript` (resp. `BasicScript`) module, based on the private `~.EXTN` member introduced in [AnyScript/run](/etc/AnyScript/$$.run.jsxinc). Thanks to this extension mechanism, the Context/UI/Server model now supports an additional `MenuExtension` component that fully manages menu installation and event handling. It is then ultra-easy to attach a menu to an existing `ModalScript` (resp. `BasicScript`). The whole logics is detailed in the [AnyScript/menu_extension](/etc/AnyScript/$$.menu_extension.jsxinc) snippet, which appends four _hooks_ to the system:
    1. `onStartup(runMode,parentModule)`: Called only if the script is presently running as a startup script.
