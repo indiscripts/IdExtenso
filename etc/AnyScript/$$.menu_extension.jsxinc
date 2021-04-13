@@ -8,12 +8,13 @@
 		Core:           NO
 		Kind:           Shared part of AnyScript.MenuExtension submodule
 		API:            =callingEvent()
-		                MenuSettings onEngine() menuAction() uninstall() installed()
+		                MenuSettings onEngine() menuAction() getAction()
+		                uninstall() installed()
 		        Hooks:  ?onStartup() ?beforeDisplay() ?beforeInvoke() ?afterInvoke()
 		DOM-access:     YES
 		Todo:           ---
 		Created:        210324 (YYMMDD)
-		Modified:       210409 (YYMMDD)
+		Modified:       210413 (YYMMDD)
 
 *******************************************************************************/
 
@@ -175,6 +176,7 @@
 	({
 		_OK_: false, // Menu action status.
 		_LB_: false, // Menu action label ; expects a unique label for the action, cf µ.MenuSettings.
+		_AC_: false, // Menu action specifier [ADD210410]
 		_EV_: '',    // Calling event     ; ''|'onStartup'|'onInvoke'|'beforeDisplay'|'beforeInvoke'|'afterInvoke'  (dynamically set by ~._GO_)
 		_SU_: false, // Startup status    ; expects: 1 [OK] | -1 [ALREADY-THERE] | 0 [KO-OR-REMOVED] | -2 [TARGET-IN-STARTUP]
 
@@ -310,6 +312,7 @@
 		// don't need to call it from the outside, except for uninstalling the
 		// action: set the `UNINSTALL` flag to a truthy value then. In that case,
 		// the startup alias is removed as well (if present.)
+		// [UPD210410] Set/reset ~._AC_.
 		// ---
 		// => 1 [OK-INSTALLED]  |  0 [KO-NOOP-OR-REMOVED]
 		{
@@ -321,7 +324,7 @@
 			if( UNINSTALL && !I._OK_ ) return 0;
 
 			mLabel = UNINSTALL && I._LB_;
-			I._OK_ = I._LB_ = false;
+			I._OK_ = I._LB_ = I._AC_ = false;
 
 			MS = µ.MenuSettings;
 			if( MS !== Object(MS) ) return 0;
@@ -347,7 +350,7 @@
 			// ---
 			a = MS.paths;
 			(a instanceof Array) || (a=[[0,-1,'before']]);
-			if( !a.length ) return;
+			if( !a.length ) return 0;
 			mRefs = [];
 			for( i=-1 ; ++i < a.length ; )
 			{
@@ -362,7 +365,6 @@
 				( m = $$.Dom.Menu.getMenuItem(t) )
 				? $$.trace(__("%1 > MenuItem successfully identified for path [%2].", µ, t) )
 				: $$.warn( __("%1 > Cannot identify the MenuItem for path [%2].", µ, t) );
-				
 				m && mRefs.push({ ref:m, pos:p });
 			}
 			if( !mRefs.length && !UNINSTALL ) return 0;
@@ -394,9 +396,9 @@
 			'function' == typeof(µ.beforeInvoke) && mEvents.push('beforeInvoke');
 			'function' == typeof(µ.afterInvoke) && mEvents.push('afterInvoke');
 
-			// Get/set ScriptMenuAction.
+			// Get/set ScriptMenuAction (`s` receives the spec.)
 			// ---
-			I._OK_ = !!$$.Dom.Menu.setAction(mTitle,mRefs,
+			s = $$.Dom.Menu.setAction(mTitle,mRefs,
 			{
 				events:  mEvents.join('_'),
 				label:   mLabel,
@@ -404,13 +406,31 @@
 				handler: File($$.Env.runningScript),
 			});
 			
-			I._OK_
-			? $$.trace( __("%1 > Menu action successfully installed.", µ) )
-			: $$.warn( __("%1 > Couldn't install the menu action.", µ) );
+			if( s )
+			{
+				I._AC_ = s;
+				I._OK_ = true;
+				$$.trace( __("%1 > Menu action successfully installed.", µ) );
+			}
+			else
+			{
+				I._OK_ = false;
+				$$.warn( __("%1 > Couldn't install the menu action.", µ) );
+			}
 
 			return I._OK_ ? 1 : 0;
 		},
 		
+		getAction: function getAction_$ScriptMenuAction$(  t)
+		//----------------------------------
+		// [ADD210413] Return the menu action, if defined and valid.
+		// => ScriptMenuAction [OK]  |  false [KO]
+		{
+			if( 'string' != typeof(t=callee.µ['~']._AC_) ) return false;
+			try{ t=resolve(t) }catch(_){ t=false }
+			return t.isValid && 'ScriptMenuAction' == t.constructor.name ? t : false;
+		},
+
 		uninstall: function uninstall_()
 		//----------------------------------
 		// Shortcut of `µ.menuAction(1)`, which removes the action, menu and startup alias.
@@ -420,11 +440,15 @@
 			callee.µ.menuAction(1);
 		},
 		
-		installed: function installed_()
+		installed: function installed_T(  I)
 		//----------------------------------
 		// Whether the menu action is presently installed.
-		// => 1 [YES]  |  0 [NO]
+		// [CHG210410] Returns +1 if it's installed with startup script alias,
+		// -1 if no startup script alias.
+		// => 1 [YES-STARTUP]  |  -1 [YES-NOSTARTUP]  |  0 [NO]
 		{
-			return callee.µ['~']._OK_ ? 1 : 0;
+			I = callee.µ['~'];
+			return I._OK_ ? ( I._SU_ ? 1 : -1 ) : 0;
 		},
+		
 	})
