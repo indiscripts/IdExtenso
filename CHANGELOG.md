@@ -1,5 +1,6 @@
 ##### [210413]
    - [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib): re-implemented the menu access routine, taking into account the many bugs and limitations identified in InDesign CS4/CS5/CS6 regarding name-based specifiers (`Menu`, `Submenu`, and `MenuItem` objects.) In summary, the path solver had to avoid bot `.getElements()`, `.constructor` and `.parent` commands to work around CSx bugs. In such environment, the algorithm tries to strictly resolve menu paths _by index_ (cf the routines `~.RESO()`, `~.INTO()`, etc.)
+   - Added the `getAction()` method in [MenuExtension](/etc/AnyScript/$$.menu_extension.jsxinc) and fixed a few typos.
 
 ##### [210410]
    - [**JSON**](/core/$$.JSON.jsxlib): Skips invalid name-based specifiers altered by inner double quotes, like `/menu[@name="Контекстное меню "Общие""]/menu-item[@id=118791]`. This InDesign bug occurs in CS4/CS5 and leads to _broken_ DOM paths. `$$.JSON` now detects it and labels such specifiers as “broken”.
