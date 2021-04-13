@@ -7,15 +7,16 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =get() getMenu() getMenuItem() setAction() removeAction()
+		API:            =get() getMenu() getMenuItem() checkMenuRef()
+		                setAction() removeAction()
 		DOM-access:     YES
 		Todo:           ---
 		Created:        210325 (YYMMDD)
-		Modified:       210407 (YYMMDD)
+		Modified:       210413 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210407, 'get'))
+;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210413, 'get'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -114,10 +115,10 @@
 		And even there, key strings may point out to wrong elements or just fail
 		to access a valid target.
 		
-		In the Russian version of InDesign CS4/CS5/CS6, for instance, it has been
-		shown that many menu specifiers were purely broken due to the presence of
-		double quotes `"` in the localized names. This bug makes it tricky to access
-		native menus like `$ID/RtMouseDefault`.
+		In the Russian version of InDesign CS4/CS5, for instance, many menu
+		specifiers were purely broken due to the presence of double quotes `"`
+		in the localized names. This bug makes it tricky to access native menus
+		like `$ID/RtMouseDefault`.
 		
 		[REM] The localized name of that menu is `Контекстное меню "Текст"`,
 		so the command `app.menus.itemByName("$ID/RtMouseDefault")` indirectly
@@ -138,6 +139,9 @@
 		into a by-name specifier `/menu[@name="..."]` and the latter form is
 		unfortunately broken! That's one of the rare cases where *resolving* a
 		valid specifier leads to an invalid specifier!
+		
+		Even worse, accessing the `constructor` property of a menu component
+		can break it as well.
 
 		2 - MENU ACTIONS
 		________________________________________________________________________
@@ -434,9 +438,9 @@
 	
 	({
 
-		ALLT: function(/*ScriptMenuActions|MenuItems*/host,/*str*/anyTitle,  s,t,a)
+		ALLT: $$.inCC ? function(/*ScriptMenuActions|MenuItems*/host,/*str*/anyTitle,  s,t,a)
 		//----------------------------------
-		// (All-Items-by-Title.) Given a title in the form 'xyz' or 'xyz...',
+		// (All-Items-by-Title-CC.) Given a title in the form 'xyz' or 'xyz...',
 		// get *all* valid `host` items whose name matches either 'xyz' or 'xyz...'
 		// Important: this function invokes `getElements()`.
 		// ---
@@ -456,8 +460,34 @@
 			t.isValid && a.push.apply(a,t.getElements());
 			
 			return a;
+		}
+		: function(/*ScriptMenuActions|MenuItems*/host,/*str*/anyTitle,  s,t,a,b,i)
+		//----------------------------------
+		// (All-Items-by-Title-CS.) Given a title in the form 'xyz' or 'xyz...',
+		// get *all* valid `host` items whose name matches either 'xyz' or 'xyz...'
+		// This function *does not invoke* `getElements()`; instead, it returns an
+		// array of ID-based specifiers.
+		// ---
+		// this :: ~
+		// => (ScriptMenuAction|MenuItem)[]  [OK]  |  empty array [KO]
+		{
+			if( !host.length ) return [];
+
+			s = '...'==anyTitle.slice(-3) ? anyTitle.slice(0,-3) : anyTitle;
+
+			// Get all items related to `s` or `s...`
+			// ---
+			t = host.itemByName(s);
+			a = t.isValid ? t.id : [];
+			a instanceof Array || (a=[a]);
+			// ---
+			t = host.itemByName(s+'...');
+			t.isValid && (b=t.id) && ( b instanceof Array ? a.push.apply(a,b) : a.push(b) );
+			
+			for( i=a.length ; i-- ; a[i]=host.itemByID(a[i]) );
+			return a;
 		},
-		
+
 		SMAC: function(/*{title,name,area,label}*/pp,/*File|function*/evHandler,/*str[]|false*/evTypes,  MA,a,r,t,i)
 		//----------------------------------
 		// (Get/Set-Script-Menu-Action.) Safe menu action getter/setter--called by µ.setAction.
@@ -552,18 +582,21 @@
 		// that action. In such case, possible duplicates are removed and a single MenuItem is returned.
 		// Called by µ.setAction
 		// [ADD210403] If LO===false, kill the existing menu item(s).
+		// [FIX210413] Works around invalid `ref.parent` in CS.
 		// ---
 		// this :: ~
 		// => MenuItem [OK]  |  -1 [REMOVED]  |  0 [NOOP]
 		{
 			// Sibling menu items.
+			// Since `ref.parent` may collapse in CS, a fallback strategy is tried.
 			// ---
-			MI = ref.parent.menuItems;
-			
+			if( (!(t=ref.parent).isValid) || !(t=callee.GETP(ref)) ) return 0;
+			MI = t.menuItems;
+
 			// Get all menu items related to that title (with or without ellipsis.)
 			// ---
 			a = this.ALLT(MI, smac.properties.title);
-			
+
 			// Remove any undesired duplicate.
 			// ---
 			for( r=false ; t=a.pop() ; t.associatedMenuAction===smac && (r ? t.remove() : (r=t)) );
@@ -577,75 +610,312 @@
 				return -1;
 			}
 
-			// Need to create the menu item?
+			if( r ) return r;
+
+			// Need to create the menu item.
+			// [ADD210413] Try..catch block in case `MI.add()` doesn't work for some reason.
 			// ---
-			return r || MI.add(smac, LO, ref);
-		},
+			try{ r=MI.add(smac, LO, ref) }catch(_){ r=0 }
+			return r;
+		}
+		.setup
+		({
+			GETP: function(/*MenuItem|Submenu*/ref,  a,node,i,t,x)
+			//----------------------------------
+			// Solves `ref.parent` issue in CS. This methods expects index-based elems
+			// wherever name-based elems are problematic (double quote bug.)
+			// => valid Submenu|Menu [OK]  |  false [KO]
+			{
+				// /menu[12]/submenu[@name="xyz"]/menu-item[34]
+				// -> ['12', '@name="xyz"'] ; path to the parent
+				// ---
+				a = ref.toSpecifier()
+					.replace(callee.R1,'')
+					.replace(callee.R2,'$1\x01')
+					.slice(0,-1)
+					.split(callee.R3);
+
+				for( node=app, i=-1 ; ++i < a.length ; )
+				{
+					t = a[i];
+					if( 0==t.indexOf('@name="') )
+					{
+						x = t.slice(7,-1);
+						if( 0 <= x.indexOf('"') ) return false;
+					}
+					else
+					{
+						x = parseInt(t,10);
+						if( t !== ''+x ) return false;
+					}
+					node = node[i?'submenus':'menus'].item(x);
+					if( !node.isValid ) return false;
+				}
+				
+				return node;
+			}
+			.setup
+			({
+				R1: /\/(?:submenu|menu-item)\[([^\]]+)\]$/,
+				R2: /\/(?:menu|submenu)\[([^\]]+)\]/g,
+				R3: /\u0001/g,
+			}),
+		}),
 	})
 
 	//==========================================================================
-	// Generic Menu Component Accessor
+	// Generic Menu Component Solver ; [CHG210413] Safer algo in CS4/CS5/CS6
 	//==========================================================================
 
 	[PRIVATE]
 	
 	({
-		INDX: function(/*Menus|Submenus|MenuItems*/M,/*keystr*/ks,/*bool=0*/GET_INDEX,  locName,seq,i)
+		SIDX: function(/*str*/k,/*[k0,k1,...]*/seq,  i,p)
 		//----------------------------------
-		// Identify an element by index, based on its locale-independent key.
-		// This method solves CS4/CS5/CS6 bugs that caused itemByName to fail
-		// in some InDesign locales (e.g RU.) The component is identified by
-		// index instead. Important: if the result is not FALSE, the returned
-		// index `i` guarantees that `M[i]` is valid although its associated
-		// `.getElements()[0]` is still invalid due to the bug. The underlying
-		// specifier must then keep the form `.../(menu|submenu|menu-item)[i]`
-		// ---
-		// M  :: Non-empty collection of Menus, Submenus or MenuItems.
-		// ks :: Locale-independent key string to be found.
-		// ---
-		// => Menu|Submenu|MenuItem [OK-DOM] | uint [OK-INDEX]  |  false [KO]
+		// (Sequence-Index.) Returns the index of k in [k0,k1,...] if found, -1 otherwise.
+		// Tests both k and k without '&'.
+		// => uint [OK] | -1 [KO]
 		{
-			locName = app.translateKeyString(ks)||'';
-			if( !locName.length ) return false;             // No locale match of ks.
-
-			// Localized sequence of names :: <X1><name1><X1><name2><X1>...<X1>
-			// ---
-			seq = '\x01' + M.everyItem().name.join('\x01') + '\x01';
-
-			// Does `<X1>locName<X1>` appear in `seq`?
-			// ---
-			i = seq.indexOf('\x01'+locName+'\x01');
-			if( -1 == i ) return false;                     // locName not found.
+			seq = '\x01' + seq.join('\x01') + '\x01';
 			
-			// Calculate the actual index in M.
+			// Does `<X1>k<X1>` appear in `seq`?
 			// ---
-			i && (i=seq.slice(0,i).replace(callee.REX1,'').length);
-			return M[i].isValid && ( GET_INDEX ? i : M[i] );
+			-1 == (i=seq.indexOf('\x01'+k+'\x01'))
+			&& 0 <= (p=k.indexOf('&'))
+			&& ( i=seq.indexOf('\x01'+k.slice(0,p)+k.slice(1+p)+'\x01') );
+
+			// Calculate the actual index in `seq`.
+			// ---
+			0 < i && (i=seq.slice(0,i).replace(callee.RE||(callee.RE=/[^\u0001]+/g),'').length);
+			return i;
+		},
+
+		RESO: function(/*(str|int)[]*/path,/*'menuItems'|'submenus'|''*/lastKey,/*bool*/ALLOW_PLURAL,  iMax,T,node,k,i)
+		//----------------------------------
+		// (Resolve-Path-From-App-Menus.) [ADD210413] New version, more robust. Old name `GETM`.
+		// this :: ~
+		// => Menu|Submenu|MenuItem [OK]  |  false [KO]
+		{
+			iMax = path.length-1;
+			iMax || (lastKey='menus');
+
+			(T=Array()).single = 1;
+
+			for( node=app, i=0 ; i < iMax ; ++i )
+			{
+				node = this.INTO( node, i?'submenus':'menus', path[i], T );
+				if( !node ) return false;
+			}
+			
+			if( lastKey )
+			{
+				node = this.INTO( node, lastKey, path[iMax], T );
+			}
+			else
+			{
+				node = this.INTO( node, (lastKey='submenus'),  path[iMax], T)
+					|| this.INTO( node, (lastKey='menuItems'), path[iMax], T);
+			}
+			
+			if( (!node) || T.single || ALLOW_PLURAL ) return node;
+			
+			// Plural node -> pick first available.
+			// ---
+			return this.PICK(node, T, lastKey);
+		},
+
+		INTO: $$.inCC ?
+		function(/*app|Menu|Submenu*/H,/*'menus'|'submenus','menuItems'*/k,/*''|str|int*/x,/*{single}&*/T,  K,n,t)
+		//----------------------------------
+		// H may be singular or plural. In CC, `T` is only used as an object (`.single` prop),
+		// the array part is purely ignored.
+		// this :: ~
+		// => Menu|Submenu|MenuItem  |  false
+		{
+			K = H[k];
+			n = K.length;
+
+			if( !n ) return false;
+			''===x && 1==n && (x=0);                                          // Force index 0 if n==1 and x empty (aka everyItem.)
+
+			if( '' === x )
+			{
+				// everyItem() fork
+				// ---
+				T.single = 0;
+				return K.everyItem();
+			}
+			
+			switch( typeof x )
+			{
+				case 'number':
+					x|=0;
+					if( -1 > x || x >= n ) return false;                     // Quick check: x can never be >= the whole number.
+					t = K[x];
+					break;
+				case 'string':
+					t = K.itemByName(x);
+					break;
+				default:
+					t = false;
+			}
+
+			return t.isValid && t;
+		}
+		:
+		function(/*app|Menu|Submenu*/H,/*'menus'|'submenus','menuItems'*/k,/*''|str|int*/x,/*(str|uint)[]&*/T,  K,n,a,i,z,t)
+		//----------------------------------
+		// H may be singular or plural.
+		// this :: ~
+		// => Menu|Submenu|MenuItem  |  false
+		{
+			K = H[k];
+			n = K.length;                                                     // Whole number of available items in K.
+			
+			if( !n ) return false;
+			''===x && 1==n && (x=0);                                          // Force index 0 if n==1 and x empty (aka everyItem.)
+			
+			if( '' === x )
+			{
+				// everyItem() fork -- \uFFFF prefix
+				// ---
+				'number' == typeof(a = K.count()) && (a=[a]);                 // uint array whose sigma is `n`
+				T[T.length] = '\uFFFF' + String.fromCharCode.apply(0,a);      // Prepend \uFFFF to the count string ; e.g "\uFFFF\x03\x00\x07" for [3,0,7]
+				T.single = 0;                                                 // Not a singleton anymore.
+				return K.everyItem();
+			}
+			
+			if( 'number' == typeof x )
+			{
+				// index-based.
+				// ---
+				x|=0;
+				if( -1 > x || x >= n ) return false;                          // Quick check: x can never be >= the whole number.
+				
+				if( T.single )
+				{
+					-1 == x && (x=n-1);
+					T[T.length] = x;                                          // Single index branch.
+				}
+				else
+				{
+					if( 1+x >= 0xFFFF ) return false;                         // Shouldn't happen!
+					'number' == typeof(a=K.count()) && (a=[a]);
+					for( z=(1+x)||1, i=a.length ; i-- && a[i] < z ; );        // Break as soon as a[i] >= z ; [REM] x==-1 is supported
+					if( 0 > i ) return false;
+					t = String.fromCharCode(1+x);
+					T[T.length] = t + String.fromCharCode.apply(0,a);         // Prepend <1+IDX> to the count string.
+				}
+
+				return K[x];
+			}
+			
+			while( 'string' == typeof x )
+			{
+				// name-based.
+				// ---
+				x = app.translateKeyString(x)||'';                            // Could be made optional?
+				if( !x.length ) break;                                        // No locale match.
+				x = this.SIDX(x, K.everyItem().name);                         // Index in the `name` array.
+				if( -1 == x ) break;
+				if( T.single )
+				{
+					T[T.length] = x;                                          // Push the index -> single-index branch
+					return K[x];
+				}
+
+				// ---
+				// Now we want to 'resolve' the name-based item
+				// into an index-based singleton.
+				// ---
+
+				'number' == typeof(a=K.count()) && (a=[a]);
+				T[T.length] = '\uFFFF' + String.fromCharCode.apply(0,a);
+
+				if( !callee.CASC(T,x) ) break;                                // T :: [int,int..., str,...str] --> [int,int..., uint...uint]
+				                                                              // [REM] T is preserved in case of failure.
+				T.single = 1;
+				for( t=app, z=T.length-1, i=-1 ; ++i < z ;
+					 t=t[i?'submenus':'menus'][T[i]] );                       // Reconstruct the DOM by indices.
+
+				return t[k][T[z]];
+			}
+			
+			return false;
 		}
 		.setup
 		({
-			REX1: /[^\u0001]+/g,
+			CASC: function(/*[int,int,...,str,str,str]&*/T,/*uint*/flatIndex,  bkp,idx,X,S,i,z,n,x,dz,mn)
+			//----------------------------------
+			// (Cascade-Index.) Resolve the array of 'count strings' into actual indices.
+			// [REM] Each str has the form <FFFF>|<IDX+1> + <countString>
+			// [REM] The index-tree T is updated only if the operation succeeds.
+			// => true [OK]  |  false [KO]
+			{
+				bkp = T.slice();
+				for( X=flatIndex, i=T.length ; i-- ; (T[i]=idx), (X=x) )
+				{
+					if( 'string' != typeof(S=T[i]) ) break;
+					
+					idx = S.charCodeAt(0);
+					S = S.slice(1);
+					n = S.length;
+
+					if( idx < 0xFFFF )
+					{
+						// idx :: 1+index ; if idx==0, last element expected (index -1).
+						// A specific index means that each nonzero number N in the count string
+						// increases the index by 1 iff N >= idx||1.
+						// ---
+						mn = idx||1;
+						for( z=0, x=-1 ; ++x < n && ( mn > S.charCodeAt(x) || ++z <= X ) ; );
+						idx = -1 + (idx||S.charCodeAt(x)); // tricky: recovers the last index if idx==0
+					}
+					else
+					{
+						// idx == 0xFFFF means 'everyItem'. Each nonzero number N in
+						// the count string increases the index by N.
+						// ---
+						for( z=0, x=-1 ; ++x < n && z+(dz=S.charCodeAt(x)) <= X ; z += dz );
+						idx = X-z;
+					}
+
+					if( x >= n )
+					{
+						// Failure -> restore T.
+						// ---
+						for( ; ++i < T.length ; T[i]=bkp[i] );
+						return false;
+					}
+				}
+				return true;
+			},
 		}),
 
-		GETM: function(/*Menus|Submenus|MenuItems*/M,/*''|keystr|uint|-1*/ks,  m)
+		PICK: $$.inCC ?
+		function(/*Menu|Submenu|MenuItem*/node,/*{single:0}*/T)
 		//----------------------------------
-		// (Get-Menu-Component.) Return the `ks` item in the collection M, if valid.
-		// - If `ks` is the empty string, returns M.everyItem() if valid.
-		// - If `ks` is an index (uint|-1), returns `M[ks]` if valid.
-		// - If `ks` is a key string (str), returns `M.itemByName(ks)` if valid.
-		// M.everyItem()
-		// => Menu|Submenu|MenuItem [OK-VALID]  |  false [KO]
+		// Pick the 1st available item in a plural node.
+		// => Menu|Submenu|MenuItem
 		{
-			if( !M.length ) return false;
-			if( ''===ks ) return M.everyItem();
-			m = 'number'==typeof ks ? M[0|ks] : M.itemByName(String(ks));
-			return m.isValid ? m :
-				( callee.TRY_INDX && 'string'==typeof ks && callee.µ['~'].INDX(M,ks) );
+			return node.getElements()[0];
 		}
-		.setup
-		({
-			TRY_INDX: !!$$.inCS,
-		}),
+		:
+		function(/*Menu|Submenu|MenuItem*/node,/*(str|uint)[]&*/T,/*'menus'|'menuItems'|'submenus'*/lastKey,  t,z,i)
+		//----------------------------------
+		// Pick the 1st available item in a plural node.
+		// In CS we cannot safely invoke getElements() or node.constructor.
+		// [REM] The KO case shouldn't occur but who knows.
+		// this :: ~
+		// => Menu|Submenu|MenuItem [OK]  |  false [KO]
+		{
+			if( !this.INTO.CASC(T,0) ) return false;
+			T.single = 1; // cleaner
+			for( t=app, z=T.length-1, i=-1 ; ++i < z ;
+				 t=t[i?'submenus':'menus'][T[i]] );                       // Reconstruct the DOM by indices.
+			return t[lastKey][T[z]];
+		},
+
 	})
 
 	//==========================================================================
@@ -655,11 +925,11 @@
 	[PUBLIC]
 	
 	({
-		get: function get_A_b_$Menu$$Submenu$$MenuItem$$false$(/*(str|int)[]*/keys,/*?bool*/WANT_MENUITEM,/*bool=0*/ALLOW_PLURAL_RESULT,  I,M,iMax,i,k,m)
+		get: function get_A_b_$Menu$$Submenu$$MenuItem$$false$(/*(str|int|'')[]*/path,/*?bool*/WANT_MENUITEM,/*bool=0*/ALLOW_PLURAL_RESULT,  k)
 		// -------------------------------------
-		// Browse the path specified by `keys` and return the corresponding
+		// Browse the keys specified by `path` and return the corresponding
 		// menu component (Menu|Submenu|MenuItem) if valid. Each elem in the
-		// `keys` array must be either the empty string, a locale-independent
+		// `path` array must be either the empty string, a locale-independent
 		// key string or an index (uint|-1). The empty string goes one level
 		// deeper in the collection of menus or submenus, so you can reach a
 		// sublevel without explicitly providing all parent node(s), as in
@@ -677,48 +947,28 @@
 		// FALSE is returned if an invalid object is encountered at some point.
 		// The result is guaranteed to specify a SINGULAR specifier unless
 		// ALLOW_PLURAL_RESULT is truthy. Thus, by default a singular DOM object
-		// is returned. In particular, if the last `keys` elem is empty, leading
+		// is returned. In particular, if the last `path` elem is empty, leading
 		// to an `...everyItem()` form, the first element is returned via
 		// `...getElements()[0]`. If this is not what you expect, set the
 		// ALLOW_PLURAL_RESULT flag to keep full control over the result.
 		// [REM] The methods `µ.getSubmenu()` and `µ.getMenuItem()` both invoke
 		// the present routine by setting accordingly the WANT_MENUITEM argument.
 		// In principle it is faster to process explicit requests based on
-		// non-empty keys and targetting a specific type (MenuItem vs. Submenu.)
+		// non-empty path and targetting a specific type (MenuItem vs. Submenu.)
 		// ---
 		// => valid Menu|Submenu|MenuItem [OK]  |  false [KO]
 		{
-			( keys && keys instanceof Array && keys.length )
-			|| error(__("%1 > Invalid `keys` argument (%2). Should be a non-empty array of key strings.",callee.µ,keys),callee);
+			( path && path instanceof Array && path.length )
+			|| error(__("%1 > Invalid `path` argument (%2). Should be a non-empty array of key strings.",callee.µ,path),callee);
 
-			I = callee.µ['~'];
+			k = WANT_MENUITEM ? 'menuItems' : ('undefined' != typeof WANT_MENUITEM ? 'submenus' : '');
 
-			// Get the parent.
-			// ---
-			for
-			(
-				M=(m=app).menus, iMax=keys.length-1, i=-1 ;
-				++i < iMax && (m=I.GETM(M,keys[i])) ;
-				M = m.submenus
-			);
-
-			if( false===m ) return false;
-			
-			k = keys[i];
-			
-			m = WANT_MENUITEM
-			? I.GETM(m.menuItems,k) :
-			( I.GETM(M,k) || 'undefined' != typeof WANT_MENUITEM || I.GETM(m.menuItems,k) );
-			
-			ALLOW_PLURAL_RESULT
-			|| ( m && (m.name) instanceof Array && (m=m.getElements()[0]) );
-
-			return m;
+			return callee.µ['~'].RESO(path, k, !!ALLOW_PLURAL_RESULT);
 		},
 
-		getMenu: function getMenu_A_$Submenu$$Menu$(/*str[]*/keys,/*bool=0*/ALLOW_PLURAL_RESULT)
+		getMenu: function getMenu_A_$Submenu$$Menu$$false$(/*(str|int|'')[]*/path,/*bool=0*/ALLOW_PLURAL_RESULT)
 		// -------------------------------------
-		// Browse the path specified by `keys` and return the corresponding
+		// Browse the keys specified by `path` and return the corresponding
 		// Menu/Submenu, if valid. (See the `get` method for more detail.)
 		// E.g  µ.getSubmenu( ['$ID/Main','','$ID/CCase Cmd'] )  => Submenu (OK)
 		//      µ.getSubmenu( ['$ID/RtMouseDefault'] )           => Menu (OK)
@@ -726,23 +976,95 @@
 		// ---
 		// => valid Menu|Submenu [OK]  |  false [KO]
 		{
-			return callee.µ.get(keys,false,ALLOW_PLURAL_RESULT);
+			return callee.µ.get(path,false,ALLOW_PLURAL_RESULT);
 		},
 
-		getMenuItem: function getMenuItem_A_$MenuItem$(/*(str|int)[]*/keys,/*bool=0*/ALLOW_PLURAL_RESULT)
+		getMenuItem: function getMenuItem_A_$MenuItem$$false$(/*(str|int|'')[]*/path,/*bool=0*/ALLOW_PLURAL_RESULT)
 		// -------------------------------------
-		// Browse the path specified by `keys` and return the corresponding
+		// Browse the keys specified by `path` and return the corresponding
 		// MenuItem, if valid. (See the `get` method for more detail.)
 		// E.g:
 		//  µ.getMenuItem( [0,'','$ID/EditMenu_FindChange'] ) => MenuItem (OK)
 		// ---
 		// => valid MenuItem [OK]  |  false [KO]
 		{
-			return callee.µ.get(keys,true,ALLOW_PLURAL_RESULT);
+			return callee.µ.get(path,true,ALLOW_PLURAL_RESULT);
 		},
-		
 
-		setAction: function setAction_S_a_o_S$false$(/*str*/nameTitle,/*?{ref,pos}[]*/menuRefs,/*?{}*/options,  $$,I,a,re,refs,i,t,pp,o,s,evHandler,evTypes,smac)
+		checkMenuRef: function checkMenuRef_X_O$false$(/*str|Submenu|MenuItem|{ref:str|Submenu|MenuItem,pos:?str}*/input,  dom,o,s,p,q)
+		//----------------------------------
+		// [ADD210410] Normalizes and checks a menu reference. This method is both used by
+		// µ.setAction and µ.removeAction while parsing the `menuRefs` argument. It performs
+		// a 'neutral' test on the incoming DOM object or specifier. A special process is
+		// required because hitting `(Submenu|MenuItem).constructor` may corrupt the DOM
+		// specifier in some InDesign versions! Returns a volatile object or false.
+		// => { ref:Submenu|MenuItem, pos:'before'|'after' }& [OK]
+		// => false [KO]
+		{
+			if( !input ) return false;
+
+			s = '';
+			if( 'string' == typeof input )
+			{
+				// Assumes input is a string specifier.
+				// ---
+				s = input;
+				try{ dom=resolve(s); o=1 } catch(_){ dom=0 }
+			}
+			else
+			{
+				// input :: {ref:str|DOM,pos:?str} | DOM
+				// ---
+				if( input !== Object(input) ) return false;
+				if( input.hasOwnProperty('ref') )
+				{
+					o = input;
+					dom = o.ref;
+					if( 'string' == typeof dom )
+					{
+						s = dom;
+						try{ dom=resolve(s); } catch(_){ dom=0 }
+					}
+				}
+				else
+				{
+					dom = o;
+					o = 1;
+				}
+			}
+
+			if( (!dom) || 'function' != typeof(dom.toSpecifier) ) return false;
+			
+			if( !s.length )
+			{
+				s = dom.toSpecifier();
+				if( !callee.RE_CHK.test(s) ) return false;
+				if( !dom.isValid ) return false;
+			}
+			else
+			{
+				if( !callee.RE_CHK.test(s) ) return false;
+			}
+
+			// Return.
+			// ---
+			q = callee.Q;
+			q.ref = dom;
+			( 'string'==typeof(p=o.pos) && 'before'==(p=p.toLowerCase()) ) || (p='after');
+			q.pos = p;
+
+			return q;
+		}
+		.setup
+		({
+			Q: { ref:false, pos:0 },
+			
+			// Validates ending `/menu-item[...]` or `/submenu[...]`
+			// ---
+			RE_CHK: /\/(?:menu\-item|submenu)\[[^\]]+\]$/,
+		}),
+
+		setAction: function setAction_S_a_o_S$false$(/*str*/nameTitle,/*?{ref,pos}[]*/menuRefs,/*?{}*/options,  µ,$$,I,a,okRefs,i,t,pp,o,s,evHandler,evTypes,smac)
 		//----------------------------------
 		// Set and/or get a fully functional ScriptMenuAction specifier, associated to one or several
 		// MenuItem(s) that can be created on-the-fly. A quick check is performed if `menuRefs` is not
@@ -774,11 +1096,12 @@
 		// ---
 		// => str [ScriptMenuActionSpec]  |  false [KO-OR-REMOVE]  |  ERROR
 		{
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-			I = callee.µ['~'];
+			µ = callee.µ;
+			$$ = $.global[µ.__root__]; // agnostic reference
+			I = µ['~'];
 			
 			( 'string'==typeof nameTitle && nameTitle.length )
-			|| error( __("%1 > Invalid `nameTitle` arg (%2). Should be a non-empty string.",callee.µ,nameTitle), callee );
+			|| error( __("%1 > Invalid `nameTitle` arg (%2). Should be a non-empty string.",µ,nameTitle), callee );
 
 			if( menuRefs !== Object(menuRefs) )
 			{
@@ -790,29 +1113,15 @@
 			// ---
 			(menuRefs instanceof Array) || (menuRefs=[menuRefs]);
 			
-			// Checks and sanitizes menuRefs elements -> refs.
+			// Checks and sanitizes menuRefs elements -> okRefs.
 			// ---
-			const DF_POS = callee.LOCS['after'];
-			for( re=callee.RE_REF_CTOR, refs=[], i=-1 ; ++i < menuRefs.length ; )
-			{
-				if( !(o=menuRefs[i]) ) continue;
-				if( o !== Object(o) )
-				{
-					try{ t=resolve(''+o) } catch(_){ t=0 }
-					o = 0;
-				}
-				else
-				{
-					t = o.hasOwnProperty('ref') ? (o.ref||0) : o;
-				}
-				t && re.test(t.constructor.name) && t.isValid &&
-				(
-					s = String((o.hasOwnProperty('pos')&&o.pos)||'').toLowerCase(),
-					refs[refs.length]={ ref:t, pos:callee.LOCS[s]||DF_POS }
-				);
-			}
-			refs.length == menuRefs.length
-			|| $$.warn("%1 > Some menu references have been ignored from %2.",callee.µ,$$.JSON(menuRefs));
+			for
+			(
+				okRefs=[], i=-1 ; ++i < menuRefs.length ;
+				(o=µ.checkMenuRef(menuRefs[i])) && (okRefs[okRefs.length]={ ref:o.ref, pos:callee.LOCS[o.pos] })
+			);
+			okRefs.length == menuRefs.length
+			|| ( (+$$.warn) && $$.warn( __("%1 > Some menu references have been ignored from %2.",µ,$$.JSON(menuRefs)) ) );
 
 			// Properties.
 			// ---
@@ -826,7 +1135,7 @@
 			(evHandler=options.handler) || (evHandler=$$.Env.runningScript);
 			( 'function' == typeof evHandler )
 			|| (evHandler=File(evHandler)).exists
-			|| error( __("%1 > Invalid event handler (%2). Should be a function or an existing script file.",callee.µ,evHandler), callee );
+			|| error( __("%1 > Invalid event handler (%2). Should be a function or an existing script file.",µ,evHandler), callee );
 
 			evTypes = String(options.events||'onInvoke').split(callee.RE_EV_SEP);
 			for
@@ -836,21 +1145,20 @@
 				o.hasOwnProperty(t=evTypes[i].toLowerCase()) && -1==s.indexOf(t=o[t]) ? (evTypes[i]=t, s+='_'+t) : evTypes.splice(i,1)
 			);
 			evTypes.length
-			|| error( __("%1 > Invalid `options.events` string (%2). Should be a subsequence of 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke'.",callee.µ,options.events), callee );
+			|| error( __("%1 > Invalid `options.events` string (%2). Should be a subsequence of 'afterInvoke_beforeDisplay_beforeInvoke_onInvoke'.",µ,options.events), callee );
 
 			// Get/set the ScriptMenuAction.
 			// ---
 			smac = I.SMAC(pp, evHandler, evTypes);
-			
+
 			// Check/set the related MenuItems.
 			// ---
-			for( i=-1 ; ++i < refs.length ; I.MITM(smac, refs[i].ref, refs[i].pos) );
+			for( i=-1 ; ++i < okRefs.length ; I.MITM(smac, okRefs[i].ref, okRefs[i].pos) );
 
 			return smac.toSpecifier();
 		}
 		.setup
 		({
-			RE_REF_CTOR: /^(?:Submenu|MenuItem)$/,
 			RE_EV_SEP:   /_/g,
 			EV_TYPES:
 			{
@@ -865,10 +1173,10 @@
 			{
 				before:        +LocationOptions.BEFORE,
 				after:         +LocationOptions.AFTER,
-			}
+			},
 		}),
-
-		removeAction: function removeAction_S$ScriptMenuAction$_a_sf$File$_B(/*str|ScriptMenuAction*/titleAction,/*?{ref}[]*/menuRefs,/*fct|File|str=auto*/hint,  $$,I,smac,a,t,lbl,evh,i,EQU,re,o,j)
+		
+		removeAction: function removeAction_S$ScriptMenuAction$_a_sf$File$_B(/*str|ScriptMenuAction*/titleAction,/*?{ref}[]*/menuRefs,/*fct|File|str=auto*/hint,  µ,$$,I,smac,a,t,lbl,evh,i,EQU,o,j)
 		//----------------------------------
 		// [ADD210404] Remove a ScriptMenuAction and its dependencies. This method is cleaner,
 		// in principle, that `myScriptMenuAction.remove()`, since it explicitly removes the
@@ -886,8 +1194,9 @@
 		// ---
 		// => 1 [OK-REMOVED]  |  0 [KO]
 		{
-			$$ = $.global[callee.µ.__root__]; // agnostic reference
-			I = callee.µ['~'];
+			µ = callee.µ;
+			$$ = $.global[µ.__root__]; // agnostic reference
+			I = µ['~'];
 			
 			// Determine a set of relevant targets.
 			// a :: ScriptMenuAction[] ; length > 0
@@ -896,7 +1205,7 @@
 			if( !smac )
 			{
 				( 'string'==typeof titleAction && titleAction.length )
-				|| error( __("%1 > Invalid `titleAction` arg (%2). Should be a ScriptMenuAction or a non-empty string.",callee.µ,titleAction), callee );
+				|| error( __("%1 > Invalid `titleAction` arg (%2). Should be a ScriptMenuAction or a non-empty string.",µ,titleAction), callee );
 
 				a = I.ALLT(app.scriptMenuActions, titleAction);
 				if( !a.length ) return 0;
@@ -905,7 +1214,7 @@
 			{
 				if( !smac.isValid )
 				{
-					$$.warn("%1 > Invalid ScriptMenuAction: %2.", callee.µ, smac.toSpecifier());
+					$$.warn( __("%1 > Invalid ScriptMenuAction: %2.", µ, smac.toSpecifier()) );
 					return 0;
 				}
 				a = smac.getElement();
@@ -934,21 +1243,10 @@
 			if( menuRefs )
 			{
 				(menuRefs instanceof Array) || (menuRefs=[menuRefs]); // as in µ.setAction()
-				for( re=callee.µ.setAction.RE_REF_CTOR, i=menuRefs.length ; i-- ; )
+				for( i=menuRefs.length ; i-- ; )
 				{
-					if( !(o=menuRefs[i]) ) continue;
-					if( o !== Object(o) )
-					{
-						try{ t=resolve(''+o) } catch(_){ t=0 }
-						o = 0;
-					}
-					else
-					{
-						t = o.hasOwnProperty('ref') ? (o.ref||0) : o;
-					}
-					if( (!t) || (!re.test(t.constructor.name)) || !t.isValid ) continue;
-					
-					for( j=a.length ; j-- ; I.MITM(a[j],t,false) ); // false <-> remove menuitems
+					if( !(o=µ.checkMenuRef(menuRefs[i])) ) continue;
+					for( t=o.ref, j=a.length ; j-- ; I.MITM(a[j],t,false) ); // false <-> remove menuitems
 				}
 			}
 
