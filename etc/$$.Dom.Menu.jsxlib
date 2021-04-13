@@ -590,7 +590,8 @@
 			// Sibling menu items.
 			// Since `ref.parent` may collapse in CS, a fallback strategy is tried.
 			// ---
-			if( (!(t=ref.parent).isValid) || !(t=callee.GETP(ref)) ) return 0;
+			if( (!(t=ref.parent).isValid) && !(t=callee.GETP(ref)) ) return 0;
+
 			MI = t.menuItems;
 
 			// Get all menu items related to that title (with or without ellipsis.)
