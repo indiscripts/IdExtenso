@@ -13,14 +13,14 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        210405 (YYMMDD)
-		Modified:       210409 (YYMMDD)
+		Modified:       210413 (YYMMDD)
 
 *******************************************************************************/
 
 #include '$$.BasicScript.jsxlib'
 #include '$$.Dom.Menu.jsxlib'
 
-;$$.BasicScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.BasicScript.toSource(), 'MenuExtension', 210409, 'callingEvent'))
+;$$.BasicScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.BasicScript.toSource(), 'MenuExtension', 210413, 'callingEvent'))
 	#include 'AnyScript/$$.menu_extension.jsxinc'
 
 ;if( $$.isBooting() )
