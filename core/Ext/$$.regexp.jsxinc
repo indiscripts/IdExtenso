@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       210124 (YYMMDD)
+		Modified:       210417 (YYMMDD)
 
 *******************************************************************************/
 
@@ -668,7 +668,7 @@
 	// RegExp.fromCodeRanges()  [static]
 	//==========================================================================
 
-	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*bool*/OUT_GLOBAL_REGEX,  a,r,X,Y,i,t,n,x,y,X,Y)
+	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*bool*/OUT_GLOBAL_REGEX,  a,r,i,t,n,x,y,X,Y)
 	//----------------------------------
 	// [UPD201005] Given an array of code ranges, create a RegExp pattern
 	// that captures the corresponding characters. Every codepoint can be
