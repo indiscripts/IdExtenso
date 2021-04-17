@@ -1,3 +1,6 @@
+##### [210417]
+   - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Removed duplicated formal parameters _X,Y_ in `RegExp.fromCodeRanges`. (No side effects but had to be fixed.)
+
 ##### [210413]
    - [**Dom.Menu**](/etc/$$.Dom.Menu.jsxlib): re-implemented the menu access routine, taking into account the many bugs and limitations identified in InDesign CS4/CS5/CS6 regarding name-based specifiers (`Menu`, `Submenu`, and `MenuItem` objects.) In summary, the path solver had to avoid both `.getElements()`, `.constructor` and `.parent` commands to work around CSx bugs. In such environment, the algorithm tries to strictly resolve menu paths _by index_ (cf the routines `~.RESO()`, `~.INTO()`, etc.)
    - Added the `getAction()` method in [MenuExtension](/etc/AnyScript/$$.menu_extension.jsxinc) and fixed a few typos.
