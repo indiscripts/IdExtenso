@@ -14,7 +14,7 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        210324 (YYMMDD)
-		Modified:       210413 (YYMMDD)
+		Modified:       210419 (YYMMDD)
 
 *******************************************************************************/
 
@@ -346,7 +346,9 @@
 			mArea = MS.area;
 			if( 'string' != typeof mArea ) mArea=void 0;
 
-			// Ref paths ; calling $$.Dom.Menu.getMenuItem(...)
+			// Ref paths ; calling $$.Dom.Menu.get(...)
+			// [CHG210419] Now calls $$.Dom.Menu.get() instead of getMenuItem()
+			// to support both submenu and menuitem refs.
 			// ---
 			a = MS.paths;
 			(a instanceof Array) || (a=[[0,-1,'before']]);
@@ -362,9 +364,9 @@
 				? ( p=s, t=t.slice(0,-1), --j )
 				: ( p='after' );
 
-				( m = $$.Dom.Menu.getMenuItem(t) )
-				? $$.trace(__("%1 > MenuItem successfully identified for path [%2].", µ, t) )
-				: $$.warn( __("%1 > Cannot identify the MenuItem for path [%2].", µ, t) );
+				( m = $$.Dom.Menu.get(t) )
+				? $$.trace(__("%1 > Menu component successfully identified for path [%2].", µ, t) )
+				: $$.warn( __("%1 > Cannot identify the Menu component for path [%2].", µ, t) );
 				m && mRefs.push({ ref:m, pos:p });
 			}
 			if( !mRefs.length && !UNINSTALL ) return 0;
