@@ -1,3 +1,6 @@
+##### [210419]
+   - [AnyScript/menu_extension](/etc/AnyScript/$$.menu_extension.jsxinc) Made `menuAction()` capable of targetting submenus as well as menuitems by calling `$$.Dom.Menu.get()` instead of `...getMenuItem()` while resolving menu references. As a result, any path in your ...ScriptMenu template can point out to either a `MenuItem` or `Submenu` instance.
+
 ##### [210417]
    - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Removed duplicated formal parameters _X,Y_ in `RegExp.fromCodeRanges`. (No side effects but had to be fixed.)
 
