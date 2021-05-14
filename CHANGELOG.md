@@ -1,3 +1,6 @@
+##### [210515]
+   - [**Collator**](/etc/$$.Collator.jsxlib). Small improvement of the _Word-by-Word_ system, removing spaces and hyphens followed by `(` or `,` while preprocessing text items (cf `~.PWBW`) This strengthens the rule `[PARENTHESIS] < [COMMA] < [SPACE]` and ties in with _Chicago Manual of Style_ example (p. 833, 2010.)
+
 ##### [210419]
    - [AnyScript/menu_extension](/etc/AnyScript/$$.menu_extension.jsxinc) Made `menuAction()` capable of targetting submenus as well as menuitems by calling `$$.Dom.Menu.get()` instead of `...getMenuItem()` while resolving menu references. As a result, any path in your ...ScriptMenu template can point out to either a `MenuItem` or `Submenu` instance.
 
