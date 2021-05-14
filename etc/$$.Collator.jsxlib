@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       200812 (YYMMDD)
+		Modified:       210515 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 200812, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210515, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -988,14 +988,17 @@
 			return s.replace(re,'');
 		},
 
-		PWBW: function(/*str*/s,F,re)
+		PWBW: function(/*str*/s,F,re1)
 		//----------------------------------
 		// (Preprocess-Word-by-Word.)
-		// Remove *initial* left-parentheses, commas, spaces and hyphens.
+		// [CHG210514] Added 2nd replacement to comply with Chicago Manual of Style [2010, p. 833]
+		// (1) Remove *initial* left-parentheses, commas, spaces and hyphens.
+		// (2) Remove spaces and hyphens *followed* by left-parenthesis or comma
 		{
 			F = this.UNVA;
-			re = callee.REGX || (callee.REGX=RegExp('^['+RegExp.escape(F.HYPH+F.SPCE+F.LPAR+F.CMMA)+']+', 'g'));
-			return s.replace(re,'');
+			re1 = callee.REG1 || (callee.REG1=RegExp('^['+RegExp.escape(F.HYPH+F.SPCE+F.LPAR+F.CMMA)+']+', 'g'));
+			re2 = callee.REG2 || (callee.REG2=RegExp( '['+RegExp.escape(F.HYPH+F.SPCE)+']+(?=['+RegExp.escape(F.LPAR+F.CMMA)+'])', 'g')); // [ADD210514]
+			return s.replace(re1,'').replace(re2,'');
 		},
 
 	})
