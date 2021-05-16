@@ -1,3 +1,6 @@
+##### [210516]
+   - [**Collator**](/etc/$$.Collator.jsxlib). Made zero-padding (`~.ZPAD`) simpler, cf `sortNumbers` option. Any word boundary can now initiate a valid digit sequence.
+
 ##### [210515]
    - [**Collator**](/etc/$$.Collator.jsxlib). Small improvement of the _Word-by-Word_ system, removing spaces and hyphens followed by `(` or `,` while preprocessing text items (cf `~.PWBW`) This strengthens the rule `[PARENTHESIS] < [COMMA] < [SPACE]` and ties in with _Chicago Manual of Style_ example (p. 833, 2010.)
 
