@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       210515 (YYMMDD)
+		Modified:       210516 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210515, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210516, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -952,19 +952,23 @@
 
 		ZPAD: function(/*str*/s)
 		//----------------------------------
-		// (Zero-Padding.)
+		// (Zero-Padding.) [CHG210516] Simplified replacement:
+		// supports #+ (integers) and #+.# (dot decimal point.)
+		// The numeral must start at a word boundary.
 		{
 			return s.replace(callee.REGX, callee.REPL);
 		}
 		.setup
 		({
-			REGX: /(?:\.|\b)\d+(?:\.\d|\b)/g,
+			REGX: /\b\d+(?:\.\d|\b)/g, // [CHG210516] Simplified.
 			REPL: function($m,p,s,z)
 			//----------------------------------
 			{
-				// $m :: #+ | #+.# | .#+
+				// $m :: #+ | #+.#
 				// ---
-				0 <= (p=$m.indexOf('.')) ? ( s=$m.slice(p), p=$m.slice(0,p) ) : ( s='', p=$m );
+				0 <= (p=$m.indexOf('.'))
+				? ( s=$m.slice(p), p=$m.slice(0,p) )
+				: ( s='', p=$m );
 				
 				// Prepend '000..'
 				// ---
