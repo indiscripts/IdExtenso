@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       200630 (YYMMDD)
+		Modified:       210518 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 200630, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 210518, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -244,6 +244,7 @@
 		// [ADD200531] Sanitize missing arguments (x1,x2...) so empty strings
 		// are sent rather than "undefined". Useful if your pattern contains %i
 		// placeholders that have no corresponding arguments.
+		// [ADD210518] Added the terminator `...`.
 		// ---
 		// [REM] Although declared 'private' this function cannot rely on `this` for
 		// referencing the private module zone, as it is invoked from the outside.
@@ -254,10 +255,20 @@
 			u===x1 && (x1=''); u===x2 && (x2=''); u===x3 && (x3='');
 			u===x4 && (x4=''); u===x5 && (x5=''); u===x6 && (x6='');
 			u===x7 && (x7=''); u===x8 && (x8=''); u===x9 && (x9='');
+			
+			// [ADD210518] Coerce s into a string.
+			// ---
+			if( 'string' != (k=typeof s) )
+			{
+				if( 'undefined' == k ) return '';
+				s = '' + s;
+			}
+			if( !(z=s.length) ) return '';
 
 			// [CHG180513] Handle terminators `:`  `.`  `!`  (•)
+			// [ADD210518] Deal with `...` too.
 			// ---
-			while( s )
+			while( 1 )
 			{
 				// If `s` already has a full registered key `k==_s`,
 				// take the match and break.
@@ -272,17 +283,23 @@
 				// (For safety we also break here if `s` is strictly the string `%1•`
 				// but has not been identified as an existing key at the previous step.)
 				// ---
-				if( -1 == ":.!".indexOf(c=s.charAt(-1+(z=s.length))) || (s == '%1'+c) )
+				c = s.slice(-1); // last char -- must be `:`, `.` or `!`
+				if( -1 == ":.!".indexOf(c) || (s == '%1'+c) ) break;
+				if( '.' == c && '...' == s.slice(-3) )
 				{
-					break;
+					if( '%1...' == s ) break;
+					c = '...';
 				}
 
+				k = k.slice(0, 1 + z - c.length);
+
 				// ---
-				// From here `s` has the form `xyz•` (`k`::`_xyz•`) and has no specific match.
-				// But maybe `_xyz` alone is a key...
+				// From here `s` has the form `xyz•` and has no specific match,
+				// while     `k` has the form `_xyz` (without `•` suffix.)
+				// [REM210518] The suffix c==`•` might be either a single char (`:`, `.`, `!`), or `...`
 				// ---
 
-				if( o.hasOwnProperty(k=k.slice(0,z)) )
+				if( o.hasOwnProperty(k) )
 				{
 					// (a) If `_xyz` is a registered key, apply it as such and put the result into `s`.
 					// E.g  s=="Size of %1 is:"   (k=="_Size of %1 is")
@@ -293,9 +310,10 @@
 				}
 				else
 				{
-					// (b) Otherwise, removes the final • from `s`. Trick: extract `k.slice(1)`.
-					// E.g. s=="BwXurgZ %1 is:"   (k=="_BwXurgZ %1 is")
-					// -->  s=="BwXurgZ %1 is"
+					// (b) Otherwise, removes the final • from `s`.
+					// Easy: just extract `k.slice(1)`.
+					// E.g. s=="CrazyString %1 is:"   (k=="_CrazyString %1 is")
+					// -->  s=="CrazyString %1 is"
 					// ---
 					s = k.slice(1);
 				}
@@ -303,10 +321,10 @@
 				// Change k into `_%1•`, takes the formatter (if any) and apply it to `s`.
 				// Assuming the formatter is "%1 :",
 				// in case (a) `s` ------> "La taille de MyVar1 est :"
-				// in case (b) `s` ------> "BwXurgZ %1 is :"
+				// in case (b) `s` ------> "CrazyString %1 is :"
 				// (If no formatter is found, just concatenate `s` and •.)
 				// ---
-				k = k.charAt(0) + "%1" + c;
+				k = k.charAt(0) + "%1" + c; // Works with c=='...' as well.
 				s = o.hasOwnProperty(k) ? $.global.localize(o[k],s) : (s+c);
 
 				// Note that `s` may still contain %i placeholders at the end.
@@ -314,9 +332,9 @@
 				break;
 			}
 
-			return s && 0 <= s.indexOf('%') ?
+			return 0 <= s.indexOf('%') ?
 				$.global.localize.apply(null, [s,x1,x2,x3,x4,x5,x6,x7,x8,x9]) :
-				String(s);
+				s;
 		},
 		
 		HASK : function(/*str*/s)
