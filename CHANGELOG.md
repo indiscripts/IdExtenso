@@ -1,3 +1,6 @@
+##### [210518]
+   - [**YALT**](/etc/$$.Yalt.jsxlib). Added automatic support of `...` terminator. That is, if the key `abc` is present in your Yalt package and translated into `xyz`, then `abc...` will be recognized as well, and translated into `xyz...`. (The other automatic terminators are `.`, `:`, and `!`)
+
 ##### [210516]
    - [**Collator**](/etc/$$.Collator.jsxlib). Made zero-padding (`~.ZPAD`) simpler, cf `sortNumbers` option. Any word boundary (incl. `.`) can now initiate a valid digit sequence: `XYZ.123` is no longer interpreted as `0.123`, and regular decimal point as in `XYZ 123.45` is parsed normally.
 
