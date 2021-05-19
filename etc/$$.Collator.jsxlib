@@ -533,8 +533,9 @@
 				// Trick: we use a 'fake' replacement function, its actual job is
 				// to digest the successive matches captured by the regex and to
 				// update accordingly its internal array `F.RET`. (See callee.REPL.)
+				// [FIX210519] Make sure `s` is *still nonempty* before replacement.
 				// ---
-				s.replace(callee.CUR_MTCH, F);
+				s.length && s.replace(callee.CUR_MTCH, F);
 			}
 			
 			// Time-consuming in ExtendScript but sometimes needed.
