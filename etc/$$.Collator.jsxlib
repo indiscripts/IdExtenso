@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       210516 (YYMMDD)
+		Modified:       210519 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210516, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210519, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -485,10 +485,11 @@
 	[PRIVATE]
 	
 	({
-		SPLT: function(/*str!=''*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a,i,ks,n)
+		SPLT: function(/*str*/s,/*bool=0*/UPD_LENGTH,/*bool=0*/SPLIT_BY_FFFD,  F,a,i,ks,n)
 		//----------------------------------
 		// (Split-Into-Keys.) Split `s` into an array of measurable keys, based
 		// on `callee.CUR_MTCH`.
+		// [FIX210519] If `s` is empty, skips the process and makes ret.SIZE==0.
 		// [FIX200617] [CHG200618] Removes any `\0...` suffix from `s` before
 		// extracting keys. This both prevents `string.replace(...)` bugs and
 		// satisfies the rule (1) specified in `µ.sort()`.
@@ -516,20 +517,26 @@
 			SPLIT_BY_FFFD && (F.OFS=0);
 			(a=F.RET).SIZE = 0;
 			
-			// [CHG200618] Removes any '\0...' suffix before extracting keys.
+			// [FIX210519] Needed to support empty imput. In that case,
+			// skip the replace routine (would kill CS4.)
 			// ---
-			0 <= (i=s.indexOf('\0')) && (s=s.slice(0,i));
+			if( s.length )
+			{
+				// [CHG200618] Removes any '\0...' suffix before extracting keys.
+				// ---
+				0 <= (i=s.indexOf('\0')) && (s=s.slice(0,i));
+				
+				// Preprocessing.
+				// ---
+				for( i=-1, n=(ks=callee.PREP).SIZE ; ++i < n ; s=this[ks[i]](s) );
+
+				// Trick: we use a 'fake' replacement function, its actual job is
+				// to digest the successive matches captured by the regex and to
+				// update accordingly its internal array `F.RET`. (See callee.REPL.)
+				// ---
+				s.replace(callee.CUR_MTCH, F);
+			}
 			
-			// Preprocessing.
-			// ---
-			for( i=-1, n=(ks=callee.PREP).SIZE ; ++i < n ; s=this[ks[i]](s) );
-
-			// Trick: we use a 'fake' replacement function, its actual job is
-			// to digest the successive matches captured by the regex and to
-			// update accordingly its internal array `F.RET`. (See callee.REPL.)
-			// ---
-			s.replace(callee.CUR_MTCH, F);
-
 			// Time-consuming in ExtendScript but sometimes needed.
 			// ---
 			UPD_LENGTH && a.length != a.SIZE && (a.length=a.SIZE);
@@ -1366,7 +1373,7 @@
 				i=arr.length ;
 				i-- ;
 				(t=arr[i]),
-				arr[i] = WG.call(I, I.SPLT(String(t)), TM, noVar, o, RV3) + (SB?SB(0,1+i):'') + '\0' + t
+				arr[i] = WG.call(I, I.SPLT(t=String(t)), TM, noVar, o, RV3) + (SB?SB(0,1+i):'') + '\0' + t
 			);
 			arr.sort();
 			for
