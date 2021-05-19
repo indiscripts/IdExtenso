@@ -1,3 +1,6 @@
+##### [210519]
+   - [**Collator**](/etc/$$.Collator.jsxlib). Fixed a CS4 bug involving empty string(s): the `~.SPLT` routine was killing CS4 if the input string was empty. Now `s.length > 0` is a condition before calling `s.replace(callee.CUR_MTCH, F)`.
+
 ##### [210518]
    - [**YALT**](/etc/$$.Yalt.jsxlib). Added automatic support of `...` terminator. That is, if the key `abc` is present in your Yalt package and translated into `xyz`, then `abc...` will be recognized as well, and translated into `xyz...`. (The other automatic terminators are `.`, `:`, and `!`)
 
