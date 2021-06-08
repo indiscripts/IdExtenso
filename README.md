@@ -1,14 +1,10 @@
-# *IdExtenso*  2.10403  (core: 187KB)
+# *IdExtenso*  2.10608  (core: 190KB)
 
-###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [What IdExtenso Is Not](#what-idextenso-is-not) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
-
------
+###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
 ![IdExtenso's API](screenshot.png)
 
------
-
-### Overview
+## Overview
 
 ***IdExtenso*** is a complete ExtendScript/InDesign scripting framework for all CC/CS6/CS5/CS4 environments. It provides a rich toolbox, based on stackable building blocks.
 
@@ -22,19 +18,11 @@
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will you get started, and a huge set of additional modules will help you implement more complex features.
 
-The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `16.x` (CC2021) in both Mac OS and Windows platforms. It fixes, improves or extends a number of built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, etc.
+The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `16.x` (CC2021) in both Mac OS and Windows platforms. It fixes, improves or extends many built-in functionalities. For example, `myString.toSource()` can save 30% of the original result length, `$.global.parseInt()` complies with ECMAScript's latest specification, `RegExp.prototype["=="]` is implemented so that you can compare regexes using `==`, etc.
 
------
+> *Note*. — ***IdExtenso*** is not designed for small projects. If your InDesign script does not require performance tricks, ScriptUI workarounds, localization features, high modularity, cross-version compatibility, advanced settings management... then the workspace we have designed here is not for you.
 
-### What *IdExtenso* Is Not
-
-***IdExtenso*** deals with ExtendScript and wants to make InDesign easier to automate as a primary goal. It does not contain a bunch of _JS sugars_ easily findable in other distributions. And it does not pretend to form a *library* in the narrow sense.
-
-***IdExtenso*** is not designed for small projects. If your InDesign script does not require performance tricks, ScriptUI workarounds, localization features, high modularity, cross-version compatibility, advanced settings management... then the workspace we have designed here is not for you.
-
------
-
-### Key Points
+## Key Points
 
 - As fast and optimized as we can.
 
@@ -50,11 +38,9 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 
 - Growing number of extra modules that you can plug at wish through `#include`. Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, etc.
 
-> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules.
+> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice example based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module.
 
------
-
-### Getting Started
+## Getting Started
 
 > *Warning*. — Use a true EDI ([SublimeText](https://www.sublimetext.com), [UltraEdit](http://www.ultraedit.com), etc.) rather than “ExtendScript ToolKit”. ESTK is not suitable for ***IdExtenso***.
 
@@ -74,9 +60,7 @@ Congratulations! You're now ready to fuel your scripts with ***IdExtenso***!
 
 > *Tip*. — Use `$$.help()` at any point of your code to discover and browse the API of the included modules (including core features.) 
 
------
-
-### Quick Example
+## Quick Example
 
 This basic snippet illustrates how to use some core modules, namely **Log**, **JSON**, and **File**. Use it as a template to familiarize yourself with the framework.
 
