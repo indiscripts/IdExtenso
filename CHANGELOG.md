@@ -1,3 +1,7 @@
+## 2.10608
+  - Important update (June 06, 2021) including latest fixes and additions.
+  - Main changes in the core area: fixed a potential error in `$$.Env.globalEvent()` ([Env/script](/core/Env/$$.script.jsxinc)); prevents [**JSON**](/core/$$.JSON.jsxlib) from accessing invalid name-based specifiers; added the `startupAlias()` method in [**File**](/core/$$.File.jsxlib) for dealing with “startup scripts.”
+
 ##### [210519]
    - [**Collator**](/etc/$$.Collator.jsxlib). Fixed a CS4 bug involving empty string(s): the `~.SPLT` routine was killing CS4 if the input string was empty. Now `s.length > 0` is a condition before calling `s.replace(callee.CUR_MTCH, F)`.
 
