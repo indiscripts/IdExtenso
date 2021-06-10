@@ -1,5 +1,5 @@
 // =============================================================================
-// BasicScriptMenuDemo [210409]
+// BasicScriptMenuDemo [210409][210610]
 // ---
 // The targetengine directive can be commented for testing/debugging.
 // It is not mandatory in this particular example because the action
@@ -8,7 +8,7 @@
 // useful, and recommended, to prevent the handler from entering the
 // `onEngine()` block again and again, which makes it much faster.
 // =============================================================================
-#targetengine 'PathNodes'
+#targetengine 'PathNodesMenu'
 
 #include '../$$.jsxinc'
 
