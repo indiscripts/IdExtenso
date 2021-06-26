@@ -11,11 +11,11 @@
 		                isWidget() getIndex() forceRedraw() setFocus()
 		                builder() isHidden() isDisabled()
 		                addKeyHandler() removeKeyHandler()
-		                callback()
+		                callback() measureWidth()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        190120 (YYMMDD)
-		Modified:       210127 (YYMMDD)
+		Modified:       210626 (YYMMDD)
 
 *******************************************************************************/
 
@@ -142,6 +142,10 @@
 	.callback(x,evt,oldFunc,newFunc) Remove and/or attach event listeners to the
 	                    widget `x` for the specified event type(s) `evt`.
 	                 => undefined
+	----------------------------------------------------------------------------
+	.measureWidth(text,?wg) Return the width of `text` (single line) as rendered
+	                    in a StaticText. [Opt] `wg`: widget or Window instance.
+	                 => uint
 	----------------------------------------------------------------------------
 
 	[REM] Previous IdExtenso versions were including basic ScriptUI features from
