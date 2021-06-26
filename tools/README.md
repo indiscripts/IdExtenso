@@ -178,4 +178,6 @@ Convert the current selection (`PageItem`, `Group` etc.) into a serialized PNG s
 
 ### [`StaticTextMetrics.jsx`](StaticTextMetrics.jsx)
 
+![StaticTextMetrics screenshot](StaticTextMetrics.png)
+
 Allows you to visually refine the data used in the special routine `ScriptUI.measureWidth()`, intended to correct wrong measurements returned from `ScriptUIGraphics.measureString()` in CC environments.
