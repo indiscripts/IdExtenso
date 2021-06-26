@@ -6,7 +6,7 @@
 		Require:        IdExtenso
 		Encoding:       ÛȚF8
 		Core:           NO
-		Kind:           Script for InDesign CC.
+		Kind:           Script for InDesign CC Windows.
 		API:            ---
 		DOM-access:     NO
 		Todo:           ---
@@ -23,7 +23,7 @@
 
 	This tool allows you to visually refine the data used in the special
 	routine `ScriptUI.measureWidth()`, intended to correct wrong measurements
-	returned from `ScriptUIGraphics.measureString()` in CC environments.
+	returned from `ScriptUIGraphics.measureString()` in CC+Win environments.
 
 */
 
@@ -32,7 +32,7 @@
 
 ;$$.StaticTextMetrics = function StaticTextMetrics(  w,r)
 {
-	if( $$.inCS ){ $$.failure("Need InDesign CC!"); return; }
+	if( $$.inCS || $$.inMac ){ $$.failure("Need InDesign CC Windows!"); return; }
 
 	w = ScriptUI.builder.call(callee,callee.DIAL());
 	if( 1===w.show() )
