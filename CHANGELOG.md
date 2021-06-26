@@ -1,3 +1,6 @@
+##### [210626]
+   - [Ext/string](/core/Ext/$$.string.jsxinc): Added the core method `String.prototype.unaccent()`, a basic routine for removing accents/diacritics from a string. E.g. `"ÀçĎéĩĵĶńőŕşūŵŷż".unaccent()` returns `"AcDeijKnorsuwyz"`.
+
 ## 2.10608
   - Important update (June 06, 2021) including latest fixes and additions.
   - Main changes in the core area: fixed a potential error in `$$.Env.globalEvent()` ([Env/script](/core/Env/$$.script.jsxinc)); prevents [**JSON**](/core/$$.JSON.jsxlib) from accessing invalid name-based specifiers; added the `startupAlias()` method in [**File**](/core/$$.File.jsxlib) for dealing with “startup scripts.”
