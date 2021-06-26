@@ -1,6 +1,6 @@
 ##### [210626]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Added the core method `String.prototype.unaccent()`, a basic routine for removing accents/diacritics from a string. E.g. `"ÀçĎéĩĵĶńőŕşūŵŷż".unaccent()` returns `"AcDeijKnorsuwyz"`.
-   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.measureWidth()`, which fixes the biased results of `graphics.measureString()` in CC environments. Go to [StaticTextMetrics.jsx](/tools/StaticTextMetrics.jsx) for testing.
+   - [`SUI/mini`](/core/SUI/$$.mini.jsxinc): Added `ScriptUI.measureWidth()`, which fixes the biased results of `graphics.measureString()` in CC environments (Windows only, as the bug seems Win-specific.) Go to [StaticTextMetrics.jsx](/tools/StaticTextMetrics.jsx) for testing.
 
 ## 2.10608
   - Important update (June 06, 2021) including latest fixes and additions.
