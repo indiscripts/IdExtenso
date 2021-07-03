@@ -3,17 +3,17 @@
 		Name:           Events
 		Desc:           Tools for managing ScriptUI events.
 		Path:           /etc/ScriptUI/$$.events.jsxinc
-		Require:        ---
+		Require:        core/SUI
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Snippet
-		API:            ScriptUI.event()
+		API:            ScriptUI.event() [[constructor]]
 		                (Event|UIEvent|MouseEvent|KeyboardEvent).prototype.toSource()
 		                $$.JSON['~']['\x02'(Event|UIEvent|MouseEvent|KeyboardEvent)]
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190220 (YYMMDD)
-		Modified:       210103 (YYMMDD)
+		Modified:       210703 (YYMMDD)
 
 *******************************************************************************/
 
@@ -24,6 +24,7 @@
 	/*
 
 	1. BASICS
+	____________________________________________________________________________
 
 	This snippet deals with `Event`, `UIEvent`, `MouseEvent` and `KeyboardEvent`
 	classes (ScriptUI.) The hierarchical diagram is, in principle,
@@ -51,7 +52,7 @@
 	      ScriptUI.events.createEvent('MouseEvent').constructor;
 	      ScriptUI.events.createEvent('KeyboardEvent').constructor;
 
-	Then we get:
+	Then we have:
 	
 	      MouseEvent===MouseEvent.prototype.constructor;       // true
 	      KeyboardEvent===KeyboardEvent.prototype.constructor; // true
@@ -66,7 +67,8 @@
 	      ev.initKeyboardEvent()
 
 	[REM] ScriptUI only supports 'keydown' and 'keyup' as native KeyboardEvent
-	      types; 'keypress' is not triggered from UI components.
+	      types; 'keypress' is not triggered from UI components. A custom
+	      'keypress' can be constructed though.
 
 	[REM] Do not confuse ScriptUI-related events with InDesign DOM events: Event,
 	      DocumentEvent, MutationEvent, ImportExportEvent, PrintEvent, IdleEvent...
@@ -74,6 +76,7 @@
 
 
 	2. EVENT API
+	____________________________________________________________________________
 
 	All prototyped properties of an event are *READ-ONLY*, but you can load
 	extra properties in an existing instance before dispatching the event.
@@ -104,10 +107,12 @@
 	 UMK   view              ?obj  ScriptUI element "that the event relates to."
 	 UMK   detail            ?int  "Click count for a mouse click event."
 	       ---------------------------------------------------------------------
-	  MK   ctrlKey           bool  Whether the [Ctrl]  key is down.
-	  MK   altKey            bool  Whether the [Alt]   key is down.
-	  MK   shiftKey          bool  Whether the [Shift] key is down.
-	  MK   metaKey           bool  Whether the [Meta]  key is down.
+	  MK   ctrlKey          ?bool  Whether the [Ctrl]  key is down while keying.
+	  MK   altKey           ?bool  Whether the [Alt]   key is down while keying.
+	  MK   shiftKey         ?bool  Whether the [Shift] key is down while keying.
+	  MK   metaKey          ?bool  Whether the [Meta]  key is down while keying.
+	                         [REM] These properties are undefined if the event
+	                               keyName itself is Control|Alt|Shift|Meta
 	       ---------------------------------------------------------------------
 	  M    button            uint  0:left, 1:middle, 2:right, 3:back, 4:forward
 	  M    screenX           int   Horizontal offset in screen coordinates.
@@ -115,8 +120,19 @@
 	  M    clientX           uint  Horizontal coord. in client area.
 	  M    clientY           uint  Vertical coord. in client area.
 	       ---------------------------------------------------------------------
-	   K   keyName           str   [TODO]
-	   K   keyIdentifier     str   [TODO]
+	   K   keyName           ?str  Standard key name (e.g 'A', 'Semicolon',
+	                               'Control', 'F1', 'F12', 'Num Lock', 'End',
+	                               'Delete'). May be undefined, e.g for the key
+	                               [<], whose identifier is U+003C.
+	   K   keyIdentifier     ?str  - The string `U+<HHHH>` for regular characters
+	                                 (e.g 'U+0041' for `A`, 'U+0024' for `$`,
+	                                 'U+0035' for `5`). Note: there is no case
+	                                 distinction here, use the `shiftKey` property
+	                                 to conclude.
+	                               - Usually the keyName otherwise (e.g 'Control',
+	                                 'End', 'Insert'), sometimes a variant without
+	                                 space (e.g 'NumLock'), and sometimes undefined!
+	                                 That's the case of the Delete key.
 	   K   keyLocation       int   One of -1 (not specified), or 0, 1, 2, 3.
 	   K   DOM_KEY_LOCATION_STANDARD  0
 	   K   DOM_KEY_LOCATION_LEFT      1
@@ -191,14 +207,90 @@
 	         modList    (str)         Space-separated string of modifier key names:
 	                                  ((Alt|Control|Shift|Meta) )+, or empty.
 	         keyLocation(int)         Sets the keyLocation value
+
+
+	3. TESTING SOME KEYBOARD EVENTS
+	____________________________________________________________________________
+	
+	[REM] CASM denotes the Ctrl/Alt/Shift/Meta flags, in that order.
+	      LOC  denotes keyLocation (0:standard, 1:left, 2:right, 3:numpad.)
+	           LOC is not reliable in CC (tends to be 0 in any case.)
+
+	============================================================================
+	 KEYNAME | IDENTIFIER | LOC | CASM |               NOTES
+	============================================================================
+	 Control   Control      1|2   ????    
+	 Shift     Shift        1|2   ????            All CASM flags
+	 Alt       Alt          1|2   ????            are undefined!
+	 Win|Mac   Win|Mac       1    ????    
+	----------------------------------------------------------------------------
+	 [REM] AltGr is treated as 2 consecutive events: Ctrl + Alt
+	----------------------------------------------------------------------------
+	   A       U+0041        0    ....            Use ev.shiftKey
+	 <etc>                                         to determine
+	   Z       U+005A        0    ....            the letter case.
+	----------------------------------------------------------------------------
+	   0       U+0030|00E0  3|0   ....                           `à`
+	   1       U+0031|0026  3|0   ....                           `&`
+	   2       U+0032|00E9  3|0   ....      Below are chars      `é`
+	   3       U+0033|0022  3|0   ....      matching the         `"`
+	   4       U+0034|0027  3|0   ....      identifier on        `'`
+	   5       U+0035|0028  3|0   ....      a FR keyboard        `(`
+	   6       U+0036|002D  3|0   ....      with LOC:0           `-`
+	   7       U+0037|00E8  3|0   ....      and no Shift         `è`
+	   8       U+0038|005F  3|0   ....                           `_`
+	   9       U+0039|00E7  3|0   ....                           `ç`
+	----------------------------------------------------------------------------
+	  F1       F1            0    ....
+	  F2       F2            0    ....
+	  F3       F3            0    ....
+	  F4       F4            0    ....
+	  F5       F5            0    ....
+	  F6       F6            0    ....
+	  F7       F7            0    ....
+	  F8       F8            0    ....
+	  F9       F9            0    ....
+	  F10      F10           0    ....
+	  F11      F11           0    ....
+	  F12      F12           0    ....
+	----------------------------------------------------------------------------
+	  Escape     Escape      0    ....    Will usually close the dialog.
+	  Enter      Enter       0    ....    May close the dialog if CASM is 0000.
+	  Down       Down        0    ....    ┐
+	  Up         Up          0    ....    │  Arrow
+	  Left       Left        0    ....    │  keys.
+	  Right      Right       0    ....    ┘
+	  Delete     U+007F      0    ....    
+	  Backspace  U+0008      0    ....    
+	  Insert     Insert      0    ....    
+	  Home       Home        0    ....    
+	  End        End         0    ....    
+	  PageUp     PageUp      0    ....    
+	  PageDown   PageDown    0    ....    
+	  ScrollLock ScrollLock  0    ....    
+	  Num Lock   NumLock     0    ....    
+	----------------------------------------------------------------------------
+	  LeftBracket  U+0029    0    ....    `)` on FR keyb
+	  Equal        U+003D    0    ....    `=` on FR keyb
+	  Semicolon    U+0024    0    ....    `$` on FR keyb
+	  RightBracket U+005E    0    ....    `^` on FR keyb
+	  Backslash    U+002A    0    ....    `*` on FR keyb
+	  Accent       U+00F9    0    ....    `ù` on FR keyb
+	  Slash        U+003A    0    ....    `:` on FR keyb
+	  Period       U+003B    0    ....    `;` on FR keyb
+	  Comma        U+002C    0    ....    `,` on FR keyb
+	----------------------------------------------------------------------------
+	  undef        U+003C    0    ....    `<` on FR keyb
+	  undef        U+0021    0    ....    `!` on FR keyb
+
 	*/
 
 	;if( $$.isBooting() )
 	//----------------------------------
-	// This condition is required for persistent engines.
+	// This condition is required in persistent engines.
 	{
 		//==========================================================================
-		// [190221] ScriptUI.event()
+		// [190221] [210703] ScriptUI.event()
 		//==========================================================================
 
 		ScriptUI.event = function event(/*str*/type,/*event&|'E'|'U'|'M'|'K'='U'*/base,/*?event|{}*/options,  b,BB,CC,HOP,r,k)
@@ -210,6 +302,7 @@
 		// KeyboardEvent). The `options` object, if provided, specifies regular or extra event
 		// properties. To clone an event, use the form `ScriptUI.event(type,char,originalEvent)`
 		// where char is the event letter (E|U|M|K) or class name `originalEvent.__class__`.
+		// [FIX210703] Fix the process of cloning keyboard events.
 		// ---
 		// `type`      :: The type (str) of the event to build. Either regular or custom.
 		// `base`      :: Existing event, or string among 'E', 'U', 'M', 'K'. If undefined,
@@ -265,7 +358,13 @@
 					r.initKeyboardEvent(type, BB, CC
 						, void 0 // unknown arg
 						, String( options[k='keyName'] || base[k] || '' )
-						, callee.MOD_LIST( options[k='modList'] || base[k] )
+						, callee.MOD_LIST( options['modList'] ||
+						  {
+							altKey:   options[HOP](k='altKey')   ? options[k] : base[k],
+							ctrlKey:  options[HOP](k='ctrlKey')  ? options[k] : base[k],
+							shiftKey: options[HOP](k='shiftKey') ? options[k] : base[k],
+							metaKey:  options[HOP](k='metaKey')  ? options[k] : base[k],
+						  })
 						, 0|( options[HOP](k='keyLocation') ? options[k] : base[k] )
 					);
 					break;
@@ -286,30 +385,46 @@
 					);
 			}
 			
+			// Extra options.
+			// ---
 			if( !options.__count__ ) return r;
 			for( k in options )
 			{
-				options[HOP](k) && !(k in r) && (r[k]=options[k]);
+				// [REM] Prototyped properties are read-only,
+				// hence the `!( k in r )` condition.
+				// ---
+				options[HOP](k) && !(k in r ) && (r[k]=options[k]);
 			}
 			return r;
 		}
 		.setup
 		({
-			// --- Wake up MouseEvent function.
+			// --- Wake up MouseEvent constructor.
 			M_EVENT: ScriptUI.events.createEvent('MouseEvent').constructor,
-			// --- Wake up KeyboardEvent function.
+			// --- Wake up KeyboardEvent constructor.
 			K_EVENT: ScriptUI.events.createEvent('KeyboardEvent').constructor,
 
-			MOD_LIST: function(s)
+			MOD_LIST: function(/*str|{altKey,ctrlKey,shiftKey,metaKey}*/x,  s)
 			//----------------------------------
 			// Sanitize the `modList` argument.
+			// [CHG210703] Supports obj or KeyBoardEvent as input.
 			{
-				if( !s ) return '';
-				s = String(s).toLowerCase();
+				if( !x ) return '';
+				
+				if( x===Object(x) )
+				{
+					return ( (x.altKey   ? ' Alt'     : '') +
+					         (x.ctrlKey  ? ' Control' : '') +
+					         (x.shiftKey ? ' Shift'   : '') +
+					         (x.metaKey  ? ' Meta'    : '')
+					       ).slice(1);
+				}
+				
+				s = String(x).toLowerCase();
 				return (
-					( 0 <= s.indexOf('alt') ? ' Alt' : '' ) +
+					( 0 <= s.indexOf('alt')  ? ' Alt' : '' ) +
 					( 0 <= s.indexOf('control') || 0 <= s.indexOf('ctrl') ? ' Control' : '' ) +
-					( 0 <= s.indexOf('shift') || 0 <= s.indexOf('shft') ? ' Shift' : '' ) +
+					( 0 <= s.indexOf('shift')   || 0 <= s.indexOf('shft') ? ' Shift' : '' ) +
 					( 0 <= s.indexOf('meta') ? ' Meta' : '' )
 					).slice(1);
 			},
