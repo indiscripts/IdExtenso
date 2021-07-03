@@ -1,5 +1,5 @@
 ##### [210703]
-   - [ScriptUI/events](/etc/ScriptUI/$$.events.jsxinc). Better management of modifier keys (Alt/Ctrl/Shift/Meta) while cloning a `KeyboardEvent`.
+   - [ScriptUI/events](/etc/ScriptUI/$$.events.jsxinc). Better management of modifier keys (Alt/Ctrl/Shift/Meta) while cloning a `KeyboardEvent` via `ScriptUI.event('my_custom_type', 'K', originalKeyboardEvent)`.
 
 ##### [210626]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Added the core method `String.prototype.unaccent()`, a basic routine for removing accents/diacritics from a string. E.g. `"ÀçĎéĩĵĶńőŕşūŵŷż".unaccent()` returns `"AcDeijKnorsuwyz"`.
