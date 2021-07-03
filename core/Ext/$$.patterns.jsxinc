@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       190220 (YYMMDD)
+		Modified:       210703 (YYMMDD)
 
 *******************************************************************************/
 
@@ -116,6 +116,7 @@
 	"\U9999" is not "\u9999". That is, only `\x` is case insensitive.
 
 	NOTES ON U+0000 aka <X0>
+	_______________________________________________________________________
 
 	`\0` is a valid escape sequence for <X0> only *if the next character
 	is not a decimal digit*. Also, ExtendScript CS4/CS5/CS6 does not
@@ -127,9 +128,13 @@
 	that `"\x00".length == 1`. However, `"\x00"[0]` is considered empty
 	since `"\x00".charAt(0) === ""`  and  `"\x00".charAt(0).length == 0`.
 	As a consequence, `"\x00"[0][0]` is undefined!
+	
+	[REM210703] `String.prototype.charAt()` is now patched in IdExtenso
+	and supports `\0`.
 
 
 	NOTES ON TRIPLE-QUOTED LITERALS
+	_______________________________________________________________________
 	
 	1. ExtendScript triple-quoted syntax for literal strings supports
 	all JS escape sequences: \" \' \\ \n \r \b \t \v \f \xHH \uHHHH.
@@ -258,7 +263,7 @@
 	String.PS   = '\u2029';
 	RegExp.PS   = /\u2029/g                                     // /PS/
 	// ---
-	RegExp.LINE = /\u000D|\u000A|\u000D\u000A/g;                // /CR|LF|CRLF/
+	RegExp.LINE = /\u000D\u000A|\u000D|\u000A/g;                // /CRLF|CR|LF/    [FIX210703] Longest match first!
 	RegExp.LINEs= /[\u000D\u000A]+/g;                           // /CR|LF/+
 	RegExp.JSNLs= /[\u000D\u000A\u2028\u2029]+/g;               // /CR|LF|LS|PS/+  (JS newline)
 	RegExp.TBNL = /[\u0009\u000D\u000A]/g;                      // /TB|CR|LF/
