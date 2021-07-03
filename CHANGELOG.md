@@ -1,5 +1,6 @@
 ##### [210703]
    - [ScriptUI/events](/etc/ScriptUI/$$.events.jsxinc). Better management of modifier keys (Alt/Ctrl/Shift/Meta) while cloning a `KeyboardEvent` via `ScriptUI.event('my_custom_type', 'K', originalKeyboardEvent)`.
+   - [Ext/patterns](/core/Ext/$$.patterns.jsxinc): Changed `RegExp.LINE = /\u000D|\u000A|\u000D\u000A/g` into `RegExp.LINE = /\u000D\u000A|\u000D|\u000A/g` (longest match first.) The latter form is more conform and fixes inconsistencies between ExtendScript CS and CC.
 
 ##### [210626]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Added the core method `String.prototype.unaccent()`, a basic routine for removing accents/diacritics from a string. E.g. `"ÀçĎéĩĵĶńőŕşūŵŷż".unaccent()` returns `"AcDeijKnorsuwyz"`.
