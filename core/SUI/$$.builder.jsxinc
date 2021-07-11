@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       210124 (YYMMDD)
+		Modified:       210711 (YYMMDD)
 
 *******************************************************************************/
 
@@ -290,7 +290,7 @@
 	where <func> denotes the passed function.
 	
 	[ADD210124] If multiple event types have to be associated to a single
-	listener, you can now concatenate the keys and have a single declaration:
+	listener, you can now concatenate the keys and use a single declaration:
 	
 	      _blur_focus:    function onBlurFocus(ev){ . . . }
 
@@ -424,6 +424,8 @@
 	    groups based on a label (StaticText) and an edit field (EditText.)
 	    Make sure the `helpTip` property is declared before the child components
 	    that want to inherits it: any child already built will remain unaltered.
+	    [210711] You can now prevent `helpTip` inheritance at some point (without
+	    assigning a string) by using the explicit `helpTip: false` command.
 	
 	[REM] The `helpTip` property does not reliably work on Panel and Window
 	      containers. Most of the time the message doesn't popup while the mouse
@@ -540,21 +542,22 @@
 	[190311] Added the `optimalSize` shortcut.
 	[210124] Added the ability to attach *multiple* event keys to
 	         a single handler: `_focus_blur: function onFocusBlur(){...}`
+	[210711] Ability to prevent helpTip inheritance using `helpTip: false`.
 
 	*/
 
-	;ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/parent,  q,win,pp,s,t,RS,DG,k,x,p,ISWG,wg)
+	;ScriptUI.builder = function builder(/*obj*/res,/*?Widget*/host,  q,win,pp,s,t,RS,DG,k,x,p,ISWG,wg)
 	//----------------------------------
 	// Create a ScriptUI interface (from a simple control to a full Window.)
-	// Return its parent, or the top window. (Read the notice for details.)
+	// Return its host, or the top window. (Read the notice for details.)
 	// ---
 	// `res`    :: Resource object in { <key>:<value>, <key>:<value>, ... } form.
 	//             E.g  `{ spacing:5, minimumSize:[100,50], group$Gp:{...} ...}`
-	// `parent` :: Parent of the object being built. If no parent is supplied, or
+	// `host`   :: Host of the object being built. If no host is supplied, or
 	//             if no window is attached to it, create a new Window instance.
 	// <this>   :: Any context that would require to be sent to factory functions.
 	// ---
-	// => new Window | parent
+	// => new Window | host
 	{
 		// Checkpoint.
 		// ---
@@ -567,9 +570,9 @@
 
 		// Do we need a new Window?
 		// ---
-		win = parent && (parent.window||parent);
+		win = host && (host.window||host);
 		( win && (win instanceof Window) )
-		|| ( parent=win=callee.WIND(res.properties) );
+		|| ( host=win=callee.WIND(res.properties) );
 
 		// [190120] Uniform 'stack' manager.
 		// ---
@@ -586,7 +589,7 @@
 			x = res[k];                                     // E.g  k::'size', x::[20,10]
 			if( x!==Object(x) )                             // Don't waste time if x is a scalar.
 			{
-				callee.SETK(this,parent,k,x);               // `SETK` manages possible key handler!
+				callee.SETK(this,host,k,x);                 // `SETK` manages possible key handler!
 				continue;
 			}
 
@@ -595,8 +598,8 @@
 			if( false===pp ) continue;                      // Skip critical keys s.t. 'window' (!)
 
 			if( !q.length )                                 // If `q` is empty, we just have to set
-			{                                               // `parent[k]=x` (no widget creation);
-				callee.SETK(this,parent,k,x);               // `SETK` provides improvements for some
+			{                                               // `host[k]=x` (no widget creation);
+				callee.SETK(this,host,k,x);                 // `SETK` provides improvements for some
 				continue;                                   // props and deals with event listeners.
 			}
 
@@ -613,8 +616,8 @@
 			// Create the widget.
 			// ---
 			ISWG = 'custom' == (k=q[0])
-			? ( (wg=callee.CUST(this,parent,q)) && ScriptUI.isWidget(wg) )
-			: ( (wg=callee.WIDG(parent,q,pp,s)) && true );
+			? ( (wg=callee.CUST(this,host,q)) && ScriptUI.isWidget(wg) )
+			: ( (wg=callee.WIDG(host,q,pp,s)) && true );
 
 			if( !wg ) continue;
 
@@ -625,9 +628,9 @@
 				( s in win )   || (win[s]=wg);              // make `wg` available from `win[s]`
 				('name' in wg) || (wg.name=s);              // and set `wg.name` to `s`.
 			}
-			if( !wg.helpTip && (t=parent.helpTip) )         // [180825] Inherits `helpTip`
-			{                                               // from `parent`, if not assigned.
-				wg.helpTip = t;
+			if( !wg.helpTip && (t=host.helpTip) )           // [180825] Inherits `helpTip`
+			{                                               // from `host` if not assigned...
+				false===x.helpTip || (wg.helpTip=t);        // [210711] ...unless `x.helpTip===false`
 			}
 
 			if( !ISWG ) continue;                           // If `wg` is a true SUI widget:
@@ -638,8 +641,7 @@
 		// [190120] Cleanup `res` keys?
 		// ---
 		if( RS ) for( k in res ) res.hasOwnProperty(k) && delete res[k];
-		
-		return parent;
+		return host;
 	}
 	.setup
 	({
@@ -707,7 +709,7 @@
 	// [181201] ScriptUI.addKeyHandler() .removeKeyHandler()
 	//==========================================================================
 
-	ScriptUI.addKeyHandler = function addKeyHandler(/*key*/k,/*fct*/handler)
+	ScriptUI.addKeyHandler = function addKeyHandler(/*key|key[]*/k,/*fct*/handler,  i,t)
 	//----------------------------------
 	// Add a "key handler" to ScriptUI.builder. Whenever the key `k`
 	// is encountered in the resource object (`k : val` assignments),
@@ -717,17 +719,26 @@
 	// 1. (obj) The target widget or object.
 	// 2. (any) The value to be assigned.
 	// (The key `k` itself is passed to the handler as 3rd parameter.)
+	// [CHG210710] The argument `k` can be an array of keys as well,
+	// so every key is associated to the same handler.
 	// [REM] Cf. `ScriptUI.builder.SETK.EXTERN`
 	// ---
 	// => callee
 	{
-		'string'==typeof k
-		|| error(__("%1 > Invalid key (%2). Should be a string.",callee.name,k && typeof k));
-
 		'function'==typeof handler
 		|| error(__("%1 > Invalid handler (%2). Should be a function.",callee.name,handler && typeof handler));
 
-		ScriptUI.builder.SETK.EXTERN[k] = handler;
+		// [CHG210710] Array support.
+		// ---
+		( k && k instanceof Array ) || (k=[k]);
+		for( i=-1 ; ++i < k.length ; )
+		{
+			'string'==typeof(t=k[i])
+			|| error(__("%1 > Invalid key (%2). Should be a string.",callee.name,t && typeof t));
+
+			ScriptUI.builder.SETK.EXTERN[t] = handler;
+		}
+
 		return callee;
 	};
 
