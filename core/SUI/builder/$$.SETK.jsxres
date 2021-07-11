@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       210124 (YYMMDD)
+		Modified:       210711 (YYMMDD)
 
 *******************************************************************************/
 
@@ -120,7 +120,13 @@
 
 			return;
 		}
-			
+		
+		// [CHG210711] ScriptUI automatically coerces any falsy helpTip
+		// into a string: undefined -> "undefined", false -> "false".
+		// In such case, best is to skip the assignment.
+		// ---
+		if( 'helpTip'==k && !x ) return;
+
 		// Default assignment.
 		// ---
 		wg[k] = x;
