@@ -10,11 +10,11 @@
 		API:            ScriptUI alignments (LT, RT, etc)
 		                ScriptUI.isWidget() .getIndex()
 		                ScriptUI.forceRedraw() .setFocus()
-		                ScriptUI.callback() ScriptUI.measureWidth()
+		                ScriptUI.callback() .measureWidth()
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210226 (YYMMDD)
+		Modified:       210719 (YYMMDD)
 
 *******************************************************************************/
 
@@ -365,6 +365,11 @@
 	// a single-line string (no \r or \n character allowed in `text`.) This
 	// function refines the result of the native gx.measureString() method (which
 	// is not reliable in CC Win.)
+	// [REM210719] Tests have shown that `gx.measureString()` returns a size that
+	// doesn't fit the visual rectangle actually occupied by the text (in CC Win.)
+	// However, these dimensions may still be required for sizing properly the
+	// statictext component, which otherwise wouldn't display the entire text! Use
+	// `measureWidth` for sizing accordingly a Group container.
 	// [REM] The inner set `callee.FIX` contains empirical data used for adjusting
 	// the width of common characters. For example, "a"=>-14 means that the width
 	// of `a` must be reduced by -14% on average to get a correct measurement. These
