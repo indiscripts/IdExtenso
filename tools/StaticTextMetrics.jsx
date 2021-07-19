@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210624 (YYMMDD)
-		Modified:       210626 (YYMMDD)
+		Modified:       210719 (YYMMDD)
 
 *******************************************************************************/
 
@@ -109,7 +109,7 @@
 		w.Buttons.enabled = true;
 	},
 	
-	ECHG: function onEditChanging(w,tx,x,fx,pc)
+	ECHG: function onEditChanging(w,tx,x,fx,pc,t,tt)
 	//----------------------------------
 	{
 		w = this.window;
@@ -129,11 +129,28 @@
 		
 		w.Info.text = x ?
 		[
-			"Native Width: " + x,
-			"Fixed Width: " + fx + "  (" + pc + "%)",
+			"Native Width (orange): " + x,
+			"Fixed Width (green): " + fx + "  (" + pc + "%)",
 			'',
 			"If the green bar doesn't match the text, you can adjust the width of a particular character using the +/– buttons below the list."
 		].join('\r') : '';
+
+		t = w.LiveTest;
+		if( !tx ) return;
+		
+		
+		// [ADD210719] Decouple text size and container size,
+		// showing that the visible width of the text (fx)
+		// diverges from the width assigned to the StaticText (x).
+		// In practice, max(fx,x) sounds like a safe value.
+		// ---
+		try{
+		tt = t.children[0];
+		t.size[0] = fx;
+		tt.size[0] = Math.max(fx,x);
+		tt.text = tx;
+		w.LiveInfo.text = "Tested width (Blue):  Group=" + t.size[0] + "  ;  Text=" + tt.size[0];
+		}catch(e){alert(e)}
 	},
 	
 	DIAL: function()
@@ -226,6 +243,19 @@
 					},
 				},
 				
+				Group$LiveTest:             // [ADD210719]
+				{
+					margins:                0,
+					spacing:                0,
+					orientation:            'stack',
+					alignChildren:          ScriptUI.FC,
+					background:             0x336699,
+					staticText$:
+					{
+						properties:         {text:' '},
+					}
+				},
+				
 				Group$:
 				{
 					margins:                20,
@@ -233,6 +263,7 @@
 					orientation:            'column',
 					alignChildren:          ScriptUI.LT,
 					
+					StaticText$LiveInfo:    { properties:{multiline:false}, minimumSize:{width:400} }, // [ADD210719]
 					StaticText$Info:        { properties:{multiline:true}, minimumSize:[400,150] },
 				},
 				
