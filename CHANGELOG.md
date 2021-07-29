@@ -1,3 +1,10 @@
+##### [210730]
+   - [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc). This new snippet introduces a set of common functions used in custom ScriptUI factories. Mainly:
+      - `ScriptUI.factoryOptions(ini,defs)`: Merges the incoming `ini` set with a default set of options.
+      - `ScriptUI.setWatcher(widget,keys,watchFct,options)`: Attaches a _watcher_ (“watch function”) to widget keys.
+      - `ScriptUI.dispatch(widget,evType,options)`: Dispatches a custom event.
+      - `ScriptUI.measureMulti(text,widget,maxWidth)`: Returns the _probable_ dimensions of the string `text` when laid out in a multiline text widget (StaticText, EditText.)
+
 ##### [210729]
    - [SUI/mini](/core/SUI/$$.mini.jsxinc): added the `RETMAX` argument (boolean) in `ScriptUI.measureWidth(text,widget,RETMAX)`. The function then returns the highest result when _legacyWidth_ and _computedWidth_ differ.
 
