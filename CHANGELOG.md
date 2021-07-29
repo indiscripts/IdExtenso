@@ -1,3 +1,6 @@
+##### [210729]
+   - [SUI/mini](/core/SUI/$$.mini.jsxinc): added the `RETMAX` argument (boolean) in `ScriptUI.measureWidth(text,widget,RETMAX)`. The function then returns the highest result when _legacyWidth_ and _computedWidth_ differ.
+
 ##### [210711]
    - [SUI/builder](/core/SUI/$$.builder.jsxinc) now allows you to prevent `helpTip` inheritance on a particular component thas doesn't want to display any help tip. Simply use the rule `helpTip: false`.
 
