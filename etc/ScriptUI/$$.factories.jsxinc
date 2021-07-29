@@ -1,0 +1,706 @@
+/*******************************************************************************
+
+		Name:           Factories
+		Desc:           Shared tools for declaring custom ScriptUI factories.
+		Path:           /etc/ScriptUI/$$.factories.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:  ScriptUI. factoryOptions() setWatcher() dispatch()
+		                customEventHandler()
+		                LINE measureMulti()
+		                POPU() NOOP()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        210128 (YYMMDD)
+		Modified:       210730 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE & GUIDELINES
+	//==========================================================================
+	
+	/*
+	
+	0. OVERVIEW
+	____________________________________________________________________________
+	
+	PRODUCT. - In the following, PRODUCT will denote any custom ScriptUI object
+	returned by a factory using the rules detailed in core/SUI/builder (NOTICE).
+	
+	Most products are ScriptUI containers (Group, Panel) that encapsulate one
+	or several widgets (EditText, Listbox, StaticText, Image, etc). For example,
+	ScriptUI.CheckFactory produces a Group (G) formed of one StaticText (S) and
+	one Checkbox (C).
+
+	Some products may just append custom features to a simple widget. For exam-
+	ple, ScriptUI.IconFactory creates a multi-state Image (i) based on a PNG
+	string.
+	
+	COMPONENT. - Denotes any ScriptUI widget used by a product, including the
+	product itself. Most products rely on several components, the product being
+	typically a ScriptUI container and its direct components being typically
+	the children of that container.
+	
+	KIND. - The KIND of a product is a specific label that identifies its
+	factory. Given a product X, `X.properties.kind` should always be set to
+	the function name associated to the factory. A good practive is to
+	declare any factory as follows:
+	
+	      ScriptUI.MyProductFactory = function MyProduct(...){ }
+
+	where `MyProduct` is the function name, hence the `kind` property, of the
+	product. While building the ScriptUI object, the factory is expected to
+	create a `properties` property and set the `kind` key to the corresponding
+	string.
+	
+	In complex UIs, the `kind` attribute helps identify which ScriptUI widgets
+	are actual products. Also, the documentation of the factory may informally
+	use the form <ScriptUI-type>[[<kind>]] to both indicate the native type
+	and the kind of the product. E.g, `Group[[Check]]` refers to a Group
+	container having the kind `Check` implemented by ScriptUI.CheckFactory.
+
+	SCHEME. - The SCHEME of a product is an informal representation of its
+	ScriptUI structure using only single letters for denoting the underlying
+	components. Native types are mapped as follows:
+
+	           Window        W            Image         i
+	           Group         G            ListBox       L
+	           Panel         P            DropdownList  D
+	           StaticText    S            TreeView      T
+	           EditText      E            ListItem      l
+	           Button        B            Scrollbar     b
+	           IconButton    I            Slider        s
+	           Checkbox      C            Progressbar   p
+	           RadioButton   R            TabbedPanel   X
+	                                      Tab           x
+
+	The scheme of a Group product having a StaticText and a Checkbox will be
+	noted `G(S,C)`, the scheme of a Panel composed of one ListBox and a Group
+	of two Buttons will be noted `P(L,G(B,B))`, etc.
+	
+	Schemes help quickly visualize the components involved in a product and
+	their possible interactions.
+
+	ATTRIBUTES. - A product may feature public, private and/or creation
+	attributes: these are settings, data, internal state or whatever is needed
+	to get the product functioning. As a general rule, the factory should
+	control/normalize/validate the assignment of any attribute.
+	
+	- PUBLIC attributes, either properties (like `value`) or methods (like
+	  `setColor`) are available to the client code. Their name should start with
+	  a lowercase letter. Most public properties are initialized at creation
+	  time and will evolve depending on user/UI events. Special public
+	  properties (`value`, `onChange`...) require a strong validation 
+	  to get the product react accordingly. This is typically implemented thru
+	  WATCHERS (see below.)
+
+	- PRIVATE attributes are sometimes used to address inner states, data, or
+	  hidden routines. They are supposedly invisible to the client code
+	  (although still available for hacking.) Some reflect temporary data
+	  (e.g Event timestamps.) By convention, any private attribute should be
+	  formatted `__<AttributeName>__`.
+
+	- CREATION attributes are special properties loaded in the `properties`
+	  object at creation time. They usually reflect a static, read-only
+	  parameter of the product. By convention, any custom creation attribute
+	  (except `kind`) should be formatted in TitleCase style (e.g `InnerWidth`)
+	  to avoid any collision with native ScriptUI creation properties. Unlike
+	  private attributes, CREATION attributes might be accessed from the outside,
+	  in particular when a factory needs to access the settings of another
+	  factory's product.
+
+	We may distinguish MAIN attributes from INTERNAL attributes. The former are
+	attached to the product (root component), the latter are attached to sub-
+	components. Except in special cases, internal attributes should be private
+	since neither the client code nor the framework is supposed to directly
+	interact with the subcomponents of the product.
+	
+	A major exception to the above rule comes from the fact that all native
+	properties of a ScriptUI widget are 'public' by design. Hence, a product
+	cannot re-declare or mark as private internal attributes like `text`,
+	`value`, or `selection` although it may need to entirely manage those attri-
+	butes 'privately' (from the root component.)
+	
+	OPTIONS. - As specified in core/SUI/builder, a factory is a function that
+	takes a container (`parent`) as 1st argument, extra parameter(s) as next
+	argument(s), then returns a product. A recommended design rule is to express
+	all mandatory and optional parameters in a single 2nd argument that we shall
+	name the OPTIONS object. Thus any factory settings could be passed to the
+	builder using the form:
+
+	      MyProductFactory$MyProductKey:
+	      [{
+	          key1:    value1,
+	          key2:    value2,
+	          etc
+	      }],
+
+	where each key/value pair represents a main attribute of the product. The
+	incoming OPTIONS object can then be merged with default settings if necessa-
+	ry, and it's up to the factory to validate and send these attributes to the
+	corresponding structures and routines.
+	
+	1. FUNCTIONS (METHODS, ROUTINES, WATCHERS, HANDLERS)
+	____________________________________________________________________________
+	
+	METHODS. - Considered as a constructor (although not being a regular JS
+	constructor), a factory is intended to return a product (instance) with a
+	specialized interface and behavior. Since the product is (in principle) a
+	ScriptUI widget based on a fixed, built-in prototype, the recommended way to
+	extend its functional interface is to declare & add methods from the factory
+	itself.
+
+	As a JS Object, the factory can indeed host and centralize all the functions
+	to be integrated to the product. For example, if a `setColor` interface is
+	needed for any `MyProduct` instance, then the factory function (`ScriptUI.
+	MyProductFactory`) will have an internal key, say `SETC`, defined by
+	
+	      ScriptUI.MyProductFactory.SETC = function setColor(){...}
+
+	so it can add the desired interface before returning the product using:
+	
+	      ret.setColor = callee.SETC;
+	      // etc
+	      return ret;
+
+	Such public attributes are known as the METHODS of the product. Each of these
+	functions should have a non-anonymous name (here `setColor`) matching the
+	method key that the factory makes available.
+
+	An essential characteristic of the methods is their `this` context always
+	being set to a singular product instance. In the above example, assuming the
+	factory produces the scheme `G(S,C)`, the context of `setColor()` being
+	called from the client code will be a ScriptUI Group of the kind 'MyProduct'
+	-- i.e Group[[MyProduct]].
+	
+	Note that the inner components (StaticText, CheckBox) SHOULD NOT expose public
+	methods in the sense we have just defined (although they still expose their
+	native ScriptUI features.) A well-designed product complies with the law that
+	the 'external world' only interacts with it through its public interface and
+	never needs to query its internal components. So, if the `text` property of
+	the StaticText in `G(C,S)` had to be changed from the outside, then a
+	`setText` method, or some equivalent mechanism, should be available at the
+	root component level (Group).
+
+	ROUTINE. - We generically call a ROUTINE any function, hosted by the factory,
+	not being a method of the product. Most routines are factory helpers that
+	only operate at creation time (pre-processing, settings validation, etc.)
+	Some are designed to attach callbacks and event handlers to the product.
+	
+	Keep in mind that a routine is a 'static' function in the sense that its
+	`this` context is not bound to a particular product instance. Hence, when a
+	routine is intended to operate on some component, that component must be
+	passed in as an argument.
+	
+	WATCHER. - A WATCHER is a special function (W) hosted by the factory and
+	attached to the product (X) using
+	
+	      X.watch('someKey', W);
+
+	Watchers are used to enhance and streamline the setting of public attributes.
+	For example, the assignment
+	
+	      X.value = "myValue";
+
+	in the client code may lead to a specific product behavior (displaying a
+	string, rejecting a forbidden value, etc) provided that the public attribute
+	`value` is inspected by a watcher.
+	
+	All watchers expect three arguments (key, oldValue, newValue) and their
+	context is the product. It is recommended to attach a single watcher by
+	product and to inspect all watched attributes from that place, based on the
+	`key` argument.
+	
+	[REM] The present snippet provide a tool, `ScriptUI.setWatcher()`, that
+	makes it easy to attach a watcher to a set of product keys.
+	
+	Watchers can both handle usual properties (like `value` or `color`) and
+	function properties (like `onChange`, `onClick` etc) which the client may
+	define in order to address particular events.
+	
+	HANDLER. - We generically call an EVENT HANDLER (or just a HANDLER) any
+	callback function associated to an event and whose context is the product
+	instance or some of its components.
+
+	[REM] Regular event handlers are set using the native `addEventListener()`
+	method, or the `ScriptUI.callback()` function available in this framework.
+	More on Event objects in the next section.
+	
+	Two important kinds of handlers must be distinguished:
+	
+	- CLIENT HANDLERS, declared and set on the client side, are
+	  optional event callbacks that fit the particular needs of
+	  a project. The product should still function as expected
+	  without client handlers. Most client handlers rely on a
+	  public property (e.g `onValueChange`) managed from a watcher.
+	  This is the recommended way to expose all client handlers,
+	  even if the factory also fires custom events that the
+	  client could intercept using `addEventListener()`.
+	  Also, client handlers should always expect the `this`
+	  context being set to the product (root component.)
+
+	- PRODUCT HANDLERS, declared and set by the factory, are
+	  essential event callbacks required by the product. They
+	  should be regarded as either 'private' or 'protected'
+	  processes, hidden to the client side and only visible
+	  in the factory or the framework. Product handlers mostly
+	  manage inner events and their dependencies. They often
+	  deal with ScriptUI inconsistencies (CS vs. CC issues...)
+	  and regulate event propagation inside the product and/or
+	  throughout the UI.
+
+	2. EVENTS
+	____________________________________________________________________________
+
+	Events are particular object instances that 'propagate' throughout the UI
+	with a timestamp and additional data. They basically reflect user inter-
+	actions (mouse and keyboard events) and how they affect the state of the
+	controls: moving, changing (text or selection), getting the focus, etc.
+	
+	[REM] ScriptUI/events provides more detail on event structures and API.
+	
+	NATIVE EVENTS. - The NATIVE ScriptUI event types (strings) are:
+	
+	      move moving resize resizing show close
+	      focus blur
+	      change changing
+	      click mousedown mouseup mousemove mouseover mouseout
+	      enterKey keydown keyup
+
+	Basically, whenever a UI event occurs, the corresponding Event object is
+	automatically created and 'dispatched' from a control (referred to as the
+	event TARGET.) In principle, the Event instance should then 'hit' every
+	containers in two propagation stages, first from the top Window to the
+	target (capture phase), then from the target to the parent Window
+	(bubbling phase). However, ScriptUI CC not longer implements the
+	capture phase. Instead, it creates and dispatch *duplicates* of the
+	event using the containers of the original target as new, respective
+	targets! Then, both the original event and its duplicates enter the
+	bubbling phase (unless `bubble` be false or the propagation stopped.)
+	This leads to extremely complex scenarios that need to be treated with
+	great caution, having in mind that distinct OS and/or ScriptUI versions
+	may, in addition, show inconsistent behaviors.
+	
+	[REF] https://indiscripts.com/post/2018/12/note-on-scriptui-mouse-events
+	
+	EVENT LISTENER. - In this documentation, we shall denote by EVENT LISTENER
+	(or just LISTENER) any component that uses an explicit event handler
+	declared by `myListener.addEventListener(evType,handler)`. When an Event
+	instance hits a listener that supports the corresponding event type, the
+	attached function (event handler) is invoked with the following settings:
+	
+	- The 1st argument of the function is the Event instance (ev).
+	- The event type (ev.type) matches the expected type (e.g 'mouseover')
+	  that the listener has been declared to address.
+	- The event target (ev.target) points to the component that
+	  has dispatched that event. (Might be the listener itself.)
+	- The `this` context refers to the listener.
+
+	[REM] In other specifications the term 'event listener' may refer to the
+	      event handler, that is, the function that receives the event.
+
+	A listener can be regarded as a component that interacts with other UI
+	objects at some specific point of the event propagation. In particular
+	it may prevent default behaviors, stop the propagation of the event, or
+	even dispatch custom events.
+	
+	Keep in mind:
+	
+	(a) A same component may of course be the listener of
+	    different event types, via either separate handlers
+	    or a single one addressing all expected types.
+	
+	(b) A same event handler could be attached to multiple
+	    listeners sharing the same behavior. This option is
+	    often the sign of a bad design though. When uniform
+	    components (e.g, a set of buttons) all react the same
+	    way as event targets, best it to address such event
+	    from a common parent, that is, a single listener.
+
+	(c) A same event type may have multiple listeners and/or
+	    event handlers. In such case, each occuring event
+	    will hit those listeners/handlers consecutively,
+	    according to the event propagation order. (At any
+	    step the propagation might be stopped if the event
+	    is cancelable.)
+	
+	(d) In CC, a same informal user event (e.g "left-clicking
+	    button B") may produce in fact distinct Event instances
+	    dispatched from multiple targets and having
+	    their own propagation cycle. You can make no assump-
+	    tion about how callbacks will be ordered then.
+
+	CUSTOM EVENT. - A CUSTOM EVENT is an Event object explicitly created
+	and dispatched from within a factory, its dispatcher being either the
+	product or any component. It is recommended to assign non-native event
+	types to custom events, as this prevents any collision with automatic
+	ScriptUI events. Use the tool `ScriptUI.dispatch()` (available in this
+	snippet) to generate and dispatch a custom event.
+	
+	      Conventional Custom Event Types.
+	      -----------------------------------------------------------------
+	      TYPE        HANDLER        DESCRIPTION AND SEMANTICS
+	      -----------------------------------------------------------------
+	      'clicked'   onClickChange  Fired when the component state has changed
+	                                 in response to left-click or equivalent
+	                                 shortcut, e.g [SPACE] key in checkboxes.
+	                                 The 'clicked' event should only occur once
+	                                 the state/value has changed due to user
+	                                 interaction. It should not be triggered if
+	                                 value or state is changed by code, like
+	                                 in `myObj.value=newVal`.
+	      -----------------------------------------------------------------
+	      'vchanged'  onValueChange  Fired when some UI event has caused the
+	                                 change of the `value` property (e.g after
+	                                 clicking outside the widget, pressing TAB,
+	                                 typing text, selecting a list item, etc.)
+	                                 Unlike 'clicked', this custom event speci-
+	                                 fically notifies a new `value` no matter
+	                                 the particular UI event behind this change.
+	                                 The `vchanged` event should only occur
+	                                 once the `value` property has changed, it
+	                                 should not be triggered if the new value is
+	                                 set by code, like in `myObj.value=newVal`.
+	                                 Optional event data: { previous:any }
+	      -----------------------------------------------------------------
+	      'tchanged'  onTextChange   Fired when some UI event has caused the
+	                                 change of the `text` property. This event
+	                                 is similar to `vchanged` and only makes
+	                                 sense when `value` and `text` are two
+	                                 distinct facets of the control. It is used
+	                                 in the Edit factory to separately validate
+	                                 text and value changes.
+	      -----------------------------------------------------------------
+	       Since 'clicked' and 'vchanged' are semantically similar, they
+	       should not be implemented BOTH. `clicked` mostly applies to buttons,
+	       chekboxes, and button-like controls, which mainly react to
+	       click and do not necessarily have a meaningful `value` property;
+	       `vchanged` usually applies to textable controls (edit boxes, lists)
+	       whose current value can be changed by various interactions.
+	      -----------------------------------------------------------------
+	      'dclicked'  onDoubleClick  Fired when the user double-clicks the
+	                                 component (or uses an equivalent shortcut.)
+	                                 Useful for adding editing behavior to the
+	                                 component. Used in ListFactory.
+	      -----------------------------------------------------------------
+	      'rclicked'  onRightClick   Fired when the user right-clicks the
+	                                 component (or uses an equivalent shortcut.)
+	                                 Usually implied by mousedown[[button==2]].
+	                                 Useful for adding special options to the
+	                                 component, displaying extra info, etc. This
+	                                 event has the structure of a MouseEvent.
+	      -----------------------------------------------------------------
+	      'keypress'  onKeyPress     Fired when a keydown event occurs
+	                                 (the onKeyPress handler then receives
+	                                 a fully informed event clone, with
+	                                 all properties of a KeyboardEvent,
+	                                 with the 'keypress' type.)
+	                                 Available in the List factory. Might
+	                                 be used in other components.
+	      -----------------------------------------------------------------
+	      'popup'     onPopup        Special event used by the Popup factory.
+	                                 Event data: { message:str, color:0|1|2,
+	                                               duration:uint }
+	      -----------------------------------------------------------------
+	      'filtered'  onFilter       Special event used by the Edit factory.
+	                                 Event data: { junk:str }
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required in persistent engines.
+	{
+
+		ScriptUI.factoryOptions = function factoryOptions(/*obj|str|num|bool*/ini,/*{}*/defs,  r,k,x,v,t)
+		//----------------------------------
+		// Merge the incoming `ini` set with a default set of options.
+		// - If `ini` is a string, interprete it as {text:ini}
+		// - If `ini` is a number or boolean, interprete it as {value:ini}
+		// The `defs` object (required) tells which keys are expected and
+		// their default value. The default value is used if `ini` does not
+		// provide the related key. If the default key type is a string, a
+		// number or a boolean, and a different type is supplied, then the
+		// value is coerced into the expected type.
+		// Finally, any external key is loaded 'as is' in the returned object.
+		// ---
+		// => new {}
+		{
+			// Handle special shortcuts.
+			// ---
+			switch( typeof ini )
+			{
+				case 'string':
+					ini = { text:ini }; break;
+				case 'number':
+				case 'boolean': 
+					ini = { value:ini }; break;
+				default:
+					ini===Object(ini) || (ini={});
+			}
+
+			r = {};
+			
+			// Ruled keys.
+			// ---
+			for( k in defs )
+			{
+				if( !defs.hasOwnProperty(k) ) continue;
+				x = defs[k];
+				if( !ini.hasOwnProperty(k) ){ r[k]=x; continue; }
+				v = ini[k];
+				switch( (typeof v != (t=typeof x)) && t )
+				{
+					case 'string':   v = 0===v ? '0' : String(v||''); break;
+					case 'number':   v=1*v; break;
+					case 'boolean':  v=!!v; break;
+					default:;
+				}
+				r[k] = v;
+			}
+			
+			// Extra keys.
+			// ---
+			for( k in ini ) ini.hasOwnProperty(k) && (!r.hasOwnProperty(k)) && (r[k]=ini[k]);
+			
+			return r;
+		};
+
+		ScriptUI.setWatcher = function setWatcher(/*Widget*/wg,/*str|str[]*/keys,/*fct|0*/watchFct,/*?{}|any*/ops,  i,t,k)
+		//----------------------------------
+		// Attach a 'watcher' (=watch callback) to widget key(s).
+		// - If `watchFct` is not a function, unwatch the key(s).
+		// - If `ops` is supplied (Object), set the declared `keys`
+		//   AFTER watch installation. (Shortcut: if ops is a scalar
+		//   AND a single key `k` is provided, assume wg[k]=ops. )
+		// [REM] Among `ops` keys, only those that are declared in
+		//       the `keys` argument will be assigned.
+		// ---
+		// => callee  [aka ScriptUI.setWatcher]
+		{
+			(keys instanceof Array) || (keys=[keys]);
+			t = 'function' == typeof watchFct && watchFct;
+			
+			
+			// [REM] obj.watch(k,f) only works if obj *already owns*
+			// the key `k`. Hence it is required to preset obj[k]
+			// to undefined if still missing.
+			// ---
+			for
+			(
+				i=-1 ; ++i < keys.length ;
+				t ? ( (wg.hasOwnProperty(k=keys[i])||(wg[k]=void 0)), wg.watch(k,t) ) : wg.unwatch(keys[i])
+			);
+
+			if( 'undefined' == typeof ops ) return callee;
+
+			if( ops !== Object(ops) )
+			{
+				if( 1 != keys.length ) return callee;
+				wg[keys[0]] = ops;
+			}
+			else
+			{
+				for( i=-1 ; ++i < keys.length ; ops.hasOwnProperty(k=keys[i]) && (wg[k]=ops[k]) );
+			}
+			
+			return callee;
+		};
+		
+		ScriptUI.dispatch = function dispatch(/*Widget*/wg,/*str|{type:str...}*/evType,/*{base:char...}|event|char=auto*/options,  t,b,ev)
+		//----------------------------------
+		// Dispatch a custom event. Create a *fully documented* event if
+		// ScriptUI.event() is available, a *minimal UIEvent* otherwise.
+		// 1. If `evType` is not a string, use `evType.type`
+		// 2. If `options` is falsy, set it to `evType` if it's an object, 'U' otherwise
+		// 3. (a) If `options` is a string, set `b=options`
+		//        and invoke ScriptUI.event(t,b)
+		//    (b) Otherwise, set `b=options.base||options.__class__`
+		//        and invoke ScriptUI.event(t,b,options)
+		// [REM] In practice a custom event is usually determined by a single `evType`
+		//       arg providing both `type`, `base`, and extra options if needed. E.g
+		//          ScriptUI.dispatch(myWidget, {type:'mytype',base:'E',info:123});
+		//       The special scheme (wg,evType,options) is useful when reusing the data
+		//       from an existing event of a different type. E.g
+		//          ScriptUI.dispatch(myWidget,'rclicked', stoppedMouseEvent);
+		// ---
+		// => undef
+		{
+			'string' == typeof(t=evType) || (t=(t||0).type||'');
+			t.length || error( __("Invalid `evType` argument (%1). Should be a string or an object having a `type` property.", evType || typeof evType), callee );
+			
+			if( 'function' == typeof ScriptUI.event )
+			{
+				options || (options = evType===Object(evType) ? evType : 'U');
+				'string' == typeof(b=options) ? ( options=void 0 ) : ( b=b.base||b.__class__ );
+				
+				// ScriptUI.event( type:str, base:event&|'E'|'U'|'M'|'K'='U', options:?event|{} )
+				// ---
+				ev = ScriptUI.event(t, b, options);
+			}
+			else
+			{
+				new UIEvent( t, /*bubble*/true, /*cancelable*/true);
+			}
+
+			wg.dispatchEvent(ev);
+		};
+		
+		ScriptUI.customEventHandler = function customEventHandler(/*Widget*/wg,/*fct*/evHandler,/*_clicked|_dclicked|_rclicked|_vchanged|_tchanged*/k)
+		//----------------------------------
+		// [ADD210710] Addresses special factory event keys. Makes the keys
+		// `_clicked`, `_rclicked`, etc interpretable from ScriptUI.builder.
+		// [REM] Usually, the custom handler property (onClickChange,
+		// onRightClick, onDoubleClick, etc) is the right place for addressing
+		// custom factory events in the client UI, but you may need to install
+		// a more global event handler (at some container level.) In such case,
+		// use the scheme `_<customtype>: function myEventHandler(ev){...}`
+		{
+			'function' == typeof evHandler && 0x5F===k.charCodeAt(0) && ScriptUI.callback(wg, k.slice(1), 0, evHandler);
+		};
+		ScriptUI.addKeyHandler
+		(
+			['_clicked','_dclicked','_rclicked','_vchanged','_tchanged'],
+			ScriptUI.customEventHandler
+		);
+		
+		// [ADD210728] Height of a text line (disregarding widget type.)
+		// ---
+		ScriptUI.LINE = (function(w,b){ return b+w.graphics.measureString('xxx')[1] })(new Window('dialog',"$$LINE$$"),$$.inCS);
+		
+		ScriptUI.measureMulti = $$.inWin ?
+		function measureMulti(/*str*/text,/*Window|Widget*/wg,/*uint*/maxWidth,  a,w,h,n,i,z,fx,t,s,j,p)
+		//----------------------------------
+		// [WIN210728] Return the probable dimensions of `text` in a multiline text
+		// widget. This function refines the result of the native gx.measureString()
+		// method (which is not reliable in CC/Win) and supports \r characters in `text`.
+		// ---
+		// On Windows platforms, and specially in CC environments, multiple issues
+		// affect the behavior of `ScriptUIGraphics.measureString()` when dealing with
+		// a multiline text within a bounded width:
+		// (1) The height is over-estimated w/ some strings that occupy a single line.
+		// (2) In CC, the measured width requires a special fix (cf. ScriptUI.measureWidth.)
+		// (3) When automatic text wrap occurs, the number of desired lines is not reliable.
+		// (4) Finally, the width that MUST be assigned to the widget may not match
+		//     the actual width of a zero-margin container. Hence the 3rd value (boxWidth)
+		//     returned in the output array.
+		// ---
+		// => [textWidth,textHeight,boxWidth]
+		{
+			const MWID = ScriptUI.measureWidth;
+			
+			ScriptUI.isWidget(wg)
+			|| error(__("Invalid widget argument (%1).",wg),callee);
+
+			const WMAX = maxWidth>>>0 || ((wg||0).preferredSize||0)[0];         // Max width of the multiline widget.
+			
+			20 <= (WMAX||0)
+			|| error(__("Invalid maxWidth argument (%1). Should be an integer > 20.",WMAX),callee);
+			
+			const LINE = ScriptUI.LINE;                                         // Default height of a single line.
+
+			a = wg.graphics.measureString(text, void 0, WMAX);                  // Measured dims with WMAX bound.
+			w = a[0];                                                           // Width (w <= WMAX.)
+			h = a[1];                                                           // Height
+			n = Math.round(h/LINE);                                             // Number of *measured* lines.
+
+			a  = text.split(RegExp.LINE);                                       // Consider each separate text line.
+			i = a.length;                                                       // i <= n
+
+			1 == i && w < WMAX && (n=1,h=LINE);                                 // Fix height errors on short strings. (CC bug.)
+
+			// [REM] `fx` is intended to reflect the 'boxWidth', which may
+			// be distinct from the measured width (due to ScriptUI bugs.)
+			// But the text widget itself shouldn't be resized to fx, which
+			// is relevant only for the ScriptUI area that contains the widget!
+			// ---
+			for( z=fx=0 ; i-- ; ++z )
+			{
+				t = MWID(a[i], wg);                                             // Get the one-line width of a[i]: as long as
+				if( t < WMAX ){ fx < t && (fx=t); continue; }                   // it's shorter than WMAX, just update fx.
+				
+				fx = w = WMAX;                                                  // As soon as a[i] is longer than the maximum
+				                                                                // width (t>=WMAX), force fx = w = WMAX.
+
+				if( .75*t < WMAX ){ ++z; continue; }                            // If the offset `t-WMAX` is small (< WMAX/3)
+				                                                                // adding one extra line is sufficient. (Skips calculations.)
+
+				for                                                             // Computes the number of extra lines needed by a[i]
+				(                                                               // (based on possible space splits.)
+					s=a[i], j=-1, p=s.indexOf(' ') ;
+					0 < p ;
+					MWID(s.slice(0,1+p), wg) < WMAX
+					? ( j=p, p=s.indexOf(' ',1+j) )
+					: ( ++z, s=s.slice(++j), p-=j, j=-1 )
+				);
+				(t=MWID(s,wg)) < WMAX || (z += ~~(t/WMAX));
+			}
+
+			z != n && (h=z*LINE);                                               // Adjust `h` if `z != n`.
+
+			return [w, h, fx||w];
+		}:
+		function measureMulti(/*str*/text,/*Window|Widget*/wg,/*uint*/maxWidth,  t,w,h)
+		//----------------------------------
+		// [MAC210729] Return the probable dimensions of `text` in a multiline text
+		// widget. This function refines the result of the native gx.measureString()
+		// method (which is not reliable in CC/Mac) and supports \r characters in `text`.
+		// ---
+		// On macOS, the issue with sizing a text widget seems to only affect EditText
+		// components (StaticText are properly dimensioned thru measureString.) With a
+		// multiline EditText, the result of measureString returns dimensions *excluding*
+		// inset spacing: (1) The width should then be increased by 6px; (2) The height
+		// should be increased by about 1px *per line*. Unlike Windows, macOS expects those
+		// corrected dimensions while assigning the `size` property of the EditText. Hence,
+		// the present function returns the fixed size iff the widget is an EditText.
+		// ---
+		// => [textWidth,textHeight,boxWidth]  ;  boxWidth==textWidth
+		{
+			const EDIT_XSPACE = 6;
+			
+			ScriptUI.isWidget(wg)
+			|| error(__("Invalid widget argument (%1).",wg),callee);
+
+			const WMAX = maxWidth>>>0 || ((wg||0).preferredSize||0)[0];         // Max width of the multiline widget.
+			
+			20 <= (WMAX||0)
+			|| error(__("Invalid maxWidth argument (%1). Should be an integer > 20.",WMAX),callee);
+
+			t = wg.graphics.measureString(text, void 0, WMAX);
+			w = t[0];
+			h = t[1];
+			
+			'edittext' == wg.type && ( w+=EDIT_XSPACE, h+=Math.round(h/ScriptUI.LINE) );
+			
+			return [w,h,w];
+		};
+
+		ScriptUI.POPU = function popup(/*?str*/msg,/*0|1|2=0*/level,/*?uint*/duration)
+		//----------------------------------
+		// [ADD210307] This common method can be attached to any factory
+		// component that wants to support Popup messaging. Do not call
+		// it directly, use `myComponent.popup = ScriptUI.POPU` instead.
+		// Called from the target widget, this method won't have any effect
+		// if no Popup is found (in automatic mode).
+		// ---
+		// this     :: Widget
+		// msg      :: message string ; if falsy, remove the popup.
+		// level    :: 0 (normal)  1 (warning)  2 (error)
+		// duration :: duration in seconds, or 0.
+		// ---
+		// => undef
+		{
+			// [REM] Testing `ScriptUI.popupEvent` at runtime is fast and
+			// allows the client to #include PopupFactory *after* your factory.
+			// ---
+			'function' == typeof ScriptUI.popupEvent
+			&& this.dispatchEvent(ScriptUI.popupEvent(msg,level,duration));
+		};
+		
+		// [ADD210629] Empty function. Useful in conditional assignments.
+		// ---
+		ScriptUI.NOOP = function noop(){};
+	}
