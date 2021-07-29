@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210719 (YYMMDD)
+		Modified:       210729 (YYMMDD)
 
 *******************************************************************************/
 
@@ -359,17 +359,22 @@
 		}
 	};
 	
-	ScriptUI.measureWidth = function measureWidth(/*str*/text,/*?Window|Widget*/wg,  n,gx,x,q,dp,i,c)
+	ScriptUI.measureWidth = function measureWidth(/*str*/text,/*?Window|Widget*/wg,/*bool=0*/RETMAX,  n,gx,x,q,dp,i,c,r)
 	//----------------------------------
 	// [ADD210624] Return the probable width of `text` in a StaticText, given
 	// a single-line string (no \r or \n character allowed in `text`.) This
 	// function refines the result of the native gx.measureString() method (which
-	// is not reliable in CC Win.)
+	// is not reliable in CC/Win.)
+	// [ADD210728] If `RETMAX` is truthy, return max(legacyResult,computedWidth).
 	// [REM210719] Tests have shown that `gx.measureString()` returns a size that
-	// doesn't fit the visual rectangle actually occupied by the text (in CC Win.)
-	// However, these dimensions may still be required for sizing properly the
-	// statictext component, which otherwise wouldn't display the entire text! Use
-	// `measureWidth` for sizing accordingly a Group container.
+	// doesn't fit the visual rectangle actually occupied by the text (in CC/Win.)
+	// Actual dimensions may be required for sizing properly the widget (which
+	// otherwise wouldn't display the entire text), or for sizing accordingly a
+	// Group container.
+	// [REM210729] In CS and macOS environments, `measureWidth` essentially returns
+	// `ScriptUIGraphics.measureString(text)[0]` (native width.) A fix may still be
+	// required *on macOS* when EditText widgets are involved. A consistent solution
+	// is provided in etc/ScriptUI/factories, cf `ScriptUI.measureMulti()`.
 	// [REM] The inner set `callee.FIX` contains empirical data used for adjusting
 	// the width of common characters. For example, "a"=>-14 means that the width
 	// of `a` must be reduced by -14% on average to get a correct measurement. These
@@ -402,7 +407,8 @@
 		
 		// Apply the fix globally.
 		// ---
-		return dp ? Math.round(x*(100+dp/n)/100) : x;
+		r = dp ? Math.round(x*(100+dp/n)/100) : x;
+		return ( RETMAX && r < x ) ? x : r;
 	}
 	.setup
 	({
