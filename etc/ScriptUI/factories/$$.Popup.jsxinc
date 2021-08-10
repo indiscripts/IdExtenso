@@ -1,0 +1,574 @@
+/*******************************************************************************
+
+		Name:           Popup(Factory)
+		Desc:           Popup message container.
+		Path:           /etc/ScriptUI/factories/$$.Popup.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI.HDI_SCALING ; ScriptUI.builder ;
+		                ScriptUI/colors [recommended] ; ScriptUI/events [recommended]
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.PopupFactory() ScriptUI.popupEvent()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190303 (YYMMDD)
+		Modified:       210810 (YYMMDD)
+
+*******************************************************************************/
+
+	// =========================================================================
+	// NOTICE
+	// =========================================================================
+	
+	/*
+
+	PopupFactory provides a hidden container that you can make temporary visible
+	for displaying messages alongside another UI object. The recommended way to
+	use this component is to have it declared as the last element (=top) of a
+	stack-oriented container. In practice, a unique Popup instance, loaded in the
+	highest stack, is sufficient to prompt any message emanating from any element.
+
+	      +------------------------+
+	      ¦ +====================+ ¦
+	      ¦ |                    | ¦
+	      ¦ |  stackedWidgets <--|-¦----  either two EditText instances [CC]
+	      ¦ |                    | ¦      or 1 Group + 1 StaticText [CS]
+	      ¦ +====================+ ¦
+	      +------------------------+
+
+	Example in ScriptUI.builder:
+
+	      . . .
+	      PopupFactory$:
+	      [{
+	           auto: 1,
+	           margins:20,
+	      }],
+	      . . .
+
+	Shortcut in automatic mode:
+
+	      PopupFactory$: [1],
+
+	(A) If the option `auto` is truthy, the parent of the Popup will listen to
+	    any 'popup' event dispatched from a child widget and react accordingly.
+	    Thus the client code is only responsible for sending popup events when
+	    needed and doesn't have to handle the Popup component directly.
+
+	       e.g   myTarget.dispatchEvent(ScriptUI.popupEvent(msg, 2, 1));
+
+	(B) If `auto` is falsy, no event is processed so the client code has to
+	    explicitly keep reference of the Popup and invoke its `update()` method
+	    when needed.
+
+	       e.g   myPopup.update(myTarget, msg, 2, 1);
+
+	Option (A) is usually preferrable as it provides a decoupled approach:
+	foreign components don't need to know where and how the Popup component
+	is working, or whether it is even available. However, they are required
+	to dispatch a 'popup' event (`message`, `color`, `duration`) which is
+	built using `ScriptUI.popupEvent(...)`.
+
+	Option (B) may be used in simple projects that don't require decoupling
+	and event management. Client components being already informed that a
+	Popup is present and referenced, they will call its `update` method with
+	the appropriate parameters.
+
+	API
+	=======================================================================
+	properties      obj = { kind:"Popup", name:"__popup__"
+	                        LineChars:uint, MinLines:uint, Margin:uint,
+	                        XOffset:uint, YOffset:uint }
+	                Information properties. The inner name of a Popup
+	                ("__popup__") is fixed relative to its container. This
+	                allows to hardcode the event listener that deals with
+	                'popup' events from the parent level.
+	=======================================================================
+	getControl()    => EditText|StaticText
+	                Return the inner (textable) widget.
+	-----------------------------------------------------------------------
+	update(X,s,c,t) => 0|1
+	                Update the Popup (show or hide) targetting the widget `X`,
+	                the message string `s`, the color `c` and the duration `t`
+	                in seconds. Returns 1 if the Popup is visible.
+	                - X :: Target widget which determines where the
+	                  popup should take place. If `X` is falsy or hidden
+	                  or disabled, hide the popup.
+	                - s :: String to display. If false, hide the popup.
+	                - c :: Color code (0, 1 or 2) assigned to the popup.
+	                  By convention, 0 means NEUTRAL/INFORMATIVE,
+	                                 1 means OK/VALID,
+	                                 2 means ERROR/INVALID.
+	                  In CS, colors are rendered as follows:
+	                  0 GREY ; 1 GREEN ; 2 RED.
+	                  In CC, colors aren't supported but the effect of
+	                  code 0 is less contrasted than of codes 1 or 2.
+	                - t :: Duration in seconds (0..10). Default is zero,
+	                  meaning that the Popup remains visible until the user
+	                  clicks it.
+	-----------------------------------------------------------------------
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.PopupFactory = function Popup(/*container*/parent,/*{auto,lineChars,minLines,margins,xOffset,yOffset}*/ops,  LC,r,gx)
+		//----------------------------------
+		// Options (ops):
+		// .auto       (bool=0)     Whether a 'popup' event listener is to be installed
+		//                          at the parent level.
+		// .lineChars  (uint=24)    Average character count per line (10..100).
+		// .minLines   (uint=1)     Minimum number of lines (>=1.)
+		// .margins    (uint=8)     Inset margins (in px.)
+		// .xOffset    (uint=2)     Horizontal offset (in px) relative to the left edge.
+		// .yOffset    (uint=4)     Vertical offset (in px) relative to the bottom edge.
+		// ---
+		// => Group[[Popup]]    ::  G(E,E) [CC]  |  G(G,S) [CS]
+		//   .properties        ::  { kind, }
+		{
+			// Normalize options.
+			// ---
+			'number' == typeof ops && (ops={auto:ops>>>0});
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+
+			// In CC the lineChars setting (10..100) needs some
+			// reduction--about 70%--to get similar results in CS-CC.
+			// ---
+			LC = ops.lineChars;
+			10 > LC ? (LC=10) : (100 < LC && (LC=100));
+			LC = Math.round(LC*callee.LC_FACTOR);
+
+			r =
+			{
+				alignment:              ScriptUI.LT,
+				orientation:            'stack',
+				margins:                0,
+				spacing:                0,
+				alignChildren:          ScriptUI.LT,
+				// --- Public Methods.
+				getControl:             callee.CTRL,
+				update:                 callee.UPDT,
+				// ---
+				visible:                 false,
+			};
+
+			// --- Mouse inner event.
+			// [FIX210616] Uses mouseup in Win (EditText mousedown
+			// is masked in CC) and mousedown in Mac.
+			r[callee.MOUSE_KEY] = callee.HMOU;
+
+			// CC and CS do not use the same infrastructure:
+			// - CC involves two stacked EditText (this is the only
+			//   way to overlie other controls.)
+			// - CS involves a StaticText over a Group (this
+			//   successfuly overlies any control.)
+			// ---
+			if( callee.USE_EDITS )
+			{
+				// [REM] Strangely, the NOOP onDraw seems to enforce
+				// the mask while keeping the widget textable!
+				r.EditText$0 = 
+				{
+					properties:
+					{
+						name:            callee.CTRL.BACK_NAME,
+						borderless:      true,
+						multiline:       true,
+						scrolling:       false,
+						readonly:        true,
+					},
+					onDraw:             ScriptUI.NOOP,
+				};
+
+				r.EditText$1 =
+				{
+					properties:
+					{
+						name:            callee.CTRL.CTRL_NAME,
+						borderless:      true,
+						multiline:       true,
+						scrolling:       false,
+						readonly:        true,
+					},
+					onDraw:              ScriptUI.NOOP,
+				};
+			}
+			else
+			{
+				r.Group$0 =
+				{
+					properties:
+					{
+						name:            callee.CTRL.BACK_NAME
+					},
+				};
+				
+				r.StaticText$1 =
+				{
+					properties:
+					{
+						name:            callee.CTRL.CTRL_NAME,
+						multiline:       true,
+						scrolling:       false,
+					},
+				};
+			}
+
+			r = ScriptUI.builder
+			(
+				r,
+				parent.add( 'group',void 0,
+				{
+					kind:                    callee.name,
+					name:                    callee.HPOP.FIXED_NAME,
+					// ---
+					LineChars:               LC,
+					MinLines:                ops.minLines,
+					// ---
+					Margin:                  ops.margins,
+					XOffset:                 ops.xOffset,
+					YOffset:                 ops.yOffset,
+				})
+			);
+
+			// Static pen and font (CS).
+			// ---
+			if( callee.TX_PEN && (gx=r.getControl().graphics) )
+			{
+				callee.TX_FONT && (gx.font = callee.TX_FONT);
+				gx.foregroundColor = gx.newPen(0,callee.TX_PEN,1);
+			}
+
+			// The Popup control reacts when its direct parent
+			// receives a 'popup' event from some target.
+			// ---
+			ops.auto && parent.addEventListener('popup', callee.HPOP);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Parameters, tools.
+		//----------------------------------
+		({
+			MOUSE_KEY: $$.inMac ? '_mousedown' : '_mouseup',
+			USE_EDITS: $$.inCC,
+			LC_FACTOR: $$.inCC ? .7 : 1,
+			TX_FONT:   $$.inCC ? 0 : 'dialog-bold:11', // Bold font (CS)
+			TX_PEN:    $$.inCC ? 0 : [1,1,1,1],        // White pen (CS)
+
+			DEFS:
+			{
+				lineChars:    20,
+				minLines:      1,
+				// ---
+				margins:       8,
+				xOffset:       2,
+				yOffset:       4,
+			},
+		})
+		.setup
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		({
+			HMOU: function onMouse(/*MouseEvent*/ev,  t)
+			//----------------------------------
+			// Hide the Popup when the user clicks it.
+			// this    :: Group[[Popup]]
+			// ev      :: type:'mouseup'[Win] | 'mousedown'[Mac]
+			{
+				this.visible && this.update();
+			},
+		})
+		.setup
+		//----------------------------------
+		// Outer events.
+		//----------------------------------
+		({
+			HPOP: function onPopup(/*PopupEvent*/ev,  t)
+			//----------------------------------
+			// this    :: Container of the Popup
+			// ev      :: { type:'popup',target:?widget,message:?str,color:?0|1|2,duration:?num }
+			{
+				switch( (ev||0).type )
+				{
+					case 'popup':
+						ev.stopPropagation();
+						( t=this[callee.FIXED_NAME] )
+						&& 'Popup'==(t.properties||0).kind
+						&& 'function' == typeof t.update
+						&& t.update(ev.target,ev.message,ev.color,ev.duration);
+						break;
+
+					default:;
+				}
+			}
+			.setup({ FIXED_NAME:'__popup__' }),
+		})
+		.setup
+		//----------------------------------
+		// Methods.
+		//----------------------------------
+		({
+			CTRL: function getControl(/*-1|any*/BACK)
+			//----------------------------------
+			// By default, return the Edit or StaticText widget that contains the message.
+			// If `BACK` is set to -1, return the background component behind the text widget.
+			// this :: Group[[Popup]]
+			// => EditText [CC]  |  StaticText [CS]   if BACK !== -1
+			// => EditText [CC]  |  Group [CS]        if BACK === -1
+			{
+				return this[-1===BACK ? callee.BACK_NAME : callee.CTRL_NAME];
+			}
+			.setup
+			({
+				CTRL_NAME: '__front__',
+				BACK_NAME: '__back__',
+			}),
+
+			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r,a)
+			//----------------------------------
+			// this   :: Group[[Popup]]
+			// => 1 [VISIBLE]  |  0 [HIDDEN]
+			{
+				this.visible = false;
+				
+				// Checkpoint.
+				// ---
+				r = (msg=String(msg||'')).length && ScriptUI.isWidget(proxy) && !proxy.__state__;
+				if( !r ) return 0;
+
+				// Load the message.
+				// ---
+				this.getControl().text = msg;
+
+				// Sizing.
+				// ---
+				r = callee.SIZE(this);
+				this.size = [ r[0],r[1] ];
+
+				// Positioning => color and show.
+				// ---
+				if( r = callee.POSN(this,proxy) )
+				{
+					1 < (color>>>=0) && (color=2);
+					callee.COLR(this, color);
+					this.visible = true;
+				}
+
+				// Timer?
+				// ---
+				if( r && 0 < (seconds|=0) )
+				{
+					10 < seconds && (seconds=10);
+					callee.WAIT(1e3*seconds,this);
+					this.visible = false;
+				}
+				
+				return r;
+			}
+			.setup
+			({
+				WAIT: $$.inMac ?
+				//----------------------------------
+				// [FIX210616] Cannot use $.sleep on macOS. Instead,
+				// perform a UI action (x.visible=true) in a time loop.
+				// ---
+				function(ms,me,dt){ for( dt=(+new Date)+ms ; dt > +new Date ; me.visible=true ); } :
+				function(ms){ $.sleep(ms) },
+
+				SIZE: function(/*Popup*/me,  pp,ML,LC,MGX,MGY,wg,t,a,w,h,gx,s,q)
+				//----------------------------------
+				// Determine and set the size of the Popup, with respect
+				// to the inner text `me.getControl().text`. The inner
+				// widgets are positioned accordingly.
+				// Return the total size in a volatile array.
+				// => [w,h]&
+				{
+					const DX = callee.INSET[0];                      // EditText horizontal inset (CC)
+					const DY = callee.INSET[1];                      // EditText vertical inset (CC)
+
+					pp = me.properties;
+					ML = pp.MinLines;
+					LC = pp.LineChars;
+
+					t = pp.Margin;
+					MGX = DX + t;
+					MGY = DY + t;
+					
+					wg = me.getControl();
+
+					// Get the default size -> (w,h).
+					// ---
+					if( !(a=wg.__refSize__) )
+					{
+						if( gx=wg.graphics )
+						{
+							s = Array(1+LC).join(callee.BASE_CHAR);
+							w = (a=gx.measureString(s))[0];
+
+							if( s.length > 2 && ML > 1 )
+							{
+								s = Array(1+ML).join(' '+s).slice(1);
+								h = gx.measureString(s, void 0, w)[1];
+							}
+							else
+							{
+								h = ML*a[1];
+							}
+
+							wg.__refSize__ = [w,h];
+						}
+						else
+						{
+							w = LC*callee.BASE_SIZE[0];
+							h = ML*callee.BASE_SIZE[1];
+						}
+					}
+					else
+					{
+						w = a[0];
+						h = a[1];
+					}
+
+					// Refine the actual size if possible -> (w,h)
+					// ---
+					if( (s=wg.text).length && (wg.graphics) )
+					{
+						a = ScriptUI.measureMulti(s,wg,w);
+						(t=a[0]) < a[2] && (t=a[2]);
+
+						w < t && (w=t);
+						h < a[1] && (h=a[1]);
+					}
+
+					// Inner size and location.
+					// ---
+					wg.size[0] = 800;                                 // Temporarily maximize the width (this removes artifacts before setting y)
+					wg.size[1] = 2*DY + h;                            // Actual Edit height incl. inset
+					wg.size[0] = 2*DX + w;                            // Actual Edit width incl. inset.
+					wg.location = [MGX-DX,MGY-DY];
+
+					// Outer size and location.
+					// ---
+					wg = me.getControl(-1);
+					q = callee.Q;
+					q[0] = (w += 2*MGX);
+					q[1] = (h += 2*MGY);
+
+					wg.size[0] = 800;
+					wg.size[1] = h;
+					wg.size[0] = w;
+					wg.location=[0,0];
+
+					return q;
+				}
+				.setup
+				({
+					Q: [10,10], // Volatile array
+					INSET:     $$.inCC ? [3,1] : [0,0],
+					BASE_CHAR: $$.inCC ? 'm' : 'X',
+					BASE_SIZE: $$.inCC ? [9,15] : [10,16],  // Used only when no `graphics` prop available.
+				}),
+				
+				POSN: function(/*Popup*/me,/*Widget*/proxy,  wb,pp,x,y,mx,my)
+				//----------------------------------
+				// Position the sized Popup relative to `proxy`.
+				// => true [OK] | false [KO]
+				{
+					if( !(wb=proxy.windowBounds) ) return false;
+					
+					// SUI Scaling fixer is required on:
+					// - wb.left|top            ; [REM] wb.right|bottom are IRRELEVANT
+					// - any Window metrics     ; [REM] all in screen coordinates
+					// ---
+					const KX = callee.X_SCALE;
+					const KY = callee.Y_SCALE;
+
+					pp = me.properties;
+
+					x = wb.left/KX + pp.XOffset;
+					mx = proxy.window.windowBounds.right/KX - me.size[0] - 10;  // Maximum x
+					x > mx && (x=mx);                                           // Shift to the left as necessary.
+					// ---
+					y = wb.top/KY + wb.height + pp.YOffset;                     // Do not use wb.bottom!
+					my = proxy.window.windowBounds.bottom/KY - me.size[1];      // Maximum y
+					y > my && (y=wb.top/KY - me.size[1] - pp.YOffset);          // Go to the top edge instead.
+
+					// Translate (x,y) in me.parent coordinates.
+					// ---
+					if( me.parent !== me.window )
+					{
+						wb = me.parent.windowBounds;
+						x -= wb.left/KX;
+						y -= wb.top/KY;
+					}
+					
+					// Expecting SUI coordinates.
+					// ---
+					me.location = [ Math.round(x), Math.round(y) ];             // [REM] x,y can be float at this point.
+					return true;
+				}
+				.setup
+				({
+					X_SCALE: ScriptUI.HDI_SCALING[0],
+					Y_SCALE: ScriptUI.HDI_SCALING[1],
+				}),
+				
+				COLR: $$.inCC ?
+				//----------------------------------
+				function(/*Popup*/me,/*0|1|2*/color)
+				{
+					// In CC we cannot colorize popup background :-(
+					// so we use `enabled` to create a 2-state effect.
+					// ---
+					me.getControl().enabled = me.getControl(-1).enabled = 0 < color;
+				}:
+				function(/*Popup*/me,/*0|1|2*/color,  gx,t)
+				{
+					// In CS we can colorize backgrounds :-)
+					// ---
+					if( !(gx=me.graphics) ) return;
+					gx.backgroundColor = t = gx.newBrush(0,callee['BKG'+color]);
+					me.getControl(-1).graphics.backgroundColor = t;
+				}
+				.setup({ BKG0:[.4,.4,.4,1], BKG1:[.2,.7,.2,1], BKG2:[.7,.2,.2,1] }),
+			}),
+		});
+
+
+		//==========================================================================
+		// [190306] ScriptUI.popupEvent()
+		//==========================================================================
+
+		ScriptUI.popupEvent = 'function' == typeof ScriptUI.event ?
+		//----------------------------------
+		// Create and return a custom 'popup' UIEvent based on
+		// a message string and a color code.
+		// ---
+		// => new UIEvent[[popup]]
+		function popupEvent(/*str=''*/msg,/*0|1|2=0*/code,/*0..10=0*/seconds)
+		{
+			1 < (code>>>=0) && (code=2);
+			( 'number' == typeof seconds && 0 < seconds ) || (seconds=0);
+			return ScriptUI.event('popup','U', { message:String(msg||''), color:code, duration:seconds });
+		}
+		:
+		function popupEvent(/*str=''*/msg,/*0|1|2=0*/code,/*0..10=0*/seconds,  ev)
+		{
+			1 < (code>>>=0) && (code=2);
+			( 'number' == typeof seconds && 0 < seconds ) || (seconds=0);
+			// ---
+			ev = new UIEvent('popup',true,true);
+			// ---
+			ev.message = String(msg||'');
+			ev.color = code;
+			ev.duration = seconds;
+			// ---
+			return ev;
+		};
+
+	}
