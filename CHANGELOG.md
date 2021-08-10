@@ -1,3 +1,9 @@
+##### [210810]
+   - Loaded some custom components in the folder [ScriptUI/factories/](/etc/ScriptUI/factories):
+      - [`Check`](/etc/ScriptUI/factories/$$.Check.jsxinc) implements a customizable checkbox that optionally supports three states and deals consistently with events. Can replace the native `Checkbox` widget.
+      - [`CheckGroup`](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc) manages a set of uniform `Check` components. (Hence it requires the `Check` factory.)
+      - [`Popup`](/etc/ScriptUI/factories/$$.Popup.jsxinc) implements a hidden container that you can make temporary visible for displaying messages alongside UI widgets.
+
 ##### [210730]
    - [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc). This new snippet introduces a set of common functions used in custom ScriptUI factories. Mainly:
       - `ScriptUI.factoryOptions(ini,defs)`: Merges the incoming `ini` set with a default set of options.
