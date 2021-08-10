@@ -1,0 +1,80 @@
+/*******************************************************************************
+
+		Name:           ScriptUI
+		Desc:           Includes common ScriptUI extensions for advanced UIs.
+		Path:           /etc/$$.ScriptUI.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:  ScriptUI. colorArray() colorFormat() colorParse() colorMake()
+		                colorBrush() colorPen() colorGetter() colorSetter()
+		                colorHandler() layoutDeclare() layoutHandler() event()
+		                factoryOptions() setWatcher() dispatch()
+		                customEventHandler() LINE measureMulti() POPU() NOOP()
+		DOM-access:     ---
+		Todo:           ---
+		Created:        210703 (YYMMDD)
+		Modified:       210810 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	This is a generic includer for advanced ScriptUI tools. In particular,
+	if you use or implement a factory, just include this file upstream.
+	(It's easier than including each particular dependency.)
+	
+	E.g
+	
+	           #include '<IdexPath>/etc/$$.ScriptUI.jsxinc'
+	           #include '<IdexPath>/etc/ScriptUI/factories/$$.Edit.jsxinc'
+	           #include '<IdexPath>/etc/ScriptUI/factories/$$.List.jsxinc'
+	           // etc
+
+	The below snippets (all present in the `etc/ScriptUI/` directory) load
+	essential features in the ScriptUI object:
+	
+	1. Colors      Set of color managers. Makes the custom keys 'background'
+	               and 'color' available in ScriptUI.builder().
+	               -- cf ScriptUI.colorSetter().
+
+	2. Layout      Makes the key `_layout` available in ScriptUI.builder(),
+	               allowing components to automatically trigger a special
+	               handler when their layout.layout() method is processed.
+	               Required in various factories.
+
+	3. Events      Takes control of advanced events (like mouse and keyboard
+	               events) and facilitates the creation of custom events.
+	               -- cf ScriptUI.event().
+
+	4. Factories   Infrastructure of custom ScriptUI 'factories'. Adds
+	               shared utilities like `ScriptUI.setWatcher()` and
+	               `ScriptUI.dispatch()`.
+	               -- See the GUIDELINES in ScriptUI/factories.jsxinc
+
+	[REM] Order may matter in the following `#include` directives. Do not change
+	this code unless you know what you are doing.
+	
+	*/
+
+
+	// Color management.
+	// ---
+	#include 'ScriptUI/$$.colors.jsxinc'
+
+	// Layout listener.
+	// ---
+	#include 'ScriptUI/$$.layout.jsxinc'
+
+	// Advanced event tools.
+	// ---
+	#include 'ScriptUI/$$.events.jsxinc'
+
+	// Shared tools for factories.
+	// ---
+	#include 'ScriptUI/$$.factories.jsxinc'
