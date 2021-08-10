@@ -305,6 +305,24 @@ _Demonstrates:_
 
 ---
 
+##### `SuiFactories`
+
+This subfolder provides basic demo scripts showing the behaviors and features of custom ScriptUI components available in [etc/ScriptUI/factories](/etc/ScriptUI/factories):
+
+* [`TestCheck.jsx`](SuiFactories/TestCheck.jsx) instantiates various `Check(Factory)` components (custom checkboxes.)
+
+   ![TestCheck screenshot](SuiFactories/TestCheck.png)
+
+* [`TestCheckGroup.jsx`](SuiFactories/TestCheckGroup.jsx) instantiates a `CheckGroup(Factory)` (consistent set of checkboxes.)
+
+   ![TestCheckGroup screenshot](SuiFactories/TestCheckGroup.png)
+
+* [`TestPopup.jsx`](SuiFactories/TestPopup.jsx) adds a `Popup(Factory)` component to the window and displays a popup message while the mouse moves over different widgets:
+
+   ![TestPopup screenshot](SuiFactories/TestPopup.png)
+
+---
+
 ##### [`UseJsxBlindLib.jsx`](UseJsxBlindLib.jsx)
 
 Scramble a jsxbin file choosen by the user.
