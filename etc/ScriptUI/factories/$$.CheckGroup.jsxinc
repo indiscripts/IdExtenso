@@ -1,0 +1,355 @@
+/*******************************************************************************
+
+		Name:           CheckGroup(Factory)
+		Desc:           Group of uniform Check components.
+		Path:           /etc/ScriptUI/factories/$$.CheckGroup.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI.CheckFactory
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.CheckGroupFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190314 (YYMMDD)
+		Modified:       210810 (YYMMDD)
+
+*******************************************************************************/
+
+	// =========================================================================
+	// NOTICE
+	// =========================================================================
+	
+	/*
+
+	CheckGroupFactory provides a CS/CC-consistent group of checkboxes based on
+	the CheckFactory. When a single column of Check components is laid out the
+	scheme is:
+
+	    +-------------------------------------------+
+	    ¦ +---------------------------------------+ ¦
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ ¦ | √ |   ¦  <one-line-label>  ¦      <-¦-¦---- Check component
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ +---------------------------------------+ ¦
+	    ¦ +---------------------------------------+ ¦
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ ¦ | √ |   ¦  <one-line-label>  ¦      <-¦-¦---- Check component
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ +---------------------------------------+ ¦
+	    ¦ +---------------------------------------+ ¦
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ ¦ | √ |   ¦  <one-line-label>  ¦      <-¦-¦---- Check component
+	    ¦ ¦ +===+   +--------------------+        ¦ ¦
+	    ¦ +---------------------------------------+ ¦     etc
+	    +-------------------------------------------+
+
+	By default, a single row of Check components is laid out (columns=0). The
+	factory can outputs a set of columns as well.
+
+	Example in ScriptUI.builder:
+
+	      CheckGroup$MyCheckGroup:
+	      [{
+	          spacing: 20,
+	          columns: 1,
+	          $ckBold: {text:"Bold", help:"Use bold style.", value:1},
+	          $ckItal: {text:"Italic", help:"Use italics.", value:0},
+	          // etc
+	      }],
+
+	API
+	=======================================================================
+	properties      obj = { kind: "CheckGroup", ColCount:uint }
+	                Information properties. `ColCount` (0|1...) reflects
+	                the number of columns used in the CheckGroup. If it
+	                is > 1, the Check components are hosted in subgroups.
+	-----------------------------------------------------------------------
+	helpTip         str = ""
+	                Help message (getter and setter).
+	=======================================================================
+	onClickChange   fct( ev[[clicked]] ) = undef
+	                Called back when the custom 'clicked' event has occured
+	                on any child, i.e Check component. The handler can then
+	                assume ev.target.properties.kind==='Check'.
+	                [REM] The 'clicked' event also occurs when the user
+	                      presses the [SPACE] key on a Check component.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured in the CheckGroup area (being dispatched by
+	                either the group itself or any child.)
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                clicked | rclicked
+	=======================================================================
+	getControl(idx) => Group[[Check]]
+	                Return the Check component identified by idx (index or
+	                name.)
+	-----------------------------------------------------------------------
+
+	*/
+
+	;if( 'function' != typeof ScriptUI.CheckFactory ){ alert(__("%1 requires the %2 extension.",'CheckGroupFactory','CheckFactory')); exit(); }
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.CheckGroupFactory = function CheckGroup(/*container*/parent,/*{$key1=>{ops1}..., spacing:uint...}*/ops,  cols,CW,CH,r,a,k,t,n,nc,p,i,c,j,g)
+		//----------------------------------
+		// Options:
+		// Each `$key` of `ops` must start with a $ symbol and refer to a set of CheckFactory options:
+		// .text       (str='')     Text of the checkbox.
+		// .help|helpTip (str='')   Help tip.
+		// .value      (tee=0)      0:uncheked 1:checked -1:unspecified. (Bool supported.)
+		// .ternary    (bool=auto)  Whether the unspecified state is supported.
+		// .radio      (bool=0)     Whether the shape is to be circular (experimental.)
+		// ---
+		// .customBox  (bool=auto)  Use custom checkbox (onDraw), forced in ternary mode.
+		// .optWidth   (uint=120)   Optimal width (in px)
+		// .optHeight  (uint=23)    Optimal height (in px)
+		// .spacing    (uint=4)     Space b/w checkbox and caption
+		// ---
+		// .onClickChange (?fct)    'clicked' handler.
+		// .onRightClick  (?fct)    'rclicked' handler.
+		// .onEvent       (?fct)    Any event handler.
+		// [REM] The shortcut $key:<str> is supported too, as specified in CheckFactory.
+		// ---
+		// In addition, the following properties set the global options of the CheckGroup:
+		// .margins    (uint|uint[4]) Margins applied to the CheckGroup. Default: [0,2,0,0]
+		// .spacing    (uint=8)       Space between Check components.
+		// .columns    (uint[]=0)     Distribute checkboxes in columns as indicated by
+		//                            columns[0], columns[1], etc. If columns is zero
+		//                            distribute checkboxes in a single row; if columns
+		//                            is a positive number n, distribute checkboxes in
+		//                            at most n columns.
+		// checkWidth  (?uint)        Optimal width of any checkbox having no `optWidth`.
+		// checkHeight (?uint)        Optimal height of any checkbox having no `optHeight`.
+		// ---
+		// => Group[[CheckGroup]]  ::   G( G(C,S), G(C,S) ...)
+		//   .properties           ::   { kind, ColCount }
+		{
+			ops===Object(ops) || (ops={});
+			ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			cols = ops.columns || 0;
+			CW = ops.checkWidth >>> 0;
+			CH = ops.checkHeight >>> 0;
+
+			r = 
+			{
+				margins:                ops.hasOwnProperty('margins') ? ops.margins : [0,2,0,0],
+				spacing:                ops.hasOwnProperty('spacing') ? ops.spacing : 8,
+				orientation:            'row', // refined later
+				alignChildren:          ScriptUI.LT,
+				// --- Watched.
+				helpTip:                ops.helpTip||'',
+				onClickChange:          void 0,
+				onRightClick:           void 0,
+				onEvent:                void 0,
+				// --- Inner events.
+				_mousedown:             callee.HMOU,
+				// --- Public methods.
+				getControl:             callee.CTRL, // ret. a child (Check) identified by idx
+			};
+			
+			// Get Check keys -> a :: `$key`[]
+			// ---
+			a = Array();
+			for( k in ops )
+			{
+				if( !ops.hasOwnProperty(k) ) continue;
+				if( '$'==k.charAt(0) && ('string'==typeof(t=ops[k]) || t===Object(t)) )
+				{
+					a[a.length] = k;
+					0===CW || t.optWidth || (t.optWidth=CW);
+					0===CH || t.optHeight || (t.optHeight=CH);
+				}
+				else
+				{
+					r.hasOwnProperty(k) || 'columns'==k || 'help'==k || 'checkWidth'==k || 'checkHeight'==k
+					|| ( r[k]=ops[k] );    // fallback for foreign keys
+				}
+			}
+			n = a.length;
+
+			// Normalize cols :: 0 | 1 | uint[>1]
+			// ---
+			if( n && ('number' == typeof cols) && 1 < cols )
+			{
+				nc = cols >>> 0;
+				nc > n && (nc=n);
+				p = Math.ceil(n/nc);
+				for( cols=Array(), i=n ; (i-=p) > 0 ; cols[cols.length]=p );
+				0 >= i && cols[cols.length]=p+i;
+			}
+			else
+			{
+				(n && cols && cols instanceof Array) || (cols|=0);
+			}
+			
+			// Single explicit column?
+			// ---
+			if( 1===cols.length )
+			{
+				p = cols[0]>>>0;
+				n > p ? cols.push(n-p) : (cols=1);
+			}
+
+			// Declare the Check components.
+			// ---
+			if( nc=cols.length )
+			{
+				// Multi-column layout (nc > 1).
+				// ---
+				const MIN_COL_SIZE = r.spacing ? { width: 2*r.spacing } : void 0;
+
+				// g :: Current column (Group.)
+				// c :: Current index in cols (=== g.index)
+				// p :: Current cols[c] capacity.
+				// j :: Current row index (in the current column.)
+				// ---
+				for( g=false, p=0, c=j=i=-1 ; ++i < n ; k=a[i], g['CheckFactory'+k]=[ops[k]] )
+				{
+					if( ++j < p ) continue;
+					
+					do
+					{
+						p = (++c < nc) ? (cols[c]>>>0) : (n-i);  // p might be zero -> empty column.
+						g = r['Group$'+c] =
+						{
+							margins:                0,
+							spacing:                r.spacing,
+							orientation:            'column',
+							alignChildren:          ScriptUI.LT,
+							minimumSize:            MIN_COL_SIZE,
+						};
+					}while( !p );
+
+					j = 0;
+				}
+			}
+			else
+			{
+				// Single-row or single-column layout.
+				// ---
+				nc = cols;
+				r.orientation = nc ? 'column' : 'row';
+				for( i=-1 ; ++i < n ; k=a[i], r['CheckFactory'+k]=[ops[k]] );
+			}
+
+			r = ScriptUI.builder.call
+			(
+				this,
+				r,
+				parent.add( 'group', void 0, { kind:callee.name, ColCount: nc} )
+			);
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			(
+				r,
+				['helpTip', 'onClickChange', 'onRightClick', 'onEvent'],
+				callee.WTCH,
+				ops
+			);
+
+			return r;
+		}
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		.setup
+		({
+			HMOU: function onMouseDown(/*?MouseEvent*/ev)
+			//----------------------------------
+			// Manage mousedown at the CheckGroup level.
+			// Dispatch 'rclicked' when necessary.
+			// ---
+			// this   :: Group[[CheckGroup]]
+			// ev     :: mousedown
+			// target :: this | Group | Checkbox | StaticText
+			{
+				ev.stopPropagation();                                       // Don't go higher.
+				
+				if( ev.button )                                             // Catch non-LEFT button.
+				{
+					ev.preventDefault();                                    // Inhibit.
+
+					2 == ev.button                                          // RIGHT button
+					&& (this===ev.target||callee.EV_PHASE==ev.eventPhase)   // 'bubble' is allowed in CS
+					&& ScriptUI.dispatch(this,'rclicked',ev);               // Notify 'rclicked'
+				}
+			}
+			.setup
+			({
+				EV_PHASE : $.inCC ? 'BREAK' : 'bubble',
+			}),
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*str*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[CheckGroup]]
+			//    k   :: helpTip (transparent)
+			//           onClickChange | onRightClick | onEvent
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				switch( k )
+				{
+					case 'onClickChange': // fct
+						ScriptUI.callback(this,'clicked',ov,nv);
+						break;
+
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onEvent': // fct
+						ScriptUI.callback(this,['clicked','rclicked'],ov,nv);
+						break;
+
+					default:;
+				}
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public.
+		//----------------------------------
+		({
+			CTRL: function getControl(/*str|uint*/idx,  a,i,t)
+			//----------------------------------
+			// Return the Check child whose index or name matches idx.
+			// => Group[[Check]] [OK]  |  false [KO]
+			{
+				if( 1 < this.properties.ColCount )
+				{
+					t = this.children;
+					for( a=[], i=-1 ; ++i < t.length ; a.push.apply(a,t[i].children) );
+				}
+				else
+				{
+					a = this.children;
+				}
+				
+				if( idx === idx >>>0 ) return a[idx] || false;
+
+				'string' == typeof idx || error("Invalid `idx` parameter. Should be a string or an index.");
+
+				for( i=a.length ; i-- ; )
+				{
+					if( idx === a[i].name ) return a[i];
+				}
+
+				return false;
+			},
+		});
+
+	}
