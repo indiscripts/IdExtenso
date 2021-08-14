@@ -1,3 +1,6 @@
+##### [210814]
+   - Added a [`CheckList`](/etc/ScriptUI/factories/$$.CheckList.jsxinc) component in [ScriptUI/factories/](/etc/ScriptUI/factories). This control allows to display and check/uncheck hierarchical data in a list (the underlying widget is a native ScriptUI `Listbox`.) Very useful for showing style groups and similar tree structures available in InDesign.
+
 ##### [210810]
    - Loaded some custom components in the folder [ScriptUI/factories/](/etc/ScriptUI/factories):
       - [`Check`](/etc/ScriptUI/factories/$$.Check.jsxinc) implements a customizable checkbox that optionally supports three states and deals consistently with events. Can replace the native `Checkbox` widget.
