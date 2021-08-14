@@ -1,5 +1,6 @@
 ##### [210814]
    - Added a [`CheckList`](/etc/ScriptUI/factories/$$.CheckList.jsxinc) component in [ScriptUI/factories/](/etc/ScriptUI/factories). This control allows to display and check/uncheck hierarchical data in a list (the underlying widget is a native ScriptUI `Listbox`.) Very useful for showing style groups and similar tree structures available in InDesign.
+   - Added a [`SideMenu`](/etc/ScriptUI/factories/$$.SideMenu.jsxinc) component in [ScriptUI/factories/](/etc/ScriptUI/factories). Provides a _sidebar menu_ that controls the visibility of UI components (referred to as “menu targets”.)
 
 ##### [210810]
    - Loaded some custom components in the folder [ScriptUI/factories/](/etc/ScriptUI/factories):
