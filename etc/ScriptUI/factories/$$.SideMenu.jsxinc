@@ -1,0 +1,468 @@
+/*******************************************************************************
+
+		Name:           SideMenu(Factory)
+		Desc:           Sidebar menu for ScriptUI.builder.
+		Path:           /etc/ScriptUI/factories/$$.SideMenu.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI/layout ; ScriptUI/colors [recommended]
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.SideMenuFactory()
+		DOM-access:     NO
+		Todo:           getTarget()
+		Created:        190124 (YYMMDD)
+		Modified:       210814 (YYMMDD)
+
+*******************************************************************************/
+
+	// =============================================================================
+	// NOTICE
+	// =============================================================================
+	
+	/*
+
+	SideMenuFactory implements a sidebar menu that controls the visibility of
+	UI components referred to as MENU TARGETS. The menu itself consists in
+	a column of interactive items based on distinct titles. Usually, the menu
+	targets are stacked in a group (or panel) positioned to the right of the menu,
+	but this is not a requirement.
+
+	      +--------------------------+
+	      ¦  +--------------------+  ¦
+	      ¦  ¦¦  <menuTitle0>     ¦  ¦  ---> target0
+	      ¦  +--------------------+  ¦
+	      ¦  +--------------------+  ¦
+	      ¦  ||  <menuTitle1>     ¦  ¦  ===> target1  (selected)
+	      ¦  +--------------------+  ¦
+	      ¦          . . .           ¦
+	      +--------------------------+
+
+	When the user clicks a menu title, the item gets selected and the
+	corresponding target is made visible while other are masked.
+	
+	[REM] The ScriptUI/layout extension MUST be included before the present file,
+	      as the SideMenu uses a `_layout` handler to update its targets
+	      before the window shows up.
+
+	      The ScriptUI/colors extension SHOULD be included too, although
+	      not required. If omitted, the selection bar won't be visible.
+
+	Example in ScriptUI.builder:
+
+	      ...
+	      SideMenuFactory$MyMenu:
+	      [{
+	          $myPanel1: "Select Scope",         // $key1 => title1
+	          $myPanel2: "Styles",               // $key2 => title2
+	          // etc
+	          value:     1,                      // Initial menu item index
+	          autoFocus: true,                   // Gives the focus to the target
+	      }],
+	      ...
+
+	where 'myPanel1', 'myPanel2'... are to be valid component keys available in the
+	Window instance. The syntax also supports the scheme `$key => [ title , help ]`
+	if you need to attach help tips to menu items.
+	
+	If not provided, the default value (i.e selected index) is 0. This argument can
+	be passed as a string as well (the title of the menu item.)
+	
+	Set the autoFocus option to true to make menu items automatically 'activate' their
+	respective target, that is, giving the focus to the 1st control that can take it.
+
+
+	API
+	=======================================================================
+	properties      obj = { kind: "SideMenu", AutoFocus:bool }
+	                Information properties.
+	-----------------------------------------------------------------------
+	value           0|1|2... = 0
+	                Get/set the index of the selected menu item. The setter
+	                supports either 0-based index or string (title.)
+	=======================================================================
+	onClickChange   fct( ev[[clicked]] ) = undef
+	                Called back when the custom 'clicked' event has occured,
+	                that is, when the user has just clicked a new menu item
+	                changing the value property. The 'clicked' event is not
+	                fired when the value is modified from the client code.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                clicked | rclicked
+	=======================================================================
+	setValue(nv)    => nv
+	                Equivalent to { this.value=nv; return this.value; }
+	-----------------------------------------------------------------------
+	getValue()      => (0|1|...)
+	                Equivalent to { return this.value; }
+	-----------------------------------------------------------------------
+	getString()     => str
+	                Return the title (str) of the selected menu item.
+	-----------------------------------------------------------------------
+	getControl()    => Group[[MenuItem]]
+	                Return the selected menu item.
+	-----------------------------------------------------------------------
+	getTarget()     => Widget
+	                Return the target associated to the selected menu item.
+	-----------------------------------------------------------------------
+	popup(s,c,t)    => undef
+	                Shortcut for sending a popup event in automatic mode.
+	                If no Popup component is available, this method has no
+	                effect.
+	-----------------------------------------------------------------------
+
+	*/
+
+	;if( 'function' != typeof ScriptUI.layoutDeclare ){ alert(__("%1 requires the %2 extension.",'SideMenuFactory','layout')); exit(); }
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.SideMenuFactory = function SideMenu(/*container*/parent,/*{$key1=>str|str[2]..., value:int, autoFocus:bool...}*/ops,  V,r,k,i,txt,hlp,sel)
+		//----------------------------------
+		// Options:
+		// Each `$key` of `ops` must start with a $ symbol, it then refers to a Window
+		// component reachable from myWindow[key], while the associated value--str|str[2]--
+		// defines the menu item title (str) or both the title and the helpTip (str[2]).
+		// ---
+		// .value      (int=-1|str)    Index of the selected item.
+		//                             Supports title (string) too.
+		// .autoFocus  (bool=false)    Whether menu items must activate their respective target.
+		// .optWidth   (uint=150)      Optimal width of each menu item title (in px.)
+		// .spacing    (uint=8)        Inner space (in px.)
+		// .barColor   (uint=0x46A0F5) Bar color (if /colors included)
+		// .barWidth   (uint=1)        Bar width (in px.)
+		// .barHeight  (uint=24)       Bar height (in px.)
+		// ---
+		// .onClickChange (?fct)       'clicked' handler.
+		// .onRightClick  (?fct)       'rclicked' handler.
+		// .onEvent       (?fct)       Any event handler.
+		// ---
+		// => Group[[SideMenu]]    ::   G( G(G,S), G(G,S) ...)
+		//   .properties           ::   { kind, AutoFocus }
+		{
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+			V = ops.value;                                                 // 0|1|..|str
+
+			// Structure.
+			// ---
+			r =
+			{
+				orientation:            'column',
+				margins:                0,
+				spacing:                0,
+				alignChildren:          ScriptUI.LT,
+				// --- Watched.
+				value:                  void 0, // pending
+				onClickChange:          void 0, // pending
+				onRightClick:           void 0, // pending
+				onEvent:                void 0, // pending
+				// --- Methods.
+				__showTarget__:         callee.SHWT,
+				setValue:               callee.SETV,
+				getValue:               callee.GETV,
+				getString:              callee.GETS,
+				getControl:             callee.GETC,
+				getTarget:              callee.GETT,
+				popup:                  ScriptUI.POPU,
+				// --- Events.
+				_layout:                callee.HLAY,
+				_mouseover_mouseout_mousedown: callee.HMOU,
+			};
+			
+			// MenuItems.
+			// ---
+			i = 0;
+			sel = -1;
+			for( k in ops )
+			{
+				if( (!ops.hasOwnProperty(k)) || '$' != k.charAt(0) ) continue;
+				( (txt=ops[k]) instanceof Array ) ? ( (hlp=txt[1]), (txt=txt[0]) ) : (hlp='');
+				txt = String(txt||'');
+				hlp = String(hlp||'');
+				0 > sel && (V===i || V===txt) && (sel=i);
+
+				r['Group$'+i] =
+				{
+					properties:         { kind:'MenuItem', TargetKey:k.slice(1), Index:i },
+					orientation:        'row',
+					margins:            [0,ops.spacing,ops.spacing,ops.spacing],
+					spacing:            ops.spacing,
+					alignChildren:      ScriptUI.LC,
+					helpTip:            hlp,
+					// --- Components.
+					Group$0:
+					{
+						margins:        0,
+						optimalSize:    { width:ops.barWidth, height:ops.barHeight },
+						background:     ops.barColor,
+						visible:        false,
+					},
+					StaticText$1:
+					{
+						properties:     { text:txt },
+						optimalSize:    { width:ops.optWidth },
+						enabled:        false,
+					},
+				};
+				
+				++i;
+			}
+			
+			// Selection.
+			// ---
+			0 > sel && (sel=0);
+			r.value = sel;
+			r['Group$'+sel].Group$0.visible = true;
+			r['Group$'+sel].StaticText$1.enabled = true;
+
+			// Build.
+			// ---
+			r = ScriptUI.builder
+			(
+				r,
+				parent.add( 'group', void 0, callee.CREA(ops) )
+			);
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			( r, 'value', callee.WTCH )
+			( r, ['onClickChange', 'onRightClick', 'onEvent'], callee.WTCH, ops );
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Parameters, tools.
+		//----------------------------------
+		({
+			DEFS:
+			{
+				value:        -1,
+				autoFocus:    false,
+				optWidth:     150,
+				spacing:      8,
+				// ---
+				barColor:     0x46A0F5,
+				barWidth:     1,
+				barHeight:    24,
+				// ---
+				onClickChange:void 0,
+				onRightClick: void 0,
+				onEvent:      void 0,
+			},
+
+			CREA: function(/*{}*/ops)
+			//----------------------------------
+			// this :: ScriptUI.SideMenuFactory
+			// => new {}  ; properties object
+			{
+				return {
+					kind:          this.name,
+					// ---
+					AutoFocus:     ops.autoFocus,
+				};
+			},
+			
+			SHWT: function __showTarget__(/*uint=value*/nv,  w,a,i,t,tg)
+			//----------------------------------
+			// Private method.
+			// this :: ScriptUI.SideMenuFactory
+			// => undef
+			{
+				'undefined' == typeof nv && (nv=this.value);
+				// Show the target and hide others.
+				// ---
+				for
+				(
+					w=this.window, a=this.children, i=a.length, tg=false ;
+					i-- ;
+					(t=(a[i].properties||0).TargetKey)
+					&& (t=w[t])
+					&& t.hasOwnProperty('visible') && (t.visible=i===nv) && (tg=t)
+				);
+				
+				// Autofocus?
+				// ---
+				a = tg && this.properties.AutoFocus && tg.children;
+				if( !a ) return;
+				for( i=-1 ; ++i < a.length && !ScriptUI.setFocus(a[i],1) ; );
+			},
+		})
+		.setup
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		({
+			HLAY: function onLayout(/*0|1|2*/_)
+			//----------------------------------
+			// Update target visibility.
+			// this   :: Group[[kind:SideMenu]]
+			{
+				this.__showTarget__();
+			},
+
+			HMOU: function onMouse(/*Event*/ev,  m,x,v,a,i,o,t)
+			//----------------------------------
+			// Manage mouse events ; change this.value on left click (trigger 'clicked'.)
+			// this   :: Group[[SideMenu]]
+			// ev     :: mouseover | mouseout | mousedown
+			// ---
+			// [REM] Event model when the mouse goes in-out a nested widget [z[y[x]y]z]
+			// is either
+			//    CC:  OVR(z) -> OVR(y) -> OVR(x) -> OUT(x) -> OUT(y) -> OUT(z)
+			//    CS:  OVR(z) -> OVR(y) -> OVR(x) -> O/U(x) -> O/U(y) -> O/U(z)
+			// where `O/U` refers to OVR and/or OUT events in non-deterministic way.
+			{
+				m = ev.target;
+
+				// Which item is concerned by this event?
+				// x :: -1 [this] | 0..n [index]
+				// ---
+				while( 'undefined' == typeof( x=-(m===this)||(m.properties||0).Index ) )
+				{
+					if( !(m=m.parent) ) return;
+				}
+
+				v = this.value;
+				switch( ev.type )
+				{
+					case 'mouseover':
+						// Ignore mouseover if no item has been entered.
+						// ---
+						if( 0 > x ) return;
+						ev = true;
+						break;
+
+					case 'mouseout':
+						// Ignore mouseout if the menu item exists BUT is
+						// not the actual target. Hence we only manage exits
+						// from top containers or from the whole Menu area.
+						// This deals with CS/CC inconsistencies.
+						// ---
+						if( 0 <= x && m!==ev.target ) return;
+						ev = false;
+						break;
+
+					case 'mousedown':
+						if( ev.button )                                             // Catch non-LEFT button.
+						{
+							ev.stopPropagation();                                   // Don't go higher.
+							ev.preventDefault();                                    // Inhibit.
+
+							2 == ev.button                                          // RIGHT button
+							&& (this===ev.target||callee.EV_PHASE==ev.eventPhase)   // 'bubble' is allowed in CS
+							&& ScriptUI.dispatch(this,'rclicked',ev);               // Notify 'rclicked'
+
+							return;
+						}
+
+						// Ignore mousedown if either (a) no item has been
+						// identified, or (b) the item *is* already selected.
+						// (b) is needed to impede 'CC re-targeting' issue.
+						// ---
+						if( 0 > x || x===v ) return;
+						ev = true;
+						v = -1-v; // -1|-2...
+						break;
+
+					default:
+						return;
+				}
+
+				// Highlight/relax titles.
+				// ---
+				for( a=this.children, i=a.length ; i-- ; )
+				{
+					t = ((o=a[i]).properties||0).Index;
+					if( v===t ) continue;
+					o.children[1].enabled = ev && t===x;
+				}
+				
+				// Mousedown case.
+				// ---
+				if( 0 > v && 0 <= x )
+				{
+					this.value = x;
+					ScriptUI.dispatch(this, 'clicked');
+				}
+			}
+			.setup
+			({
+				EV_PHASE : $.inCC ? 'BREAK' : 'bubble',
+			}),
+		})
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		.setup
+		({
+			WTCH: function watcher(/*value*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[SideMenu]]
+			//    k   :: value | onClickChange | onRightClick | onEvent
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				var t,a;
+				switch( k )
+				{
+					case 'value': // 0|1|...|str
+						a = this.children;
+						if( nv !== (0|nv) )
+						{
+							// Support string assignment.
+							// ---
+							nv = String(nv||'').toUpperCase();
+							for( t=a.length ; t-- && nv != a[t].children[1].text.toUpperCase() ; );
+							nv = t;
+						}
+						nv = nv % a.length;
+						if( 0 > nv || nv === ov ) return ov;
+						
+						t = a[ov];
+						t.children[0].visible = false; // hide the bar
+						t.children[1].enabled = false; // grey out the title
+						t = a[nv];
+						t.children[0].visible = true;  // show the bar
+						t.children[1].enabled = true;  // highlight the title
+						
+						this.__showTarget__(nv);
+						break;
+
+					case 'onClickChange': // fct
+						ScriptUI.callback(this,'clicked',ov,nv);
+						break;
+
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onEvent': // fct
+						ScriptUI.callback(this,['clicked','rclicked'],ov,nv);
+						break;
+
+					default:;
+				}
+
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public.
+		//----------------------------------
+		({
+			SETV: function setValue(nv){ return (this.value=nv), this.value },
+			GETV: function getValue()  { return this.value },
+			GETS: function getString() { return this.getControl().children[1].text },
+			GETC: function getControl(){ return this.children[this.value] },
+			GETT: function getTarget() { return this.window[this.getControl().properties.TargetKey] },
+		});
+	}
