@@ -317,6 +317,10 @@ This subfolder provides basic demo scripts showing the behaviors and features of
 
    ![TestCheckGroup screenshot](SuiFactories/TestCheckGroup.png)
 
+* [`TestCheckList.jsx`](SuiFactories/TestCheckList.jsx) instantiates a `CheckList(Factory)` (hierarchical checklist.) The example also includes a `Popup`.
+
+   ![TestCheckList screenshot](SuiFactories/TestCheckList.png)
+
 * [`TestPopup.jsx`](SuiFactories/TestPopup.jsx) adds a `Popup(Factory)` component to the window and displays a popup message while the mouse moves over different widgets:
 
    ![TestPopup screenshot](SuiFactories/TestPopup.png)
