@@ -1,0 +1,973 @@
+/*******************************************************************************
+
+		Name:           CheckList(Factory)
+		Desc:           Listbox representing hierarchical, checkable items.
+		Path:           /etc/ScriptUI/factories/$$.CheckList.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI/events ; ScriptUI/layout
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.CheckListFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        201231 (YYMMDD)
+		Modified:       210814 (YYMMDD)
+
+*******************************************************************************/
+
+	// =============================================================================
+	// NOTICE
+	// =============================================================================
+	
+	/*
+	
+	CheckListFactory provides a customized Listbox representing a tree of checkable
+	items. The user can quickly select/deselect individual items as well as entire
+	branches. Checks have three possible visual states:
+
+	       ◼  (U+25FC)   The item or branch is fully selected.
+	       ◻  (U+25FB)   The item or branch is fully unselected.
+	       ⬓  (U+2B13)   The branch is partially selected.
+
+	      +----------------------+
+	      ¦ +==================+ ¦
+	      ¦ |-⬓ BranchA--------| ¦
+	      ¦ |---◼ ItemA1-------| ¦
+	      ¦ |---⬓ BranchAA-----| ¦
+	      ¦ |-----◻ ItemAA1----| ¦
+	      ¦ |-----◼ ItemAA2----| ¦
+	      ¦ |-◼ BranchB--------| ¦
+	      ¦ |---◼ ItemB1-------| ¦
+	      ¦ |---◼ ItemB2-------| ¦
+	      ¦ +==================+ ¦
+	      +----------------------+
+
+	[REM] The ScriptUI/layout and /events extensions SHOULD be included.
+
+	Example in ScriptUI.builder:
+
+	      CheckListFactory$MyCheckList:
+	      [{
+	          data:  ["+ Adobe", "++ InDesign","-- Illustrator","++ Photoshop",
+	                  "+ Other", "++ IndyFont", "-- Wordalizer"],
+	          help:  "This is a help message.",             // help tip.
+	          maxLines: 15,                                 // Number of rows to display
+	      }],
+
+	The `data` (alias `value`) parameter can be seen as a tree:
+
+	      + Adobe               // 1st branch (can use '+ ' or '- ' indifferently)
+	      ++ InDesign           // checked node
+	      -- Illustrator        // unchecked node
+	      ++ Photoshop          // checked node
+	      + Other               // 2nd branch (can use '+ ' or '- ' indifferently)
+	      ++ IndyFont           // checked node
+	      -- Wordalizer         // unchecked node
+	      etc                   // Subbranches can be declared at any level
+
+	[REM] The `+` or `-` sequences MUST be followed by a space.
+
+	API
+	=======================================================================
+	properties      obj = { kind: "CheckList",
+	                        MinLines:uint>0, MaxLines:uint>0 }
+	                Information properties.
+	-----------------------------------------------------------------------
+	helpTip         str = ""
+	                Help message (getter and setter).
+	-----------------------------------------------------------------------
+	length          uint [READ-ONLY]
+	                Total number of items in the list (incl. branches,
+	                checked or unchecked elements.) Use `countNode(bool)`
+	                to get the number of terminal nodes.
+	=======================================================================
+	onValueChange   fct( ev[[vchanged]] ) = undef
+	                Called back when the custom 'vchanged' event has occured,
+	                indicating that the check state of some item(s) has changed.
+	                [REM] The 'vchanged' event usually reflects a click.
+	                The extra property `itemIndex` is added to this event:
+	                - uint >=0  ->  clicked item index
+	                - true      ->  select all
+	                - false     ->  unselect all
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured in the CheckList area.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                vchanged | rclicked
+	=======================================================================
+	setValue(nv)    => seq
+	                Reset the checklist with new items/states and return
+	                this.getValue().
+	                `nv` :: str[] | seq
+	                Array of branches and nodes with +/- prefixes, or
+	                equivalent <X1>-separated strings (see getValue.)
+	-----------------------------------------------------------------------
+	getValue()      => seq
+	                Return the FULL item/state sequence in the form
+	                "<state> <name><X1><state> <name><X1>..."
+	                <state> being either `-`, `--`, `---`, etc
+	                                  or `+`, `++`, `+++`, etc
+	-----------------------------------------------------------------------
+	getString(CK,PM) => seq
+	                (a) If CK is falsy (default), return all branch and node
+	                    names as <X1> seq, e.g "A<X1>nodeA1<X1>nodeA2<X1>B..."
+	                (b) If CK is truthy, return only the *checked terminal*
+	                    nodes as a <X1> seq, e.g "nodeA3<X1>nodeB7<X1>..."
+	                If PM::'brackets'|'slashed' is supplied in case (a) or (b),
+	                format each element of the sequence in full path mode:
+	                'brackets' -> "[parent] [parent] ... <nodeOrParent>"
+	                           ending in `[xyz]` form if elem is a parent
+	                'slashed'  -> "parent/parent/.../<nodeOrParent>"
+	                           ending in `xyz/` form if elem is a parent.
+	                [REM] getString() is informational, it doesn't help
+	                rebuild the whole data/states. Use getValue() instead.
+	-----------------------------------------------------------------------
+	getControl()    => Listbox
+	                Return the inner listbox.
+	-----------------------------------------------------------------------
+	notify(?idx)    => undef
+	                Notify a `vchanged` event.
+	                idx (false|true|uint)  itemIndex property.
+	-----------------------------------------------------------------------
+	popup(s,c,t)    => undef
+	                Shortcut for sending a popup event in automatic mode.
+	                If no Popup component is available, this method has no
+	                effect.
+	-----------------------------------------------------------------------
+	getItems()      => ListItem[]&   (actual type is Collection)
+	                Get the current `items` collection.
+	-----------------------------------------------------------------------
+	getItemAt(idx)  => ListItem&|false
+	                Get the ListItem at index idx.
+	-----------------------------------------------------------------------
+	getData()       => str[{}]&
+	                Get the *internal* rich array of strings, structured
+	                as follows:
+	                index  => <itemName>  (without state prefix)
+	                $index => CHR(state) + CHR(depth) + CHR(1+parentIdx)
+	                where state :: 0|1|2  and  depth :: 0|1|2|3|...
+	=======================================================================
+	countNodes(ALL_NODES) => uint
+	                Return the number of *terminal nodes* presently checked.
+	                (If ALL_NODES is truthy, return the number of terminal
+	                nodes whatever their state.)
+	-----------------------------------------------------------------------
+	checkAll()      => uint
+	                Check all terminal nodes and return countNodes().
+	-----------------------------------------------------------------------
+	uncheckAll()    => 0
+	                Uncheck all terminal nodes and return 0.
+	-----------------------------------------------------------------------
+	matches(?req)   => uint[]
+	                Return the array of item indices that match `req`
+	                (disregarding check prefixes.) `req` can be:
+	                - null|undef|-1         -> empty array
+	                - uint|ListItem|str     -> singleton array, or empty
+	                - (uint|ListItem|str)[] -> array of corresponding indices
+	                - RegExp                -> regular expression on `text`.
+	                [REM] If exact strings are searched using a `req` of
+	                type string, the 1st match is returned.
+	-----------------------------------------------------------------------
+	revealItem(what) => undef
+	                 Make an item visible. If `what` is a string, it is
+	                 searched disregarding check prefix.
+	                 (Consistent CS/CC behavior.)
+	=======================================================================
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.CheckListFactory = function CheckList(/*container*/parent,/*{value,help...}*/ops,  q,r,z)
+		//----------------------------------
+		// Options (ops):
+		// .value   (seq|str[])     Strings of the form `<state> <name>`, where <state> is
+		// (or .data)               either '-', '--', '---' etc or '+', '++', '+++' etc
+		//                          `-` means NOT-CHECKED ; `+` means CHECKED.
+		//                          E.g ["+ item1","-- subitem11","- item2","+ item3",...]
+		//                          Can be supplied as a <X1> sequence as well.
+		//                          `data` is an alias of `value`
+		// .helpTip    (str='')     Help tip (`help` can be supplied as an alias.)
+		// ---
+		// .optWidth   (uint=200)   Optimal width (in px.)
+		// .minLines   (uint=1)     Minimal number of lines (>=1)
+		// .maxLines   (uint=0)     Maximal number of lines, 0 means <auto>
+		//                          <auto> takes max(minLines,data.length||5)
+		// .maxWidth   (uint=400)   Maximum width (in px.)
+		// .maxHeight  (uint=600)   Maximum height (in px.)
+		// .margins    (uint=0)     Margins around the list control.
+		// ---
+		// .onValueChange (?fct)    'vchanged' handler.
+		// .onRightClick  (?fct)    'rclicked' handler.
+		// .onEvent       (?fct)     Any event handler.
+		// ---
+		// => Group[[CheckList]]  ::   G( L|D )
+		//   .properties          ::   { kind, MinLines, MaxLines }
+		{
+			// Normalize options.
+			// ---
+			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+
+			q = callee.FRMT(ops.hasOwnProperty('value') ? ops.value : ops.data);
+
+			// Absolute minimal is 1 ; absolute maximal is 50.
+			// If the list is originally empty and has no definite maxLines, use max(min,5).
+			// ---
+			const ABS_MAX = 50;
+			const EMP_MAX =  5;
+			z = q.length;
+			ABS_MAX < (ops.minLines=ops.minLines>>>0||1) && (ops.minLines=ABS_MAX);                 // min :: [1..50]
+			ABS_MAX < (ops.maxLines=ops.maxLines>>>0||z||EMP_MAX) && (ops.maxLines=ABS_MAX);        // max :: [1..50]
+			ops.maxLines < ops.minLines && (ops.maxLines=ops.minLines);                             // min <= max
+			z < ops.minLines ? (z=ops.minLines) : (z > ops.maxLines && z=ops.maxLines);             // Final number of lines.
+
+			r = 
+			{
+				margins:                ops.hasOwnProperty('margins') ? ops.margins : 0,
+				orientation:            'stack', // single control
+				// --- Watched.
+				helpTip:                ops.helpTip||'',
+				onValueChange:          void 0, // pending
+				onRightClick:           void 0, // pending
+				onEvent:                void 0, // pending
+				// --- Inner events and private.
+				_layout:                'function' == typeof ScriptUI.layoutDeclare && callee.HLAY,
+				__kbStrings__:          callee.KBST,
+				__updateChecks__:       callee.UPDT,
+				__toggle__:             callee.TOGL,
+				// --- Regular public methods.
+				popup:                  ScriptUI.POPU,  // noop if Popup unavailable.
+				getControl:             callee.CTRL,
+				getItems:               callee.ITMS,
+				getItemAt:              callee.GETI,
+				getData:                callee.DATA,
+				notify:                 callee.NTFY,
+				// ---
+				setValue:               callee.SETV,
+				getValue:               callee.GETV,
+				getString:              callee.GETS,
+				// --- Special public methods
+				countNodes:             callee.COUN,
+				matches:                callee.MTCH,
+				revealItem:             callee.RVLI,
+				checkAll:               callee.CKAL,
+				uncheckAll:             callee.UNAL,
+				//findItem:               callee.FNDI,
+
+				List$1:
+				{
+					properties:         { items:q, multiselect:false },
+					alignment:          ScriptUI.CT,
+					optimalSize:
+					{
+						width:          ops.optWidth,
+						height:         callee.OPTH(z),
+					},
+					maximumSize:
+					{
+						width:          ops.maxWidth,
+						height:         ops.maxHeight,
+					},
+					selection:          null,
+					// --- Inner events.
+					_change_mousedown_keydown: callee.HINN, // Inhibits select on change; manage right-click; manage keyevents.
+					_blur:              callee.HBLU_FIX,    // Blur fixer on CC.
+				},
+			};
+
+			r = ScriptUI.builder
+			(	r,
+				parent.add( 'group', void 0, callee.CREA(ops) )
+			);
+
+			r.length = r.getControl().items.length;
+			r.__updateChecks__();
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			(
+				r,
+				['length', 'helpTip', 'onValueChange', 'onRightClick', 'onEvent'],
+				callee.WTCH,
+				ops
+			);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Parameters, tools, private.
+		//----------------------------------
+		({
+			DEFS:
+			{
+				helpTip:      '',
+				// ---
+				optWidth:     200,
+				minLines:     1,
+				maxLines:     0,
+				maxWidth:     400,
+				maxHeight:    800,
+				// ---
+				onValueChange: void 0,
+				onRightClick:  void 0,
+				onEvent:       void 0,
+			},
+			
+			CREA: function(/*{}*/ops)
+			//----------------------------------
+			// this :: ScriptUI.CheckListFactory
+			// => new {}  ; properties object
+			{
+				return {
+					kind:          this.name,
+					// ---
+					MinLines:      ops.minLines,
+					MaxLines:      ops.maxLines,
+				};
+			},
+
+			OPTH: function(/*uint*/n)
+			//----------------------------------
+			// (Optimal-Height.) Get the optimal height of a
+			// listbox, given the number of rows to display.
+			{
+				return callee.INCR + ((n>>>0)||1)*callee.BASE;
+			}
+			.setup
+			({
+				INCR: $$.inMac ?  1 : ($$.inCS ?  4 : 1),
+				BASE: $$.inMac ? 20 : ($$.inCS ? 18 : 21),
+			}),
+
+			FRMT: function(/*any|str[]|seq*/tree,  r,n,re,dp,pi,i,s,m,v,t,x)
+			//----------------------------------
+			// Parse and reformat the array `tree` (whose elements have the
+			// form `<state> <name>`) into a rich array:
+			// - idx  => name
+			// - $idx => CHR(state::0|1|2) + CHR(depth::0|1|2|3...) + CHR(1+parentIdx)
+			// `tree`can be supplied as a <X1>-separated sequence as well.
+			// ---
+			// => new str[{}]
+			{
+				(tree && (tree instanceof Array))
+				|| (tree=String(tree||'').split('\x01'));
+
+				const CHR = String.fromCharCode;
+				r = Array(n=tree.length);
+				for( re=callee.RE_STATE, dp=0, pi=-1, i=-1 ; ++i < n ; r[i]=s )
+				{
+					s = tree[i].toString();
+
+					t = v = 0;                              // default (depth,state) == (0,0)
+					if( m=s.match(re) )
+					{
+						m = m[0];                           // m :: prefix + ' ' ; e.g "+++ ", "- ", etc
+						s = s.slice(t=m.length);
+						0 > (t=t-2) && (t=0);               // t :: 0|1|2...     ; current depth
+						v = +('+'==m.charAt(t));            // v :: 0|1          ; current state
+					}
+
+					m = i && ((t>dp) - (t<dp));             // -1 | 0 | +1
+					switch( m )
+					{
+						case +1:                            // Go DOWN by +1 (unless i==0.)
+							pi = i-1;
+							++dp;
+							break;
+
+						case -1:                            // Go UP until dp==t
+							do{ pi=r['$'+pi].charCodeAt(2)-1 }while( t < --dp );
+							break;
+
+						default:                            // Same depth.
+							;
+					}
+					
+					// Update parents?
+					// r['$'+p] = CHR(state_p)+CHR(depth_p)+CHR(1+parent_p_idx)
+					// ---
+					for
+					(
+						p=pi, x=v ;
+						0 <= p && x != (t=r['$'+p]).charCodeAt(0) ;
+						(1==m||(x=2)), (r['$'+p]=CHR(x)+t.slice(1)), (p=t.charCodeAt(2)-1)
+					);
+
+					
+					r['$'+i] = CHR(v,dp,1+pi);
+				}
+				return r;
+			}
+			.setup
+			({
+				RE_STATE: /^[+-]+ /,
+			}),
+
+			KBST: function __kbStrings__(/*char|undef*/c,  t,p,x)
+			//----------------------------------
+			// [PRIVATE METH.] Manage keyboard event char through keystring indices.
+			// Use `undef` to clear up.
+			// `c`:: [A-Z0-9] or undef
+			// ---
+			// this :: Group[[CheckList]]
+			// => uint [OK]  |  false [KO]
+			{
+				// The key __KB_STR__ (str) must be privately stored
+				// in the instance.
+				// ---
+				const K = '__KB_STR__';
+
+				if( 'string' != typeof c || !c.length )
+				{
+					delete this[K];
+					return false;
+				}
+
+				if( (t=this[K]) && t.charCodeAt(0)===c.charCodeAt(0) )
+				{
+					p = 1 + t.charCodeAt(1);
+					t.length <= p && (p=2);
+					x = t.charCodeAt(p);
+					this[K] = c + String.fromCharCode(p) + t.slice(2);
+				}
+				else
+				{
+					(t=String.prototype.unaccent.B2AC) && t.hasOwnProperty(c)
+					? ( t = '[' + RegExp.escape(c+t[c]) + ']' )
+					: ( t = RegExp.escape(c) );
+
+					t = this.matches(RegExp('^(?' + t + '|[ \\(\\[\\{<"\'/:\\.@>\\}\\]\\)_+-]+' + t + ')', 'i'));
+
+					false !== (x = 0 < t.length && t[0])
+					? ( this[K] = c + '\x02' + String.fromCharCode.apply(0,t) )
+					: ( delete this[K] );
+				}
+
+				return x;
+			},
+
+			UPDT: function __updateChecks__(  q,wg,HID,REA,CK,SP,a,i,t,k)
+			//----------------------------------
+			// Refresh the CheckList w/ respect to current states.
+			// ---
+			// this :: Group[[CheckList]]
+			// => undef
+			{
+				q = this.getData();                              // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				wg = this.getControl();
+
+				HID = !ScriptUI.isHidden(wg);
+				REA = HID && (this.active||wg.active);
+				HID && this.hide();
+
+				a = wg.items;                                    // Collection of ListItem instances.
+				for( CK=callee.CHKS, SP=callee.SPCE, i=a.length ; i-- ; )
+				{
+					if( 'item' != (t=a[i]).type ) continue;      // Shouldn't happen.
+					k = '$'+i;
+					if( !q.hasOwnProperty(k) ) continue;         // Shouldn't happen.
+					k = q[k];
+					
+					t.text = Array(1+k.charCodeAt(1)).join(SP) + CK[k.charCodeAt(0)] + q[i];
+				}
+
+				HID && this.show();
+				REA && ScriptUI.setFocus(wg);
+			}
+			.setup
+			({
+				CHKS: ['\u25FB ','\u25FC ', '\u2B13 '], // old (not Mac compliant): ['\u2B1C ','\u2B1B ', '\u2B13 '],
+				SPCE: '   ', // Indent by 3 spaces
+			}),
+
+			TOGL: function __toggle__(/*uint*/idx,/*bool=0*/UPD,  q,n,sdp,ns,lv,i,t,x,tt)
+			//----------------------------------
+			// Toggle the state of a node or branch at index idx, then
+			// update its dependencies accordingly. (Toggling a partially
+			// checked branch will get it fully checked.)
+			// By default, data are just updated internally (without visible
+			// effect.) Send a truthy `UPD` arg to force refresh.
+			// ---
+			// this :: Group[[CheckList]]
+			// => undef
+			{
+				q = this.getData();                         // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				n = q.length;
+				idx >>>= 0;                                 // Item index.
+
+				sdp = q['$'+idx];                           // sdp :: CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				ns = 1==sdp.charCodeAt(0) ? '\0' : '\x01';  //  ns :: <X0>|<X1>  ; new state at index `idx`
+				q['$'+idx] = ns + sdp.slice(1);
+
+				// Children.
+				// ---
+				for
+				(
+					lv=1+sdp.charCodeAt(1), i=idx ;
+					++i < n && lv <= (t=q['$'+i]).charCodeAt(1) ;
+					q['$'+i] = ns + t.slice(1)
+				);
+				
+				// Parents.
+				// ---
+				for( ; idx=sdp.charCodeAt(2) ; q['$'+idx] = (ns=x) + sdp.slice(1) )
+				{
+					sdp = q['$'+(--idx)];
+					for
+					(
+						lv=1+sdp.charCodeAt(1), i=idx, x=ns ;
+						'\x02'!==x && ++i < n && lv <= (tt=(t=q['$'+i]).charCodeAt(1)) ;
+						tt > lv || x===t.charAt(0) || (x='\x02')
+					);
+					if( x==sdp.charAt(0) ) break;
+				}
+
+				UPD && this.__updateChecks__();
+			},
+
+		})
+		.setup
+		//----------------------------------
+		// Inner events
+		//----------------------------------
+		({
+			HLAY: $$.inCC ?
+			function onLayout(  t,o,w)
+			//----------------------------------
+			// Temporarily set <listbox>.columns.preferredWidth[0]
+			// (this will improve *line selection* in CC.)
+			// ---
+			// this   :: Group[[List]]
+			// => undef
+			{
+				t = this.getControl();
+				if( !(o=t.columns) ) return;
+				w = (t.preferredSize || this.preferredSize || [0])[0];
+				
+				// [CHG210103] Changed the delta (-10) into -15. This value helps
+				// inhibit horizontal scrollbar--based on vertical scrollbar width.
+				// ---
+				25 < w && ((o.preferredWidths[0]=w-15),(o.preferredWidths[0]=void 0));
+			}
+			:
+			function onLayout(  t)
+			//----------------------------------
+			// Forcibly set <listbox>.colums.preferredWidths[0] to undef.
+			// ---
+			// this   :: Group[[List]]
+			// => undef
+			{
+				// Needed in CS6, harmless in CS4/CS5
+				// ---
+				(t=this.getControl()) && (t=t.columns) && (t.preferredWidths[0]=void 0);
+			},
+
+			// [FIX210108] In CC, list widgets have an obscure focus/blur
+			// sequence that may keep 'active' a widget which is losing
+			// the focus. Forcing this.active to false seems to solve the pb.
+			// ---
+			HBLU_FIX: $$.inCC ? function onBlur(){ this.active=false } : void 0,
+
+			HINN: function onInnerEvent(/*event*/ev,  k,me,item,c,idx)
+			//----------------------------------
+			// Dispatch or inhibit ListBox events.
+			// ---
+			// this     :: ListBox
+			// ev.type  :: change | mousedown | keydown
+			// target   :: this
+			{
+				k = ev ? ev.type : 'noevent';
+				me = this.parent;
+
+				// Temporary transparent event type (controlled from the outside.)
+				// ---
+				if( me.hasOwnProperty('µ_'+k) ) return;
+
+				switch( k )
+				{
+					case 'change':
+						// Interpret any inner 'change' as a click:
+						// inhibits the selection and switches the state.
+						ev.stopPropagation();
+						if( !(item=this.selection) ) return;
+						
+						// While unselecting, make sure we don't fire an extra
+						// change event towards handler(s.)
+						// ---
+						this.µ_change = 1;
+						this.selection=null; // [REM] This fires an extra 'change' event :-(
+						delete this.µ_change;
+						
+						me.__toggle__(idx=item.index, 1);
+						
+						ev.itemIndex = idx;
+						ScriptUI.dispatch(me,'vchanged',ev);
+						break;
+
+					case 'mousedown':
+						if( 2!==ev.button ) break;
+						// --- Makes CS behave as CC on right-clicking a list.
+						ev.preventDefault();
+						ev.stopPropagation();
+
+						ScriptUI.dispatch(me,'rclicked',ev);
+						break;
+
+					case 'keydown':
+						// [REM] In CS a *fake* selection ring may still be drawn while
+						// pressing Up/Down keys, but `this.selection` actually remains NULL.
+
+						if( 'Escape' == ev.keyName || 'Tab' == ev.keyName ) break; // Preserve regular Esc/Tab events.
+
+						ev.preventDefault();
+						ev.stopPropagation();
+
+						if( ev.ctrlKey && 'A' == ev.keyName )
+						{
+							ev.altKey ? me.uncheckAll() : me.checkAll();
+							ScriptUI.dispatch(me,'vchanged',{itemIndex:!ev.altKey}); // itemIndex :: false|true
+							break;
+						}
+
+						if( !ev.ctrlKey && 'string' == typeof(c=ev.keyName) && 1==c.length )
+						{
+							false !== (x=me.__kbStrings__(c)) && me.revealItem(x);
+						}
+
+						// ScriptUI.dispatch(me,'keypress',ev); // could be added?
+
+						break;
+
+					default:;
+				}
+			},
+
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*value*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[CheckList]]
+			//    k   :: length | helpTip |
+			//           onValueChange | onRightClick | onEvent
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				switch( k )
+				{
+					case 'length': // READ-ONLY
+						nv = ov;
+						break;
+
+					case 'helpTip': // str
+						nv = String(nv||'');
+						this.getControl().helpTip = nv;
+						break;
+
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onValueChange': // fct
+						ScriptUI.callback(this,'vchanged',ov,nv);
+						break;
+
+					case 'onEvent': // fct
+						ScriptUI.callback(this,['rclicked','vchanged'],ov,nv);
+						break;
+
+					default:;
+				}
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public methods.
+		//----------------------------------
+		({
+			CTRL: function getControl(){ return this.children[0] },
+			DATA: function getData(){  return this.getControl().properties.items },
+			ITMS: function getItems(){ return this.getControl().items },
+			GETI: function getItemAt(/*uint*/idx,  t){ return idx === idx >>> 0 && x < (t=this.getItems()).length && t[idx] },
+			NTFY: function notify(/*?uint|true|false*/idx){ ScriptUI.dispatch(this,'vchanged',{itemIndex:idx}) },
+
+			GETV: function getValue(  q,r,n,i,t)
+			//----------------------------------
+			// Return the full item/state sequence in the form
+			// "<state> <name><X1><state> <name><X1>..."
+			// <state> being either `-`, `--`, `---`, etc or `+`, `++`, `+++`, etc
+			// ---
+			// this :: Group[[CheckList]]
+			// => seq  aka <X1>-separated string
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for
+				(
+					r=[], n=q.length, i=-1 ;
+					++i < n ;
+					(t=q['$'+i]), r[r.length]=Array(2+t.charCodeAt(1)).join(t.charCodeAt(0)?'+':'-')+' '+q[i]
+				);
+				return r.join('\x01');
+			},
+
+			SETV: function setValue(/*str[]|seq*/tree,  q,n,i,HID,REA,wg)
+			//----------------------------------
+			// Reset the checklist with new items/states and return this.getValue().
+			// tree :: str[] | "str1<X1>str2<X1>..."
+			//          where each elem is in `<state> <name>` form
+			//          <state> being either `-`, `--`, `---`, etc or `+`, `++`, `+++`, etc
+			//          `+` means checked, `-` means non-checked
+			//          E.g [ "+ item1", "-- subitem11", "- item2", "+ item3", ...]
+			// [REM] The internal getData() structure is updated accordingly.
+			// This method does not fire `vchanged`.
+			// ---
+			// this :: Group[[CheckList]]
+			// => seq  aka <X1>-separated string [see getValue.]
+			{
+				tree = ScriptUI.CheckListFactory.FRMT(tree);
+				
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				n = q.length = tree.length;
+				for( i = n ; i-- ; q[i]=tree[i], q['$'+i]=tree['$'+i] );
+
+				// Update listbox.
+				// ---
+				this.µ_change = 1;
+				HID = !ScriptUI.isHidden(wg);
+				REA = HID && (this.active||wg.active);
+				HID && this.hide();
+				// ---
+				(wg=this.getControl()).removeAll();
+				for( i=-1 ; ++i < n ; wg.add('item',q[i]) );
+				this.µ_length = 1;
+				this.length = n;
+				delete this.µ_length;
+				// ---
+				HID && this.show();
+				REA && ScriptUI.setFocus(wg);
+				delete this.µ_change;
+
+				this.__updateChecks__();
+
+				return this.getValue();
+			},
+
+			COUN: function countNodes(/*bool=0*/ALL_NODES, q,z,p,i,t)
+			//----------------------------------
+			// Return the number of *terminal* nodes that are now checked.
+			// If ALL_NODES is truthy, return the number of terminal nodes
+			// whatever their state.
+			// ---
+			// this :: Group[[CheckList]]
+			// => uint
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for( z=0, p=-1, i=q.length ; i-- ; (t=q['$'+i]), (i!=p && (ALL_NODES||1===t.charCodeAt(0)) && ++z), p=-1+t.charCodeAt(2) );
+				return z;
+			},
+
+			CKAL: function checkAll(  q,i,s)
+			//----------------------------------
+			// Check all terminal nodes and return this.countNodes().
+			// [REM] This method does not fire `vchanged`.
+			// => uint
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for( i=q.length ; i-- ; s=q['$'+i], q['$'+i]='\x01'+s.slice(1) );
+				this.__updateChecks__();
+
+				return this.countNodes();
+			},
+			
+			UNAL: function uncheckAll(  q,i,s)
+			//----------------------------------
+			// Uncheck all terminal nodes and return 0.
+			// [REM] This method does not fire `vchanged`.
+			// => 0
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for( i=q.length ; i-- ; s=q['$'+i], q['$'+i]='\x00'+s.slice(1) );
+				this.__updateChecks__();
+
+				return 0;
+			},
+
+			GETS: function getString(/*bool=0*/CHECKED_NODE,/*?'brackets'|'slashed'*/fullPathMode,  q,t,F,a,p,i)
+			//----------------------------------
+			// (a) By default (CHECKED_NODE falsy), return all branch and
+			//     node names as a <X1> sequence, e.g
+			//     "branchA<X1>nodeA1<X1>nodeA2<X1>branchB..."
+			//     (If fullPathMode is supplied, see below.)
+			// (b) If CHECKED_NODE is truthy, return only the *checked terminal*
+			//     nodes as a <X1> sequence, e.g
+			//     "nodeA3<X1>nodeB7<X1>..."
+			// ---
+			// If `fullPathMode` is either 'brackets' or 'slashed', return
+			// the full path of each item using the form:
+			// - `[parent] [parent] ... nodeName`   in 'brackets' mode
+			// - `parent/parent/.../nodeName`       in 'slashed' mode
+			// ---
+			// this :: Group[[CheckList]]
+			// => seq
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+
+				t = fullPathMode && String(fullPathMode).toLowerCase();
+				F = callee['brackets'===t?'BRKT':('slashed'===t?'SLSH':'NAME')];
+
+				if( !CHECKED_NODE && F===callee.NAME ) return q.join('\x01');
+
+				a = [];
+
+				if( CHECKED_NODE )
+				{
+					for
+					(
+						p=-1, i=q.length ;
+						i-- ;
+						(t=q['$'+i]), (i!=p && 1===t.charCodeAt(0) && a[a.length]=F(q,i)), p=-1+t.charCodeAt(2)
+					);
+				}
+				else
+				{
+					for( i=q.length ; i-- ; a[a.length]=F(q,i,1) );
+				}
+
+				a.reverse();
+				return a.join('\x01');
+			}
+			.setup
+			({
+				NAME: function(/*str[]+$idx=>sta*/q,/*uint*/idx)
+				//----------------------------------
+				// Nude name.
+				{
+					return q[idx];
+				},
+				BRKT: function(/*str[]+$idx=>sta*/q,/*uint*/idx,/*bool=0*/CAN_BE_PARENT,  t)
+				//----------------------------------
+				// Full bracket-path.
+				{
+					(t=CAN_BE_PARENT&&q['$'+(1+idx)])&&(t=q['$'+idx].charCodeAt(1)<t.charCodeAt(1));
+					for
+					(
+						t = t ? ('[' + q[idx] + ']') : q[idx];
+						0 <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
+						t = '[' + q[idx] + '] ' + t
+					);
+					return t;
+				},
+				SLSH: function(/*str[]+$idx=>sta*/q,/*uint*/idx,/*bool=0*/CAN_BE_PARENT,  t)
+				//----------------------------------
+				// Full slash-path.
+				{
+					(t=CAN_BE_PARENT&&q['$'+(1+idx)])&&(t=q['$'+idx].charCodeAt(1)<t.charCodeAt(1));
+					for
+					(
+						t = q[idx] + (t ? '/' : '') ;
+						0 <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
+						t = q[idx] + '/' + t
+					);
+					return t;
+				},
+			}),
+
+			MTCH: function matches(/*?uint|str|ListItem|uint[]|str[]|ListItem[]|RegExp|null|-1*/req,  wg,n,a,s,i,x)
+			//----------------------------------
+			// (Get-Matches.) Given a query `req`, return the array of corresponding listitem indices,
+			// by increasing order, ignoring not-found elems or duplicates.
+			// ---
+			// <this> :: Group[[List]]
+			// => uint[]  (empty if no result.)
+			{
+				if( null===req || 'undefined'==typeof req || -1===req ) return [];
+
+				wg = this.getControl();
+				if( !(n=wg.items.length) ) return [];
+				
+				// Checkpoint.
+				// ---
+				a = this.getString().split(RegExp.X1); // Array of strings without check prefixes
+
+				if( a.length != n ) return [];    // Shouldn't happen
+
+				if( 'function' == typeof req && 'RegExp' == req.constructor.name )
+				{
+					for( s=[], i=-1 ; ++i < n ; req.test(a[i]) && (s[s.length]=i) );
+					return s;
+				}
+
+				( req && (req instanceof Array || 'Collection'==req.constructor.name) ) || (req=[req]);
+
+				const CHR = String.fromCharCode;
+				for( s='', i=-1 ; ++i < req.length ; )
+				{
+					x = req[i];
+					
+					if( x === x>>>0 )
+					{
+						x < n || (x=false);
+					}
+					else
+					{
+						( x && 'ListItem'===x.constructor.name && x===wg.items[x.index] )
+						? ( x = x.index )
+						: ( x = callee.FIND( a, String(x||'') ) );
+					}
+
+					false!==x && -1==s.indexOf(x=CHR(1+x)) && (s=s.concat(x));
+				}
+
+				if( !s.length ) return [];
+				
+				s = s.split('').sort();
+				for( i=s.length ; i-- ; s[i]=-1+s[i].charCodeAt(0) );
+				
+				return s;
+			}
+			.setup
+			({
+				FIND: function(/*str[]*/a,/*str*/s,  n,i)
+				//----------------------------------
+				// Custom find method. Return the 1st index of `s` in `a` (if found),
+				// false otherwise.
+				// => uint [OK]  |  false [KO]
+				{
+					for( n=a.length, i=-1 ; ++i < n && s!==a[i] ; );
+					return i < n && i;
+				},
+			}),
+
+			RVLI: $$.inCS ?
+			//----------------------------------
+			// <this> :: Group[[List]]  ; LISTBOX ONLY
+			// => undef
+			function revealItem(/*uint|str|ListItem*/what,  idx,wg,n)
+			{
+				if( !(idx=this.matches(what)).length ) return;
+				
+				wg = this.getControl();
+				(n=wg.items.length) && wg.revealItem(-1+n);
+				wg.revealItem(idx[0]);
+			}
+			:
+			function revealItem(/*uint|str|ListItem*/what,  idx)
+			{
+				if( !(idx=this.matches(what)).length ) return;
+				this.getControl().revealItem(idx[0]);
+			},
+
+		});
+	}
