@@ -1,0 +1,482 @@
+/*******************************************************************************
+
+		Name:           PageRange
+		Desc:           Page range parser and formatter.
+		Path:           /etc/$$.PageRange.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module
+		API:            =format() parse() normalize() count()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        180429 (YYMMDD)
+		Modified:       210817 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 210817, 'format'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	Range elision:
+
+	'None'             10-12  42-45  100-102  132-136  210-211  352-365  1021-1023  1491-1560
+	'FinalThreeDigits' 10-12  42-45  100-102  132-136  210-211  352-365  1021-1023* 1491-560
+	'FinalTwoDigits'   10-12  42-45  100-102* 132-36   210-11   352-65   1021-23    1491-560
+	'Oxford'           10-12  42-5   100-2    132-6    210-11   352-65   1021-3     1491-560
+	'FewestFigures'    10-2   42-5   100-2    132-6    210-1    352-65   1021-3     1491-560
+	
+	* The suffix cannot start with '0'.
+
+	[REF] WADDINGHAM - "New Hart's Rules - The Oxford Style Guide" (2014, p. 189)
+	
+	“Numbers at either end of a range are linked with an en rule. A span of numbers
+	is often elided to the fewest figures possible:
+	
+	      30–1 42–3 132–6 1841–5
+
+	but retain as many digits as necessary where they change across the range:
+	
+	      65–71 352–62 1491–560 89,999–90,000
+
+	In any event, do not elide digits in (or ending with) the group 10 to 19 because
+	of the way they are read or spoken:
+
+	      10–12 15–19 114–18 310–11
+	      
+	However, some editorial styles vary greatly in their treatment: for example some
+	require no elision, some elide to the final two digits, and some don’t elide
+	multiples of 10 or 100 (30–32; 100–101).”
+	
+	[REF] RITTER - "Oxford Guide to Style" (2002, p. 169)
+	
+	“For a span of numbers generally, use an en rule, eliding to the fewest number of
+	figures possible: 30-1, 42-3, 132-6, 1841-5. But in each hundred do not elide
+	digits in the group 10 to 19, as these represent single rather than compound
+	numbers: 10-12, 15-19, 114-18, 214-15, 310-11.”
+	
+	“(W)here (it) is impossible (to provide exact page extents,) print 51 f. if the
+	reference extends only to page 52, but 51 ff. if the reference is to more than
+	one following page.”
+	
+	
+	[REF] WELLISCH - "Indexing from A to Z" (1995, p. 278)
+	
+	“More or less elaborate schemes have been proposed, such as not to abbreviate any
+	locator below 100, to omit only the first digit from three-digit numbers (e.g.,
+	183-95), and two digits from four-digit numbers, (e.g., 1293-95) but not 197-02
+	for 197-202 or 1293-07 for 1293-1307, and several other variations on this
+	theme. It is, however, doubtful whether the saving of one or two digits is worth
+	the potential confusion of users, especially since the various abbreviation
+	"rules" are often not applied consistently. BS3700, 5.4.3.1, ISO 999, 7.4.3.1,
+	and NISO Z39.4 do not permit any abbreviation of locators indicating a sequence
+	of pages, columns, or any other alphanumeric sequence, except for very long
+	final numbers exceeding 5 digits, for which only the last 2 or 3 digits may be
+	given if space is limited.”
+
+	*/
+
+	//==========================================================================
+	// TOOLS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		UI32: function(/*str2*/HiLo){ return ((HiLo.charCodeAt(0)<<16)|HiLo.charCodeAt(1))>>>0 },
+
+		LOAD: function(/*{<start> => <end>}&*/q,/*uint[]*/a,/*int*/dx,  s,i,k,S,E,t)
+		//----------------------------------
+		// (Load-Array.) Feeds q :: { <start> => <end> } based on the array
+		// of numbers `a` and the offset `dx` and returns the ordered start
+		// values in a string ; each uint16 `x` being represented by `CHR(x)`.
+		// Algo: indiscripts.com/post/2013/10/page-range-formatter
+		// [REM] All numbers (keys, values, characters) are primarily shifted
+		// by +dx (possibly zero), so `a` may contain uints out of the range
+		// [1,0xFFFF] provided that `dx` satisfies `1 <= a[i]+dx <= 0xFFFF`.
+		// Hence it is still required that max(a)-min(a) < 0xFFFF.
+		// ---
+		// => str
+		{
+			const CHR = String.fromCharCode;
+			for( s='', i=a.length ; i-- ; )
+			{
+				// Requirement: 1 <= x <= 0xFFFF
+				// ---
+				k = (dx+a[i])>>>0;                          // The caller should guarantee 1 <= k <= 0xFFFF but
+				if( 1 > k || k > 0xFFFF ) continue;         // we may still have to skip out-of-range values.
+				
+				if( q[k] ) continue;                        // If state `k` is already defined then k belongs to some known range.
+
+				(S=q[k-1])                                  // If state `k-1` is already defined, then the range {S:k-1,k-1:S} expects a right-extension.
+				|| (s+=CHR(k));                             // Otherwise, `k` must be registered right now as a new starter in `s`.
+
+				(E=q[k+1])                                  // If state `k+1` is already defined, then the range {k+1:E,E:k+1} expects a left-extension
+				&& (s=s.replace(CHR(k+1),''));              // and CHR(k+1) no longer makes sense as a starter in `s`.
+
+				( S&&E ) ?
+				( q[k]=k, q[S]=E, q[E]=S ) :                // If both S and E are defined, MERGE the states {S:k-1,k-1:S} and {k+1:E,E:k+1} into {S:E,E:S}
+				( (t=S||E)?( q[t]=k, q[k]=t ):(q[k]=k) );   // If either S or E is defined, EXTEND the state as expected ; otherwise register the singleton {k:k}
+			}
+			
+			(s.length) && (s=s.split('').sort().join(''));
+			return s;
+		},
+		
+		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,  L,R,M,e0,e1,a,z,iMax,x0,x1,nx,t)
+		//----------------------------------
+		// (Format.) Formats the ranges {start=>end} in `q` with respect to
+		// start locators in `s` and additional options. See µ.format() for
+		// more detail.
+		// ---
+		// => str
+		{
+			L = R = M = String;
+
+			if( callee.hasOwnProperty(t='ELI_'+eli) )
+			{
+				t = callee[t];
+				e0 = t[0];
+				e1 = t[1];
+				R = callee.ELI;
+			}
+
+			for( a=[], z=0, iMax=s.length-1, x0=nx=s.charCodeAt(0), i=-1 ; ++i <= iMax ; )
+			{
+				x1 = q[nx];                                           // Current end.
+				nx = i < iMax ? s.charCodeAt(1+i) : 1/0;              // Next start | +Infinity.
+				if( gp >= nx-x1 ) continue;                           // Small gap -> enlarge the range from x0.
+
+				// [REM] Suppose gp==1 and mn==4. Then data like `2..3` and `5`
+				// shall temporarily produce a segment `2..5` (x0=2, x1=5). Now,
+				// since `x1-x0 < mn` (i.e 3 < 4) it is required to output that
+				// segment in 'split' form. But the string `2,3,4,5` would be a
+				// mistake because 4 is not present in the input. (The expected
+				// result is `2,3,5` here.) For that reason, the split process
+				// must check that EVERY intermediate value is registered in `q`.
+
+				// Add x0..x1 value(s).
+				// ---
+				if( x1-x0 >= mn )
+					a[z++] = L(t=dx+x0) + jn + R(dx+x1,t,e0,e1);        // Range `x0-x1` [dx]
+				else
+					for(; x0 <= x1 ; (q[x0]&&(a[z++]=M(dx+x0))),++x0 ); // Split into `x0, etc, x1` [dx]
+
+				x0 = nx;
+			}
+		 
+			return a.length ? a.join(sp) : '';
+		}
+		.setup
+		({
+			ELI: function(/*uint*/y,/*uint*/x,/*uint*/MIN,/*bool=0*/NO_TENS,  n,z,i)
+			//----------------------------------
+			{
+				if( (x=''+x).length != (n=(y=''+y).length) || n <= MIN ) return y;
+				for( z=n-MIN, i=-1 ; ++i < z && x.charCodeAt(i)==y.charCodeAt(i) ; );  //  0 <= i <= z
+				for( ; 0 <= i && 0x30 == y.charCodeAt(i) ; i-- );                      //  Prevents '0' as suffix starter
+				NO_TENS && 0 < i && i==n-1 && 0x31==y.charCodeAt(i-1) && --i;          //  Prevents elision of ###10-###19
+				return 0 < i ? y.slice(i) : y;
+			},
+
+			ELI_FINALTHREEDIGITS: [3,0],
+			ELI_FINALTWODIGITS:   [2,0],
+			ELI_OXFORD:           [1,1],
+			ELI_FEWESTFIGURES:    [1,0],
+		}),
+
+		PRSE: function(/*str*/seq,/*str*/sp,/*str*/jn,  r,re,ERR,i,t,p,x,y,d)
+		//----------------------------------
+		// (Parse.) Pre-parse the sequence and return an ordered rich array of start
+		// numbers formatted as `<Hi><Lo>` strings (2 chars). Each start number
+		// associated to a nonzero range also produces a key _<start> => dist,
+		// where `dist` is the highest distance from `start` (in case of duplicates
+		// like "12-15, 12-23".)
+		// [REM] This routine alone does not prevent overlaps or duplicates in
+		// the returned array, but it guarantees increasing start numbers and
+		// provides maximum distances for ranges.
+		// ---
+		// => new [{}]  ; idx => <startHi><startLo> + `_<start>` => dist>0
+		{
+			r = seq.split(sp);
+			re = callee.RE_NUM;
+			const CHR = String.fromCharCode;
+			for( ERR=callee.ARR_FALSE, i=r.length ; i-- ; )
+			{
+				t = r[i]; // `123` | `123-456` ; may contain extra characters
+				
+				0 <= (p=t.indexOf(jn))
+				? ( x=(t.slice(0,p).match(re)||ERR)[0], y=(t.slice(1+p).match(re)||ERR)[0] )
+				: ( x=(t.match(re)||ERR)[0], y=false );
+
+				if( false===x && false===y ){ r.splice(i,1); continue; }
+
+				x = false===y
+				? ( y=parseInt(x,10) )
+				: ( y=parseInt(y,10), (false===x ? y : parseInt(x,10)) );
+				
+				if( x!==x>>>0 || y!==y>>>0 ){ r.splice(i,1); continue; } // Skip high numbers > 0xFFFFFFFF
+
+				if( y < x )
+				{
+					// In case of elisions like "42-5", "100-2", "210-11", etc, try to
+					// restore the full form, but only if the resulting order is consis-
+					// tent (e.g "22-7" -> 22-27). Otherwise, reverse: "27-2" -> 2-27.
+					// ---
+					t = 0 < ( t=(''+x).length-(''+y).length ) && parseInt((''+x).slice(0,t)+y, 10);
+
+					false !== t && x < t
+					? ( y=t )                 // Restore a from valid elision  ; "22-7" -> 22-27
+					: ( t=y, y=x, x=t );      // Fallback: reverse the range   ; "27-2" -> 2-27
+				}
+
+				0xFFFF > (d=y-x) || error(__("Too many numbers in the sequence!"),callee); // Quick test.
+
+				r[i] = CHR(x>>>16, 0xFFFF&x);
+				if( !d ) continue;
+				
+				// [REM] NEVER USE A *KEY* THAT OWNS \0
+				// Hence we use `_<plainNumber>`.
+				// ---
+				k = '_' + x;
+				(r[k]||0) < d && (r[k]=d);
+			}
+
+			r.sort();
+			return r;
+		}
+		.setup
+		({
+			RE_NUM: /\d+/,
+			ARR_FALSE: [false],
+		}),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		format : function format_A_õ_S(/*(uint|str)[]*/numbers,/*?{}=auto*/options,  dx,sp,jn,gp,mn,eli,I,q,s)
+		//----------------------------------
+		// Formats an array of positive integers into an ordered sequence
+		// of single numbers and/or ranges. Returns the formatted string.
+		// E.g  µ([1000,3,6,8,5,12,9,5,999]) => "3, 5-6, 8-9, 12, 999-1000"
+		// [ADD210817] New version providing range elision option (see below.)
+		// --------------------------------------------------------------------
+		// <numbers>   The page numbers to format. Array of positive integers
+		//             or strings that coerce into positive integers. 
+		//             Supports empty array, unsorted items, duplicates.
+		//             Numbers can be greater than 65,535 as long as the
+		//             difference (maxValue-minValue) doesn't exceed 65,535.
+		// --------------------------------------------------------------------
+		// <options>   Set of formatting options:
+		// .separator  (str) String to be inserted between results. Default: ', '.
+		//             E.g   µ([4,1,3,8,9,6], {separator:' | '})
+		//                   => "1 | 3-4 | 6 | 8-9"
+		// .joiner     (str) Range formatting separator. Default: '-'
+		//             E.g   µ([4,1,3,8,9,6], {joiner: '_'})
+		//                   => "1, 3_4, 6, 8_9"
+		// .minRange   (uint) Minimum distance (>=1) between the 1st and the last
+		//             value in a range. Default: 1.
+		//             E.g   µ([1,2,4,5,6,8,9,10,11], {minRange:1})
+		//                   => "1-2, 4-6, 8-11"
+		//                   µ([1,2,4,5,6,8,9,10,11], {minRange:2})
+		//                   => "1, 2, 4-6, 8-11"
+		//                   µ([1,2,4,5,6,8,9,10,11], {minRange:3})
+		//                   => "1, 2, 4, 5, 6, 8-11"
+		// .gap        (uint) Number of allowed missing numbers in a range. Default: 0.
+		//             E.g   µ([2,3,5,8,12,17,23], {gap:0})
+		//                   => "2-3, 5, 8, 12, 17, 23"
+		//                   µ([2,3,5,8,12,17,23], {gap:1})
+		//                   => "2-5, 8, 12, 17, 23"
+		//                   µ([2,3,5,8,12,17,23], {gap:2})
+		//                   => "2-8, 12, 17, 23"
+		// .elision    (str) One of the following strings (case-insensitive):
+		//                   'None'             Do not elide ranges (default).
+		//                                      E.g  10-12, 42-45, 100-102, 132-136, 210-211, 352-365, 1491-1560
+		//                   'FinalThreeDigits' Preserve at least three final digits:
+		//                                      E.g  10-12, 42-45, 100-102, 1021-1023*, 1491-560, 10150-302
+		//                   'FinalTwoDigits'   Preserve at least two final digits:
+		//                                      E.g  10-12, 42-45, 100-102*, 132-36, 210-11, 352-65, 1021-23, 1491-560
+		//                   'Oxford'           Minimal form, except if final digits range in 10..19.
+		//                                      E.g  10-12, 42-5, 100-2, 132-6, 210-11, 352-65, 1021-3, 1491-560
+		//                   'FewestFigures'    Strictly minimal form:
+		//                                      E.g  10-2, 42-5, 100-2, 132-6, 210-1, 352-65, 1021-3, 1491-560
+		//                   *[REM] `0` is not allowed as elision starter, so `1021-1023` cannot be reduced to "1021-023".
+		// ---
+		// => str
+		{
+			// Checkpoint.
+			// ---
+			( numbers && numbers instanceof Array )
+			|| error(__("Invalid `numbers` argument (%1). Should be an array.", numbers && numbers.__class__),callee);
+			
+			( isNaN( dx=Math.min.apply(0,numbers) ) || 0 > dx )
+			&& error(__("Invalid `numbers` argument. Some elements are not positive numbers."),callee);
+
+			dx = 1-dx; // shift
+			
+			// Options :: { ?separator:str, ?joiner:str, ?minRange:uint, ?gap:uint, ?elision:str }
+			// ---
+			options===Object(options) || (options=0);
+			('string' == typeof(sp=options.separator) && sp.length) || (sp = ', ');
+			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
+			(mn=options.minRange>>>0) || (mn=1);
+			(gp=options.gap>>>0)      || (gp=0);
+			eli = String(options.elision||'').toUpperCase(); // checked from ~.FRMT
+			
+			// Ranges:  q :: { start => end } ; s :: CHR(start0,start1...) ; all shifted by `dx`.
+			// ---
+			I = callee.µ['~'];
+			s = I.LOAD(q={}, numbers, dx);
+
+			// Format.
+			// ---
+			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli) : '';
+		},
+
+		parse : function parse_S_õ_oa_A(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}*/map,  sp,jn,xLast,a,r,z,i,x,d)
+		//----------------------------------
+		// Parses a formatted sequence of positive integers and/or ranges
+		// into an ordered array of positive numbers. The incoming sequence
+		// doesn't need to have ordered elements (e.g "17, 5, 11-13"). Also,
+		// elided ranges like "200-10" are interpreted "200-210".
+		// If supplied, `map` (array or object) will translates each
+		// resulting number `x` into its match `map[x]`.
+		// [REM] Warning: for security reasons this routine doesn't support
+		// ranges having more than 65,535 elements, although it still allows
+		// the resulting array to have a higher length. In such event, the
+		// `format` method wouldn't be able to restore the original sequence.
+		// [REM] It is the responsability of the caller to make sure that
+		// `separator` and `joiner` DO NOT CONTAIN DIGITS!
+		// --------------------------------------------------------------------
+		// <options>   Set of parsing options:
+		// .separator  (str) String used for separating elements. Default: ','.
+		// .joiner     (str) String used for declaring a range.   Default: '-'
+		// [REM] Other non-digit characters are ignored.
+		// ---
+		// E.g  µ.parse("8, 16-21, 25, 51-70") => [8,16,17,18,19,20,21,25,51,...70]
+		//      µ.parse("1-1000000")           => ERROR ("Too many numbers")
+		// --- 
+		// => uint[] | any[]   ;  any[] if a map is provided
+		{
+			// Checkpoint.
+			// ---
+			( 'string' == typeof seq )
+			|| error(__("Invalid `seq` argument (%1). Should be a string.", $.global[callee.µ.__root__].JSON(seq,1)).trunc(100),callee);
+			
+			// Options :: { ?separator:str, ?joiner:str }
+			// ---
+			options===Object(options) || (options=0);
+			('string' == typeof(sp=options.separator) && sp.length) || (sp = ',');
+			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
+			
+			map===Object(map) || (map=0);
+
+			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
+
+			const U32 = callee.µ['~'].UI32;
+			for( r=[], xLast=-1/0, z=0, i=-1 ; ++i < a.length ; )
+			{
+				x = U32(a[i]);                                   // `<Hi><Lo>` -> uint32
+				x > xLast && ( xLast=x, (r[z++]=map?map[xLast]:xLast) );
+				if( !(d=a['_'+x]) ) continue;
+				for( x+=d ; xLast < x ; ++xLast, (r[z++]=map?map[xLast]:xLast) );
+			}
+
+			return r;
+		},
+
+		normalize : function normalize_S_õ_oa_S(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,a,r,z,i,x,x0,x1,t)
+		//----------------------------------
+		// Similar to `parse`, this method optimizes the incoming sequence
+		// and returns a new sequence properly ordered and free of duplicates
+		// or overlaps. This is quite equivalent, although faster, than
+		// `µ.format(µ.parse(seq))`
+		// --------------------------------------------------------------------
+		// <options>   Set of parsing/formatting options:
+		// .separator  (str) String used for separating elements. Default: ','.
+		// .joiner     (str) String used for declaring a range.   Default: '-'
+		// [REM] Other non-digit characters are ignored.
+		// --- 
+		// => str      ; e.g  µ.normalize("8, 5, 7-10") => "5,7-10"
+		{
+			// Checkpoint.
+			// ---
+			( 'string' == typeof seq )
+			|| error(__("Invalid `seq` argument (%1). Should be a string.", $.global[callee.µ.__root__].JSON(seq,1)).trunc(100),callee);
+			
+			// Options :: { ?separator:str, ?joiner:str }
+			// ---
+			options===Object(options) || (options=0);
+			('string' == typeof(sp=options.separator) && sp.length) || (sp = ',');
+			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
+			
+			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
+			if( !a.length ) return '';
+
+			const U32 = callee.µ['~'].UI32;
+			x1 = (x0=U32(a[0])) + (0|a['_'+x0]);  // [x0=x1] | [x0..x1]
+
+			for( r=[], z=0, i=0 ; ++i < a.length ; )
+			{
+				x = U32(a[i]);                                        // New value x         ; x0 <= x
+				t = x+(0|a['_'+x]);                                   // New term t=x+dist   ;       x <= t
+				if( t <= x1 ) continue;
+				if( x <= 1+x1 ){ x1=t; continue; }
+
+				// ---
+				// x0 <= x1 << x <= t
+				// ---
+				
+				r[z++] = x0 < x1 ? ( x0 + jn + x1 ) : x0;
+				x0 = x; x1 = t;
+			}
+			r[z++] = x0 < x1 ? ( x0 + jn + x1 ) : x0;
+
+			return r.join(sp);
+		},
+
+		count : function count_S_õ_I(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,xLast,a,z,i,x,d)
+		//----------------------------------
+		// Similar to `parse`, this method just calculates the *length*
+		// of the resulting array without building an actual JS Array.
+		// Equivalent but faster than `µ.parse(seq).length`.
+		// ---
+		// => uint     ; e.g  µ.count("5, 16-21, 17, 25") => 8
+		{
+			// Checkpoint.
+			// ---
+			( 'string' == typeof seq )
+			|| error(__("Invalid `seq` argument (%1). Should be a string.", $.global[callee.µ.__root__].JSON(seq,1)).trunc(100),callee);
+			
+			// Options :: { ?separator:str, ?joiner:str }
+			// ---
+			options===Object(options) || (options=0);
+			('string' == typeof(sp=options.separator) && sp.length) || (sp = ',');
+			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
+			
+			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
+
+			const U32 = callee.µ['~'].UI32;
+			for( xLast=-1/0, z=0, i=-1 ; ++i < a.length ; )
+			{
+				x = U32(a[i]);                                   // `<Hi><Lo>` -> uint32
+				x > xLast && ( xLast=x, ++z );
+				if( !(d=a['_'+x]) ) continue;
+				xLast < (x+=d) && ( z+=(x-xLast), xLast=x );
+			}
+
+			return z;
+		},
+
+	})
