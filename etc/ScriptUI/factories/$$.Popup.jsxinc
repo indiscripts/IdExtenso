@@ -10,9 +10,10 @@
 		Kind:           Snippet
 		API:            ScriptUI.PopupFactory() ScriptUI.popupEvent()
 		DOM-access:     NO
-		Todo:           ---
+		Todo:           Pressing [Esc] while a persistent Popup is shown
+		                freezes the component. Looking for a workaround...
 		Created:        190303 (YYMMDD)
-		Modified:       210810 (YYMMDD)
+		Modified:       210819 (YYMMDD)
 
 *******************************************************************************/
 
@@ -147,6 +148,8 @@
 				margins:                0,
 				spacing:                0,
 				alignChildren:          ScriptUI.LT,
+				// --- Private.
+				__cache__:              callee.CACH, // [ADD210818] Avoid re-processing the same arguments in update().
 				// --- Public Methods.
 				getControl:             callee.CTRL,
 				update:                 callee.UPDT,
@@ -250,7 +253,7 @@
 		}
 		.setup
 		//----------------------------------
-		// Parameters, tools.
+		// Parameters, tools, private.
 		//----------------------------------
 		({
 			MOUSE_KEY: $$.inMac ? '_mousedown' : '_mouseup',
@@ -267,6 +270,23 @@
 				margins:       8,
 				xOffset:       2,
 				yOffset:       4,
+			},
+
+			CACH: function __cache__(/*-1|?0|+1*/task,/*?str*/msg,/*?0|1|2*/color,  t)
+			//----------------------------------
+			// (Cache-Mechanism.) [ADD210818] Clear/test/save the cache.
+			// task :: -1 <-> Test  ;  0 <-> Clear  ;  +1 <-> Save
+			// ---
+			// this   :: Group[[Popup]]
+			// => bool | 0 | str
+			{
+				if( !task ){ delete this.__CACHE__; return 0; }
+
+				// Calculate a 'trace' of the present context.
+				// ---
+				t = msg + '\x01' + color + '\x01' + [].join.call(this.windowBounds);
+
+				return 0 > task ? t===this.__CACHE__ : (this.__CACHE__=t);
 			},
 		})
 		.setup
@@ -329,16 +349,30 @@
 				BACK_NAME: '__back__',
 			}),
 
-			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r,a)
+			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r)
 			//----------------------------------
+			// Update method. Pass in a falsy `proxy` and/or a falsy `msg` to hide the popup.
+			// [ADD210819] Internal cache is used to avoid re-processing same message/color
+			// at the same location when the popup is already there. This should deal smoothly
+			// with unconsidered duplications of 'popup' events.
+			// ---
 			// this   :: Group[[Popup]]
-			// => 1 [VISIBLE]  |  0 [HIDDEN]
+			// => 1 [FINALLY-VISIBLE]  |  0 [HIDDEN]
 			{
-				this.visible = false;
-				
 				// Checkpoint.
 				// ---
-				r = (msg=String(msg||'')).length && ScriptUI.isWidget(proxy) && !proxy.__state__;
+				r = (msg=String(msg||'')).length
+				&& ScriptUI.isWidget(proxy)
+				&& !proxy.__state__;
+
+				r && ( 1 < (color>>>=0) && (color=2) );                    // [CHG210818] Normalize color right now.
+
+				if( r && this.visible && this.__cache__(-1,msg,color) )    // [ADD210818] Popup already visible w/ same args?
+					return 1;                                              // Keep it as is.
+
+				this.visible = false;
+				this.__cache__(0);                                         // Clear the cache.
+
 				if( !r ) return 0;
 
 				// Load the message.
@@ -352,9 +386,8 @@
 
 				// Positioning => color and show.
 				// ---
-				if( r = callee.POSN(this,proxy) )
+				if( r=callee.POSN(this,proxy) )
 				{
-					1 < (color>>>=0) && (color=2);
 					callee.COLR(this, color);
 					this.visible = true;
 				}
@@ -366,8 +399,10 @@
 					10 < seconds && (seconds=10);
 					callee.WAIT(1e3*seconds,this);
 					this.visible = false;
+					r = 0;                                                 // [CHG210818] Sounds much more consistent!
 				}
 				
+				r && this.__cache__(1,msg,color);                          // Save the cache (if relevant.)
 				return r;
 			}
 			.setup
@@ -445,11 +480,9 @@
 						h < a[1] && (h=a[1]);
 					}
 
-					// Inner size and location.
+					// Inner size (incl. inset) and location.
 					// ---
-					wg.size[0] = 800;                                 // Temporarily maximize the width (this removes artifacts before setting y)
-					wg.size[1] = 2*DY + h;                            // Actual Edit height incl. inset
-					wg.size[0] = 2*DX + w;                            // Actual Edit width incl. inset.
+					callee.SET_TEXT_SIZE(wg, 2*DX+w, 2*DY+h);         // [CHG210819] Distinct CS/CC methods. (Fixes CS4 bug.)
 					wg.location = [MGX-DX,MGY-DY];
 
 					// Outer size and location.
@@ -459,7 +492,7 @@
 					q[0] = (w += 2*MGX);
 					q[1] = (h += 2*MGY);
 
-					wg.size[0] = 800;
+					wg.size[0] = 800;                                 // Might be needed in CC, harmless in CS.
 					wg.size[1] = h;
 					wg.size[0] = w;
 					wg.location=[0,0];
@@ -471,7 +504,26 @@
 					Q: [10,10], // Volatile array
 					INSET:     $$.inCC ? [3,1] : [0,0],
 					BASE_CHAR: $$.inCC ? 'm' : 'X',
-					BASE_SIZE: $$.inCC ? [9,15] : [10,16],  // Used only when no `graphics` prop available.
+					BASE_SIZE: $$.inCC ? [9,15] : [10,16],            // Used only when no `graphics` prop available.
+					
+					SET_TEXT_SIZE: $$.inCC
+					? function(/*EditText*/wg,/*uint*/w,/*uint*/h)
+					//----------------------------------
+					// [ADD210819] Tests have shown that it is safer in CC to re-assign
+					// each dimension of an EditText independently (starting with the height)
+					// in order to avoid artifacts.
+					{
+						wg.size[0] = 800;                             // Oversizes the width temporarily.
+						wg.size[1] = h;
+						wg.size[0] = w;
+					}
+					: function(/*StaticText*/wg,/*uint*/w,/*uint*/h)
+					//----------------------------------
+					// [ADD210819] In CS4/CS5 it is imperative to reset `StaticText.size`
+					// off the bat. (Only CS6 supports partial re-assignment of a dim.)
+					{
+						wg.size = [w,h];
+					},
 				}),
 				
 				POSN: function(/*Popup*/me,/*Widget*/proxy,  wb,pp,x,y,mx,my)
@@ -538,7 +590,6 @@
 				.setup({ BKG0:[.4,.4,.4,1], BKG1:[.2,.7,.2,1], BKG2:[.7,.2,.2,1] }),
 			}),
 		});
-
 
 		//==========================================================================
 		// [190306] ScriptUI.popupEvent()
