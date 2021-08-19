@@ -1,3 +1,6 @@
+##### [210819]
+   - Improving the [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc). 1. Added a cache to avoid re-processing the same arguments from the `update` method while the component is already shown in that state. Should deal smoothly with unconsidered duplications of 'popup' events. 2. Fixed resizing issue in CS4/CS5.
+
 ##### [210817]
    - [**PageRange**](/etc/$$.PageRange.jsxlib). New module for parsing-formatting-normalizing numeric sequences of the kind “3, 5-8, 10, 12-13...”. Typical use is checking and reformatting page ranges of your target document or book. _(See the demo in [`/tests/PageRangeTester`](/tests/PageRangeTester.jsx))_
 
