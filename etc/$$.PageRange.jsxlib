@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180429 (YYMMDD)
-		Modified:       210817 (YYMMDD)
+		Modified:       210820 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 210817, 'format'))
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 210820, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -350,7 +350,7 @@
 		// into an ordered array of positive numbers. The incoming sequence
 		// doesn't need to have ordered elements (e.g "17, 5, 11-13"). Also,
 		// elided ranges like "200-10" are interpreted "200-210".
-		// If supplied, `map` (array or object) will translates each
+		// If supplied, `map` (array or object) will translate each
 		// resulting number `x` into its match `map[x]`.
 		// [REM] Warning: for security reasons this routine doesn't support
 		// ranges having more than 65,535 elements, although it still allows
@@ -396,7 +396,7 @@
 			return r;
 		},
 
-		normalize : function normalize_S_õ_oa_S(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,a,r,z,i,x,x0,x1,t)
+		normalize : function normalize_S_õ_S(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,a,r,z,i,x,x0,x1,t)
 		//----------------------------------
 		// Similar to `parse`, this method optimizes the incoming sequence
 		// and returns a new sequence properly ordered and free of duplicates
