@@ -12,11 +12,11 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        210325 (YYMMDD)
-		Modified:       210413 (YYMMDD)
+		Modified:       210820 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210413, 'get'))
+;$$.Dom.hasOwnProperty('Menu') || eval(__(MODULE, $$.Dom.toSource(), 'Menu', 210820, 'get'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -102,7 +102,7 @@
 		since Submenu and MenuItem instances undergo localization. So we
 		cannot provide an 'agnostic' specifier like
 		
-		       `/menu[@name="knowName"]/submenu[<etc>]/menu-item[<etc>]`
+		       `/menu[@name="knownName"]/submenu[<etc>]/menu-item[<etc>]`
 		
 		which would be the secure mechanism. Instead, we often use locale-
 		independent key strings (like `$ID/RtMouseLayout`, etc) and resolve
@@ -125,7 +125,7 @@
 		queries `app.menus.itemByName("Контекстное меню "Текст"")`, which fails,
 		probably because of an internal bug related to the inner double quotes.
 		This bug has been solved in CC [thanks to Mikhail Ivanyushin and Kasyan
-		Servetsky for their confirmation on this point.]
+		Servetsky for confirming this point.]
 
 		As a side-effect of the above bug, it may happen in CS4/CS5/CS6 that
 
@@ -153,7 +153,7 @@
 		commands that can be *invoked* from a MenuItem (if 'associated' to it).
 		However, since any action provides an `invoke` method, a script can also
 		run it directly even if no MenuItem is identified. In general, an action
-		is associated to (and invoked from) a MenuItem through event hendlers,
+		is associated to (and invoked from) a MenuItem through event handlers,
 		noting that different menu items can target the same action.
 		
 		- The `app.menuActions` collection is locked (no `add` method) and collects
@@ -199,7 +199,7 @@
 		  documents, or open windows.”
 		  
 		  MA and SMA objects exposes an `area` property (str) which specifies the
-		  keyboard shortcut editor (KKBSCE) area. Here is a list of the most usual
+		  keyboard shortcut editor (KBSCE) area. Here is a list of the most usual
 		  areas. Note that all locale-independent keystrings have the form
 		  
 		       "$ID/KBSCE <ZONE>"   or   "$ID/KBSCE <ZONE>: <...> <ZONE>: "
@@ -364,7 +364,7 @@
 		it will be reflected as the caption (i.e, title) of the menu item.
 		
 		When a script browses a collection through the `...itemByName()` method,
-		the incoming argument can be ither the `name` or the `title` property.
+		the incoming argument can be either the `name` or the `title` property.
 		In some InDesign versions or locales, `title` appeared to be safer for
 		certain elements, e.g:
 
@@ -590,7 +590,7 @@
 			// Sibling menu items.
 			// Since `ref.parent` may collapse in CS, a fallback strategy is tried.
 			// ---
-			if( (!(t=ref.parent).isValid) && !(t=callee.GETP(ref)) ) return 0;
+			if( !(t=ref.parent).isValid && !(t=callee.GETP(ref)) ) return 0;
 
 			MI = t.menuItems;
 
