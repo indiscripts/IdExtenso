@@ -1,3 +1,6 @@
+##### [210821]
+   - [ScriptUI/factories/](/etc/ScriptUI/factories): made states (i.e. `enabled` and `visible` properties) configurable at creation time for `Check(Factory)`, `CheckGroup(Factory)` and `CheckList(Factory)`. This allows you to predefine states straight from the `options` object.
+
 ##### [210819]
    - Improving the [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc). 1. Added a cache to avoid re-processing the same arguments from the `update` method while the component is already shown in that state. Should deal smoothly with unconsidered duplications of 'popup' events. 2. Fixed resizing issue in CS4/CS5.
 
