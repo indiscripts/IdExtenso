@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180909 (YYMMDD)
-		Modified:       210810 (YYMMDD)
+		Modified:       210821 (YYMMDD)
 
 *******************************************************************************/
 
@@ -123,6 +123,8 @@
 		// .onRightClick  (?fct)    'rclicked' handler.
 		// .onEvent       (?fct)    Any event handler.
 		// ---
+		// .enabled | .visible      States.
+		// ---
 		// => Group[[Check]]   ::   G(C,S)
 		//   .properties       ::   { kind, Ternary, CustomBox }
 		{
@@ -197,6 +199,11 @@
 				callee.WTCH,
 				ops
 			);
+
+			// [ADD210821] States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
 
 			return r;
 		}
