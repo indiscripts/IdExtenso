@@ -9,9 +9,9 @@
 		Kind:           Snippet
 		API:            ScriptUI.CheckListFactory()
 		DOM-access:     NO
-		Todo:           ---
+		Todo:           Issue in CS
 		Created:        201231 (YYMMDD)
-		Modified:       210814 (YYMMDD)
+		Modified:       210821 (YYMMDD)
 
 *******************************************************************************/
 
@@ -206,6 +206,8 @@
 		// .onRightClick  (?fct)    'rclicked' handler.
 		// .onEvent       (?fct)     Any event handler.
 		// ---
+		// .enabled | .visible      States.
+		// ---
 		// => Group[[CheckList]]  ::   G( L|D )
 		//   .properties          ::   { kind, MinLines, MaxLines }
 		{
@@ -298,6 +300,11 @@
 				callee.WTCH,
 				ops
 			);
+
+			// [ADD210821] States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
 
 			return r;
 		}
@@ -622,9 +629,6 @@
 						break;
 
 					case 'keydown':
-						// [REM] In CS a *fake* selection ring may still be drawn while
-						// pressing Up/Down keys, but `this.selection` actually remains NULL.
-
 						if( 'Escape' == ev.keyName || 'Tab' == ev.keyName ) break; // Preserve regular Esc/Tab events.
 
 						ev.preventDefault();
