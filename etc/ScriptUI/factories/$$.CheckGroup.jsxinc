@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190314 (YYMMDD)
-		Modified:       210810 (YYMMDD)
+		Modified:       210821 (YYMMDD)
 
 *******************************************************************************/
 
@@ -114,6 +114,9 @@
 		// .onClickChange (?fct)    'clicked' handler.
 		// .onRightClick  (?fct)    'rclicked' handler.
 		// .onEvent       (?fct)    Any event handler.
+		// ---
+		// .enabled | .visible      States.
+		// ---
 		// [REM] The shortcut $key:<str> is supported too, as specified in CheckFactory.
 		// ---
 		// In addition, the following properties set the global options of the CheckGroup:
@@ -254,6 +257,11 @@
 				callee.WTCH,
 				ops
 			);
+
+			// [ADD210821] States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
 
 			return r;
 		}
