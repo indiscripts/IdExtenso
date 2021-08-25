@@ -1,6 +1,6 @@
 ##### [210825]
    - Fixed the routine `ScriptUI.measureMulti()` for Win platforms in [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc). An infinite loop could occur with huge un-splittable strings.
-   - [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc): improved text wrap based on ZERO WIDTH SPACE SUFFIX after some punctuation marks: `.`, `-`, `/`, `\`.
+   - [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc): improved text wrap using ZERO WIDTH SPACE suffix after some punctuation marks: `.`, `-`, `/`, `\`.
 
 ##### [210821]
    - [ScriptUI/factories/](/etc/ScriptUI/factories): made states (i.e. `enabled` and `visible` properties) configurable at creation time for `Check(Factory)`, `CheckGroup(Factory)` and `CheckList(Factory)`. This allows you to predefine states straight from the `options` object.
