@@ -13,7 +13,7 @@
 		Todo:           Pressing [Esc] while a persistent Popup is shown
 		                freezes the component. Looking for a workaround...
 		Created:        190303 (YYMMDD)
-		Modified:       210819 (YYMMDD)
+		Modified:       210825 (YYMMDD)
 
 *******************************************************************************/
 
@@ -349,12 +349,13 @@
 				BACK_NAME: '__back__',
 			}),
 
-			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r)
+			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r,re,tx)
 			//----------------------------------
 			// Update method. Pass in a falsy `proxy` and/or a falsy `msg` to hide the popup.
 			// [ADD210819] Internal cache is used to avoid re-processing same message/color
 			// at the same location when the popup is already there. This should deal smoothly
 			// with unconsidered duplications of 'popup' events.
+			// [ADD210825] ZERO WIDTH SPACE after punctuation in CC.
 			// ---
 			// this   :: Group[[Popup]]
 			// => 1 [FINALLY-VISIBLE]  |  0 [HIDDEN]
@@ -377,7 +378,10 @@
 
 				// Load the message.
 				// ---
-				this.getControl().text = msg;
+				tx = (re=callee.RE_PUNCT)                                  // [CHG210825] In CC, adds ZERO WIDTH SPACE after each
+				? msg.replace(re,callee.REPL)                              // punctuation character -> improves text wrap.
+				: msg;
+				this.getControl().text = tx;
 
 				// Sizing.
 				// ---
@@ -414,6 +418,9 @@
 				// ---
 				function(ms,me,dt){ for( dt=(+new Date)+ms ; dt > +new Date ; me.visible=true ); } :
 				function(ms){ $.sleep(ms) },
+				
+				RE_PUNCT: $$.inCC && /[\.\/\\-]/g,                         // Breakable punctuation signs: `.` `/` `\` `-`
+				REPL: $$.inCC && function(c){ return c + "\u200B" },       // Add ZERO WIDTH SPACE after
 
 				SIZE: function(/*Popup*/me,  pp,ML,LC,MGX,MGY,wg,t,a,w,h,gx,s,q)
 				//----------------------------------
@@ -423,8 +430,8 @@
 				// Return the total size in a volatile array.
 				// => [w,h]&
 				{
-					const DX = callee.INSET[0];                      // EditText horizontal inset (CC)
-					const DY = callee.INSET[1];                      // EditText vertical inset (CC)
+					const DX = callee.INSET[0];                            // EditText horizontal inset (CC)
+					const DY = callee.INSET[1];                            // EditText vertical inset (CC)
 
 					pp = me.properties;
 					ML = pp.MinLines;
