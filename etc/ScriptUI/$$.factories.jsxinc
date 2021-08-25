@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210128 (YYMMDD)
-		Modified:       210730 (YYMMDD)
+		Modified:       210825 (YYMMDD)
 
 *******************************************************************************/
 
@@ -407,6 +407,10 @@
 	      -----------------------------------------------------------------
 	      'filtered'  onFilter       Special event used by the Edit factory.
 	                                 Event data: { junk:str }
+	      -----------------------------------------------------------------
+	      'exit'      onExit         Special event used by the Edit factory,
+	                                 fired when the control is losing the
+	                                 focus.
 
 	*/
 
@@ -469,15 +473,17 @@
 			return r;
 		};
 
-		ScriptUI.setWatcher = function setWatcher(/*Widget*/wg,/*str|str[]*/keys,/*fct|0*/watchFct,/*?{}|any*/ops,  i,t,k)
+		ScriptUI.setWatcher = function setWatcher(/*Widget*/wg,/*str|str[]*/keys,/*fct|0*/watchFct,/*?{}|any*/ops,/*bool=0*/SKIP_DEFINED,  i,t,k)
 		//----------------------------------
 		// Attach a 'watcher' (=watch callback) to widget key(s).
 		// - If `watchFct` is not a function, unwatch the key(s).
 		// - If `ops` is supplied (Object), set the declared `keys`
 		//   AFTER watch installation. (Shortcut: if ops is a scalar
 		//   AND a single key `k` is provided, assume wg[k]=ops. )
-		// [REM] Among `ops` keys, only those that are declared in
-		//       the `keys` argument will be assigned.
+		// Among `ops` keys, only those that are declared in the `keys`
+		// argument will be assigned. Moreover, if SKIP_DEFINED is
+		// truthy, any key which is no longer undefined in `wg` will
+		// be preserved.
 		// ---
 		// => callee  [aka ScriptUI.setWatcher]
 		{
@@ -500,11 +506,14 @@
 			if( ops !== Object(ops) )
 			{
 				if( 1 != keys.length ) return callee;
-				wg[keys[0]] = ops;
+				k = keys[0];
+
+				// [ADD210819] Preserve defined key if SKIP_DEFINED.
+				( SKIP_DEFINED && 'undefined' != typeof(wg[k]) ) || (wg[k]=ops);
 			}
 			else
 			{
-				for( i=-1 ; ++i < keys.length ; ops.hasOwnProperty(k=keys[i]) && (wg[k]=ops[k]) );
+				for( i=-1 ; ++i < keys.length ; ops.hasOwnProperty(k=keys[i]) && ( (SKIP_DEFINED && 'undefined' != typeof(wg[k])) || (wg[k]=ops[k]) ) );
 			}
 			
 			return callee;
@@ -601,8 +610,8 @@
 			|| error(__("Invalid maxWidth argument (%1). Should be an integer > 20.",WMAX),callee);
 			
 			const LINE = ScriptUI.LINE;                                         // Default height of a single line.
-
 			a = wg.graphics.measureString(text, void 0, WMAX);                  // Measured dims with WMAX bound.
+
 			w = a[0];                                                           // Width (w <= WMAX.)
 			h = a[1];                                                           // Height
 			n = Math.round(h/LINE);                                             // Number of *measured* lines.
@@ -628,13 +637,20 @@
 				if( .75*t < WMAX ){ ++z; continue; }                            // If the offset `t-WMAX` is small (< WMAX/3)
 				                                                                // adding one extra line is sufficient. (Skips calculations.)
 
+				// ---
+				// [FIX210825] Prevents infinite loop when MWID < WMAX never
+				// happens (meaning that a huge segment of text cannot be
+				// splitted at all.) In that case, p is set to -2 FYI and
+				// the routine still computes the average number of lines.
+				// ---
+
 				for                                                             // Computes the number of extra lines needed by a[i]
 				(                                                               // (based on possible space splits.)
 					s=a[i], j=-1, p=s.indexOf(' ') ;
 					0 < p ;
 					MWID(s.slice(0,1+p), wg) < WMAX
 					? ( j=p, p=s.indexOf(' ',1+j) )
-					: ( ++z, s=s.slice(++j), p-=j, j=-1 )
+					: ( ++z, p=0<=j?(s=s.slice(++j)).indexOf(' '):-2, j=-1 )    // [FIX210825] -2 (purely informative) breaks the loop.
 				);
 				(t=MWID(s,wg)) < WMAX || (z += ~~(t/WMAX));
 			}
