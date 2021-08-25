@@ -1,3 +1,6 @@
+##### [210825]
+   - Fixed the routine `ScriptUI.measureMulti()` for Win platforms in [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc). An infinite loop could occur with huge un-splittable strings.
+
 ##### [210821]
    - [ScriptUI/factories/](/etc/ScriptUI/factories): made states (i.e. `enabled` and `visible` properties) configurable at creation time for `Check(Factory)`, `CheckGroup(Factory)` and `CheckList(Factory)`. This allows you to predefine states straight from the `options` object.
 
