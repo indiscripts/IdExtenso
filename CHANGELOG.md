@@ -4,13 +4,13 @@
 
 - The [**YALT**](/etc/$$.Yalt.jsxlib) module now supports “mute terminators”:
 
-You have the option to register _variants_ for the same English key using a special terminator among the control characters `'\x01'`, `'\x02'`, `'\x03'` or `'\x04'`. Hence you can provide distinct sets of translation strings for words or expressions — like "All", "[None]", "match", etc — that have variant forms in the target language depending  the context. For example, in French,
+You have the option to register _variants_ for the same English key using a special terminator among the control characters `'\x01'`, `'\x02'`, `'\x03'` or `'\x04'`. Hence you can provide distinct sets of translation strings for words or expressions — like "All", "[None]", "match", etc — that have variant forms in the target language depending on the context. For example, in French,
 	      
 	      All     # Tous
 	      All\x01 # Toutes
 	      All\x02 # Tous
 	      
-   offer three possible translations for the word `"All"`. The suffixes `\x01` and `\x02` are used to discriminate the three cases. If the default (English) language is active, both key strings will result in the word _All_ (the terminator is removed). Otherwise, the desired translation will be selected.
+   offer three possible translations for the word `"All"`. The suffixes `\x01` and `\x02` are used to discriminate these three cases. If the default (English) language is active, both key strings will result in the word _All_ (the terminator is removed). Otherwise, the desired translation will be selected.
 
 This new feature allows you to address gender or number inflections that are not marked in English, as well as pure homographs like "left" (side) vs. "left" (past participle of leave.)
 
