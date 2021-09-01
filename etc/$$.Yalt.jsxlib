@@ -108,7 +108,7 @@
 	      
 	      All     # Tous
 	      All\x01 # Toutes
-	      All\x02 # Tous
+	      All\x02 # Tout
 	      
 	offer three possible translations for the word "All". The suffixes '\x01' and
 	'\x02' are used to discriminate the three cases. If the default (English) language
