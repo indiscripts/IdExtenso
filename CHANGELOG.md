@@ -1,7 +1,10 @@
-##### [210901]
-   - [**YALT**](/etc/$$.Yalt.jsxlib): Support of ‘mute terminators’.
+## 2.10901
 
-You can now add variants for the same English key using a special terminator among the control characters `'\x01'`, `'\x02'`, `'\x03'` or `'\x04'`. Hence you can provide distinct sets of translation strings for words or expressions — like "All", "[None]", "match", etc — that have variant forms in the target language depending  the context. For example, in French,
+- Important update (Sept 1, 2021) including latest fixes and additions. Main changes in the core area: added the method `String.prototype.unaccent()` for removing accents/diacritics from a string, fixed the pattern `RegExp.LINE` in [Ext/patterns](/core/Ext/$$.patterns.jsxinc), [SUI/builder](/core/SUI/$$.builder.jsxinc) can optionally prevent `helpTip` inheritance on a particular component (use `helpTip: false`), added `ScriptUI.measureWidth()` to [`SUI/mini`](/core/SUI/$$.mini.jsxinc), which fixes the biased results of `graphics.measureString()` in CC/Win environments.
+
+- The [**YALT**](/etc/$$.Yalt.jsxlib) module now supports “mute terminators”:
+
+You have the option to register _variants_ for the same English key using a special terminator among the control characters `'\x01'`, `'\x02'`, `'\x03'` or `'\x04'`. Hence you can provide distinct sets of translation strings for words or expressions — like "All", "[None]", "match", etc — that have variant forms in the target language depending  the context. For example, in French,
 	      
 	      All     # Tous
 	      All\x01 # Toutes
