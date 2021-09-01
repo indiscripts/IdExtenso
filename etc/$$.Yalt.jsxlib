@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       210518 (YYMMDD)
+		Modified:       210901 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 210518, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 210901, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -28,7 +28,11 @@
 	extend the translation map, then call activate() to make the strings available
 	in the addressed languages.
 
-	The typical format of a Yalt package is as follows,
+
+	0. BASICS
+	____________________________________________________________________________
+
+	The typical format of a Yalt package looks like:
 	
 	      <YALT> # FRENCH # GERMAN # SPANISH
 	      Yes # Oui # Ja # Sí
@@ -37,17 +41,6 @@
 	      </YALT>
 
 	where mapped strings are separated by ` # `, that is, <SPACE><HASH><SPACE>.
-
-	[REM] From Yalt 2.00630 you can write any translation string in a separate
-	      line starting with `<spacing># `, where <spacing> denotes zero or more
-	      spacing characters (space or tab.) E.g,
-	
-	      Collect All Threaded Frames
-	      # Récupérer tous les blocs liés
-	      # Alle verketteten Rahmen aufnehmen
-	      # Recopilar todos los marcos enlazados
-
-	      (This format makes long strings more readable.)
 
 	The first line of a Yalt package has the form:
 	
@@ -64,20 +57,91 @@
 	
 	to refer to the translation of that string in the current Yalt locale. Thanks to
 	this mechanism, you can write your entire project using default English strings,
-	and deal separately with the localization package. (Strings that have no match
-	in the active locale will remain as passed in.)
+	and deal separately with the localization package. Strings that have no match
+	in the active locale will remain as passed in.
+
+
+	1. LONG LINES
+	____________________________________________________________________________
 	
+	From Yalt 2.00630 you can write any translation string in a separate line starting
+	with `<spacing># `, where <spacing> denotes zero or more spacing characters (space
+	or tab.) E.g,
+	
+	      Collect All Threaded Frames
+	      # Récupérer tous les blocs liés
+	      # Alle verketteten Rahmen aufnehmen
+	      # Recopilar todos los marcos enlazados
+
+
+	2. PLACEHOLDERS
+	____________________________________________________________________________
+
 	Yalt also supports %1 to %9 placeholders, for example, mapped strings such as
 	
-	      Hi %1, how are you? # Bonjour %1, comment vas-tu ?
+	      Hi %1, how are you? # Bonjour %1, comment vas-tu ? # etc
 
 	lead the syntax __("Hi %1, how are you?", "Bob") to translate into
 	`Bonjour Bob, comment vas-tu ?` in the corresponding locale.
+
+
+	3. PUNCTUATION TERMINATORS
+	____________________________________________________________________________
+	
+	A small set of punctuation marks (`:`, `.`, `!`, and `...`) can be identified
+	at the end of a key string and then taken into account even if the whole string
+	is not registered as such.
+	
+	For example, if the key `abc` translates into `xyz` in some language, then
+	`abc:` will translate into `xyz:`, or maybe into `xyz :` if the target
+	language has a dedicated rule `%1:` --> `%1 :` (space insertion.)
+
+
+	4. MUTE TERMINATORS
+	____________________________________________________________________________
+	
+	From Yalt 2.10901 you can add variants for the same English key using a MUTE
+	TERMINATOR among '\x01', '\x02', '\x03' or '\x04'. This allows you to provide
+	distinct sets of translation strings for words or expressions --like "All",
+	"[None]", "match", etc-- that have variant forms in the target language depending
+	on the context. For example, in French,
+	      
+	      All     # Tous
+	      All\x01 # Toutes
+	      All\x02 # Tous
+	      
+	offer three possible translations for the word "All". The suffixes '\x01' and
+	'\x02' are used to discriminate the three cases. If the default (English) language
+	is active, both key strings will result in the word "All" (the terminator is
+	removed). Otherwise, the desired translation will be selected.
+
+	This feature allows you to address gender or number inflections that are not marked
+	in English, as well as pure homographs like "left" (side) vs. "left" (past participle
+	of leave.)
+
+	It is recommended to define a 'default' key (without mute terminator) based on the
+	most usual translations in the target languages. Then, you can refine the package by
+	adding up to four variants of the key, e.g `All\x01`, `All\x02`, `All\x03`,
+	`All\x04`, with the associated translation strings. Make sure you update your strings
+	accordingly in your script.
+	
+	[REM] Technically, there is no relationship between these special keys based on
+	      mute terminators. That is, strings like `abc` and `abc\x01` are purely stored
+	      as distinct keys in the internal translation map. The trick relies on the
+	      fact that Yalt will ouput "abc" when the default language is active.
+
+
+	5. EMPTY LINES AND COMMENTS
+	____________________________________________________________________________
 	
 	Empty lines, lines that starts with `//`, or lines that don't contain the ` # `
 	separator are ignored. Also, the whole Yalt package string can be nested in open
 	and closing comment tags, i.e <SLASH><STAR> and <STAR><SLASH>.
-	
+
+
+	6. ADDING A YALT PACKAGE
+	____________________________________________________________________________
+
 	The recommended way to add a Yalt package from within a module is to create a
 	private `YALT` key as follows:
 	
@@ -89,7 +153,7 @@
 	where the file $$.yalt.jsxres simply contains the localization package enclosed in
 	triple quotes. See the DateFormat module for an example.
 	
-	About Yalt activation options, see detail in the API.
+	[REM] About Yalt activation options, see detail in the API.
 
 	*/
 
@@ -102,7 +166,6 @@
 		YBEG : '<YALT>',                               // Opening tag.
 		YEND : '</YALT>',                              // Closing tag.
 		YSEP : ' # ',                                  // Separator string.
-		//YTMP : '\x01',                               // Temporary char. [DEL180308] No longer used.
 		YCOM : '//',                                   // Comment starter (single line.)
 		YDCR : '/*',                                   // Decorator marker.
 		YESC : { '#': /##/g },                         // Esc. sequences (each regex produces the associated key.)
@@ -134,10 +197,11 @@
 				  COL = callee.Q||(callee.Q=[]);
 			
 			// [ADD200630] Support multiline translations.
+			// [CHG210901] Cached in `callee.NLSP`.
 			// ---
-			const RE_NL_SEP = RegExp("(\\r\\n|\\r|\\n)[ \\t]*" + RegExp.escape(SEP.slice(1)), 'g');
+			const RE_NL_SEP = callee.NLSP || (callee.NLSP=RegExp("(\\r\\n|\\r|\\n)[ \\t]*" + RegExp.escape(SEP.slice(1)), 'g'));
 	
-			// Maps a col. number to a locale ID
+			// Maps a col number to a locale ID
 			// ---
 			COL[0] = this.DEFZ;
 			COL.length = 1;
@@ -145,7 +209,6 @@
 			// Parse the input string.
 			// [CHG200630] Support multiline translations.
 			// ---
-			//a = s.trim().split(RegExp.LINEs);
 			a = s.trim().replace(RE_NL_SEP, SEP).split(RegExp.LINEs);
 
 			for( r=0, n=a.length, b=0, i=-1 ; ++i < n ; )
@@ -213,13 +276,13 @@
 			// ---
 			this.CURZ = zloc;
 	
-			// Cleanup the cache
-			// [FIX180308] Stupid typo `oCache.k` fixed (!)
+			// Cleanup the cache.
 			// ---
 			oCache = this.L10N;
 			for( k in oCache ) delete oCache[k];
 
 			// The default locale does not involve the cache at all.
+			// [REM210901] Then this.L10N.__count__ is 0.
 			// ---
 			if( zloc==this.DEFZ ) return;
 	
@@ -270,10 +333,21 @@
 			// ---
 			while( 1 )
 			{
+				// [CHG210901] Support of *mute terminators* (\x01, \x02, \x03 or \x04)
+				// for English variants.
+				// ---
+				o = callee.µ['~'].L10N;
+				if( !o.__count__ )
+				{
+					callee.RE_END_CTRL.test(s) && (s=s.slice(0,-1));
+					break;
+				}
+				
+				
 				// If `s` already has a full registered key `k==_s`,
 				// take the match and break.
 				// ---
-				if( (o=callee.µ['~'].L10N).hasOwnProperty(k=callee.µ['~'].KPFX+s) )
+				if( o.hasOwnProperty(k=callee.µ['~'].KPFX+s) )
 				{
 					s = o[k];
 					break;
@@ -335,7 +409,13 @@
 			return 0 <= s.indexOf('%') ?
 				$.global.localize.apply(null, [s,x1,x2,x3,x4,x5,x6,x7,x8,x9]) :
 				s;
-		},
+		}
+		.setup
+		({
+			// [ADD210901] Mute terminators.
+			// ---
+			RE_END_CTRL: /[\x01\x02\x03\x04]$/,
+		}),
 		
 		HASK : function(/*str*/s)
 		//----------------------------------
@@ -377,14 +457,14 @@
 		// ---
 		autoActivate : 1,
 
-		onLoad : function onLoad_i$locale$_b(/*?uint|LocaleID*/iLocale,  $$,I)
+		onLoad : function onLoad_i$locale$_(/*?uint|LocaleID*/iLocale,  $$,I)
 		//----------------------------------
 		// [FIX170424] Fixed function cast name.
 		// [CHG180308] Enhanced onLoad logics. - It is no longer recommended to call
 		// `$$.Yalt.load()` manually, since this has no effect when the module already
 		// has its __load__ flag on. Use `$$.Yalt.activate()` instead.
 		// ---
-		// => undefined [DONE]
+		// => undef [DONE]
 		{
 			callee.µ.autoActivate && callee.µ.activate(iLocale);
 		},
@@ -397,12 +477,12 @@
 		// [ADD180308] This routine now has an internal PENDING flag. Yalt is active
 		// iff not PENDING. (addPackage interacts with this flag too.)
 		// ---
-		// [CHG180308] If iLocale is not provided:
+		// [CHG180308] If iLocale is not supplied:
 		// (a) If Yalt's __load__ flag is already on       -> select curAppLocaleID
 		// (b) If ~.CURZ == ~.DEFZ                         -> select curAppLocaleID
 		// (c) If ~.CURZ != ~.DEFZ                         -> select ~.CURZ
 		// ---
-		// => undefined
+		// => undef
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 			I = callee.µ['~'];
@@ -434,7 +514,8 @@
 		// from different modules during framework's loading stage--and even after.
 		// When possible, the client should add all packages *before* activation.
 		// [ADD180308] Deals with activate.PENDING.
-		// => number of actually added strings.
+		// ---
+		// => uint [number of actually added strings]
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
 
@@ -462,7 +543,7 @@
 
 		getLocaleId : function getLocaleId_I(  i,s)
 		//----------------------------------
-		// => current Yalt-Locale ID.
+		// => uint [current Yalt-Locale ID]
 		{
 			return callee.µ['~'].CURZ;
 		},
@@ -485,7 +566,6 @@
 		},
 
 	})
-
 	.addPackage
 	(
 	#include 'Yalt/$$.yalt.jsxres'
