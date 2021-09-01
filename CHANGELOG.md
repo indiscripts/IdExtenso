@@ -8,7 +8,7 @@ You have the option to register _variants_ for the same English key using a spec
 	      
 	      All     # Tous
 	      All\x01 # Toutes
-	      All\x02 # Tous
+	      All\x02 # Tout
 	      
    offer three possible translations for the word `"All"`. The suffixes `\x01` and `\x02` are used to discriminate these three cases. If the default (English) language is active, both key strings will result in the word _All_ (the terminator is removed). Otherwise, the desired translation will be selected.
 
