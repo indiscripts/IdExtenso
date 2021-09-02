@@ -1,3 +1,6 @@
+##### [210902]
+   - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): added the `'x2'` option as 2nd argument of `getString()`, which then produces paths of the form `<parent>\x02<parent>\x02...\<node>`. Useful if both brackets and slash characters may appear in node names.
+
 ## 2.10901
 
 - Important update (Sept 1, 2021) including latest fixes and additions. Main changes in the core area: added the method `String.prototype.unaccent()` for removing accents/diacritics from a string, fixed the pattern `RegExp.LINE` in [Ext/patterns](/core/Ext/$$.patterns.jsxinc), [SUI/builder](/core/SUI/$$.builder.jsxinc) can optionally prevent `helpTip` inheritance on a particular component (use `helpTip: false`), added `ScriptUI.measureWidth()` to [`SUI/mini`](/core/SUI/$$.mini.jsxinc), which fixes the biased results of `graphics.measureString()` in CC/Win environments.
