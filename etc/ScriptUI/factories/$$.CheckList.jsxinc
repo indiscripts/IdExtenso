@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           Issue in CS
 		Created:        201231 (YYMMDD)
-		Modified:       210821 (YYMMDD)
+		Modified:       210902 (YYMMDD)
 
 *******************************************************************************/
 
@@ -78,7 +78,7 @@
 	-----------------------------------------------------------------------
 	length          uint [READ-ONLY]
 	                Total number of items in the list (incl. branches,
-	                checked or unchecked elements.) Use `countNode(bool)`
+	                checked or unchecked elements.) Use `countNodes(bool)`
 	                to get the number of terminal nodes.
 	=======================================================================
 	onValueChange   fct( ev[[vchanged]] ) = undef
@@ -122,6 +122,8 @@
 	                           ending in `[xyz]` form if elem is a parent
 	                'slashed'  -> "parent/parent/.../<nodeOrParent>"
 	                           ending in `xyz/` form if elem is a parent.
+	                'x2'       -> "parent\x02parent\x02...\x02<nodeOrParent>"
+	                           ending in `xyz\x02` form if elem is a parent.
 	                [REM] getString() is informational, it doesn't help
 	                rebuild the whole data/states. Use getValue() instead.
 	-----------------------------------------------------------------------
@@ -808,7 +810,7 @@
 				return 0;
 			},
 
-			GETS: function getString(/*bool=0*/CHECKED_NODE,/*?'brackets'|'slashed'*/fullPathMode,  q,t,F,a,p,i)
+			GETS: function getString(/*bool=0*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,t,F,a,p,i)
 			//----------------------------------
 			// (a) By default (CHECKED_NODE falsy), return all branch and
 			//     node names as a <X1> sequence, e.g
@@ -818,19 +820,27 @@
 			//     nodes as a <X1> sequence, e.g
 			//     "nodeA3<X1>nodeB7<X1>..."
 			// ---
-			// If `fullPathMode` is either 'brackets' or 'slashed', return
+			// If `fullPathMode` is either 'brackets', 'slashed', or 'x2', return
 			// the full path of each item using the form:
-			// - `[parent] [parent] ... nodeName`   in 'brackets' mode
-			// - `parent/parent/.../nodeName`       in 'slashed' mode
+			// - `[parent] [parent] ... nodeName`       in 'brackets' mode
+			// - `parent/parent/.../nodeName`           in 'slashed' mode
+			// - `parent\x02parent\x02...\x02nodeName`  in 'x2' mode
 			// ---
 			// this :: Group[[CheckList]]
 			// => seq
 			{
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 
-				t = fullPathMode && String(fullPathMode).toLowerCase();
-				F = callee['brackets'===t?'BRKT':('slashed'===t?'SLSH':'NAME')];
-
+				// [ADD210902] Support of <X2> separator.
+				// ---
+				switch( t=fullPathMode && String(fullPathMode).toLowerCase() )
+				{
+					case 'brackets': F = callee.BRKT; break;
+					case 'slashed': (F=callee.SLSH).SEP = '/'; break;
+					case 'x2':      (F=callee.SLSH).SEP = '\x02'; break;
+					default:         F = callee.NAME;
+				}
+				
 				if( !CHECKED_NODE && F===callee.NAME ) return q.join('\x01');
 
 				a = [];
@@ -875,17 +885,23 @@
 				},
 				SLSH: function(/*str[]+$idx=>sta*/q,/*uint*/idx,/*bool=0*/CAN_BE_PARENT,  t)
 				//----------------------------------
-				// Full slash-path.
+				// Full path with custom separator ('/' by default.)
+				// [REM210902] The caller must preset callee.SEP.
 				{
+					const SEP = callee.SEP;
 					(t=CAN_BE_PARENT&&q['$'+(1+idx)])&&(t=q['$'+idx].charCodeAt(1)<t.charCodeAt(1));
 					for
 					(
-						t = q[idx] + (t ? '/' : '') ;
+						t = q[idx] + (t ? SEP : '') ;
 						0 <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
-						t = q[idx] + '/' + t
+						t = q[idx] + SEP + t
 					);
 					return t;
-				},
+				}
+				.setup
+				({
+					SEP: '/',
+				}),
 			}),
 
 			MTCH: function matches(/*?uint|str|ListItem|uint[]|str[]|ListItem[]|RegExp|null|-1*/req,  wg,n,a,s,i,x)
