@@ -9,9 +9,9 @@
 		Kind:           Snippet
 		API:            ScriptUI.CheckListFactory()
 		DOM-access:     NO
-		Todo:           Issue in CS
+		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       210902 (YYMMDD)
+		Modified:       210903 (YYMMDD)
 
 *******************************************************************************/
 
@@ -596,9 +596,10 @@
 				k = ev ? ev.type : 'noevent';
 				me = this.parent;
 
-				// Temporary transparent event type (controlled from the outside.)
+				// Temporary transparent event type.
+				// [FIX210903] `me` -> `this`
 				// ---
-				if( me.hasOwnProperty('µ_'+k) ) return;
+				if( this.hasOwnProperty('µ_'+k) ) return;
 
 				switch( k )
 				{
