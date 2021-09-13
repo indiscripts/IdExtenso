@@ -1,3 +1,6 @@
+##### [210913]
+   - [Dom/items](/core/Dom/$$.items.jsxinc) solves the issue of retrieving items (from any `Collection` or plural specifier) having a specific property set to a specific value. It provides the general method `allItemsByKeyVal(host,key,value)`, then two useful methods based on it: `allItemsByName(host,name)` and `allItemsByLabel(host,label)`. Note that the native DOM command `myCollection.itemByName(someName)` _does not_ return a plural specifier (as you may expect), so it won't reach all items that share the incoming name within the collection. Use `$$.Dom.allItemsByName(myCollection,someName)` to get the whole array of target items. The methods support DOM specifiers as well, e.g `myLayer.textFrames.everyItem()`, etc.
+
 ##### [210902]
    - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): added the `'x2'` option as 2nd argument of `getString()`, which then produces paths of the form `<parent>\x02<parent>\x02...\<node>`. Useful if both brackets and slash characters may appear in node names.
 
