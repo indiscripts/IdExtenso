@@ -1,0 +1,101 @@
+/*******************************************************************************
+
+		Name:           Items
+		Desc:           Basic item access routines of the Dom module.
+		Path:           /core/Dom/$$.items.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of the Dom module.
+		API:            allItemsByKeyVal()
+		                allItemsByName()   -> $$
+		                allItemsByLabel()  -> $$
+		DOM-access:     YES
+		Todo:           ---
+		Created:        210912 (YYMMDD)
+		Modified:       210913 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+		allItemsByKeyVal: function allItemsByKeyVal_D$Collection$_K_X_A(/*DOM|Collection*/host,/*key*/k,/*any*/v,  t,r,i)
+		//----------------------------------
+		// Given a DOM specifier --e.g myLayer.textFrames.everyItem()-- or
+		// a Collection --e.g myDoc.pageItems--, returns the array of items
+		// whose `k` property matches `v` (that is, such that item[k]===v.)
+		// If the property is not available or no item satisfies the condition,
+		// returns an empty array.
+		// [REM] Unlike the next methods (allItemsByName, allItemsByLabel), this
+		// generic routine is not exposed in `$$`. Use `$$.Dom.allItemsByKeyVal()`
+		// if you need to filter elements along a specific key.
+		// ---
+		// => DOM[] [OK]  |  [] [KO]  |  Error
+		{
+			// Checkpoint.
+			// ---
+			'string' == typeof k
+			|| $.global[callee.µ.__root__].error(__("Invalid `k` argument (%1). Should be a string.",typeof k),callee);
+			
+			'undefined' != typeof v
+			|| $.global[callee.µ.__root__].error(__("The `v` argument is undefined."),callee);
+
+			if( t=(host===Object(host)) )
+			{
+				host.hasOwnProperty('everyItem')
+				&& 'function' == typeof host.everyItem
+				&& (host=host.everyItem());
+
+				t = host.isValid
+				&& host.hasOwnProperty('getElements')
+				&& 'function' == typeof host.getElements;
+			}
+
+			false !== t
+			|| $.global[callee.µ.__root__].error(__("Invalid `host` argument (%1). Should be a valid DOM specifier, or Collection.",host&&host.constructor.name),callee);
+
+			// If the key is unavailable, returns an empty array.
+			// ---
+			if( !host.hasOwnProperty(k) ) return [];
+			
+			// Look up.
+			// ---
+			(t=host[k]) instanceof Array || (t=[t]);  // any[]
+			r = host.getElements();                   // DOM[]
+			for( i=r.length ; i-- ; t[i]===v || r.splice(i,1) );
+			
+			return r;
+		},
+
+		allItemsByName: function allItemsByName_D$Collection$_S_A(/*DOM|Collection*/host,/*str*/name)
+		//----------------------------------
+		// Given a DOM specifier --e.g myLayer.textFrames.everyItem()-- or
+		// a Collection --e.g myDoc.pageItems--, returns the array of items
+		// whose name is the string `name`.
+		// [REM] In general, the native DOM method `myCollection.itemByName(name)`
+		// does not return a plural specifier (as you may expect) when multiple
+		// objects share the same name within the collection. This method solves
+		// that particular issue (although it cannot generate a plural specifier.)
+		// Loop in the returned array to operate on the target elements.
+		// ---
+		// => DOM[] [OK]  |  [] [KO]  |  Error
+		{
+			return callee.µ.allItemsByKeyVal(host,'name',name);
+		}.copy('..'),
+		
+		allItemsByLabel: function allItemsByLabel_D$Collection$_S_A(/*DOM|Collection*/host,/*str*/label)
+		//----------------------------------
+		// Given a DOM specifier --e.g myLayer.textFrames.everyItem()-- or
+		// a Collection --e.g myDoc.pageItems--, returns the array of items
+		// whose label is the string `label`.
+		// ---
+		// => DOM[] [OK]  |  [] [KO]  |  Error
+		{
+			return callee.µ.allItemsByKeyVal(host,'label',label);
+		}.copy('..'),
+	})
