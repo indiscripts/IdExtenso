@@ -7,17 +7,19 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module
-		API:            fromLocaleStr() toLocaleStr() -> $$
-		                fromLabel() toLabel()         -> $$
-		                parentSpread() parentPage()   -> $$
+		API:            fromLocaleStr() toLocaleStr()      -> $$
+		                fromLabel() toLabel()              -> $$
+		                parentSpread() parentPage()        -> $$
+		                allItemsByKeyVal()
+		                allItemsByName() allItemsByLabel() -> $$
 		DOM-access:     YES [INDD]
 		Todo:           ---
 		Created:        150705 (YYMMDD)
-		Modified:       201213 (YYMMDD)
+		Modified:       210913 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Dom', 201213, ''))
+;eval(__(MODULE, $$, 'Dom', 210913, ''))
 
 	//==========================================================================
 	// NOTICE
@@ -64,6 +66,10 @@
 	of a project that involves DOM commands.
 
 	*/
+
+	// [ADD210912] allItemsByKeyVal ; allItemsByName ; allItemsByLabel
+	// ---
+	#include "Dom/$$.items.jsxinc"
 
 	// fromLocaleStr ; toLocaleStr
 	// ---
