@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Web
-		Desc:           Basic HTTP/1.x client and other WWW features.
+		Desc:           Basic HTTP client and other WWW features.
 		Path:           /etc/$$.Web.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
@@ -11,11 +11,11 @@
 		DOM-access:     YES (if https involved.)
 		Todo:           make `wantText` smart if not supplied ; timeout issues...
 		Created:        170403 (YYMMDD)
-		Modified:       210203 (YYMMDD)
+		Modified:       210922 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 210203, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 210922, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -44,6 +44,7 @@
 	         Relax the non-modalState condition in ID >= CS5 (7.0).
 	[210203] Rewritten `HttpSecure.Win` (safer and more compact) ;
 	         now addresses `wantText`.
+	[210922] Bypasses the issue resulting from empty status messages (HTTP2.)
 
 	*/
 
@@ -55,7 +56,7 @@
 	//---
 	#include 'Web/$$.Browser.jsxinc'
 
-	// Socket-based HTTP 1.x process.
+	// Socket-based HTTP 1.x process. Might be obsolete now (?)
 	// -> ~.HGET()
 	// ---
 	#include 'Web/$$.HttpSocket.jsxinc'
@@ -95,7 +96,7 @@
 		// updated. The new URL should be provided in the `Location` field
 		// included with the response.
 		// ---
-		// Example :
+		// Old example (http) :
 		// $$.Web('indiscripts.com/blog/public/IndiscriptsLogo.png')
 		// => {
 		//    status: "HTTP/1.0 200 OK",
@@ -113,6 +114,10 @@
 		//        }
 		//    data : "\x89PNG\r\n\x1A\n\0\0\0\ (...) 0IEND\xAEB",
 		//    }
+		// [CHG210922] Since the message status can be empty in HTTP/2
+		// (cf fetch.spec.whatwg.org/#concept-response-status-message)
+		// we create a fake `status` property to keep it consistent
+		// with existing programs.
 		// ---
 		// => { status, statusCode, headers, data, ?error }
 		{
@@ -192,8 +197,12 @@
 				// ---
 				if( 0 > code ) break;
 
-				// Status?
+				// Status (message.)
+				// [FIX210922] Can be empty in HTTP/2 (and that should no longer be a problem!),
+				// so we create an implicit non-empty status from `ret.statusCode`.
 				// ---
+				ret.status || (ret.status=callee.CODE2STATUS(ret.statusCode));
+
 				if( !ret.status )
 				{
 					ret.error = "Missing status";
@@ -308,6 +317,34 @@
 				delete r.error;
 				
 				return r;
+			},
+			
+			CODE2STATUS : function(/*int*/code)
+			//----------------------------------
+			// (Code-To-Status.) Interprets a HTPP status code into a basic message.
+			// [ADD210922] Returns a non-empty string for any code within 0..999.
+			// => str [OK]  |  '' [KO]
+			{
+				// [REF] fetch.spec.whatwg.org/#concept-status
+				// A null body status is a status that is 101, 204, 205, or 304.
+				// An ok status is a status in the range 200 to 299, inclusive.
+				// A redirect status is a status that is 301, 302, 303, 307, or 308.
+				// ---
+				
+				code |= 0;
+
+				if( 0 > code || 999 < code ) return '';
+				
+				if( 101==code || 204==code || 205==code || 304==code )
+					return __("HTTP/2.x %1 NULL BODY", code);
+
+				if( 301==code || 302==code || 303==code || 307==code || 308==code )
+					return __("HTTP/2.x %1 REDIRECT", code);
+
+				if( 200 <= code && code <= 299 )
+					return __("HTTP/2.x %1 OK", code);
+
+				return __("HTTP/2.x %1 UNKNOWN STATUS", code);
 			},
 		}),
 
