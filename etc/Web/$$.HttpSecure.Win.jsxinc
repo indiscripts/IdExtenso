@@ -87,6 +87,8 @@
 	- github.com/grefel/restix/blob/master/restix.jsx
 	- markohoven.com/2020/03/06/msxml2-serverxmlhttp-and-tls1-2/
 	- groups.google.com/g/microsoft.public.scripting.vbscript/c/gcRHn578td4?pli=1
+	
+	See also: https://github.com/indiscripts/IdExtenso/issues/4
 
 	*/
 
@@ -95,6 +97,9 @@
 	// (Http-Secure-Getter-Win.) Access the `target` via HTTPS and save the results
 	// in the object `resp`. This getter for Windows tries to access the target using
 	// the `XMLHTTP` object via VBScript.
+	// [REM210922] The `status` property (in the returned `resp` structure) can be empty
+	// even if the request was successfully addressed (HTTP2). The client code shouldn't
+	// reject such result.
 	// ---
 	// `resp`   :: Reference that will receive the results (reset by the caller.)
 	//             Structure: { status:str, statusCode:uint, data:str,
@@ -156,7 +161,7 @@
 		v = 0|parseInt(sa.getValue(k='statusCode'),10);
 		sa.setValue(k,'');
 		resp[k] = v;
-		
+
 		a = (sa.getValue(k='headers')||'').trim().split(RegExp.LINEs);
 		sa.setValue(k,'');
 		while( v=a.shift() )
@@ -181,16 +186,25 @@
 		// `responseText` -> "Unicode string" which "attempts to
 		// decode the response" assuming UTF-8 default encoding
 		// "but can decode any type of UCS-2 or UCS-4 encoding"
+		// [FIX210922] Added a fake user agent via `SetRequestHeader`
+		// fixing #issue004 ; cf stackoverflow.com/questions/42400945/
+		// wrong-http-code-returned-using-msxml2-serverxmlhttp-6-0
 		// ---
 		// => str  [VBS-Code]
 		{
-			// 'MSXML2.XMLHTTP' works fine in CS4-CC ;
-			// 'MSXML2.ServerXMLHTTP.6.0' might sometimes work better
-			// but causes problems in CS4.
+			// (?) 'MSXML2.XMLHTTP' seemed to work fine in CS4-CC...
+			// (?) 'MSXML2.ServerXMLHTTP.6.0' caused problems in CS4,
+			//      or led to ActiveX error in CC 2021...
+			// (?) 'MSXML2.XMLHTTP.6.0' is sometimes recommended instead.
+			// Selecting the right library is still a open question :-(
 			// ---
-			const XMLHTTP = 'MSXML2.XMLHTTP';
-			//const XMLHTTP = 'MSXML2.ServerXMLHTTP.6.0'   // [TRY210202]
-			
+			// `https` requests seem to take much more time in CS4
+			// for no identified reason so far...
+			// ---
+			//const XMLHTTP = 'MSXML2.XMLHTTP';            // ???
+			const XMLHTTP = 'MSXML2.ServerXMLHTTP.6.0'     // ???
+			//const XMLHTTP = 'MSXML2.XMLHTTP.6.0'         // ???
+
 			// In case `uri` would contain a <DQ> (the only char that
 			// requires caution here), we need to escape it as VBS would
 			// do: <DQ> => <DQ><DQ>
@@ -210,9 +224,12 @@
 			'---
 			On Error Resume Next
 			http.Open "GET", "%2", False
+			'--- Adding a fake user agent is safer.
+			http.SetRequestHeader "User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; rv:51.0) Gecko/20100101 Firefox/51.0"
 			http.Send
 			'---
 			If Err.Number = 0 Then
+				'--- StatusText can be empty in HTTP2!
 				args.SetValue "status", CStr(http.StatusText)
 				args.SetValue "statusCode", CStr(http.Status)
 				args.SetValue "headers", CStr(http.getAllResponseHeaders)
