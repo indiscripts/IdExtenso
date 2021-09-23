@@ -1,3 +1,6 @@
+##### [210922]
+   - Fixed [Issue #4](https://github.com/indiscripts/IdExtenso/issues/4) in the [$$.Web](/etc/Web.jsxlib) module.
+
 ##### [210913]
    - [Dom/items](/core/Dom/$$.items.jsxinc) solves the issue of retrieving items (from any `Collection` or plural specifier) having a specific property set to a specific value. It provides the general method `allItemsByKeyVal(host,key,value)`, then two useful methods based on it: `allItemsByName(host,name)` and `allItemsByLabel(host,label)`. Note that the native DOM command `myCollection.itemByName(someName)` _does not_ return a plural specifier (as you may expect), so it won't reach all items that share the incoming name within the collection. Use `$$.Dom.allItemsByName(myCollection,someName)` to get the whole array of target items. The methods support DOM specifiers as well, e.g `myLayer.textFrames.everyItem()`, etc.
 
