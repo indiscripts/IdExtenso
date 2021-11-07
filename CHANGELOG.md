@@ -1,3 +1,6 @@
+##### [211107]
+   - [SUI/mini](/core/SUI/$$.mini.jsxinc): Added an additional condition in `ScriptUI.setFocus()` so that one can forcibly exclude particular widgets from the “focus loop.” How? Just set the custom property `__cantFocus__` to a truthy value. When found, this flag is taken into account by `setFocus()` which then skips the widget as a possible target. Example: you have created a custom control (or factory) that technically supports the `active` property and could receive the focus, but you made it behave so that it does not respond to the `focus` event. In such case you want to inform `ScriptUI.setFocus` that it should ignore your component. This is now possible using `myComponent.__cantFocus__ = true`.
+
 ##### [210922]
    - Fixed [Issue #4](https://github.com/indiscripts/IdExtenso/issues/4) in the [$$.Web](/etc/Web.jsxlib) module.
 
