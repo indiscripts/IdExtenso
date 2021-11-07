@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       210729 (YYMMDD)
+		Modified:       211107 (YYMMDD)
 
 *******************************************************************************/
 
@@ -255,6 +255,7 @@
 	// [190124] ScriptUI.setFocus()
 	// [190308] Improved: new type of returned value.
 	// [210118] Improved: NoRetWin arg ; checks RE_EXCL_TYPES upstream.
+	// [211107] Added __cantFocus__ test.
 	//==========================================================================
 
 	ScriptUI.setFocus = function setFocus(/*Widget*/wg,/*bool*/NoRetWin,  w,t,re)
@@ -266,6 +267,7 @@
 	//   `wg` itself, or one of its children. The Window instance is
 	//   returned in case the focus has changed *but* no activable
 	//   control has been found in wg's scope.
+	// [ADD211107] Takes into account the custom property `__cantFocus__`.
 	// [ADD210118] If `NoRetWin` is set, return 0 in the latter case
 	// (instead of the Window instance.)
 	// [REM] In many circumstances the command `wg.active=true` doesn't
@@ -293,7 +295,7 @@
 		// [CHG210118] Refinement (taking RE_EXCL_TYPES into account.)
 		// ---
 		re = callee.RE_EXCL_TYPES;
-		wg.hasOwnProperty('active') && !re.test(wg.type)
+		wg.hasOwnProperty('active') && !wg.__cantFocus__ && !re.test(wg.type)
 		? ( wg.active = true )
 		: ( wg = callee.ACTIVE_CHILD(wg,re)||w );
 
@@ -315,7 +317,7 @@
 			for( n=a.length||0, i=-1 ; ++i < n ; )
 			{
 				c = a[i];
-				if( (!c.enabled) || (!c.visible) || reExclTypes.test(c.type) ) continue;
+				if( (!c.enabled) || (!c.visible) || c.__cantFocus__ || reExclTypes.test(c.type) ) continue;
 				if( c.hasOwnProperty('active') ){ c.active = true; return c; }
 				if( c=callee(c,reExclTypes) ) return c;
 			}
