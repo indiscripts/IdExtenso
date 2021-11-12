@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180429 (YYMMDD)
-		Modified:       210820 (YYMMDD)
+		Modified:       211112 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 210820, 'format'))
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 211112, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -344,14 +344,14 @@
 			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli) : '';
 		},
 
-		parse : function parse_S_õ_oa_A(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}*/map,  sp,jn,xLast,a,r,z,i,x,d)
+		parse : function parse_S_õ_oaf_A(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}|fct*/map,  sp,jn,xLast,a,r,z,i,x,d)
 		//----------------------------------
 		// Parses a formatted sequence of positive integers and/or ranges
 		// into an ordered array of positive numbers. The incoming sequence
 		// doesn't need to have ordered elements (e.g "17, 5, 11-13"). Also,
 		// elided ranges like "200-10" are interpreted "200-210".
-		// If supplied, `map` (array or object) will translate each
-		// resulting number `x` into its match `map[x]`.
+		// If supplied, `map` (array, object, or function) will translate each
+		// resulting number `x` into its match `map[x]` -- or `map(x)`.
 		// [REM] Warning: for security reasons this routine doesn't support
 		// ranges having more than 65,535 elements, although it still allows
 		// the resulting array to have a higher length. In such event, the
@@ -380,7 +380,11 @@
 			('string' == typeof(sp=options.separator) && sp.length) || (sp = ',');
 			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
 			
-			map===Object(map) || (map=0);
+			// [CHG211112] Supports `map` as a function.
+			// ---
+			'function' == typeof map
+			|| ( map===Object(map) && (callee.MAPF.Q=map, map=callee.MAPF) )
+			|| ( map=callee.IDEN );
 
 			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
 
@@ -388,20 +392,28 @@
 			for( r=[], xLast=-1/0, z=0, i=-1 ; ++i < a.length ; )
 			{
 				x = U32(a[i]);                                   // `<Hi><Lo>` -> uint32
-				x > xLast && ( xLast=x, (r[z++]=map?map[xLast]:xLast) );
+				x > xLast && ( xLast=x, r[z++]=map(xLast) );
 				if( !(d=a['_'+x]) ) continue;
-				for( x+=d ; xLast < x ; ++xLast, (r[z++]=map?map[xLast]:xLast) );
+				for( x+=d ; xLast < x ; ++xLast, r[z++]=map(xLast) );
 			}
 
+			callee.MAPF.Q && delete callee.MAPF.Q; // Free up reference.
 			return r;
-		},
+		}
+		.setup
+		({
+			MAPF: function(/*uint*/x){ return callee.Q[x] },
+			IDEN: function(/*uint*/x){ return x },
+		}),
 
-		normalize : function normalize_S_õ_S(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,a,r,z,i,x,x0,x1,t)
+		normalize : function normalize_S_õ_oaf_S(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}|fct*/map,  sp,jn,a,r,z,i,x,x0,x1,t)
 		//----------------------------------
 		// Similar to `parse`, this method optimizes the incoming sequence
 		// and returns a new sequence properly ordered and free of duplicates
 		// or overlaps. This is quite equivalent, although faster, than
 		// `µ.format(µ.parse(seq))`
+		// If supplied, `map` (array, object, or function) will translate each
+		// resulting number `x` into its match `map[x]` -- or `map(x)`.
 		// --------------------------------------------------------------------
 		// <options>   Set of parsing/formatting options:
 		// .separator  (str) String used for separating elements. Default: ','.
@@ -424,6 +436,13 @@
 			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
 			if( !a.length ) return '';
 
+			// [CHG211112] Supports `map` as a function.
+			// ---
+			'function' == typeof map
+			|| ( map===Object(map) && (callee.MAPF.Q=map, map=callee.MAPF) )
+			|| ( map=callee.IDEN );
+
+
 			const U32 = callee.µ['~'].UI32;
 			x1 = (x0=U32(a[0])) + (0|a['_'+x0]);  // [x0=x1] | [x0..x1]
 
@@ -438,13 +457,19 @@
 				// x0 <= x1 << x <= t
 				// ---
 				
-				r[z++] = x0 < x1 ? ( x0 + jn + x1 ) : x0;
+				r[z++] = x0 < x1 ? ( map(x0) + jn + map(x1) ) : map(x0);
 				x0 = x; x1 = t;
 			}
-			r[z++] = x0 < x1 ? ( x0 + jn + x1 ) : x0;
+			r[z++] = x0 < x1 ? ( map(x0) + jn + map(x1) ) : map(x0);
 
+			callee.MAPF.Q && delete callee.MAPF.Q; // Free up reference.
 			return r.join(sp);
-		},
+		}
+		.setup
+		({
+			MAPF: function(/*uint*/x){ return callee.Q[x] },
+			IDEN: function(/*uint*/x){ return x },
+		}),
 
 		count : function count_S_õ_I(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,  sp,jn,xLast,a,z,i,x,d)
 		//----------------------------------
