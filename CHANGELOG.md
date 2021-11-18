@@ -1,3 +1,6 @@
+##### [211118]
+   - [**Unicode**](/etc/$$.Unicode.jsxlib). Updated Unicode blocks (`~.UBLK`); added category mapping (`~.CATG`) for future methods.
+
 ##### [211112]
    - [**PageRange**](/etc/$$.PageRange.jsxlib). The methods `parse` and `normalize` now support the `map` argument as a function too. For example,
      `$$.PageRange.parse("15, 10-12, 18", null, function(x){ return x.toString() })`   
