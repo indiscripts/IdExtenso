@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       210519 (YYMMDD)
+		Modified:       211118 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 210519, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 211118, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -518,7 +518,7 @@
 			(a=F.RET).SIZE = 0;
 			
 			// [FIX210519] Needed to support empty imput. In that case,
-			// skip the replace routine (would kill CS4.)
+			// skip the replace routine (would kill CS4 otherwise.)
 			// ---
 			if( s.length )
 			{
