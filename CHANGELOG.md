@@ -1,5 +1,6 @@
 ##### [211118]
    - [**Unicode**](/etc/$$.Unicode.jsxlib). Updated Unicode blocks (`~.UBLK`); added category mapping (`~.CATG`) for future methods.
+   - [**Collator**](/etc/$$.Collator.jsxlib). Full update based on Unicode “allkeys” 14.0.0. (New data automatically generated from [**MetaCollator**](/etc/$$.MetaCollator.jsxlib).)
 
 ##### [211112]
    - [**PageRange**](/etc/$$.PageRange.jsxlib). The methods `parse` and `normalize` now support the `map` argument as a function too. For example,
