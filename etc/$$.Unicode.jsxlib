@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module.
-		API:            getParentBlock()
+		API:            getParentBlock() getRange()
 		DOM-access:     ---
-		Todo:           everything!
+		Todo:           Management of categories (Work-in-progress)
 		Created:        170428 (YYMMDD)
-		Modified:       200525 (YYMMDD)
+		Modified:       211118 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Unicode', 200525, 'toString'))
+;eval(__(MODULE, $$, 'Unicode', 211118, 'toString'))
 
 	[PRIVATE]
 	
@@ -26,6 +26,11 @@
 		#include 'Unicode/$$.UBLK.jsxres'
 		],
 		
+		CATG:
+		{
+		#include 'Unicode/$$.CATG.jsxres'
+		},
+
 		AGLM:
 		{
 		#include 'Unicode/$$.AGLM.jsxres'
@@ -84,7 +89,7 @@
 			return p ? false : ( GET_ARR ? (-1===GET_ARR ? r : r.concat()) : r[2] );
 		},
 		
-		getRange: function getRange_S_P$false$(/*str*/blockName,/*bool=0*/VOLATILE,  BK,q,i,r)
+		getRange: function getRange_S_b_P$false$(/*str*/blockName,/*bool=0*/VOLATILE,  BK,q,i,r)
 		//----------------------------------
 		// Return the range associated to this block name, or false if it doesn't exist.
 		// By default a new array is created, set VOLATILE to a truthy value to get the
