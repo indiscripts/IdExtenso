@@ -1,3 +1,6 @@
+##### [211130]
+   - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Found a logical bug in `RegExp.fromCodeRanges` (related to surrogate pairs.) Fixed!
+
 ##### [211129]
    - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Fixed and improved the static method `RegExp.fromCodeRanges(codeRanges,OUT_MODE)`. The special escape sequence `\-` is now used for the hyphen (U+002D), instead of `\u002D` which is not properly handled in ExtendScript's RegExp classes. In addition, `fromCodeRanges` supports a new option for its 2nd argument `OUT_MODE`: set it to `-1` to get a more compact range pattern. Only special characters are then escaped, using the `• -> \•` scheme.
 
