@@ -1,3 +1,6 @@
+##### [211129]
+   - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Fixed and improved the static method `RegExp.fromCodeRanges(codeRanges,OUT_MODE)`. The special escape sequence `\-` is now used for the hyphen (U+002D), instead of `\u002D` which is not properly handled in ExtendScript's RegExp classes. In addition, `fromCodeRanges` supports a new option for its 2nd argument `OUT_MODE`: set it to `-1` to get a more compact range pattern. Only special characters are then escaped, using the `• -> \•` scheme.
+
 ##### [211118]
    - [**Unicode**](/etc/$$.Unicode.jsxlib). Updated Unicode blocks (`~.UBLK`); added category mapping (`~.CATG`) for future methods.
    - [**Collator**](/etc/$$.Collator.jsxlib). Full update based on Unicode “allkeys” 14.0.0. (New data automatically generated from [**MetaCollator**](/etc/$$.MetaCollator.jsxlib).)
@@ -17,7 +20,7 @@
    - [Dom/items](/core/Dom/$$.items.jsxinc) solves the issue of retrieving items (from any `Collection` or plural specifier) having a specific property set to a specific value. It provides the general method `allItemsByKeyVal(host,key,value)`, then two useful methods based on it: `allItemsByName(host,name)` and `allItemsByLabel(host,label)`. Note that the native DOM command `myCollection.itemByName(someName)` _does not_ return a plural specifier (as you may expect), so it won't reach all items that share the incoming name within the collection. Use `$$.Dom.allItemsByName(myCollection,someName)` to get the whole array of target items. The methods support DOM specifiers as well, e.g `myLayer.textFrames.everyItem()`, etc.
 
 ##### [210902]
-   - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): added the `'x2'` option as 2nd argument of `getString()`, which then produces paths of the form `<parent>\x02<parent>\x02...\<node>`. Useful if both brackets and slash characters may appear in node names.
+   - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): added the `'x2'` option as 2nd argument of `getString()`, which then produces paths of the form `<parent>\x02<parent>\x02...<node>`. Useful if both brackets and slash characters may appear in node names.
 
 ## 2.10901
 
