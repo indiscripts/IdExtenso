@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       211129 (YYMMDD)
+		Modified:       211130 (YYMMDD)
 
 *******************************************************************************/
 
@@ -668,7 +668,7 @@
 	// RegExp.fromCodeRanges()  [static]
 	//==========================================================================
 
-	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*-1|0|+1*/OUT_MODE,  a,r,i,t,n,nb,x,y,X,Y)
+	RegExp.fromCodeRanges = function fromCodeRanges(/*(u24|[u24,u24]|hex|`hex..hex`|[hex,hex])[]*/codeRanges,/*-1|0|+1*/OUT_MODE,  a,r,i,t,n,nb,x,y,X,Y,yFull)
 	//----------------------------------
 	// [UPD211129] Given an array of code ranges, create a RegExp pattern
 	// that captures the corresponding characters. Every codepoint can be
@@ -702,6 +702,7 @@
 	// [REM211129] This function does neither optimize ranges nor remove
 	// duplicated elements. It's the reponsibility of the client code
 	// to sort or optimize codeRanges in order to get a minimal pattern.
+	// For highly optimized regexes, go to the `$$.Uniset` class.
 	// ---
 	// E.g
 	//    fromCodeRanges("41..7F")
@@ -802,6 +803,9 @@
 
 			// ---
 			// Dealing with complex range based on two surrogate pairs.
+			// [REM] This routine does not compact ranges, that is,
+			// patterns like "\uD800[\uDC0D-\uDC26]|\uD800[\uDC28-\uDC3A]"
+			// aren't reduced to "\uD800[\uDC0D-\uDC26\uDC28-\uDC3A]"
 			// ---
 
 			// Normalize Y.
@@ -815,10 +819,13 @@
 			( X.hi < Y.hi && 0xDC00 < X.lo )
 			&& ( (r.ext += '|' + UH(X.hi) + UH(X.lo, 0xDFFF, 1)), ++X.hi, X.lo=0xDC00 );
 			
-			( (t=0xDFFF > Y.lo) || X.hi < Y.hi )
-			&& ( (r.ext += '|' + UH(X.hi, -t+Y.hi, 1) + UH(0xDC00, 0xDFFF, 1)), X.hi=Y.hi );
+			yFull = 0xDFFF == Y.lo;                         // Whether Y entirely consumes the LOW range (0xDC00..0xDFFF)
 
-			t && (r.ext += '|' + UH(X.hi) + UH(X.lo, Y.lo, 1));
+			( X.hi < Y.hi || yFull )
+			// [FIX211130] If yFull is FALSE, then X.hi < Y.hi, so (Y.hi-1) is OK. Hence the bound Y.hi-!yFull
+			&& ( (r.ext += '|' + UH(X.hi, Y.hi-!yFull, 1) + UH(0xDC00, 0xDFFF, 1)), X.hi=Y.hi );
+
+			yFull || (r.ext += '|' + UH(X.hi) + UH(X.lo, Y.lo, 1));
 		}
 		
 		(t=r.bmp) && (1 < nb) && (t='['+t+']');       // [CHG211129] Class only if nb > 1.
