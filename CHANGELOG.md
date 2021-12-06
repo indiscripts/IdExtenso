@@ -1,3 +1,6 @@
+##### [211206]
+   - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): fixed the _“wg is undefined”_ error in `setValue` (!)
+
 ##### [211130]
    - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): Found a logical bug in `RegExp.fromCodeRanges` (related to surrogate pairs.) Fixed!
 
