@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       210903 (YYMMDD)
+		Modified:       211206 (YYMMDD)
 
 *******************************************************************************/
 
@@ -752,11 +752,11 @@
 				// Update listbox.
 				// ---
 				this.µ_change = 1;
-				HID = !ScriptUI.isHidden(wg);
+				HID = !ScriptUI.isHidden(wg=this.getControl()); // [FIX211206]
 				REA = HID && (this.active||wg.active);
 				HID && this.hide();
 				// ---
-				(wg=this.getControl()).removeAll();
+				wg.removeAll();
 				for( i=-1 ; ++i < n ; wg.add('item',q[i]) );
 				this.µ_length = 1;
 				this.length = n;
