@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       211206 (YYMMDD)
+		Modified:       211207 (YYMMDD)
 
 *******************************************************************************/
 
@@ -28,6 +28,12 @@
 	       ◼  (U+25FC)   The item or branch is fully selected.
 	       ◻  (U+25FB)   The item or branch is fully unselected.
 	       ⬓  (U+2B13)   The branch is partially selected.
+	
+	[ADD211207] In addition, some *terminal* nodes can be declared
+	'locked' and have then a special state:
+
+	       ⏺ (U+23FA)   This item is locked, meaning that its
+	                     state cannot be unchecked.
 
 	      +----------------------+
 	      ¦ +==================+ ¦
@@ -37,7 +43,7 @@
 	      ¦ |-----◻ ItemAA1----| ¦
 	      ¦ |-----◼ ItemAA2----| ¦
 	      ¦ |-◼ BranchB--------| ¦
-	      ¦ |---◼ ItemB1-------| ¦
+	      ¦ |---⏺ ItemB1---<---|-¦----  locked node
 	      ¦ |---◼ ItemB2-------| ¦
 	      ¦ +==================+ ¦
 	      +----------------------+
@@ -66,6 +72,15 @@
 	      etc                   // Subbranches can be declared at any level
 
 	[REM] The `+` or `-` sequences MUST be followed by a space.
+	[ADD211206] Use `#` instead of `+` to specify a LOCKED node.
+
+	Important: Locked items cannot have children, they must be terminal nodes
+	in the tree. Also, do not declare branches entirely formed of locked items.
+	The point of using locked items is to visually inform the user that some
+	elements are required in a branch *beside* other items that s/he can select
+	or deselect. Hence the current implementation does not support behaviors
+	that would imply a "locked branch."
+
 
 	API
 	=======================================================================
@@ -102,7 +117,7 @@
 	                Reset the checklist with new items/states and return
 	                this.getValue().
 	                `nv` :: str[] | seq
-	                Array of branches and nodes with +/- prefixes, or
+	                Array of branches and nodes with +/-/# prefixes, or
 	                equivalent <X1>-separated strings (see getValue.)
 	-----------------------------------------------------------------------
 	getValue()      => seq
@@ -110,6 +125,7 @@
 	                "<state> <name><X1><state> <name><X1>..."
 	                <state> being either `-`, `--`, `---`, etc
 	                                  or `+`, `++`, `+++`, etc
+	                                  or `#`, `##`, `###`, etc
 	-----------------------------------------------------------------------
 	getString(CK,PM) => seq
 	                (a) If CK is falsy (default), return all branch and node
@@ -150,18 +166,21 @@
 	                as follows:
 	                index  => <itemName>  (without state prefix)
 	                $index => CHR(state) + CHR(depth) + CHR(1+parentIdx)
-	                where state :: 0|1|2  and  depth :: 0|1|2|3|...
+	                where state :: 0|1|2|3  and  depth :: 0|1|2|3|...
+	                [ADD211206] The state 3 represents a locked node.
 	=======================================================================
 	countNodes(ALL_NODES) => uint
-	                Return the number of *terminal nodes* presently checked.
-	                (If ALL_NODES is truthy, return the number of terminal
-	                nodes whatever their state.)
+	                Return the number of *terminal nodes* presently checked
+	                (including locked nodes.)
+	                If ALL_NODES is truthy, return the number of terminal
+	                nodes whatever their state.
 	-----------------------------------------------------------------------
 	checkAll()      => uint
 	                Check all terminal nodes and return countNodes().
 	-----------------------------------------------------------------------
-	uncheckAll()    => 0
-	                Uncheck all terminal nodes and return 0.
+	uncheckAll()    => uint
+	                Uncheck all terminal nodes (excl. locked nodes)
+	                and return the number of locked nodes.
 	-----------------------------------------------------------------------
 	matches(?req)   => uint[]
 	                Return the array of item indices that match `req`
@@ -189,9 +208,11 @@
 		//----------------------------------
 		// Options (ops):
 		// .value   (seq|str[])     Strings of the form `<state> <name>`, where <state> is
-		// (or .data)               either '-', '--', '---' etc or '+', '++', '+++' etc
-		//                          `-` means NOT-CHECKED ; `+` means CHECKED.
-		//                          E.g ["+ item1","-- subitem11","- item2","+ item3",...]
+		// (or .data)               either '-', '--', '---' etc or '+', '++', '+++' or
+		//                          '#', '##', '###' etc
+		//                          `-` means NOT-CHECKED ; `+` means CHECKED ;
+		//                          `#` means LOCKED [211206]
+		//                          E.g ["+ item1","-- subitem11","- item2","# item3",...]
 		//                          Can be supplied as a <X1> sequence as well.
 		//                          `data` is an alias of `value`
 		// .helpTip    (str='')     Help tip (`help` can be supplied as an alias.)
@@ -356,13 +377,14 @@
 				BASE: $$.inMac ? 20 : ($$.inCS ? 18 : 21),
 			}),
 
-			FRMT: function(/*any|str[]|seq*/tree,  r,n,re,dp,pi,i,s,m,v,t,x)
+			FRMT: function(/*any|str[]|seq*/tree,  r,n,re,dp,pi,i,s,m,c,v,t,x)
 			//----------------------------------
 			// Parse and reformat the array `tree` (whose elements have the
 			// form `<state> <name>`) into a rich array:
 			// - idx  => name
-			// - $idx => CHR(state::0|1|2) + CHR(depth::0|1|2|3...) + CHR(1+parentIdx)
+			// - $idx => CHR(state::0|1|2|3) + CHR(depth::0|1|2|3...) + CHR(1+parentIdx)
 			// `tree`can be supplied as a <X1>-separated sequence as well.
+			// [ADD211206] Added state value 3 (locked.)
 			// ---
 			// => new str[{}]
 			{
@@ -380,8 +402,9 @@
 					{
 						m = m[0];                           // m :: prefix + ' ' ; e.g "+++ ", "- ", etc
 						s = s.slice(t=m.length);
-						0 > (t=t-2) && (t=0);               // t :: 0|1|2...     ; current depth
-						v = +('+'==m.charAt(t));            // v :: 0|1          ; current state
+						0 > (t-=2) && (t=0);                // t :: 0|1|2...     ; current depth
+						c = m.charAt(t);
+						v = 1*('+'==c)||3*('#'==c);         // v :: 0|1|3        ; current state, incl. locked [211206]
 					}
 
 					m = i && ((t>dp) - (t<dp));             // -1 | 0 | +1
@@ -405,7 +428,7 @@
 					// ---
 					for
 					(
-						p=pi, x=v ;
+						p=pi, x=1&v ; // [CHG211206] positive v can be 1 or 3 (locked)
 						0 <= p && x != (t=r['$'+p]).charCodeAt(0) ;
 						(1==m||(x=2)), (r['$'+p]=CHR(x)+t.slice(1)), (p=t.charCodeAt(2)-1)
 					);
@@ -417,7 +440,7 @@
 			}
 			.setup
 			({
-				RE_STATE: /^[+-]+ /,
+				RE_STATE: /^[+#-]+ /,
 			}),
 
 			KBST: function __kbStrings__(/*char|undef*/c,  t,p,x)
@@ -466,11 +489,12 @@
 			UPDT: function __updateChecks__(  q,wg,HID,REA,CK,SP,a,i,t,k)
 			//----------------------------------
 			// Refresh the CheckList w/ respect to current states.
+			// [CHG211206] Manage state value 3 (locked.)
 			// ---
 			// this :: Group[[CheckList]]
 			// => undef
 			{
-				q = this.getData();                              // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				q = this.getData();                              // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				wg = this.getControl();
 
 				HID = !ScriptUI.isHidden(wg);
@@ -493,53 +517,71 @@
 			}
 			.setup
 			({
-				CHKS: ['\u25FB ','\u25FC ', '\u2B13 '], // old (not Mac compliant): ['\u2B1C ','\u2B1B ', '\u2B13 '],
+				CHKS: ['\u25FB ','\u25FC ', '\u2B13 ', '\u23FA '], // [ADD211206] LOCKED state.
 				SPCE: '   ', // Indent by 3 spaces
 			}),
 
-			TOGL: function __toggle__(/*uint*/idx,/*bool=0*/UPD,  q,n,sdp,ns,lv,i,t,x,tt)
+			TOGL: function __toggle__(/*uint*/idx,/*bool=0*/UPD,  q,n,sdp,cc,ns,lv,lk,i,t,x,tt)
 			//----------------------------------
-			// Toggle the state of a node or branch at index idx, then
-			// update its dependencies accordingly. (Toggling a partially
-			// checked branch will get it fully checked.)
+			// Toggle the state of a node or branch at index idx (if possible)
+			// then update its dependencies accordingly:
+			// - Toggling a partially checked branch will get it fully checked;
+			// - Toggling a fully checked branch will get it either fully unchecked
+			//   (if no locked nodes inside it) or partially checked (if locked nodes
+			//    are present, only the free nodes are unchecked.)
+			// - Locked nodes cannot be unchecked.
 			// By default, data are just updated internally (without visible
 			// effect.) Send a truthy `UPD` arg to force refresh.
+			// [CHG211206] Manage LOCKED nodes.
 			// ---
 			// this :: Group[[CheckList]]
-			// => undef
+			// => 1 [OK-CHANGED]  |  0 [NOOP]
 			{
-				q = this.getData();                         // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				q = this.getData();                                   // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				n = q.length;
-				idx >>>= 0;                                 // Item index.
+				idx >>>= 0;                                           // Item index.
 
-				sdp = q['$'+idx];                           // sdp :: CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
-				ns = 1==sdp.charCodeAt(0) ? '\0' : '\x01';  //  ns :: <X0>|<X1>  ; new state at index `idx`
-				q['$'+idx] = ns + sdp.slice(1);
+				sdp = q['$'+idx];                                     // sdp :: CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				cc = sdp.charCodeAt(0);
+				if( 3===cc ) return 0;                                // Locked -> NOOP.
+
+				ns = 1==cc ? '\0' : '\x01';                           // ns :: <X0>|<X1>  ; new state at index `idx` (unless locked children present.)
 
 				// Children.
 				// ---
 				for
 				(
-					lv=1+sdp.charCodeAt(1), i=idx ;
+					lk=0, lv=1+sdp.charCodeAt(1), i=idx ;
 					++i < n && lv <= (t=q['$'+i]).charCodeAt(1) ;
-					q['$'+i] = ns + t.slice(1)
+					// [CHG211206] Preserve locked nodes
+					3==t.charCodeAt(0) ? ++lk : (q['$'+i] = ns + t.slice(1))
 				);
-				
-				// Parents.
+
+				lk && 0===ns.charCodeAt(0) && (ns='\x02');            // Some locked child AND ns==='\0' => ns := <X2>
+				q['$'+idx] = ns + sdp.slice(1);                       // Rewrite the target element at idx.
+
+				// Parent chain.
 				// ---
-				for( ; idx=sdp.charCodeAt(2) ; q['$'+idx] = (ns=x) + sdp.slice(1) )
+				const CHR = String.fromCharCode;
+				while( idx=sdp.charCodeAt(2) )                        // Go up.
 				{
-					sdp = q['$'+(--idx)];
+					sdp = q['$'+(--idx)];                             // Parent branch data.
+					lv = 1+sdp.charCodeAt(1);                         // Max level for children (used for looping.)
 					for
-					(
-						lv=1+sdp.charCodeAt(1), i=idx, x=ns ;
-						'\x02'!==x && ++i < n && lv <= (tt=(t=q['$'+i]).charCodeAt(1)) ;
-						tt > lv || x===t.charAt(0) || (x='\x02')
+					(                                                 // Recalculate state by scanning children:
+						i=idx, x=ns.charCodeAt(0);                    // x :: 0|1|2 ; status of the elem we come from.
+						2!==x && ++i < n && lv <= (tt=(t=q['$'+i]).charCodeAt(1));
+						tt > lv || x===(t=t.charCodeAt(0)) || (x&t)   // x :: 0|1  vs. t.cc :: 0|1|2|3
+						|| (x=2)                                      // Mismatch -> x := 2
 					);
-					if( x==sdp.charAt(0) ) break;
+
+					if( x===sdp.charCodeAt(0) ) break;
+
+					q['$'+idx] = (ns=CHR(x)) + sdp.slice(1);
 				}
 
 				UPD && this.__updateChecks__();
+				return 1;
 			},
 
 		})
@@ -616,10 +658,10 @@
 						this.selection=null; // [REM] This fires an extra 'change' event :-(
 						delete this.µ_change;
 						
-						me.__toggle__(idx=item.index, 1);
-						
-						ev.itemIndex = idx;
-						ScriptUI.dispatch(me,'vchanged',ev);
+						// [CHG211207] No need to fire any event if cannot toggle.
+						me.__toggle__(idx=item.index, 1)
+						&& ( ev.itemIndex=idx, ScriptUI.dispatch(me,'vchanged',ev) );
+
 						break;
 
 					case 'mousedown':
@@ -710,11 +752,13 @@
 			GETI: function getItemAt(/*uint*/idx,  t){ return idx === idx >>> 0 && x < (t=this.getItems()).length && t[idx] },
 			NTFY: function notify(/*?uint|true|false*/idx){ ScriptUI.dispatch(this,'vchanged',{itemIndex:idx}) },
 
-			GETV: function getValue(  q,r,n,i,t)
+			GETV: function getValue(  q,r,n,i,t,cc)
 			//----------------------------------
 			// Return the full item/state sequence in the form
 			// "<state> <name><X1><state> <name><X1>..."
-			// <state> being either `-`, `--`, `---`, etc or `+`, `++`, `+++`, etc
+			// <state> being either `-`, `--`, `---`, etc
+			// or `+`, `++`, `+++`, etc, or `#`, `##`, `###`, etc
+			// [ADD211206] Support of state value 3 (locked.)
 			// ---
 			// this :: Group[[CheckList]]
 			// => seq  aka <X1>-separated string
@@ -724,7 +768,7 @@
 				(
 					r=[], n=q.length, i=-1 ;
 					++i < n ;
-					(t=q['$'+i]), r[r.length]=Array(2+t.charCodeAt(1)).join(t.charCodeAt(0)?'+':'-')+' '+q[i]
+					(t=q['$'+i]), r[r.length]=Array(2+t.charCodeAt(1)).join((cc=t.charCodeAt(0))?(3==cc?'#':'+'):'-')+' '+q[i]
 				);
 				return r.join('\x01');
 			},
@@ -734,9 +778,10 @@
 			// Reset the checklist with new items/states and return this.getValue().
 			// tree :: str[] | "str1<X1>str2<X1>..."
 			//          where each elem is in `<state> <name>` form
-			//          <state> being either `-`, `--`, `---`, etc or `+`, `++`, `+++`, etc
-			//          `+` means checked, `-` means non-checked
-			//          E.g [ "+ item1", "-- subitem11", "- item2", "+ item3", ...]
+			//          <state> being either `-`, `--`, `---`, etc
+			//           or `+`, `++`, `+++`, etc, or `#`, `##`, `###`, etc
+			//          `+` means checked, `-` means non-checked, `#` means locked
+			//          E.g [ "+ item1", "-- subitem11", "- item2", "# item3", ...]
 			// [REM] The internal getData() structure is updated accordingly.
 			// This method does not fire `vchanged`.
 			// ---
@@ -745,7 +790,7 @@
 			{
 				tree = ScriptUI.CheckListFactory.FRMT(tree);
 				
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				n = q.length = tree.length;
 				for( i = n ; i-- ; q[i]=tree[i], q['$'+i]=tree['$'+i] );
 
@@ -776,12 +821,13 @@
 			// Return the number of *terminal* nodes that are now checked.
 			// If ALL_NODES is truthy, return the number of terminal nodes
 			// whatever their state.
+			// [CHG211206] Support of state value 3 (locked.)
 			// ---
 			// this :: Group[[CheckList]]
 			// => uint
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
-				for( z=0, p=-1, i=q.length ; i-- ; (t=q['$'+i]), (i!=p && (ALL_NODES||1===t.charCodeAt(0)) && ++z), p=-1+t.charCodeAt(2) );
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for( z=0, p=-1, i=q.length ; i-- ; (t=q['$'+i]), (i!=p && (ALL_NODES||(1&t.charCodeAt(0))) && ++z), p=-1+t.charCodeAt(2) );
 				return z;
 			},
 
@@ -789,26 +835,51 @@
 			//----------------------------------
 			// Check all terminal nodes and return this.countNodes().
 			// [REM] This method does not fire `vchanged`.
+			// [CHG211206] Support of state value 3 (locked.)
 			// => uint
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
-				for( i=q.length ; i-- ; s=q['$'+i], q['$'+i]='\x01'+s.slice(1) );
-				this.__updateChecks__();
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for
+				(
+					i=q.length ; i-- ;
+					( 1&(s=q['$'+i]).charCodeAt(0) )
+					|| (q['$'+i]='\x01'+s.slice(1))
+				);
 
+				this.__updateChecks__();
 				return this.countNodes();
 			},
 			
-			UNAL: function uncheckAll(  q,i,s)
+			UNAL: function uncheckAll(  q,a,i,s,p)
 			//----------------------------------
-			// Uncheck all terminal nodes and return 0.
+			// Uncheck all non-locked terminal nodes and return
+			// this.countNodes(), that is, the number of locked
+			// nodes.
 			// [REM] This method does not fire `vchanged`.
-			// => 0
+			// [CHG211206] Support of state value 3 (locked.)
+			// => uint
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
-				for( i=q.length ; i-- ; s=q['$'+i], q['$'+i]='\x00'+s.slice(1) );
-				this.__updateChecks__();
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for
+				(
+					a=[], i=q.length ; i-- ;
+					3 == (s=q['$'+i]).charCodeAt(0)
+					? ( a[a.length]=i ) // Register indices of locked elems
+					: ( q['$'+i]='\x00'+s.slice(1) )
+				);
+				
+				// [ADD211207] Manage the parents of locked nodes.
+				// ---
+				for( i=a.length ; i-- ; )
+				for
+				(
+					s=q['$'+a[i]] ;
+					0 <= (p=-1+s.charCodeAt(2)) && 2 != (s=q['$'+p]).charCodeAt(0) ;
+					q['$'+p] = '\x02'+s.slice(1)
+				);
 
-				return 0;
+				this.__updateChecks__();
+				return this.countNodes();
 			},
 
 			GETS: function getString(/*bool=0*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,t,F,a,p,i)
@@ -830,7 +901,7 @@
 			// this :: Group[[CheckList]]
 			// => seq
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 
 				// [ADD210902] Support of <X2> separator.
 				// ---
@@ -852,7 +923,7 @@
 					(
 						p=-1, i=q.length ;
 						i-- ;
-						(t=q['$'+i]), (i!=p && 1===t.charCodeAt(0) && a[a.length]=F(q,i)), p=-1+t.charCodeAt(2)
+						(t=q['$'+i]), (i!=p && (1&t.charCodeAt(0)) && a[a.length]=F(q,i)), p=-1+t.charCodeAt(2)
 					);
 				}
 				else
