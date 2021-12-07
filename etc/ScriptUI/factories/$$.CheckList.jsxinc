@@ -521,7 +521,7 @@
 				SPCE: '   ', // Indent by 3 spaces
 			}),
 
-			TOGL: function __toggle__(/*uint*/idx,/*bool=0*/UPD,  q,n,sdp,cc,ns,lv,lk,i,t,x,tt)
+			TOGL: function __toggle__(/*uint*/idx,/*bool=0*/UPD,  q,n,sdp,cc,ns,lv,a,s,p,i,t,x,tt)
 			//----------------------------------
 			// Toggle the state of a node or branch at index idx (if possible)
 			// then update its dependencies accordingly:
@@ -551,13 +551,24 @@
 				// ---
 				for
 				(
-					lk=0, lv=1+sdp.charCodeAt(1), i=idx ;
+					a=[], lv=1+sdp.charCodeAt(1), i=idx ;
 					++i < n && lv <= (t=q['$'+i]).charCodeAt(1) ;
 					// [CHG211206] Preserve locked nodes
-					3==t.charCodeAt(0) ? ++lk : (q['$'+i] = ns + t.slice(1))
+					3==t.charCodeAt(0) ? (a[a.length]=i) : (q['$'+i] = ns + t.slice(1))
 				);
+				
+				if( 0===ns.charCodeAt(0) && (i=a.length) )            // ns==='\0' AND locked child(ren) => ns := <X2>
+				{
+					while( i-- )                                      // [FIX211207] Needed to update intermediate parents.
+					for
+					(
+						s=q['$'+a[i]] ;
+						idx != (p=-1+s.charCodeAt(2)) && 2 != (s=q['$'+p]).charCodeAt(0) ;
+						q['$'+p] = '\x02'+s.slice(1)
+					);
+					ns = '\x02';
+				}
 
-				lk && 0===ns.charCodeAt(0) && (ns='\x02');            // Some locked child AND ns==='\0' => ns := <X2>
 				q['$'+idx] = ns + sdp.slice(1);                       // Rewrite the target element at idx.
 
 				// Parent chain.
