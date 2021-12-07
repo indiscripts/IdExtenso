@@ -7,8 +7,9 @@
 $$.load();
 
 // =============================================================================
-// TestCheckList [210814]
+// TestCheckList [210814] [211207]
 // CheckListFactory tester, using a Popup component.
+// [CHG211207] The 'InDesign' item is made LOCKED using `###` prefix
 // =============================================================================
 try
 {
@@ -37,7 +38,7 @@ try
 				[{
 					data:              [
 					                     "+ Adobe",
-					                        "++ Design", "+++ InDesign", "+++ Illustrator", "--- Photoshop", "--- Acrobat",
+					                        "++ Design", "### InDesign", "+++ Illustrator", "--- Photoshop", "--- Acrobat",
 					                        "-- Video",  "--- Premiere", "--- AfterEffects",
 					                        "-- Audio",  "--- Audition",
 					                     "+ Indiscripts", "++ IndexMatic", "++ IndyFont", "++ BookBarcode", "++ HurryCover", "++ Wordalizer", "++ Claquos",
