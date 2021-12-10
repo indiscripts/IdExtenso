@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           Testing toSource & escape in clinical cases ; perf tests.
 		Created:        170305 (YYMMDD)
-		Modified:       211130 (YYMMDD)
+		Modified:       211210 (YYMMDD)
 
 *******************************************************************************/
 
@@ -604,8 +604,10 @@
 	// that `RegExp('^' + r + '$').test(s) === true`. In other
 	// words, `r` fully describes `s` with no regex effect.
 	// This is the 'primary contract' of this function.
+	// [FIX211210] The empty string wasn't supported. Fixed!
 	// ---
-	// E.g    escape("abc")       => "abc"
+	// E.g    escape("")          => ""
+	//        escape("abc")       => "abc"
 	//        escape("a.b?")      => "a\\.b\\?"
 	//        escape("^[a-b](c)") => "\\^\\[a-b\\]\\(c\\)"
 	// ---
@@ -630,6 +632,10 @@
 	//               primary contract.
 	// => str
 	{
+		// [FIX211210] Checkpoint (`\xNAN` would be returned otherwise!)
+		// ---
+		if( !s.length ) return '';
+
 		if( !(intent|=0) )
 			return s.replace(RegExp.RESC, '\\$&');
 		
@@ -660,7 +666,7 @@
 			k = "\\x" + k.charCodeAt(0).toString(16).toUpperCase();
 			s = k + s.substr(1);
 		}
-		
+
 		return s;
 	};
 
