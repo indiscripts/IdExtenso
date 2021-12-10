@@ -1,3 +1,6 @@
+##### [211210]
+   - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): `RegExp.escape()` wasn't supporting the empty string! Fixed.
+
 ##### [211207]
    - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): Added a new state for _locked_ nodes. This change has no consequence on existing scripts. You can now declare a checked item as locked using the prefix `#` instead of `+` (this mechanism is only available for terminal nodes, do not attempt to _lock_ an entire branch.) A locked item cannot be unchecked, so it visually informs the user that the corresponding element will be automatically present in the final selection. Locked items are represented using the prefix ⏺ (U+23FA) in the listbox. Here is a typical declaration in a `ScriptUI.builder` resource object:
    
