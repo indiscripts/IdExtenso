@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       211207 (YYMMDD)
+		Modified:       211212 (YYMMDD)
 
 *******************************************************************************/
 
@@ -127,11 +127,13 @@
 	                                  or `+`, `++`, `+++`, etc
 	                                  or `#`, `##`, `###`, etc
 	-----------------------------------------------------------------------
-	getString(CK,PM) => seq
-	                (a) If CK is falsy (default), return all branch and node
-	                    names as <X1> seq, e.g "A<X1>nodeA1<X1>nodeA2<X1>B..."
-	                (b) If CK is truthy, return only the *checked terminal*
-	                    nodes as a <X1> seq, e.g "nodeA3<X1>nodeB7<X1>..."
+	getString(?CK,?PM) => seq
+	                (a1) If CK *undefined*, return this.getValue() [CHG211212]
+	                (a2) If CK is false or 0, return all branch and node
+	                     names as <X1> seq, e.g "A<X1>nodeA1<X1>nodeA2<X1>B..."
+	                     (without state prefixes.)
+	                (b)  If CK is truthy, return only the *checked terminal*
+	                     nodes as a <X1> seq, e.g "nodeA3<X1>nodeB7<X1>..."
 	                If PM::'brackets'|'slashed' is supplied in case (a) or (b),
 	                format each element of the sequence in full path mode:
 	                'brackets' -> "[parent] [parent] ... <nodeOrParent>"
@@ -140,8 +142,6 @@
 	                           ending in `xyz/` form if elem is a parent.
 	                'x2'       -> "parent\x02parent\x02...\x02<nodeOrParent>"
 	                           ending in `xyz\x02` form if elem is a parent.
-	                [REM] getString() is informational, it doesn't help
-	                rebuild the whole data/states. Use getValue() instead.
 	-----------------------------------------------------------------------
 	getControl()    => Listbox
 	                Return the inner listbox.
@@ -390,7 +390,6 @@
 			{
 				(tree && (tree instanceof Array))
 				|| (tree=String(tree||'').split('\x01'));
-
 				const CHR = String.fromCharCode;
 				r = Array(n=tree.length);
 				for( re=callee.RE_STATE, dp=0, pi=-1, i=-1 ; ++i < n ; r[i]=s )
@@ -440,7 +439,7 @@
 			}
 			.setup
 			({
-				RE_STATE: /^[+#-]+ /,
+				RE_STATE: /^[+\#-]+ /,
 			}),
 
 			KBST: function __kbStrings__(/*char|undef*/c,  t,p,x)
@@ -774,7 +773,7 @@
 			// this :: Group[[CheckList]]
 			// => seq  aka <X1>-separated string
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				for
 				(
 					r=[], n=q.length, i=-1 ;
@@ -800,7 +799,6 @@
 			// => seq  aka <X1>-separated string [see getValue.]
 			{
 				tree = ScriptUI.CheckListFactory.FRMT(tree);
-				
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				n = q.length = tree.length;
 				for( i = n ; i-- ; q[i]=tree[i], q['$'+i]=tree['$'+i] );
@@ -893,25 +891,36 @@
 				return this.countNodes();
 			},
 
-			GETS: function getString(/*bool=0*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,t,F,a,p,i)
+			GETS: function getString(/*undef|bool*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,t,F,a,p,i)
 			//----------------------------------
-			// (a) By default (CHECKED_NODE falsy), return all branch and
-			//     node names as a <X1> sequence, e.g
+			// [CHG211212] An important change has been applied to get
+			// this method consistent with ModalScript.SmartListItemGetter:
+			// (a1) If CHECKED_NODE is *undefined*, return this.getValue(),
+			//      disregarding the 2nd arg. The full item/state sequence
+			//      is then returned, preserving the expected behavior of
+			//      `getString()` in ModalScript.
+			//       -> See ModalScript/UserInterface['~']._DS_
+			// (a2) If CHECKED_NODE is *false* or 0, return all branch and
+			//      node names as a <X1> sequence, e.g
 			//     "branchA<X1>nodeA1<X1>nodeA2<X1>branchB..."
-			//     (If fullPathMode is supplied, see below.)
-			// (b) If CHECKED_NODE is truthy, return only the *checked terminal*
-			//     nodes as a <X1> sequence, e.g
-			//     "nodeA3<X1>nodeB7<X1>..."
+			//      (If fullPathMode is supplied, see below.)
+			// (b)  If CHECKED_NODE is truthy, return only the *checked terminal*
+			//      nodes as a <X1> sequence, e.g "nodeA3<X1>nodeB7<X1>..."
 			// ---
-			// If `fullPathMode` is either 'brackets', 'slashed', or 'x2', return
-			// the full path of each item using the form:
+			// Optionally, set `fullPathMode` to either 'brackets', 'slashed',
+			// or 'x2', to get the full path of each item formatted as follows:
 			// - `[parent] [parent] ... nodeName`       in 'brackets' mode
 			// - `parent/parent/.../nodeName`           in 'slashed' mode
 			// - `parent\x02parent\x02...\x02nodeName`  in 'x2' mode
+			// [REM] `fullPathMode` is case-insensitive.
 			// ---
 			// this :: Group[[CheckList]]
 			// => seq
 			{
+				// [CHG211212] Keep consistent with ModalScript behavior.
+				// ---
+				if( 'undefined' == typeof CHECKED_NODE ) return this.getValue();
+
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 
 				// [ADD210902] Support of <X2> separator.
@@ -1001,8 +1010,9 @@
 				if( !(n=wg.items.length) ) return [];
 				
 				// Checkpoint.
+				// [REM211212] '0' needed as 1st arg in getString().
 				// ---
-				a = this.getString().split(RegExp.X1); // Array of strings without check prefixes
+				a = this.getString(0).split(RegExp.X1); // Array of strings without check prefixes
 
 				if( a.length != n ) return [];    // Shouldn't happen
 
