@@ -1,3 +1,6 @@
+##### [211212]
+   - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): Modified the default behavior of `getString()` when **no argument** is supplied: it now returns the full state/item sequence, hence equivalent to `myCheckList.getValue()`. This change was required to keep this factory consistent with `ModalScript` semantics regarding the `SmartListItemGetter` option. See [ModalScript/UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). If you need to retrieve the items _without state prefixes_, use `myCheckList.getString(false)` (or `0`) instead of an undefined argument. The other options of `getString()` are unchanged.
+
 ##### [211210]
    - [Ext/regexp](/core/Ext/$$.regexp.jsxinc): `RegExp.escape()` wasn't supporting the empty string! Fixed.
 
