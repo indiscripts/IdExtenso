@@ -13,11 +13,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       190523 (YYMMDD)
+		Modified:       211226 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 190523, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 211226, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -148,6 +148,11 @@
 	backup stage. Use case: your script build & manages highly data-driven docs and
 	needs to keep various metadata attached to each of them. When the user re-opens
 	such a document, the settings should reflect the specific data attached to it.
+	
+	[CHG211226] $$.Settings now supports arbitrary Object as source or destination
+	host for OBJ-scoped keys. If you supply a non-DOM object `obj`, data are
+	read from (resp. written to) `obj.<SUID>`, where <SUID> represents the uid
+	string that identifies the settings.
 
 	7. APPLICATION-HOSTED KEYS (APP keys.) These are the most persistent keys:
 	InDesign will remember them even in later sessions (after quit/restart.)
@@ -261,8 +266,9 @@
 		// this :: ~
 		// => o[k]
 		{
+			if( callee.µ.DontClone ) return ( o[k]=v );
 			this.FDEL(o,k);
-			return ( o[k]=callee.µ.DontClone ? v : $.global[callee.µ.__root__].clone(v) );
+			return ( o[k] = $.global[callee.µ.__root__].clone(v) );
 		},
 
 	})
@@ -319,20 +325,29 @@
 	[PRIVATE]
 	
 	({
-		GOBJ : function(/*DOM*/osp,/*any*/defRet)
+		GOBJ : function(/*DOM|obj*/src,/*any*/defRet,  t)
 		//----------------------------------
-		// (Get-From-Obj.) Get (extract) keys from osp's SUID label.
-		// => new set [OK] | undefined [KO]
+		// (Get-From-Obj.) Get/extract keys from src's SUID label or key.
+		// [ADD211226] If src is a simple, non-DOM object, get data from
+		// src[this.SUID].
+		// ---
+		// => new set [OK] | defRet [KO]
 		{
-			return $.global[callee.µ.__root__].Dom.fromLabel(osp, this.SUID, defRet);
+			return 'function'==typeof(src.toSpecifier) ?
+				$.global[callee.µ.__root__].Dom.fromLabel(src, this.SUID, defRet) :
+				( (t=src[this.SUID]) ? $.global[callee.µ.__root__].JSON.eval(t) : defRet );
 		},
 
-		SOBJ : function(/*DOM*/osp,/*any{}*/o)
+		SOBJ : function(/*DOM*/dst,/*any{}*/o)
 		//----------------------------------
-		// (Set-to-Obj.) Set (insert) o keys into osp's SUID label.
+		// (Set-to-Obj.) Set/insert o keys into dst's SUID label or key.
+		// [ADD211226] If dst is a simple, non-DOM object, save the
+		// stringified keys in `dst[this.SUID]`.
 		// => str (json)
 		{
-			return $.global[callee.µ.__root__].Dom.toLabel(osp, this.SUID, o);
+			return 'function'==typeof(dst.toSpecifier) ?
+				$.global[callee.µ.__root__].Dom.toLabel(dst, this.SUID, o) :
+				( dst[this.SUID] = $.global[callee.µ.__root__].JSON.lave(o) );
 		},
 
 		GAPP : function(/*any*/defRet)
@@ -753,12 +768,13 @@
 			return I.KEYS.hasOwnProperty(k) ? I.KSCO(k) : 0;
 		},
 
-		activate : function activate_d_Õ(/*?DOM*/dom,  $$,I,s)
+		activate : function activate_dõ_Õ(/*?DOM|obj*/src,  $$,I,s)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
-		// If dom is a DOM object, use it as a source for any OBJ or HYB key.
-		// If dom is not provided or 'falsy,' OBJ keys will behave at default
-		// scope and HYB keys will behave at APP scope.
+		// If src is a DOM or non-DOM object, use it as a source for any OBJ or HYB key.
+		// If src is not provided or 'falsy,' OBJ keys will activate in default scope
+		// and HYB keys will activate in APP scope.
+		// [ADD211226] Supports non-DOM `src`.
 		// => keys-accessor
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -768,22 +784,23 @@
 				$$.error( __("Settings must be declared before activation."), callee );
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
+			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(src)));
 
-			I.ACRS(dom, false);
+			I.ACRS(src, false);
 			return I.KEYS;
 		},
 
-		reset : function reset_d$null$_Õ(/*?DOM|null*/dom,  $$,I,s)
+		reset : function reset_dõ$null$_Õ(/*?DOM|obj|null*/src,  $$,I,s)
 		//----------------------------------
 		// Reset each key to its default or stored value, based on its scope.
 		// ---
-		// If dom is a DOM object or is not provided (undefined), every OBJ,
+		// If src is a DOM or non-DOM object or is not provided (undefined), every OBJ,
 		// APP and HYB key is activated the usual way, while all other
 		// keys are reset to their default value.
 		// ---
-		// If dom===NULL, then all keys are reset to their default, including
+		// If src===NULL, then all keys are reset to their default, including
 		// OBJ, APP and HYB keys.
+		// [ADD211226] Supports non-DOM `src`.
 		// => keys-accessor
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -793,18 +810,19 @@
 				$$.error( __("Settings must be declared before calling reset."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
+			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(src)));
 
-			I.ACRS(dom, true);
+			I.ACRS(src, true);
 			return I.KEYS;
 		},
 
-		backup : function backup_d$null$_(/*?DOM|null*/dom,  $$,I,s)
+		backup : function backup_dõ$null$_(/*?DOM|obj|null*/dst,  $$,I,s)
 		//----------------------------------
 		// Backup the current values of label-stored keys.
-		// If dom is a DOM object, use it as a target for any I_OBJ or I_HYB key.
-		// If dom is undefined, backup I_HYB and I_APP keys in app.
-		// If dom is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// If dst is a DOM or non-DOM object, use it as a target for any I_OBJ or I_HYB key.
+		// If dst is undefined, backup I_HYB and I_APP keys in app.
+		// If dst is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// [ADD211226] Supports non-DOM `dst`.
 		// [CHG180605] Prevents undo.
 		// [CHG190206] JsxBlind safe.
 		// => undefined
@@ -816,12 +834,12 @@
 				$$.error( __("Settings must be declared before calling backup."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(dom)));
+			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(dst)));
 
 			// [CHG180605] Calling doScript/autoUndo prevents the backup stage from being undone.
 			// [CHG190206] JsxBlind safe.
 			// ---
-			callee.ARG = dom;
+			callee.ARG = dst;
 			app.doScript("I.BCKP(callee.ARG)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
 			delete callee.ARG;
 		},
