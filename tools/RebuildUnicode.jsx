@@ -11,7 +11,7 @@
 		DOM-access:     app
 		Todo:           ---
 		Created:        200228 (YYMMDD)
-		Modified:       200525 (YYMMDD)
+		Modified:       220114 (YYMMDD)
 
 *******************************************************************************/
 
@@ -29,8 +29,11 @@ $$.load();
 // ---
 try
 {
-	$$.yesNo("Update Unicode blocks?") && $$.MetaUnicode.updateBlocks();
-	$$.yesNo("Update Adobe Glyph List?") && $$.MetaUnicode.updateAGL();
+	const MU = $$.MetaUnicode;
+	$$.yesNo("Update Unicode blocks?") && MU.updateBlocks();
+	$$.yesNo("Update Unicode categories?") && MU.updateCategories();
+	$$.yesNo("Update Unicode scripts?") && MU.updateScripts();
+	$$.yesNo("Update Adobe Glyph List?") && MU.updateAGL();
 
 	$$.success("The Unicode resources have been successfully updated.");
 }
