@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module.
-		API:            getParentBlock() getRange()
+		API:            getParentBlock() getCategory() getScript() getRange()
 		DOM-access:     ---
-		Todo:           Management of categories (Work-in-progress)
+		Todo:           WIP: Do we need to expose and include $$.UniSet (?)
 		Created:        170428 (YYMMDD)
-		Modified:       211118 (YYMMDD)
+		Modified:       220114 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Unicode', 211118, 'toString'))
+;eval(__(MODULE, $$, 'Unicode', 211201, 'toString'))
 
 	[PRIVATE]
 	
@@ -29,6 +29,11 @@
 		CATG:
 		{
 		#include 'Unicode/$$.CATG.jsxres'
+		},
+
+		SCRI:
+		{
+		#include 'Unicode/$$.SCRI.jsxres'
 		},
 
 		AGLM:
@@ -89,6 +94,36 @@
 			return p ? false : ( GET_ARR ? (-1===GET_ARR ? r : r.concat()) : r[2] );
 		},
 		
+		getCategory: function getCategory_S_Õ$false$(/*str*/categoryCode)
+		//----------------------------------
+		// Return the volatile object { name:str, bmp:str, bmpEsc:false,
+		// ext:false|str[] } associated to `categoryCode`. Cf ~.CATG.
+		// Supported codes:
+		// - C | Cc | Cf | Cs | Co | Cn            ; Other
+		// - L | LC | Lu | Ll | Lt | Lm | Lo       ; Letter  (LC is an alias Lu|Ll|Lt)
+		// - M | Mn | Mc | Me                      ; Mark
+		// - N | Nd | Nl | No                      ; Number
+		// - P | Pc | Pd | Ps | Pe | Pi | Pf | Po  ; Punctuation
+		// - S | Sm | Sc | Sk | So                 ; Symbol
+		// - Z | Zs | Zl | Zp                      ; Separator
+		// ---
+		// => obj& [OK] | false [KO]
+		{
+			('string' == typeof categoryCode) || error(__("Invalid categoryCode argument (%1). Should be a string.", typeof categoryCode),callee.µ);
+			return callee.µ['~'].CATG[categoryCode] || false;
+		},
+
+		getScript: function getScript_S_Õ$false$(/*str*/scriptName)
+		//----------------------------------
+		// Return the volatile object { name:str, bmp:str, bmpEsc:false,
+		// ext:false|str[] } associated to `scriptName`. Cf ~.SCRI
+		// ---
+		// => obj& [OK] | false [KO]
+		{
+			('string' == typeof scriptName) || error(__("Invalid scriptName argument (%1). Should be a string.", typeof scriptName),callee.µ);
+			return callee.µ['~'].SCRI[scriptName] || false;
+		},
+		
 		getRange: function getRange_S_b_P$false$(/*str*/blockName,/*bool=0*/VOLATILE,  BK,q,i,r)
 		//----------------------------------
 		// Return the range associated to this block name, or false if it doesn't exist.
@@ -117,3 +152,4 @@
 		.setup({ Q:{} }),
 
 	})
+	
