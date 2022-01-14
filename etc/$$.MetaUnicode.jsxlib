@@ -3,21 +3,22 @@
 		Name:           MetaUnicode
 		Desc:           Auto-builds or updates Unicode resources.
 		Path:           /etc/$$.MetaUnicode.jsxlib
-		Require:        Meta, Web
+		Require:        Meta ; Web ; RegExp.fromCodeRanges
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            updateBlocks() updateAGL()
+		API:            updateBlocks() updateAGL() updateCategories()
+		                updateScripts()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170426 (YYMMDD)
-		Modified:       200525 (YYMMDD)
+		Modified:       220114 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Meta ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Meta')); exit(); }
 ;if( !$$.Web ){ alert(__("%1 requires the %2 module.",'MetaUnicode','Web')); exit(); }
-;$$.hasOwnProperty('MetaUnicode') || eval(__(MODULE, $$, 'MetaUnicode', 200525))
+;$$.hasOwnProperty('MetaUnicode') || eval(__(MODULE, $$, 'MetaUnicode', 220114))
 
 	//==========================================================================
 	// NOTICE
@@ -32,8 +33,11 @@
 
 	      /etc/Unicode/$$.AGLM.jsxres        ;  Adobe Glyph List (map)
 	      /etc/Unicode/$$.UBLK.jsxres        ;  Unicode Character Blocks (arr)
+	      /etc/Unicode/$$.CATG.jsxres        ;  Unicode General Categories
+	      /etc/Unicode/$$.SCRI.jsxres        ;  Unicode Scripts
 
 	Call `$$.MetaUnicode.updateBlocks()` and/or `$$.MetaUnicode.updateAGL()`
+	and/or `$$.MetaUnicode.updateCategories()` and/or `$$.MetaUnicode.updateScripts()`
 	
 	[REM] Include the Progress module to get visual feedback while processing.
 	
@@ -47,6 +51,16 @@
 		RE_BLK: /^([0-9A-F]{4,})\.\.([0-9A-F]{4,}); (.+)$/,
 		
 		RE_AGL: /^([A-Za-z0-9]+);([0-9A-F]{4})$/,
+		
+		RE_CTG1: /^# General_Category=(.+)$/,
+		RE_CTG2: /^([0-9A-F]{4,}(?:\.\.[0-9A-F]{4,})?) *; *([A-Z][a-z]) +# .+$/,           // -> 1:RANGE 2:CATG
+
+		// 00BA          ; Latin # Lo       MASCULINE ORDINAL INDICATOR
+		// 00C0..00D6    ; Latin # L&  [23] LATIN CAPITAL LETTER A WITH GRAVE..LATIN CAPITAL LETTER O WITH DIAERESIS
+		RE_SCRI: /^([0-9A-F]{4,}(?:\.\.[0-9A-F]{4,})?) *; *(\w+) +# *([A-Z][a-z&]) .+$/,   // -> 1:RANGE 2:SCRIPT 3:CATG
+
+		RE_ASTRAL: /^[0-9a-fA-F]{5,}/g,
+		RE_UESC:   /\\u00(?=(?:24|28|29|2A|2B|2D|2E|3F|5B|5C|5D|5E))/g,
 
 		OUTF: function(/*str*/res,/*IdEx*/$$,/*str*/name,/*str*/desc,/*str*/kind,/*yymmdd*/iniDate,/*?str*/msg,  path,s,ff)
 		//----------------------------------
@@ -76,6 +90,7 @@
 			if( !ff ) $$.error(__("Unable to write the %1 resource file.",name), callee);
 		},
 
+		SORT: function(a,b){ return parseInt(a,16)-parseInt(b,16) },  // input :: `hhhh+..hhhh+` | `hhhh+`
 	})
 
 	//==========================================================================
@@ -88,7 +103,7 @@
 		updateBlocks : function updateBlocks_(  $$,I,PB,url,path,o,a,i,m,t)
 		//----------------------------------
 		// [CHG200228] Create the resource /etc/Unicode/$$.UBLK.jsxres,
-		// from unicode.org.
+		// from <unicode.org/Public/UCD/latest/ucd/Blocks.txt>.
 		// => undef [OK]  |  ERROR [KO]
 		{
 			// Init.
@@ -159,8 +174,8 @@
 		updateAGL : function updateAGL_(  $$,I,PB,url,path,o,a,i,m,t)
 		//----------------------------------
 		// [CHG200228] Create the resource /etc/Unicode/$$.AGLM.jsxres,
-		// from github.com/adobe-type-tools/
-		// https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt
+		// from adobe-type-tools:
+		// raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/glyphlist.txt
 		// => undef [OK]  |  ERROR [KO]
 		{
 			// Init.
@@ -226,4 +241,334 @@
 				t
 			);
 		},
+
+		updateCategories: function updateCategories_(  $$,I,PB,p,kp,url,path,o,a,i,m,t,r,q,k,mk,name,bmp,ext)
+		//----------------------------------
+		// [ADD211118] Create the resource /etc/Unicode/$$.CATG.jsxres, from
+		// <unicode.org/Public/UCD/latest/ucd/extracted/DerivedGeneralCategory.txt>
+		// => undef [OK]  |  ERROR [KO]
+		{
+			// Init.
+			// ---
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			url = "http://www.unicode.org/Public/UCD/latest/ucd/extracted/DerivedGeneralCategory.txt";
+			path = "/etc/Unicode/$$.CATG.jsxres";
+
+			// Check.
+			// ---
+			if( $$.Env.inBinStream() )
+			{
+				$$.error("This function cannot be invoked from a binary stream.", callee);
+			}
+
+			// Get data from unicode.org.
+			// ---
+			PB && PB.message( __("Downloading data from %1...", url.trunc(30)) );
+			o = $$.Web.get(url,/*text*/1,/*timeout*/30,/*volatile*/1);
+			if( o.error )
+			{
+				$$.error(o.error, callee);
+			}
+
+			// Rewrite lines
+			// E.g:
+			// # General_Category=Unassigned
+			//
+			// 0380..0383    ; Cn #   [4] <reserved-0380>..<reserved-0383>
+			// 038B          ; Cn #       <reserved-038B>
+			//
+			// ...
+			//
+			// # General_Category=Uppercase_Letter
+			//
+			// 0041..005A    ; Lu #  [26] LATIN CAPITAL LETTER A..LATIN CAPITAL LETTER Z
+			// 00C0..00D6    ; Lu #  [23] LATIN CAPITAL LETTER A WITH GRAVE..LATIN CAPITAL LETTER O WITH DIAERESIS
+			// ---
+			const RE_HEAD = I.RE_CTG1;
+			const RE_LINE = I.RE_CTG2;
+			const RE_DOT2 = /\.\./g;
+			const BU = '\\u';
+			const MRG = callee.MERGE;
+			const PUSH = Array.prototype.push;
+
+			a = o.data.split(RegExp.LINEs);
+			
+			PB && ( kp=100/a.length );
+			for
+			(
+				r={}, name=false, i = -1 ;
+				++i < a.length ;
+				( PB && PB.hit(~~(i*kp),__("Parsing line %1...",i)) ),
+				( (m=(t=a[i].trim()).match(RE_HEAD)) && (name=m[1]) )
+				||
+				( name && (m=t.match(RE_LINE)) && ( t=m[1], k=m[2], (q=r[k]||(r[k]=[])).push(t), (q.name||(q.name=name)) ) )
+			);
+
+			// r :: { <code> => (`hhhh+..hhhh+`|`hhhh+`)[] } ; each array has a .name prop
+			
+			// Augment `r` from merged categories.
+			// ---
+			PB && PB.message(__("Merge general categories..."));
+			for( k in r )
+			{
+				if( !r.hasOwnProperty(k) ) continue;
+				if( !MRG.hasOwnProperty(k) ) continue;  // so keys added in r are skipped
+				
+				// E.g  k=='Lu' ; MRG[k]=='LC,L'
+				q = r[k];
+				for
+				(
+					t=MRG[k].split(',') ; mk=t.pop() ;
+					r.hasOwnProperty(mk)
+					? PUSH.apply(r[mk],q)
+					: (r[mk]=q.slice(0)).name=MRG['$'+mk]
+				);
+			}
+			
+			// Final array.
+			// ---
+			a.length = 0;
+			PB && ( p=0, kp=100/r.__count__);
+			for( k in r )
+			{
+				PB && PB.hit(~~(++p*kp), __("Formatting the final ranges - key: %1",k));
+				if( !r.hasOwnProperty(k) ) continue;
+				q = r[k];
+				name = q.name;
+
+				q.sort(I.SORT); // q :: (`hhhh+..hhhh+`|`hhhh+`)[]
+				for( i=q.length ; i-- && I.RE_ASTRAL.test(q[i]) ; );
+				bmp = 0 <= i ? BU.concat(q.slice(0,1+i).join(BU)).replace(RE_DOT2,'-'+BU) : '';
+				ext = 1+i < q.length ? "['"+q.slice(1+i).join("','")+"']" : false;
+				
+				// Escape regex symbols in bmp (REM: `/` is not escaped.)
+				// `\u0024` -> `\\x24`  ; $
+				// `\u0028` -> `\\x28`  ; (
+				// `\u0029` -> `\\x29`  ; )
+				// `\u002A` -> `\\x2A`  ; *
+				// `\u002B` -> `\\x2B`  ; +
+				// `\u002D` -> `\\x2D`  ; -
+				// `\u002E` -> `\\x2E`  ; .
+				// `\u003F` -> `\\x3F`  ; ?
+				// `\u005B` -> `\\x5B`  ; [
+				// `\u005C` -> `\\x5C`  ; \
+				// `\u005D` -> `\\x5D`  ; ]
+				// `\u005E` -> `\\x5E`  ; ^
+				// ---
+				bmp && (bmp=bmp.replace(I.RE_UESC,'\\\\x'));
+
+				a[a.length] = __("\t// %7%1\t'%2':%1\t{%1\t\tname: '%3',%1\t\tbmp: '%4',%1\t\tbmpEsc: %5,%1\t\text: %6,%1\t},%1"
+					, String.LF
+					, k
+					, name.split(' (')[0]
+					, bmp
+					, bmp ? (0 <= bmp.indexOf('\\\\x')) : false
+					, ext
+					, k + ' - ' + name
+					);
+			}
+			a.sort();
+
+			t = $$.Meta.topic
+			([
+				__("DATA - Retrieved from %1.", url)
+				,
+				__("       Last modif: %1.", o.headers['Last-Modified']||"<unknown>")
+				
+			]);
+
+			I.OUTF
+			(
+				a.join(String.LF),
+				$$,
+				'CATG',
+				"Unicode General Categories",
+				'map',
+				'200921',
+				t
+			);
+		}
+		.setup
+		({
+			MERGE:
+			{
+				// [REF] <unicode.org/reports/tr44/#General_Category_Values>
+				// ---
+				'Lu' : 'LC,L',  // Uppercase_Letter -> Cased_Letter, Letter
+				'Ll' : 'LC,L',  // Lowercase_Letter -> Cased_Letter, Letter
+				'Lt' : 'LC,L',  // Titlecase_Letter -> Cased_Letter, Letter
+				$LC: "Cased_Letter (Lu | Ll | Lt)",
+				'Lm' : 'L',     // Modifier_Letter -> Letter
+				'Lo' : 'L',     // Other_Letter -> Letter
+				$L: "Letter (Lu | Ll | Lt | Lm | Lo)",
+				// ---
+				'Mn' : 'M',     // Nonspacing_Mark -> Mark
+				'Mc' : 'M',     // Spacing_Mark    -> Mark
+				'Me' : 'M',     // Enclosing_Mark  -> Mark
+				$M: "Mark (Mn | Mc | Me)",
+				// ---
+				'Nd' : 'N',     // Decimal_Number -> Number
+				'Nl' : 'N',     // Letter_Number  -> Number
+				'No' : 'N',     // Other_Number   -> Number
+				$N: "Number (Nd | Nl | No)",
+				// ---
+				'Pc' : 'P',     // Connector_Punctuation -> Punctuation
+				'Pd' : 'P',     // Dash_Punctuation      -> Punctuation
+				'Ps' : 'P',     // Open_Punctuation      -> Punctuation
+				'Pe' : 'P',     // Close_Punctuation     -> Punctuation
+				'Pi' : 'P',     // Initial_Punctuation   -> Punctuation
+				'Pf' : 'P',     // Final_Punctuation     -> Punctuation
+				'Po' : 'P',     // Other_Punctuation     -> Punctuation
+				$P: "Punctuation (Pc | Pd | Ps | Pe | Pi | Pf | Po)",
+				// ---
+				'Sm' : 'S',     // Math_Symbol     -> Symbol
+				'Sc' : 'S',     // Currency_Symbol -> Symbol
+				'Sk' : 'S',     // Modifier_Symbol -> Symbol
+				'So' : 'S',     // Other_Symbol    -> Symbol
+				$S: "Symbol (Sm | Sc | Sk | So)",
+				// ---
+				'Zs' : 'Z',     // Space_Separator     -> Separator
+				'Zl' : 'Z',     // Line_Separator      -> Separator
+				'Zp' : 'Z',     // Paragraph_Separator -> Separator
+				$Z: "Separator (Zs | Zl | Zp)",
+				// ---
+				'Cc' : 'C',     // Control     -> Other
+				'Cf' : 'C',     // Format      -> Other
+				'Cs' : 'C',     // Surrogate   -> Other
+				'Co' : 'C',     // Private_Use -> Other
+				'Cn' : 'C',     // Unassigned  -> Other
+				$C: "Other (Cc | Cf | Cs | Co | Cn)",
+			},
+		}),
+
+		updateScripts: function updateScripts_(  $$,I,PB,p,kp,url,path,o,a,i,m,t,r,q,k,bmp,ext)
+		//----------------------------------
+		// [ADD211118] Create the resource /etc/Unicode/$$.SCRI.jsxres, from
+		// <https://unicode.org/Public/UCD/latest/ucd/Scripts.txt>
+		// => undef [OK]  |  ERROR [KO]
+		{
+			// Init.
+			// ---
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			'function' == typeof (PB=$$.Progress) || (PB=0);
+
+			url = "https://unicode.org/Public/UCD/latest/ucd/Scripts.txt";
+			path = "/etc/Unicode/$$.SCRI.jsxres";
+
+			// Check.
+			// ---
+			if( $$.Env.inBinStream() )
+			{
+				$$.error("This function cannot be invoked from a binary stream.", callee);
+			}
+
+			// Get data from unicode.org.
+			// ---
+			PB && PB.message( __("Downloading data from %1...", url.trunc(30)) );
+			o = $$.Web.get(url,/*text*/1,/*timeout*/30,/*volatile*/1);
+			if( o.error )
+			{
+				$$.error(o.error, callee);
+			}
+
+			// Rewrite lines
+			// E.g:
+			// 0000..001F    ; Common # Cc  [32] <control-0000>..<control-001F>
+			// 0020          ; Common # Zs       SPACE
+			// 0021..0023    ; Common # Po   [3] EXCLAMATION MARK..NUMBER SIGN
+			// 0024          ; Common # Sc       DOLLAR SIGN			//
+			// ...
+			//
+			// 0041..005A    ; Latin # L&  [26] LATIN CAPITAL LETTER A..LATIN CAPITAL LETTER Z
+			// 0061..007A    ; Latin # L&  [26] LATIN SMALL LETTER A..LATIN SMALL LETTER Z
+			// 00AA          ; Latin # Lo       FEMININE ORDINAL INDICATOR
+			// 00BA          ; Latin # Lo       MASCULINE ORDINAL INDICATOR
+			// 00C0..00D6    ; Latin # L&  [23] LATIN CAPITAL LETTER A WITH GRAVE..LATIN CAPITAL LETTER O WITH DIAERESIS
+			// 00D8..00F6    ; Latin # L&  [31] LATIN CAPITAL LETTER O WITH STROKE..LATIN SMALL LETTER O WITH DIAERESIS
+			// 00F8..01BA    ; Latin # L& [195] LATIN SMALL LETTER O WITH STROKE..LATIN SMALL LETTER EZH WITH TAIL
+			// ---
+
+			const RE_LINE = I.RE_SCRI;
+			const RE_DOT2 = /\.\./g;
+			const BU = '\\u';
+			const PUSH = Array.prototype.push;
+
+			a = o.data.split(RegExp.LINEs);
+			PB && ( kp=100/a.length );
+			for
+			(
+				r={}, name=false, i = -1 ;
+				++i < a.length ;
+				( PB && PB.hit(~~(i*kp),__("Parsing line %1...",i)) ),
+				( m=a[i].trim().match(RE_LINE) )
+				&& ( t=m[1], k=m[2], (q=r[k]||(r[k]=[])).push(t) )
+			);
+
+			// r :: { <script> => (`hhhh+..hhhh+`|`hhhh+`)[] }
+			
+			// Final array.
+			// ---
+			a.length = 0;
+			PB && ( p=0, kp=100/r.__count__);
+			for( k in r )
+			{
+				PB && PB.hit(~~(++p*kp), __("Formatting the final ranges - key: %1",k));
+				if( !r.hasOwnProperty(k) ) continue;
+				q = r[k];
+
+				q.sort(I.SORT); // q :: (`hhhh+..hhhh+`|`hhhh+`)[]
+				for( i=q.length ; i-- && I.RE_ASTRAL.test(q[i]) ; );
+				bmp = 0 <= i ? BU.concat(q.slice(0,1+i).join(BU)).replace(RE_DOT2,'-'+BU) : '';
+				ext = 1+i < q.length ? "['"+q.slice(1+i).join("','")+"']" : false;
+				
+				// Escape regex symbols in bmp (REM: `/` is not escaped.)
+				// `\u0024` -> `\\x24`  ; $
+				// `\u0028` -> `\\x28`  ; (
+				// `\u0029` -> `\\x29`  ; )
+				// `\u002A` -> `\\x2A`  ; *
+				// `\u002B` -> `\\x2B`  ; +
+				// `\u002D` -> `\\x2D`  ; -
+				// `\u002E` -> `\\x2E`  ; .
+				// `\u003F` -> `\\x3F`  ; ?
+				// `\u005B` -> `\\x5B`  ; [
+				// `\u005C` -> `\\x5C`  ; \
+				// `\u005D` -> `\\x5D`  ; ]
+				// `\u005E` -> `\\x5E`  ; ^
+				// ---
+				bmp && (bmp=bmp.replace(I.RE_UESC,'\\\\x'));
+
+				a[a.length] = __("\t// %2%1\t'%2':%1\t{%1\t\tbmp: '%3',%1\t\tbmpEsc: %4,%1\t\text: %5,%1\t},%1"
+					, String.LF
+					, k
+					, bmp
+					, bmp ? (0 <= bmp.indexOf('\\\\x')) : false
+					, ext
+					);
+			}
+			a.sort();
+
+			t = $$.Meta.topic
+			([
+				__("DATA - Retrieved from %1.", url)
+				,
+				__("       Last modif: %1.", o.headers['Last-Modified']||"<unknown>")
+				
+			]);
+
+			I.OUTF
+			(
+				a.join(String.LF),
+				$$,
+				'SCRI',
+				"Unicode Scripts",
+				'map',
+				'211201',
+				t
+			);
+		},
+
 	})
