@@ -1,0 +1,1378 @@
+/*******************************************************************************
+
+		Name:           Scope
+		Desc:           Manages a set of documents.
+		Path:           /etc/$$.Dom.Scope.jsxlib
+		Require:        $$.Dom
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module (within $$.Dom.)
+		API:            =select() onLoad() onUnload() onClosing() close() clear() init()
+		                isOpen() count() hasBook() bookName() hasText()
+		                hasVisible() hasGhost() isEmpty() isSingle() list()
+		                selCount() layerList() layerCount() styleList() styleCount()
+		                info() getAutoFolder()
+		DOM-access:     YES [READ-ONLY]
+		Todo:           ---
+		Created:        180416 (YYMMDD)
+		Modified:       220114 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220114, 'select'))
+
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+		In InDesign CS4, documents hadn't the `id` property and doc specifiers were only
+		based on `name`. As a result, two *distinct* documents having the same name also
+		had the same specifier. So it could happen that
+
+		  doc1.toSpecifier() === doc2.toSpecifier()
+		
+		while
+		
+		  doc1 !== doc2
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+		The purpose of this module is to encapsulate a set of documents in a single
+		entity, referred to as the SELECTED SCOPE. Documents that can enter the
+		scope are selected among available InDesign documents and/or book chapters
+		(in case a Book is loaded.)
+		
+		The client script will 'target' the desired documents (usually determined
+		by the user through a UI dialog) using
+		
+		    $$.Dom.Scope.select( docNames )
+		
+		where `docNames` is an array of Document names presently available in
+		InDesign (including possible Book chapters which are not necessarily
+		opened yet.)
+
+		When `select()` is called, all target documents are inspected. If needed,
+		book chapters are temporarily opened in hidden mode ("ghost documents")
+		so every document of the SELECTED SCOPE can be processed from your script
+		until you invoke
+		
+		    $$.Dom.Scope.close()
+		
+		which restores the original state of the application (and closes ghost
+		documents.)
+		
+		This module provides informational methods focusing on document identifiers,
+		pages, styles, and layers. It is useful when your script has to consistently
+		inspect or transform a set of documents selected by the user.
+		
+		In more advanced projects you can include it as a base component and extend
+		its API using the following scheme:
+		
+		     ;$$.hasOwnProperty('MyExtendedScope')
+		     || ($.global.µ=$$.MyExtendedScope=$$.Dom.Scope)
+		
+		     [PRIVATE]
+		     // Your additional private methods
+		     
+		     [PUBLIC]
+		     // Your additional public methods
+
+	*/
+
+	//==========================================================================
+	// PRIVATE DATA AND TOOLS
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		YALT : $$.Yalt && $$.Yalt.addPackage
+		(
+		#include 'Dom.Scope/$$.yalt.jsxres'
+		),
+
+		WARN_STR: '\u26A0 ',            // Warn string prefix
+
+		IDXK:     '_',                  // Index/ID/various prefix
+		NAMK:     '@',                  // Name Key prefix ; cannot be '_'
+		URIK:     'µ',                  // URI  Key prefix ; cannot be '_'
+		//SPEK:   '§',                  // Specifier Key prefix  [not used yet]
+		RE_INDD:  /\.ind[db]$/i,
+
+		ERRS:
+		{
+			'ShouldBeOpen'  : "The chapter %1 is in conflict with a document that should be open.\r\rPlease restart InDesign before processing, or consider to rebuild the book.",
+			'ShouldBeClosed': "The chapter %1 is in conflict with a document that should be closed.\r\rPlease restart InDesign before processing, or consider to rebuild the book.",
+			'WaitResync'    : "The chapter %1 is out of sync.",
+			'MissingFile'   : "The chapter %1 is missing.",
+			'LockedChapter' : "The chapter %1 is being used by someone else and therefore locked.\r\rPlease unlock the document before processing.",
+			'UnknownStatus' : "Unable to determine the status of the chapter %1.\r\rThis issue may result from using a corrupted file. Consider to open the document manually, or to rebuild the book.",
+		},
+
+		SPEC: function(/*DOM[]*/a,/*char*/sep,  s,n,i)
+		//----------------------------------
+		// (Spec-List.) Return the list <spec1><sep><spec2><sep>...<specN>
+		// => str
+		{
+			for( s='', n=a.length, i=-1 ; ++i < n ; s += sep + a[i].toSpecifier() );
+			return s && s.slice(1);
+		},
+
+		PACK: function(/*DocumentProps*/pp,/*_<index>*/ik,/*<at>name*/nk,/*str|false*/uri,/*0|1*/actv,  flags,t)
+		//----------------------------------
+		// (Pack-Doc-Properties.) Return essential document properties in compact form.
+		// ---
+		// Pack format: CHR(1+<index>) + CHR(1+<flag>) + <name><X2><uri><X2><label><X2><id><X2><acLayer><X2><selSpecs>
+		// where <index>   :: Index of doc in app.documents.
+		//       <flag>    :: uint(9bits) [TX][IB][RO][RC][CV][SV][MD][VS][AC]
+		//                    [IB] InBook    (bit8)  [ADD210110]
+		//                    [TX] HasText   (bit7)  [ADD210112] Whether doc.stories.length > 0
+		//                    [RO] Read-only (bit6)
+		//                    [RC] Recovered (bit5)
+		//                    [CV] Converted (bit4)
+		//                    [SV] Saved     (bit3)
+		//                    [MD] Modified  (bit2)
+		//                    [VS] Visible   (bit1)
+		//                    [AC] Active    (bit0)
+		//       <name>    :: Name of doc.
+		//       <uri>     :: URI of doc, if available ; "" otherwise.
+		//       <label>   :: Label of doc ; "" otherwise.
+		//       <id>      :: ID of doc (>CS4) ; "" otherwise.
+		//       <acLayer> :: Active layer name if available ; "" otherwise.
+		//       <selSpecs>:: <X1>-separated sequence of selection specifiers, or "".
+		// ---
+		// => str
+		{
+			const CHR = String.fromCharCode;
+			
+			// The InBook bit (8) is always initialized to 0.
+			// ---
+			flags = actv
+				| (pp.visible    << 1 )
+				| (pp.modified   << 2 )
+				| (pp.saved      << 3 )
+				| (pp.converted  << 4 )
+				| (pp.recovered  << 5 )
+				| (pp.readOnly   << 6 )
+				| (pp.hasText    << 7 );
+			
+			return CHR(1+parseInt(ik.slice(1),10)) +                  // 1+index  -> 1st char
+				   CHR(1+flags) +                                     // 1+flags  -> 2nd char
+				[
+				nk.slice(1),                                          // 0 name
+				uri||'',                                              // 1 uri
+				pp.label||'',                                         // 2 label
+				pp.id||'',                                            // 3 id (>CS4)
+				(t=pp.activeLayer||0).isValid?t.properties.name:'',   // 4 activeLayer.name
+				(t=pp.selection||0).length?this.SPEC(t,'\x01'):'',    // 5 selSpecs
+				].join('\x02');
+		},
+		
+		UNPK: function(/*str*/pk,/*?obj&*/o, t)
+		//----------------------------------
+		// (Unpack.) Volatile object representing that pack string.
+		// If `o` is supplied, use it as destination object.
+		// ---
+		// => { index:uint, active:0|1, visible:0|1, modified:0|1, saved:0|1, converted:0|1,
+		//      recovered:0|1, readOnly:0|1, hasText:0|1, hasNoText:0|1, inBook:0|1, name:str,
+		//      uri:str, label:str, id:uint|0, activeLayerName:str, selSpecs:<spec1><X1><spec2>...|'' }&
+		{
+			o || (o=callee.TMP);
+			
+			// Index.
+			// ---
+			o.index = -1 + pk.charCodeAt(0);
+			
+			// Flags.
+			// ---
+			t = -1 + pk.charCodeAt(1);
+			o.active     = 1&t;
+			o.visible    = 1&(t>>1);
+			o.modified   = 1&(t>>2)
+			o.saved      = 1&(t>>3)
+			o.converted  = 1&(t>>4)
+			o.recovered  = 1&(t>>5)
+			o.readOnly   = 1&(t>>6);
+			o.hasText    = 1&(t>>7);  // [ADD210112]
+			o.inBook     = 1&(t>>8);  // [ADD210110]
+			
+			o.hasNoText  = 1 - o.hasText;
+			
+			// Other props.
+			// ---
+			t = pk.slice(2).split(RegExp.X2);
+			o.name  = t[0]||'';
+			o.uri   = t[1]||'';
+			o.label = t[2]||'';
+			o.id    = +(t[3]||0);
+			o.activeLayerName = t[4]||'';
+			o.selSpecs = t[5]||'';
+
+			return o;
+		}
+		.setup({ TMP:{} }),
+
+	})
+
+	//==========================================================================
+	// DOCS & BOOK BRANCHES
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		DOCS: function(/*Document[]&|{}|str*/req,  a,q,z,gz,pp,px,uri,k,t,x,ik,nk)
+		//----------------------------------
+		// (Regular-Documents-Cache.)
+		// If `req` is an object it may provide any key-value condition using key(s)
+		// of the unpack object, e.g { readOnly:0, active:1, etc } Then ALL conditions
+		// must be satisfied to get the item included in the returned array.
+		// In addition, `req` can provide a special __PREFIX__ property (object or
+		// string). If req.__PREFIX__ is an object, then it has the form
+		// `{ def:str, <boolKey1>:str, <boolKey2>:str... }` where each `boolKey`
+		// belongs to the unpack object and indicates which prefix to use in case
+		// the associated key value is truthy. For example,
+		// { def:"-- ", active:"++ " } will prepend `-- ` or `++ ` to the returned
+		// strings, depending on the `active` flag.
+		// Shortcut: `req` can also be supplied as a string (unconditional prefix.)
+		// ---
+		// DATA Structure (_<index> refers to index in app.documents.)
+		// _<index> => <packString>  ; cf ~.PACK
+		// <at>name => _<index1>_<index2>...
+		// µ<uri>   => _<index>
+		// ---
+		// SIZE :: uint        (number of available documents)
+		// GHSZ :: uint        (number of 'ghost' documents)
+		// ACTV :: uint|false  (index of the active doc)
+		// ---
+		// this :: ~
+		// => DATA& [LOAD]  |  str[] [REQUEST]
+		{
+			q = callee.DATA;
+			const ACTV = q.ACTV;
+			const IK = this.IDXK;
+			const NK = this.NAMK;
+			const UK = this.URIK;
+			
+			req||(req={});
+			if( !(req instanceof Array) )
+			{
+				a = [];                                                         // ret
+				pp = {};                                                        // unpacked data
+				px = 'string'==typeof req ? req : (req.__PREFIX__||'');         // str | any
+				const PFX = px===Object(px) && px;                              // false | { def:str, boolKey1:str, boolKey2:str... }
+				
+				for( ik in q )
+				{
+					if( (!q.hasOwnProperty(ik)) || IK != ik.charAt(0) ) continue;
+					
+					// pp :: { index:uint, name:str, active:0|1, visible:0|1, modified:0|1, etc }
+					// ---
+					this.UNPK(q[ik],pp);
+
+					t = pp.name;
+					for( k in req )if( pp.hasOwnProperty(k) && req[k]!==pp[k] ){ t=0; break; }
+					if( !t.length ) continue;
+					
+					// Make sure we have a unique name identifier.
+					// Use `name [index]` if necessary.
+					// ---
+					0 < (q[NK+t]||'').lastIndexOf(IK) && (t=__("%1 [%2]",t,pp.index));
+					
+					if( PFX )
+					{
+						px = PFX.def||'';
+						for( k in PFX )if( 'def'!=k && pp.hasOwnProperty(k) && pp[k] ){ px=PFX[k]; break; }
+					}
+					
+					a[a.length] = px + t;
+				}
+
+				return a.sort();
+			}
+			
+			for( a=req, z=q.SIZE||0, gz=q.GHSZ||0 ; t=a.pop() ; )
+			{
+				// Due to CS4/CS5 bug, we cannot check whether `t.isValid`
+				// as this can entirely change t itself in case of name collision!!
+				// ---
+				// if( !t.isValid ) continue;
+
+				pp = t.properties;
+				pp.hasText = +(0 < t.stories.length && 0 < t.stories.everyItem().characters.length);
+
+				// Keys.
+				// ---
+				ik = IK + (x=pp.index);                               // _<index> in app.documents
+				nk = NK + pp.name;                                    // <at><name>
+
+				// In case `app.documents` contain duplicated indices. (Happens in CS4/CS5.)
+				// ---
+				if( q.hasOwnProperty(ik) )
+				{
+					$.global[callee.µ.__root__].warn(__("%1 > Duplicated indices.",callee.µ));
+					continue;
+				}
+
+				// Document uri, or false. (`doc.fullName` is a File, if truthy.)
+				// ---
+				uri = (pp.saved && pp.fullName) || 0;
+				uri = uri.exists ? uri.absoluteURI : false;
+				
+				q[ik] = this.PACK(pp,ik,nk,uri,+(x===ACTV));
+				q[nk] = (q[nk]||'')+ik;
+				uri && (q[UK+uri]=ik);
+
+				pp.visible || (++gz);
+				++z;
+			}
+
+			return (q.SIZE=z), (q.GHSZ=gz), q;
+		}
+		.setup
+		({
+			DATA: { ACTV:false, SIZE:0, GHSZ:0 },
+		}),
+
+		BOOK: function(/*BookContent[]&|{}|str*/req,/*str*/bkName,  a,q,PROX,z,waitOp,err,t,pp,px,ik,ff,uk,nk)
+		//----------------------------------
+		// (Book-Documents-Cache.)
+		// this  :: ~
+		// `req` :: see ~.DOCS description.
+		// ---
+		// DATA Structure  (_<index> refers to index in BookContents.)
+		// _<index>   => ('_0'|'_1'|...|'_7')<name><X2><uri><X2><bcSpec>
+		//               --- STATUS CODE ---
+		// <at><name> => _<index1>_<index2>...
+		// µ<uri>     => _<index>
+		// SIZE :: uint (number of valid chapters)
+		// NAME :: str  (name of the book)
+		// ---
+		// => {} [LOAD]  |  str[] [REQUEST]
+		{
+			q = callee.DATA;
+			(PROX=callee.PROX).Q = this.DOCS.DATA;
+			
+			const IK = this.IDXK;
+			const UK = this.URIK;
+			const NK = this.NAMK;
+			const STA = callee.STA_IDX;
+			const HSX = callee.HIDDEN_SUFFIX;
+
+			req||(req={});
+			if( !(req instanceof Array) )
+			{
+				a = [];
+
+				pp = {};                                                        // chapter properties
+				px = 'string'==typeof req ? req : (req.__PREFIX__||'');         // str | any
+				const PFX = px===Object(px) && px;                              // false | { def:str, boolKey1:str, boolKey2:str... }
+
+				for( ik in q )
+				{
+					if( (!q.hasOwnProperty(ik)) || IK != ik.charAt(0) ) continue;
+					
+					// pp :: { status:uint, name:str, uri:str, bcSpec:str }
+					// ---
+					t = q[ik];                                                  // ('_0'|'_1'|...|'_7')<name><X2><uri><X2><bcSpec>
+					pp.status = +(t.charAt(1));                                 // 0|1|..|7
+					pp.hasError = pp.status > 1;
+					t = t.slice(2).split(RegExp.X2);                            // [name,uri,bcSpec]
+					pp.uri      = t[1];
+					pp.bcSpec   = t[2];
+					t = pp.name = t[0];
+
+					for( k in req )if( pp.hasOwnProperty(k) && req[k]!==pp[k] ){ t=0; break; }
+					if( !t.length ) continue;
+
+					// Make sure we have a unique name identifier.
+					// Use `name [index]` if necessary.
+					// ---
+					0 < (q[NK+t]||'').lastIndexOf(IK) && (t=__("%1 [%2]",t,ik.slice(1)));
+
+					if( PFX )
+					{
+						px = PFX.def||'';
+						for( k in PFX )if( 'def'!=k && pp.hasOwnProperty(k) && pp[k] ){ px=PFX[k]; break; }
+					}
+					
+					a[ik.slice(1)] = px + t + HSX;                              // Order by original indices in bookcontents.
+				}
+
+				for( t=a.length ; t-- ; a[t] || a.splice(t,1) );                // Remove empty items.
+				return a;
+			}
+
+			for( a=req, z=q.SIZE||0 ; t=a.pop() ; )
+			{
+				// if( !t.isValid ) continue;
+				pp = t.properties;
+
+				// In case `myBook.bookContents` has duplicated indices!
+				// ---
+				ik = IK + pp.index; // _<index> in bookContents
+				if( q.hasOwnProperty(ik) ) continue;
+
+				// Chapter file.
+				// ---
+				if( !((ff=pp.fullName)&&(ff instanceof File)) ) continue;
+
+				// In the weird event `uk` be already registered in that BOOK, skip it!
+				// ---
+				uk = UK + ff.absoluteURI;
+				if( q.hasOwnProperty(uk) ) continue;
+				
+				err = ff.exists ? '' : 'MissingFile';
+				waitOp = 0;
+
+				switch( +(pp.status||-1) )
+				{
+					case callee.BK_NORM:
+						// Document is said 'not open and unchanged.'
+						// OK <-> Closed document, hence unknown from PROX.
+						// KO <-> Probable name conflict
+						err || (!PROX(uk)) || (err='ShouldBeClosed');
+						err || (waitOp=1);
+						break;
+
+					case callee.BK_OPEN:
+						// Document is said to be presently 'open.'
+						// OK <-> PROX already has info about that doc.
+						// KO <-> Name conflict.
+						// ---
+						err || PROX(uk) || (err='ShouldBeOpen');
+						break;
+
+					case callee.BK_OUTD:
+						// Document is said 'modified after repagination.'
+						// KO <-> Doc presently closed but MUST be re-sync.
+						// ---
+						err || (err=PROX(uk) ? 'ShouldBeClosed' : 'WaitResync');
+						break;
+
+					case callee.BK_MISS:
+						// KO <-> Document is said 'missing because it has been moved, renamed, or deleted.'
+						// ---
+						err = 'MissingFile';
+						break;
+
+					case callee.BK_USED:
+						// KO <-> Document is said 'being used by someone else and therefore locked.'
+						// ---
+						err = 'LockedChapter';
+						break;
+					
+					default:
+						// KO <-> Unknown status or unable to access the status of that chapter.
+						// ---
+						err = 'UnknownStatus';
+				}
+
+				// [REM] In CS4, `BookContent` has no `name` property.
+				// ---
+				nk = NK + (pp.hasOwnProperty('name')?pp.name:ff.displayName);   // <at><name>
+
+				q[ik] = '_' + (waitOp||STA[err]||'0') + nk.slice(1) + '\x02' + uk.slice(1) + '\x02' + t.toSpecifier();
+				q[nk] = (q[nk]||'')+ik;
+				q[uk] = ik;
+
+				++z;
+			}
+
+			z && (q.NAME=bkName);
+			return (q.SIZE=z), q;
+		}
+		.setup
+		({
+			DATA: { NAME:false, SIZE:0 },
+
+			BK_NORM:  +BookContentStatus.NORMAL,                  // Not open and unchanged.
+			BK_OPEN:  +BookContentStatus.DOCUMENT_IS_OPEN,        // Now open.
+			BK_OUTD:  +BookContentStatus.DOCUMENT_OUT_OF_DATE,    // Modified after repagination.
+			BK_MISS:  +BookContentStatus.MISSING_DOCUMENT,        // Missing (moved, renamed, or deleted.)
+			BK_USED:  +BookContentStatus.DOCUMENT_IN_USE,         // Being used by someone else and therefore locked.
+			
+			HIDDEN_SUFFIX: '‌\u200C',                              // All book chapters have this invisible suffix added in output data.
+			
+			STA_IDX:
+			{
+				''              : '0',  // The chapter is already open (this is not an error.)
+				'WaitOpening'   : '1',  // The chapter expects opening (this is not an error.)
+				// ---
+				'ShouldBeOpen'  : '2',
+				'ShouldBeClosed': '3',
+				'WaitResync'    : '4',
+				// ---
+				'MissingFile'   : '5',
+				'LockedChapter' : '6',
+				'UnknownStatus' : '7',
+			},
+
+			SAVE_NO:      +SaveOptions.NO,
+			
+			PROX: function(/*µ<uri>*/uk,  ik,q,t,n)
+			//----------------------------------
+			// => 0 [NOT-IN-PROXY]  |  1 [IN-PROXY]
+			{
+				if( !(q=callee.Q).hasOwnProperty(uk) ) return 0;
+				ik = q[uk];
+				if( !q.hasOwnProperty(ik) ) return 0;       // Shouldn't happen.
+
+				
+				// If uk is in proxy (i.e ~.DOCS.DATA)
+				// set the InBook bit in the pack string.
+				// ---
+				t = q[ik];                                  // CHR(1+<index>) + CHR(1+<flag>) + etc
+				n = -1 + t.charCodeAt(1);                   // flag
+				n |= (1<<8);                                // Set bit 8.
+				q[ik] = t.charAt(0) + String.fromCharCode(1+n) + t.slice(2);
+
+				return 1;
+			}
+			.setup({ Q:0 }),
+		}),
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+
+	({
+
+		onLoad: function onLoad_()
+		//----------------------------------
+		// Initialize the scope.
+		// ---
+		// => undef
+		{
+			callee.µ.init();
+		},
+
+		onUnload: function onUnload_()
+		//----------------------------------
+		// Close and clear the scope.
+		// ---
+		// => undef
+		{
+			callee.µ.close();
+			callee.µ.clear();
+		},
+		
+		onClosing: function onClosing_()
+		//----------------------------------
+		// Virtual handler that can be redefined in module extension.
+		// ---
+		// => undef
+		{
+		},
+
+		close: function close_(  µ,$$,R,t)
+		//----------------------------------
+		// Close the scope, that is, unselect docs while keeping other internal data.
+		// Ghost documents are closed. This method is automatically called from
+		// `select()` (i.e before selecting a new set of docs) and from `onUnload`.
+		// ---
+		// => undef
+		{
+			µ = callee.µ;
+			$$ = $.global[µ.__root__]; // agnostic reference
+			
+			µ.select.OPEN && µ.onClosing();
+			µ.select.OPEN = 0;
+			
+			if( !(R=µ.select.REFS).__count__ ) return;
+			
+			if( R.length )                                            // Close ghost docs.
+			{
+				const SAVE_NO = +SaveOptions.NO;
+				while( t=R.pop() ) 'Document'==t.constructor.name && t.close(SAVE_NO);
+			}
+			
+			$$.kill(R);
+			$$.kill(µ.select.PGES);
+			$$.kill(µ.select.LYRS);
+			$$.kill(µ.select.PSTY);
+			$$.kill(µ.select.CSTY);
+		},
+		
+		isOpen: function isOpen_B()
+		//----------------------------------
+		// Whether select() has been called and returned a non empty set of refs.
+		// ---
+		// => 1 [OK]  |  0 [KO]
+		{
+			return +(0 < callee.µ.select.OPEN);
+		},
+		
+		clear: function clear_(  µ,q)
+		//----------------------------------
+		// Clear internal data (~.DOCS and ~.BOOK).
+		// ---
+		// => undef
+		{
+			µ = callee.µ;
+
+			q = µ['~'].DOCS.DATA;
+			$.global[µ.__root__].kill(q);
+			q.ACTV = false;
+			q.SIZE = 0;
+			q.GHSZ = 0;
+			
+			q = µ['~'].BOOK.DATA;
+			$.global[µ.__root__].kill(q);
+			q.NAME = false;
+			q.SIZE = 0;
+		},
+
+		init: function init_(  µ,$$,I,q,t,s)
+		//----------------------------------
+		// Clear and initialize internal data (~.DOCS and ~.BOOK).
+		// ---
+		// => undef
+		{
+			(µ=callee.µ).clear();
+			
+			$$ = $.global[µ.__root__];
+			(+$$.trace) && $$.trace(__("%1 > Initializing the scope (internal data)...",callee.µ));
+
+			// Load I.DOCS data.
+			// ---
+			$$.spin();
+			q = (I=µ['~']).DOCS.DATA;
+			q.ACTV = (t=app.properties.activeDocument) ? t.properties.index : false;
+			(t=app.documents).length && (t=t.everyItem()).isValid && I.DOCS(t.getElements());
+			
+			// Load I.BOOK data.
+			// ---
+			$$.spin();
+			1 == (t=app.books).length && (t=t[0]).isValid
+			&& (s=t.properties.name)
+			&& (t=t.bookContents).length && (t=t.everyItem()).isValid && I.BOOK(t.getElements(),s);
+
+			$$.spin();
+			(+$$.trace) && $$.trace(__("%1 > init() done.",callee.µ));
+
+		},
+		
+		count: function count_I(/*-1|0|1|2|3=0*/what,  zd,zb,I)
+		//----------------------------------
+		// Get the number of available documents.
+		// what ::  0 Count all available documents incl. book documents
+		//         -1 Count all book documents
+		//         +1 Count all available documents excl. book documents
+		//         +2 Count visible documents       excl. book documents
+		//         +3 Count hidden documents        excl. book documents
+		// => uint
+		{
+			what |= 0;
+			I = callee.µ['~'];
+
+			zd = 0 <= what && ( I.DOCS.DATA[3===what?'GHSZ':'SIZE'] - (2===what&&I.DOCS.DATA.GHSZ) );
+			zb = 0 >= what && I.BOOK.DATA.SIZE;
+
+			return zd + zb;
+		},
+		
+		hasBook: function hasBook_B()
+		//----------------------------------
+		// Whether the scope has book document(s).
+		// => 1 [OK]  |  0 [KO]
+		{
+			return +(0 < callee.µ.count(-1));
+		},
+		
+		bookName: function bookName_S(  t)
+		//----------------------------------
+		// Return the active book name, if any.
+		// => str [OK]  |  '' [KO]
+		{
+			return (t=callee.µ['~'].BOOK.DATA.NAME) ? t.replace(callee.RE_INDB,'') : '';
+		}
+		.setup
+		({
+			RE_INDB: /\.indb$/i,
+		}),
+		
+		hasText: function hasText_B()
+		//----------------------------------
+		// Whether the scope has a book (whatever the state of its chapters),
+		// or at least one available document with at least one story.
+		// [REM] hasBook() always implies hasText()
+		// => 1 [OK]  |  0 [KO]
+		{
+			if( callee.µ.isEmpty() ) return 0;
+			if( callee.µ.hasBook() ) return 1;
+			return +(0 < callee.µ['~'].DOCS({hasText:1}).length);
+		},
+
+		hasVisible: function hasVisible_B()
+		//----------------------------------
+		// Whether the scope has visible (=non-hidden) document(s).
+		// => 1 [OK]  |  0 [KO]
+		{
+			return +(0 < callee.µ.count(2));
+		},
+
+		hasGhost: function hasGhost_B()
+		//----------------------------------
+		// Whether the scope has 'ghost' (=hidden) document(s).
+		// => 1 [OK]  |  0 [KO]
+		{
+			return +(0 < callee.µ.count(3));
+		},
+
+		isEmpty: function isEmpty_B()
+		//----------------------------------
+		// Whether the scope is empty.
+		// => 1 [EMPTY]  |  0 [NON-EMPTY]
+		{
+			return +(0 == callee.µ.count() );
+		},
+		
+		isSingle: function isSingle_SB(  I,q,k)
+		//----------------------------------
+		// Whether the scope has a single document available.
+		// In such case, return its name.
+		// => str [SINGLE-DOC-NAME]  |  0 [NO]
+		{
+			if( 1 != callee.µ.count() ) return 0;
+			
+			// Get the first (and single!) name.
+			// ---
+			I = callee.µ['~'];
+			q = I[callee.µ.count(-1) ? 'BOOK' : 'DOCS'];
+			const NK = I.NAMK;
+			const SF = q.hasOwnProperty('HIDDEN_SUFFIX') ? q.HIDDEN_SUFFIX : '';
+			q = q.DATA;
+			for( k in q )if( q.hasOwnProperty(k) && NK==k.charAt(0) ){ return k.slice(1) + SF };
+			
+			return 0; // Shouldn't happen
+		},
+		
+		list: function list_s_ASB(/*?'active'|'all'|'book'*/TREE_SEL,  µ,r,I,t,GH,BK,req)
+		//----------------------------------
+		// Get the full list, or tree list, of document names.
+		// If TREE_SEL is defined, the list is returned as a 'tree list', e.g
+		// ["- [Visible documents]","-- doc1", "-- doc2", "- [Book chapters]", "-- chap1", etc ]
+		// with some documents preselected ("++ myDocSelected") depending on TREE_SEL:
+		//   'active' <-> Preselect the active document (if any.)
+		//   'all'    <-> Preselect all visible documents.
+		//   'book'   <-> Preselect all book documents if any, active document otherwise.
+		// [REM] Tree list form is used in ScriptUI.CheckListFactory.
+		// [REM] - All book chapters have an invisible suffix character added to their name
+		//         as defined by ~.BOOK.HIDDEN_SUFFIX.
+		//       - Ambiguous names are discriminated by indices: `<name> [idx]`
+		//       - In tree list mode, empty or warned-document names are prefixed
+		//         with ~.WARN_STR
+		// ---
+		// => new str[] [OK-LIST]  |  str [SINGLE]  |  0 [EMPTY]
+		{
+			µ = callee.µ;
+
+			if( µ.isEmpty() ) return 0;
+			if( (t=µ.isSingle()).length ) return t;
+
+			r = [];
+			I = callee.µ['~'];
+			const WRN = I.WARN_STR;
+
+			if( TREE_SEL )
+			{
+				// intent :: -1 [BOOK]  |  0 [ACTIVE]  |  +1 [ALL-VISIBLE]
+				// ---
+				t = 'string'==typeof TREE_SEL? TREE_SEL.toLowerCase() : (0|t);
+				('book'==t && (t=-1)) || ('all'==t && (t=1));
+				
+				GH = µ.hasGhost();
+				BK = µ.hasBook();
+				BK || (0 > t&&(t=0));
+
+				const PTN = "- [%1]";
+
+				if( BK )
+				{
+					req = { };
+					req.__PREFIX__ =
+					{
+						def: -1==t ? '++ ' : '-- ',
+						hasError:'-- ' + WRN,
+					};
+
+					r[r.length] = __( PTN, µ.bookName() );
+					r.push.apply(r, I.BOOK(req));
+				}
+
+				if( µ.hasVisible() )
+				{
+					req = { visible:1 };
+					req.__PREFIX__ =
+					{
+						def:        0 >= t ? '-- ' : '++ ',
+						hasNoText:  '-- ' + WRN,
+						active:     0 > t  ? '-- ' : '++ ',
+					};
+					r[r.length] = __( PTN, GH ? __("Visible documents") : __("Open documents") );
+					r.push.apply(r, I.DOCS(req));
+				}
+
+				if( GH )
+				{
+					req = { visible:0 };
+					req.__PREFIX__ =
+					{
+						def:        '-- ',
+						hasNoText:  '-- ' + WRN,
+					};
+
+					r[r.length] = __( PTN, __("Hidden documents") );
+					r.push.apply(r, I.DOCS(req));
+				}
+
+			}
+			else
+			{
+				r.push.apply(r, I.BOOK());
+				r.push.apply(r, I.DOCS());
+			}
+
+			return r;
+		},
+		
+		select: function select_AS_I(/*str|str[]*/docNames,  $$,I,qB,qD,R,SMOR,z,o,i,k,q,bk,bkBased,t,s,idx,gh,a,b,c,spe,doc,smok,ord)
+		//----------------------------------
+		// Given an array of docNames (which may contain undesired duplicates with ` [index]` suffix),
+		// prepare the Scope module to work with them as a subset.
+		// ---
+		// => uint>0 [OK]  |  0 [KO]
+		{
+			$$ = $.global[callee.µ.__root__];
+			callee.UNIQ = '';
+
+			(docNames instanceof Array) || (docNames=[String(docNames||'')]);
+
+			(+$$.trace) && $$.trace(__("%1 > Entering scope selection with %2 document(s)...",callee.µ,docNames.length));
+			
+			I = callee.µ['~'];
+			const WRN = I.WARN_STR;                                   // '\u26A0 '
+			const SFX = I.BOOK.HIDDEN_SUFFIX;                         // ZWNJ
+			const NK = I.NAMK;                                        // <at>
+			const IK = I.IDXK;                                        // '_'
+			const UK = I.URIK;                                        // 'µ'
+			const RE_NMID = callee.RE_NME_IDX;
+			const CHR = String.fromCharCode;
+
+			qB = I.BOOK.DATA;
+			qD = I.DOCS.DATA;
+			
+			callee.µ.close();
+			R = callee.REFS;
+			for( bkBased=0, z=0, smok={}, o={}, i=-1 ; ++i < docNames.length ; )
+			{
+				k = docNames[i];
+
+				if( o.hasOwnProperty(NK+k) ) continue;                // duplicate
+				o[NK+k]=1;                                            // register (temporary key)
+
+				0 === k.indexOf(WRN) && (k=k.slice(WRN.length));      // In case warned docs are present in the input array.
+				
+				k = NK + k;                                           // k :: `<at><name>` | `<at><name> [idx]`  + possible hidden suffix
+				
+				bk = +(SFX == k.slice(-1));
+				q = bk
+				? ( (k=k.slice(0,-1)), qB )                           // BOOK branch :: _<index> => ('_0'|'_1'|...|'_7')<name><X2><uri><X2><bcSpec>
+				: qD;                                                 // DOCS branch :: _<index> => CHR(1+<index>) + CHR(1+<flag>) + <name><X2><uri><X2><label><X2><id><X2><acLayer><X2><selSpecs>
+
+				// Try to resolve `<at><name> [idx]` (ambiguous name)
+				// searching the key <at><name> => _<idx1>_<idx2>...
+				// ---
+				if( !q.hasOwnProperty(k) )
+				{
+					if( !(t=k.match(RE_NMID)) ) continue;             // Not matching `<at><name> [idx]`
+					k = t[1];                                         // `<at><name>`
+					if( !q.hasOwnProperty(k) ) continue;              // Not in q.
+					idx = IK+t[2];                                    // `_idx`
+					if( -1 == (q[k]+IK).indexOf(idx+IK) ) continue;   // Not found in `_<idx1>_<idx2>...`
+				}
+				else
+				{
+					idx = q[k];                                       // Should be `_idx` (single) because non-ambiguous
+					if( 0 != idx.lastIndexOf(IK) ) continue;          // Shouldn't happen.
+				}
+				
+				if( !q.hasOwnProperty(idx) ) continue;                // Unknown `_index` in q!
+				
+				t = q[idx];
+				if( bk )
+				{
+					ord = 'B' + CHR(1+parseInt(idx.slice(1),10));     // Smart book order :: B<num>
+
+					// ('_0'|'_1'|...|'_7')<name><X2><uri><X2><bcSpec>
+					// ---
+					// _0     :: The chapter is already open (this is not an error.)
+					// _1     :: The chapter expects opening (this is not an error.)
+					// _other :: error -> skip
+					// ---
+					gh = '1'===(gh=t.charAt(1)) ? 1 : -('0'===gh);    // +1 wait | 0 skip | -1 open
+					if( !gh ) continue;                               // [TODO] Is there a better fallback in case of unsync chapter?
+					
+					t = t.slice(2).split(RegExp.X2);                  // [name,uri,...]
+					
+					k = UK + t[1];                                    // µ<uri>
+
+					smok[k] = ord;                                    // Overwrite order if already registered from DOCS branch.
+					smok.BOOK = 1;
+					++bkBased;
+
+					if( R.hasOwnProperty(k) ) continue;               // Already registered in the DOCS branch.
+					
+					if( 0 < gh )
+					{
+						R[k] = z;                                     // µ<uri> => R-index (uint)
+						R[z++]=File(k.slice(1));
+					}
+					else
+					{
+						R[k] = NK+t[0];                               // µ<uri> => <at><name> (str)
+					}
+				}
+				else
+				{
+					ord = smok.BOOK?'C':'A';                          // Temporary order: 'A' (before book) or 'C' (after book)
+
+					// CHR(1+<index>) + CHR(1+<flag>) + <name><X2><uri><X2><label><X2><id><X2><acLayer><X2><selSpecs>
+					// ---
+					
+					t = t.slice(2).split(RegExp.X2);                  // [name,uri,label,id]
+					
+					if( (k=t[1]).length )
+					{
+						// This document has an uri (name can be ambiguous.)
+						// ---
+						k = UK + k;
+						R[k] = t[3] ? ('#'+t[3]) : (NK+t[0]);      // µ<uri> => #<id> | <at><name>
+					}
+					else
+					{
+						// This document has a unique name.
+						// ---
+						k = NK + t[0];
+						R[k] = t[3] ? ('#'+t[3]) : k;                 // <at><name> => #<id> | <at><name>
+					}
+					
+					smok.hasOwnProperty(k) || (smok[k]=ord);
+				}
+			}
+			
+			if( !R.__count__ )
+			{
+				(+$$.trace) && $$.trace(__("%1 > select() failed!",callee.µ));
+				return 0;
+			}
+			
+			if( R.length )
+			{
+				$$.uiLevel(0);
+				(+$$.trace) && $$.trace(__("%1 > Opening %2 document(s) behind the scenes...",callee.µ,R.length));
+				$$.spin();
+				a = app.open(R, false);
+				$$.spin();
+				if( a.length != R.length )
+				{
+					(+$$.warn) && $$.warn(__("%1 > Couldn't open some document(s) among: %2.",callee.µ,R.join(' ; ')));
+					const SAVE_NO = +SaveOptions.NO;
+					while( t=a.pop() ) t.close(SAVE_NO);
+					$$.spin();
+					R.length = 0;
+				}
+				else
+				{
+					for( i=a.length ; i-- ; R[i]=a.pop() );           // As an array, R now contains the ghost docs.
+				}
+				$$.uiLevel(1);
+			}
+			
+			// ---
+			// R :: index      => Document (ghost)
+			//   +  µ<uri>     => #<id> | <at><name> | uint (R-index)
+			//   +  <at><name> => #<id> | <at><name>
+			// ---
+			const D = app.documents;
+			spe = false;
+			for( k in R )
+			{
+				if( (!R.hasOwnProperty(k)) || !(UK == (c=k.charAt(0)) || NK == c) ) continue;
+				t = R[k];
+
+				if( UK==c && ('string' == typeof t) && NK==t.charAt(0) )
+				{
+					$$.spin();
+
+					// Special CS4 Case: `µ<uri> => <at><name>` may refer to
+					// an ambiguous name and `itemByName` is then not reliable.
+					// [REM] `D.itemByName(<name>)` does NOT return an array
+					// when multiple documents match that name :-(
+					// [REM] `D.everyItem().fullName` generate a runtime
+					// error if D contains unsaved documents :-(
+					// ---
+					spe || (spe=D.everyItem().name);                  // index => name
+					for
+					(
+						t=t.slice(1), doc=0, i=spe.length ;
+						1!==doc && i-- ;
+						spe[i]===t && (doc=D[i]).saved && (doc.fullName||0).absoluteURI===k.slice(1) && (spe[i]='',doc=1)
+					);
+					
+					if( 0 > i )                                       // Shouldn't happen
+					{
+						$$.warn(__("%1 > Cannot identify the index of document %2 at location: %3.",callee.µ,t.toSource(),k.slice(1)));
+						R[k] = false;
+					}
+					else
+					{
+						R[k] = i;
+					}
+
+					continue;
+				}
+
+				doc = 'number' == typeof t
+				? R[t]
+				: ( '#'==t.charAt(0) ? D.itemByID(+t.slice(1)) : D.itemByName(t.slice(1)) );
+
+				if( !doc.isValid || 1 != doc.getElements().length )   // Shouldn't happend
+				{
+					$$.warn(__("%1 > Invalid or plural document: %2.",callee.µ,doc.toSpecifier()));
+					R[k] = false;
+					continue;
+				}
+				
+				R[k] = doc.index;
+			}
+
+			// ---
+			// R :: index            => Document                      ; live ghosts only, from BOOK
+			//      µ<uri>|<at>name  => DOM-index in app.documents    ; all scoped docs, incl. ghosts
+			// ---
+
+			// Additional data (pages, layers, styles.)
+			// ---
+			(+$$.trace) && $$.trace(__("%1 > Extracting additional data of %2 document(s).",callee.µ,R.__count__-R.length));
+			const PG = callee.PGES;
+			const LY = callee.LYRS;
+			const PS = callee.PSTY;
+			const CS = callee.CSTY;
+			(SMOR = callee.SMOR).length=0;
+			for( k in R )
+			{
+				if( (!R.hasOwnProperty(k)) || !(UK == (c=k.charAt(0)) || NK == c) ) continue;
+				doc = D[z=R[k]];
+				
+				$$.spin();
+
+				// Pages                                                      PGES ::
+				// ---
+				PG[k] = (a=(t=doc.pages.everyItem()).name).join('\x01');   // refKey  => `pgName1<X1>pgName2<X1>...`
+				for                                                        // _pgName => `domIndex1_pgIndex1_pid1|domIndex2_pgIndex2_pid2`...
+				(
+					b=t.id, i=-1 ; ++i < b.length ;
+					(t='_'+a[i]), ((s=PG[t]||'')&&(s+='|')),
+					PG[t]=s+[z,i,b[i]].join('_')
+				);
+				// [ADD211222] Smart order.
+				// smok[k] :: 'A' | 'B<num>' | 'C'  -->  Add number for A|C prefix if some pgName match \d+
+				// ---
+				1 == (ord=smok[k]).length
+				&& (t=('\x01'+PG[k]+'\x01').match(/\x01(\d+)\x01/))
+				&& ( 0xFFFF > (t=parseInt(t[1],10)) )
+				&& (smok[k]=(ord+=CHR(1+t)));
+				ord.length != 2 && ord=(ord.slice(0,1)||'C').concat('\uFFFF');
+				SMOR[SMOR.length] = ord.concat(k);
+
+				// Layers                                                     LYRS ::
+				// ---
+				LY[k] = (a=(t=doc.layers.everyItem()).name).join('\x01');  // refKey  => `lyName1<X1>lyName2<X1>...`
+				for                                                        // _lyName => `domIndex1_[01]_yid1|domIndex2_[01]_yid2`...
+				(
+					b=t.id, c=t.visible, i=-1 ; ++i < b.length ;
+					(t='_'+a[i]), ((s=LY[t]||'')&&(s+='|')),
+					LY[t]=s+[z,c[i]?'1':'0',b[i]].join('_')
+				);
+
+				// Styles                                                     PSTY ; CSTY
+				// ---
+				callee.STYL.EXID = doc.paragraphStyles[0].id;                      // [CHG220114] Exclude [No Paragraph Style]
+				PS[k] = callee.STYL('paragraph', '', PS, z+'_', doc, '').slice(1); // psPath1<X1>psPath2<X1>...
+
+				delete callee.STYL.EXID;                                           // [CHG220114] Remove EXID filter.
+				CS[k] = callee.STYL('character', '', CS, z+'_', doc, '').slice(1); // csPath1<X1>csPath2<X1>...
+			}
+			
+			// Finalize smart-ordered keys.
+			// ---
+			for( SMOR.sort(), i=SMOR.length ; i-- ; SMOR[i]=SMOR[i].slice(2) );
+
+			z = R.__count__-R.length;
+			(+$$.trace) && $$.trace(__("%1 > select() done. Documents: %2.",callee.µ,z));
+			
+			callee.BOOK_BASED = bkBased > (z>>>1);
+			callee.UNIQ = callee.BOOK_BASED && (t=app.books[0].properties.fullName)
+			? t.absoluteURI
+			: SMOR.join('\x01');
+
+			return (callee.OPEN=z);
+		}
+		.setup
+		({
+			BOOK_BASED: false, // Whether the selected scope is mainly book based.
+			UNIQ: '',
+			OPEN: 0,
+			RE_NME_IDX: /^(.+) \[(\d+)\]$/,
+			REFS: [],   // ghostDoc[] + {refKey => domIndex}
+			SMOR: [],   // refKey[]  ;  array of smart-ordered refKey (loop in SMOR to process data w.r.t page ordering.)
+			PGES: {},   // { refKey => `pgName1<X1>pgName2<X1>...` ; _pgName => `domIndex1_pgIndex1_pid1`|`domIndex2_pgIndex2_pid2`... }
+			LYRS: {},   // { refKey => `lyName1<X1>lyName2<X1>...` ; _lyName => `domIndex1_[01]_yid1`|`domIndex2_[01]_yid2`... }
+			// ---
+			PSTY: {},   // { refKey => `psPath1<X1>psPath2<X1>...` ; _psPath => `domIndex1_psid1`|`domIndex2_psid2`... }
+			            // where each psPath_i has the form `name(<X2>name)*`
+			CSTY: {},   // { refKey => `csPath1<X1>csPath2<X1>...` ; _csPath => `domIndex1_csid1`|`domIndex2_csid2`... }
+			            // where each csPath_i has the form `name(<X2>name)*`
+			// ---
+			STYL: function(/*'character'|'paragraph'*/cp,/*str&*/seq,/*obj&*/S,/*`<uint>_`*/docIni,/*Doc|StyleGp*/parent,/*str*/prefix,  exid,t,a,b,i,s,p,k)
+			//----------------------------------
+			// Load styles (recursive.)
+			// [REM] A style group can be empty.
+			// [CHG210831] Paths are now decomposed using <X2> separator rather than `[Gp1] [Gp2] ...` form.
+			// [CHG220114] Ignore callee.EXID id if defined.
+			// ---
+			// => `<X1>path1<X1>path2<X1>...<X1>pathN`
+			//     where each path_i has the form `name(<X2>name)*`
+			{
+				exid = callee.EXID||-1;
+
+				if( (t=parent[cp+'Styles'].everyItem()).isValid )
+				for
+				(
+					a=t.name, b=t.id, i=-1 ;
+					++i < a.length ;
+					b[i] !== exid && ( (seq+='\x01'+(p=prefix+a[i])), ((t=S[k='_'+p]||'')&&(t+='|')), (S[k]=t+docIni+b[i]) )
+				);
+
+				if( (t=parent[cp+'StyleGroups'].everyItem()).isValid )
+				for
+				(
+					a=t.getElements(), i=-1 ;
+					++i < a.length ;
+					s=(t=a[i]).name, seq=callee(cp,seq,S,docIni,t,prefix+s+'\x02')
+				);
+				
+				return seq;
+			},
+		}),
+		
+		getAutoFolder: function getAutoFolder_$Folder$$false$(  µ,ff,i,k)
+		//----------------------------------
+		// Assign and return a default folder to the selected scope.
+		// => Folder [OK]  |  false [KO]
+		{
+			µ = callee.µ;
+			if( !µ.selCount() ) return false;
+			
+			if( µ.select.BOOK_BASED && (ff=app.books[0].properties.fullName) ) return ff.parent;
+			
+			const SMOR = µ.select.SMOR;
+			const UK_CODE = µ['~'].URIK.charCodeAt(0);
+
+			for( i=-1 ; ++i < SMOR.length && UK_CODE != (k=SMOR[i]).charCodeAt(0) ; k=false );
+			
+			if( k && (ff=File(k.slice(1))).exists ) return ff.parent;
+			
+			return (ff=File($.global[µ.__root__].Env.runningScript)).exists && ff.parent;
+		},
+		
+		selCount: function selCount_I()
+		//----------------------------------
+		// Number of *selected* documents.
+		// [REM] Do not confuse with `µ.count()`
+		// ---
+		// => uint
+		{
+			return callee.µ.select.OPEN;
+		},
+		
+		layerList: function layerList_s_A(/*?'visible'|'mixed'|'hidden'|'all'*/TREE_SEL,  t,PF,a,k,p)
+		//----------------------------------
+		// Return the tree-list of layers in the *selected* scope.
+		// TREE_SEL :: 'visible' -> precheck visible layers (default.)
+		//             'mixed'   -> precheck visible and mixed layers.
+		//             'hidden'  -> precheck hidden layers, excl. mixed.
+		//             'all'     -> precheck all layers.
+		// The array is returned with mixed layers first (1st level), then
+		// visible and hidden layers both at 2nd level in a dedicated group.
+		// ---
+		// => new str[] [OK-LIST]  |  0 [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return 0;
+
+			const LY = t.LYRS;
+
+			// 0::visible ; 1::mixed ; 2::hidden ; 3::all
+			// ---
+			TREE_SEL = 'string'==typeof TREE_SEL
+			? ( callee.OPT[TREE_SEL.toLowerCase()]||0 )
+			: ( TREE_SEL>>>0 );
+			
+			PF = callee.PFX;
+			PF[0] = 2!=TREE_SEL  ? '++ ' : '-- '; // visible prefix
+			PF[1] = (1&TREE_SEL) ? '+ '  : '- ';  // mixed prefix
+			PF[2] = (1<TREE_SEL) ? '++ ' : '-- '; // hidden prefix
+
+			a = [ [], [], [] ]; // [vis,mix,hid]
+			for( k in LY )
+			{
+				if( '_' != k.charAt(0) ) continue;
+				t = LY[k];
+				p = 1 + (0 < t.indexOf('_0_')) - (0 < t.indexOf('_1_')); // 0::vis ; 1::mix ; 2::hid
+				a[p].push(PF[p] + k.slice(1));
+			}
+			
+			a[0].length && a[0].unshift(__("- [%1]", __("Visible layers")));
+			a[2].length && a[2].unshift(__("- [%1]", __("Hidden layers")));
+
+			return a[1].concat(a[0]).concat(a[2]);
+		}
+		.setup
+		({
+			OPT: {visible:0,mixed:1,hidden:2,all:3},
+			PFX: ['-- ', '- ', '-- '],
+		}),
+
+		layerCount: function layerCount_I(  t,k,z)
+		//----------------------------------
+		// [ADD210831] Return the number of layer names
+		// in the *selected* scope.
+		// ---
+		// => uint [OK]  |  0 [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return 0;
+
+			const LY = t.LYRS;
+
+			z = 0;
+			for( k in LY ) '_' == k.charAt(0) && ++z;
+
+			return z;
+		},
+
+		styleList: function styleList_b_A(/*bool=0*/CHAR_STYLES,  t,r,a,k,i,p,pf)
+		//----------------------------------
+		// Return the tree-list of paragraphStyles (resp. characterStyles)
+		// in the *selected* scope with respect to style groups.
+		// [CHG210831] Parses <X2>-separated path.
+		// ---
+		// => new str[] [OK-LIST]  |  0 [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return 0;
+
+			const S = CHAR_STYLES ? t.CSTY : t.PSTY;
+			r = [];
+			a = [];
+			for( k in S )
+			{
+				if( '_' != k.charAt(0) ) continue;
+				k = k.slice(1);
+				
+				// k :: (gp1<X2>gp2<X2>...)?<styleName>
+				// ---
+				for( i=0, pf='- ' ; 0 <= (p=k.indexOf('\x02')) ; ++i, pf='-'+pf, k=k.slice(1+p) )
+				{
+					if( (t=k.slice(0,p))===a[i] ) continue;
+					i < a.length && (a.length=i);
+					r[r.length] = pf + (a[i]=t);
+				}
+				
+				r[r.length] = pf + k;
+			}
+			
+			return r;
+		},
+
+		styleCount: function styleCount_b_b_I(/*bool=0*/CHAR_STYLES,/*bool=0*/EXCL_GROUPS,  t,k,z)
+		//----------------------------------
+		// [ADD210831] Return the number of paragraphStyle
+		// (resp. characterStyle) names in the *selected* scope,
+		// including or excluding the number of group names.
+		// ---
+		// => uint [OK]  |  0 [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return 0;
+			
+			if( !EXCL_GROUPS )
+			{
+				z = callee.µ.styleList(CHAR_STYLES).length;
+			}
+			else
+			{
+				// Faster algo if EXCL_GROUPS is truthy.
+				// ---
+				const S = CHAR_STYLES ? t.CSTY : t.PSTY;
+				z = 0;
+				for( k in S ) '_' == k.charAt(0) && ++z;
+			}
+
+			return z;
+		},
+
+		info: function info_S(  µ,n,SMOR,R,P,a,s,i,k,c,p,z,re,t)
+		//----------------------------------
+		// Return information about the *selected* documents and page counts.
+		// => str :: `<summary><X1><line><X1><doc1Info><X1><doc2Info>...`
+		{
+			const MAX_LEN = 20;
+			µ = callee.µ;
+
+			n = µ.select.OPEN;
+			if( !n ) return __("No document selected.");
+			
+			SMOR = µ.select.SMOR;
+			R = µ.select.REFS;
+			P = µ.select.PGES;
+			const NK = µ['~'].NAMK;                         // <at>
+
+			a = [];
+			p = 0;
+			z = 10;
+			re = µ['~'].RE_INDD;
+			for( i=-1 ; ++i < SMOR.length ; )
+			{
+				k = SMOR[i];
+				c = k.charAt(0);
+				(t=P[k]||0).length && (p+=(t=t.split('\x01')).length);
+				k = k.slice(1);
+				t = 1 < t.length ? (t[0]+'-'+t.pop()) : String(t[0]);
+				s = (NK==c ? k : File(k).displayName).replace(re,'');
+				t = (a[a.length] = s + '  ['+ t + ']').length;
+				t > z && (z=t);
+			}
+			z > 100 && (z=100);
+			n > MAX_LEN && (a.length=MAX_LEN, a[MAX_LEN]="...");
+			
+			t = 1 == n ? s : __("%1 documents",n);
+			t = __( "%1 (%2 %3)", t, p, __(1<p?"pages":"page") );
+			t += '\x01' + Array((2+z)>>>1).join('\u2014') + '\x01\u2022 ' + a.join('\x01\u2022 ');
+
+			return t;
+		},
+
+	})
