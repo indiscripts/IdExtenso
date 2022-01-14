@@ -1,0 +1,49 @@
+/*******************************************************************************
+
+		Name:           Dom.Scope::YALT
+		Desc:           Yalt strings (resource of the Dom.Scope module.)
+		Path:           /etc/Dom.Scope/$$.yalt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        210816 (YYMMDD)
+		Modified:       220114 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	// Supported locales: <EN> FR DE SP IT RU.
+	// Feel free to correct, or to add new locales, as long as
+	// you don't change the keys (1st column.) Each translation
+	// string must have the following format, in a single line:
+	// key # trL1 # trL2 # etc (placeholders %1 to %9 allowed.)
+
+	//==========================================================================
+	// DATA  (keep the starting and ending triple quotes)
+	//==========================================================================
+
+"""
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
+
+	Visible documents # Documents visibles # Sichtbare Dokumente # Documentos visibles # Documenti visibili # Видимые документы
+	Open documents # Documents ouverts # Geöffnete Dokumente # Documentos abiertos # Documenti aperti # Открытые документы
+	Hidden documents # Documents masqués # Ausgeblendete Dokumente # Documentos ocultos # Documenti nascosti # Скрытые документы
+
+	Visible layers # Calques visibles # Sichtbare Ebenen # Capas visibles # Livelli visibili # Видимые слои
+	Hidden layers # Calques masqués # Ausgeblendete Ebenen # Capas ocultas # Livelli nascosti # Скрытые слои
+
+	No document selected. # Aucun document sélectionné. # Kein Dokument ausgewählt. # No se ha seleccionado ningún documento. # Nessun documento selezionato. # Не выделен ни один документ.
+	%1 documents # %1 documents # %1 Dokumente # %1 documentos # %1 documenti # %1 документы
+	
+	page # page # Seite # página # pagina # страница
+	pages # pages # Seiten # páginas # pagine # страницы
+
+	</YALT>*/
+"""
