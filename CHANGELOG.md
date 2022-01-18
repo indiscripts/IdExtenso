@@ -1,3 +1,6 @@
+##### [220118]
+   - [**Settings**](/etc/$$.Settings.jsxlib): Various improvements and optimizations. In particular, avoids accessing the DOM label twice when `app` is passed as 1st argument to `activate()`, `reset()`, or `backup()`.
+
 ##### [220114]
    - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): new module for managing a set of InDesign documents as a single entity. Read the [notice](/etc/$$.Dom.Scope.jsxlib).
    - [**Unicode**](/etc/$$.Unicode.jsxlib): updated the **Unicode** module and its dependencies; added the `~.SCRI` mapping related to Unicode scripts.
