@@ -1,5 +1,12 @@
 ##### [220118]
    - [**Settings**](/etc/$$.Settings.jsxlib): Various improvements and optimizations. In particular, avoids accessing the DOM label twice when `app` is passed as 1st argument to `activate()`, `reset()`, or `backup()`.
+   - [**Dom.Footnote**](/etc/$$.Dom.Footnote.jsxlib): Unlike variable instances (represented by U+0018), footnotes (U+0004) have no property that reveals the underlying number, as would do `myVar.resultText`. So, if you need to determine which ‘numeral’ a footnote is associated to, you have first to determine the actual index of that tootnote in its context, then you have to compute the resulting text with respect to various options like `FootnoteNumberingStyle` and so. All of these tedious tasks are taken over by the **Dom.Footnote** module. Typical uses:
+
+    // Get the numeral of a FN ; e.g  "3", "iii", "003", "ث", etc
+	var num = $$.Dom.Foonote(myFootnote);
+    
+	// Array of numerals of a plural FN ; e.g  ["003","004","005"...]
+	var a = $$.Dom.Foonote(myStory.footnotes.everyItem());
 
 ##### [220114]
    - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): new module for managing a set of InDesign documents as a single entity. Read the [notice](/etc/$$.Dom.Scope.jsxlib).
