@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Settings
-		Desc:           Encapsulates a set of custom settings to be handled throughout a script.
+		Desc:           Encapsulates a set of custom settings handled throughout a script.
 		Path:           /etc/$$.Settings.jsxlib
 		Require:        Dom/label ; $$.kill() $$.clone()
 		Encoding:       ÛȚF8
@@ -13,11 +13,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       211226 (YYMMDD)
+		Modified:       220118 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 211226, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 220118, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -333,12 +333,16 @@
 		// ---
 		// => new set [OK] | defRet [KO]
 		{
-			return 'function'==typeof(src.toSpecifier) ?
-				$.global[callee.µ.__root__].Dom.fromLabel(src, this.SUID, defRet) :
-				( (t=src[this.SUID]) ? $.global[callee.µ.__root__].JSON.eval(t) : defRet );
+			t = 'function'==typeof(src.toSpecifier) ?
+				$.global[callee.µ.__root__].Dom.fromLabel(src, this.SUID, false) :
+				( 'string' == typeof(t=src[this.SUID]) ? $.global[callee.µ.__root__].JSON.eval(t) : false );
+
+			// [FIX220118] Security fix: returns `defRet` whenever eval() produces a non-Object.
+			// ---
+			return ( false===t || t!==Object(t) ) ? defRet : t;
 		},
 
-		SOBJ : function(/*DOM*/dst,/*any{}*/o)
+		SOBJ : function(/*DOM|obj&*/dst,/*any{}*/o)
 		//----------------------------------
 		// (Set-to-Obj.) Set/insert o keys into dst's SUID label or key.
 		// [ADD211226] If dst is a simple, non-DOM object, save the
@@ -353,7 +357,7 @@
 		GAPP : function(/*any*/defRet)
 		//----------------------------------
 		// (Get-From-App.) Get keys from app's SUID label.
-		// => new set [OK] | undefined [KO]
+		// => new set [OK] | defRet [KO]
 		{
 			return this.GOBJ(app,defRet);
 		},
@@ -484,11 +488,16 @@
 			}
 		},
 
-		ACRS : function(/*?DOM|null*/dom,/*bool*/DO_RESET,  o,k,z,v,indd,dobj,zo,za)
+		ACRS : function(/*?DOM|obj|null*/src,/*bool*/DO_RESET,  APP_SRC,o,k,z,v,indd,dobj,zo,za)
 		//----------------------------------
 		// (Activate-Or-Reset.) Activate or Reset the declared keys.
+		// [CHG220117] Optim: if src===app, do not read the label twice!
+		// [REM220117] If src is a non-DOM obj, src[SUID] should provide
+		// the JSON string associated to OBJ/HYB keys, as expected by ~.GOBJ.
 		// => undefined
 		{
+			APP_SRC = src ? app===src : false;
+
 			o = this.KEYS;
 			indd = dobj = false;
 			za = zo = 0;
@@ -511,18 +520,22 @@
 					if( (z&this.SESS) && null!==(v=this.GENV(k)) ) break;
 
 					// DOBJ | INDD | HYBR
-					// If DO_RESET && dom===null, take the default and break.
+					// If DO_RESET && src===null, take the default and break.
 					// ---
-					if( (z&this.HYBR) && DO_RESET && null===dom ){ v=this.KDEF(k); break; }
+					if( (z&this.HYBR) && DO_RESET && null===src ){ v=this.KDEF(k); break; }
 					
 					// DOBJ | HYBR
 					// ---
 					if( (z&this.DOBJ) )
 					{
-						// If not already done, unserialize data from the dom object.
+						// If not already done, unserialize data from the src object.
 						// ---
-						dom && (false===dobj) && (dobj=this.GOBJ(dom, void 0));
-						
+						if( false===dobj && src )
+						{
+							dobj = this.GOBJ(src, void 0);
+							APP_SRC && (false===indd) && (indd=dobj);
+						}
+
 						// Look for the key.
 						// [REM] If not found in a hybrid key, do not break!
 						// ---
@@ -536,7 +549,8 @@
 						// If not already done, unserialize data from the app.
 						// ---
 						(false===indd) && (indd=this.GAPP(void 0));
-						
+						APP_SRC && (false===dobj) && (dobj=indd);
+
 						// Look for the key.
 						// ---
 						if( indd && indd.hasOwnProperty(k) ){ ++za; v=indd[k]; break; }
@@ -563,22 +577,39 @@
 			// Indicate whether OBJ and/or APP labels have been found during activation,
 			// and how many properties have been restored from each.
 			// ---
-			this.ONUM = zo;
-			dobj && $.global[callee.µ.__root__].kill(dobj);
+			if( APP_SRC )
+			{
+				// dobj===indd
+				this.ONUM = this.ANUM = zo+za;
+				indd && $.global[callee.µ.__root__].kill(indd);
+			}
+			else
+			{
+				this.ONUM = zo;
+				dobj && $.global[callee.µ.__root__].kill(dobj);
 
-			this.ANUM = za;
-			indd && $.global[callee.µ.__root__].kill(indd);
+				this.ANUM = za;
+				indd && $.global[callee.µ.__root__].kill(indd);
+			}
 		},
 
-		BCKP : function(/*?DOM|null*/dom,  indd,dobj,SKIP_HYB,zo,za,o,k,z)
+		BCKP : function(/*?DOM|obj&|null*/dst,  SKIP_HYB,APP_DST,indd,dobj,zo,za,o,k,z)
 		//----------------------------------
 		// (Backup.)
+		// [CHG220117] Optim: if dst===app, do not read/set the label twice!
 		// => undefined
 		{
-			indd = this.GAPP({});                // Get the existing app keys, or {}, in a new obj
-			dobj = dom && this.GOBJ(dom,{}),   // Get the existing obj keys, or {}, in a new obj
-	
-			SKIP_HYB = +(null===dom);
+			SKIP_HYB = +(null===dst);
+			APP_DST = dst ? app===dst : false;
+
+			// Retrieve existing app/dst keys, or {}, in a new obj.
+			// [CHG220117] If dst===app, indd and dobj are the same ref.
+			// [REM220118] It's important to recover existing keys before
+			// applying those determined by the present settings, because
+			// skipped keys must be preserved.
+			// ---
+			indd = this.GAPP({});
+			dobj = dst && (APP_DST ? indd : this.GOBJ(dst,{}));
 
 			zo = za = 0;
 	
@@ -602,7 +633,7 @@
 				if( z&this.DOBJ )
 				{
 					if( SKIP_HYB ) continue;
-					if( dom ){ ++zo; dobj[k]=o[k]; continue; }
+					if( dst ){ ++zo; dobj[k]=o[k]; continue; }
 				}
 	
 				// APP | HYB
@@ -613,12 +644,22 @@
 					indd[k]=o[k];
 				}
 			}
-	
-			zo && this.SOBJ(dom,dobj);
-			$.global[callee.µ.__root__].kill(dobj);
-			
-			za && this.SAPP(indd);
-			$.global[callee.µ.__root__].kill(indd);
+
+			if( APP_DST )
+			{
+				// dobj===indd
+				// ---
+				(zo||za) && this.SOBJ(dst,indd);
+				$.global[callee.µ.__root__].kill(indd);
+			}
+			else
+			{
+				zo && this.SOBJ(dst,dobj);
+				$.global[callee.µ.__root__].kill(dobj);
+				
+				za && this.SAPP(indd);
+				$.global[callee.µ.__root__].kill(indd);
+			}
 		},
 	})
 
@@ -768,13 +809,20 @@
 			return I.KEYS.hasOwnProperty(k) ? I.KSCO(k) : 0;
 		},
 
-		activate : function activate_dõ_Õ(/*?DOM|obj*/src,  $$,I,s)
+		activate : function activate_dõs_Õ(/*?DOM|obj|str*/src,  $$,I,s,t)
 		//----------------------------------
 		// Restore each key to its most relevant value based on its scope.
-		// If src is a DOM or non-DOM object, use it as a source for any OBJ or HYB key.
-		// If src is not provided or 'falsy,' OBJ keys will activate in default scope
-		// and HYB keys will activate in APP scope.
+		// If `src` is a non-DOM object, `src[SUID]` is expected to provide
+		// the JSON string associated to OBJ/HYB keys. If `src` is supplied as
+		// a string, the corresponding { SUID:src } structure is implied.
+		// (a) If src is a DOM or non-DOM object, use it as a source for
+		//     any OBJ or HYB key. Rem: If src===app, OBJ keys are then
+		//     extracted for the app label (as well as HYB and APP keys.)
+		// (b) If src is not provided or 'falsy,' OBJ keys will activate
+		//     in default scope and HYB keys will activate in APP scope.
 		// [ADD211226] Supports non-DOM `src`.
+		// [REM220117] Supports string argument -> {SUID:src} then implied
+		// ---
 		// => keys-accessor
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -784,23 +832,32 @@
 				$$.error( __("Settings must be declared before activation."), callee );
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Activating uid: %2. Host: %3.",callee.µ,s.toSource(),String(src)));
+			'string'==typeof str && ( (t={})[s]=src, src=t );
+
+			(+$$.trace) && $$.trace(__("%1 > Activating keys (uid: %2.) Host: %3."
+				, callee.µ
+				, s.toSource()
+				, src ? String(src) : "app (excl. OBJ-scoped keys.)"
+			));
 
 			I.ACRS(src, false);
 			return I.KEYS;
 		},
 
-		reset : function reset_dõ$null$_Õ(/*?DOM|obj|null*/src,  $$,I,s)
+		reset : function reset_dõs$null$_Õ(/*?DOM|obj|str|null*/src,  $$,I,s,t)
 		//----------------------------------
 		// Reset each key to its default or stored value, based on its scope.
-		// ---
-		// If src is a DOM or non-DOM object or is not provided (undefined), every OBJ,
-		// APP and HYB key is activated the usual way, while all other
-		// keys are reset to their default value.
-		// ---
-		// If src===NULL, then all keys are reset to their default, including
-		// OBJ, APP and HYB keys.
+		// If `src` is a non-DOM object, `src[SUID]` is expected to provide
+		// the JSON string associated to OBJ/HYB keys. If `src` is supplied as
+		// a string, the corresponding { SUID:src } structure is implied.
+		// (a) If src is a DOM, non-DOM object or undefined, every OBJ,
+		//     APP and HYB key is activated the usual way (cf µ.activate)
+		//     while all other keys are reset to their default value.
+		// (b) If src===NULL, all keys are reset to their default, including
+		//     OBJ, APP and HYB keys.
 		// [ADD211226] Supports non-DOM `src`.
+		// [REM220117] Supports string argument -> {SUID:src} then implied
+		// ---
 		// => keys-accessor
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -810,18 +867,32 @@
 				$$.error( __("Settings must be declared before calling reset."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Resetting uid: %2. Host: %3.",callee.µ,s.toSource(),String(src)));
+			'string'==typeof str && ( (t={})[s]=src, src=t );
+
+			(+$$.trace) && $$.trace(__("%1 > Resetting %2 keys to their defaults (uid: %3.) Host: %4."
+				, callee.µ
+				, null===src ? "all" : "non-hosted"
+				, s.toSource()
+				, src ? String(src) : (null===src ? "none" : "app")
+			));
 
 			I.ACRS(src, true);
 			return I.KEYS;
 		},
 
-		backup : function backup_dõ$null$_(/*?DOM|obj|null*/dst,  $$,I,s)
+		backup : function backup_dõ$null$_(/*?DOM|obj&|null*/dst,  $$,I,s)
 		//----------------------------------
-		// Backup the current values of label-stored keys.
-		// If dst is a DOM or non-DOM object, use it as a target for any I_OBJ or I_HYB key.
-		// If dst is undefined, backup I_HYB and I_APP keys in app.
-		// If dst is NULL, only backup strict I_APP keys (ignoring I_HYB.)
+		// Backup the current values of label-stored keys. If `dst` is
+		// a non-DOM object, `dst[SUID]` will receive the JSON string
+		// associated to final OBJ/HYB keys so it can be further processed
+		// by the client code. (This trick can be used to bypass or delay
+		// actual DOM backup.)
+		// (a) If dst is a DOM or non-DOM object, use it as a target for
+		//     any OBJ or HYB key. In particular, if dst===app, it will
+		//     receive all OBJ/HYB/APP keys.
+		// (b) If dst===NULL, only backup *strict* APP keys (ignoring HYB.)
+		// (c) Otherwise, backup HYB and APP keys in app.
+		// ---
 		// [ADD211226] Supports non-DOM `dst`.
 		// [CHG180605] Prevents undo.
 		// [CHG190206] JsxBlind safe.
@@ -834,7 +905,12 @@
 				$$.error( __("Settings must be declared before calling backup."), callee )
 			}
 
-			(+$$.trace) && $$.trace(__("%1 > Saving uid: %2. Host: %3.",callee.µ,s.toSource(),String(dst)));
+			(+$$.trace) && $$.trace(__("%1 > Saving keys %2(uid: %3.) Host: %4."
+				, callee.µ
+				, null===dst ? "excluding hybrid " : ""
+				, s.toSource()
+				, dst ? String(dst) : "app"
+			));
 
 			// [CHG180605] Calling doScript/autoUndo prevents the backup stage from being undone.
 			// [CHG190206] JsxBlind safe.
@@ -866,7 +942,6 @@
 	
 			return I.KEYS;
 		},
-
 
 		objKeyCount : function objKeyCount_I()
 		//----------------------------------
