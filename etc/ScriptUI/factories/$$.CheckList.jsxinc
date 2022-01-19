@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       211212 (YYMMDD)
+		Modified:       220119 (YYMMDD)
 
 *******************************************************************************/
 
@@ -84,7 +84,7 @@
 
 	API
 	=======================================================================
-	properties      obj = { kind: "CheckList",
+	properties      obj = { kind: "CheckList", RootNode: str,
 	                        MinLines:uint>0, MaxLines:uint>0 }
 	                Information properties.
 	-----------------------------------------------------------------------
@@ -134,8 +134,8 @@
 	                     (without state prefixes.)
 	                (b)  If CK is truthy, return only the *checked terminal*
 	                     nodes as a <X1> seq, e.g "nodeA3<X1>nodeB7<X1>..."
-	                If PM::'brackets'|'slashed' is supplied in case (a) or (b),
-	                format each element of the sequence in full path mode:
+	                If PM::'brackets'|'slashed'|'x2' is supplied in case (a) or
+	                (b), format each element of the sequence in full path mode:
 	                'brackets' -> "[parent] [parent] ... <nodeOrParent>"
 	                           ending in `[xyz]` form if elem is a parent
 	                'slashed'  -> "parent/parent/.../<nodeOrParent>"
@@ -169,6 +169,19 @@
 	                where state :: 0|1|2|3  and  depth :: 0|1|2|3|...
 	                [ADD211206] The state 3 represents a locked node.
 	=======================================================================
+	preCheck(CN,PM) => uint  [ADD220115]
+	                Pre-check a set of terminal nodes. This method is
+	                useful when you need to rebuild the previous state
+	                of a CheckList from a backup that only provides the
+	                terminal nodes that were selected -- as typically
+	                returned by `this.getString(true)`.
+	                CN (str[]|seq) Array or <X1>-sequence of paths, each
+	                   path being formatted in brackets, slashed, or x2
+	                   form (see getString.)
+	                PM (str) One of 'brackets'|'slashed'|'x2'. If not
+	                   supplied, the function tries to guess the format
+	                   based on CN strings.
+	-----------------------------------------------------------------------
 	countNodes(ALL_NODES) => uint
 	                Return the number of *terminal nodes* presently checked
 	                (including locked nodes.)
@@ -215,6 +228,7 @@
 		//                          E.g ["+ item1","-- subitem11","- item2","# item3",...]
 		//                          Can be supplied as a <X1> sequence as well.
 		//                          `data` is an alias of `value`
+		// .root       (str='')     Opt. append a root node. [220115]
 		// .helpTip    (str='')     Help tip (`help` can be supplied as an alias.)
 		// ---
 		// .optWidth   (uint=200)   Optimal width (in px.)
@@ -239,7 +253,7 @@
 			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
 			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
 
-			q = callee.FRMT(ops.hasOwnProperty('value') ? ops.value : ops.data);
+			q = callee.FRMT(ops.hasOwnProperty('value') ? ops.value : ops.data, ops.root);
 
 			// Absolute minimal is 1 ; absolute maximal is 50.
 			// If the list is originally empty and has no definite maxLines, use max(min,5).
@@ -266,6 +280,7 @@
 				__kbStrings__:          callee.KBST,
 				__updateChecks__:       callee.UPDT,
 				__toggle__:             callee.TOGL,
+				__clear__:              callee.CLEA,
 				// --- Regular public methods.
 				popup:                  ScriptUI.POPU,  // noop if Popup unavailable.
 				getControl:             callee.CTRL,
@@ -278,12 +293,12 @@
 				getValue:               callee.GETV,
 				getString:              callee.GETS,
 				// --- Special public methods
+				preCheck:               callee.PCHK,
 				countNodes:             callee.COUN,
 				matches:                callee.MTCH,
 				revealItem:             callee.RVLI,
 				checkAll:               callee.CKAL,
 				uncheckAll:             callee.UNAL,
-				//findItem:               callee.FNDI,
 
 				List$1:
 				{
@@ -339,6 +354,7 @@
 			DEFS:
 			{
 				helpTip:      '',
+				root:         '', // [ADD220115]
 				// ---
 				optWidth:     200,
 				minLines:     1,
@@ -361,6 +377,7 @@
 					// ---
 					MinLines:      ops.minLines,
 					MaxLines:      ops.maxLines,
+					RootNode:      ops.root,
 				};
 			},
 
@@ -377,7 +394,7 @@
 				BASE: $$.inMac ? 20 : ($$.inCS ? 18 : 21),
 			}),
 
-			FRMT: function(/*any|str[]|seq*/tree,  r,n,re,dp,pi,i,s,m,c,v,t,x)
+			FRMT: function(/*any|str[]|seq*/tree,/*?str*/root,  r,n,re,dp,pi,p,i,s,m,c,v,t,x)
 			//----------------------------------
 			// Parse and reformat the array `tree` (whose elements have the
 			// form `<state> <name>`) into a rich array:
@@ -385,11 +402,21 @@
 			// - $idx => CHR(state::0|1|2|3) + CHR(depth::0|1|2|3...) + CHR(1+parentIdx)
 			// `tree`can be supplied as a <X1>-separated sequence as well.
 			// [ADD211206] Added state value 3 (locked.)
+			// [ADD220115] Added `root` arg.
 			// ---
 			// => new str[{}]
 			{
 				(tree && (tree instanceof Array))
 				|| (tree=String(tree||'').split('\x01'));
+				
+				// [ADD220115] Optionally append a root node.
+				// ---
+				if( 'string'==typeof root && root.length )
+				{
+					tree = ['- '.concat(root)].concat(tree);
+					for( i=tree.length ; --i ; tree[i]='-'.concat(tree[i]) );
+				}
+
 				const CHR = String.fromCharCode;
 				r = Array(n=tree.length);
 				for( re=callee.RE_STATE, dp=0, pi=-1, i=-1 ; ++i < n ; r[i]=s )
@@ -594,6 +621,32 @@
 				return 1;
 			},
 
+			CLEA: function __clear__(  q,a,i,s,p)
+			//----------------------------------
+			// [ADD220115] Uncheck all non-locked terminal nodes.
+			// this :: Group[[CheckList]]
+			// => undef
+			{
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+				for
+				(
+					a=[], i=q.length ; i-- ;
+					3 == (s=q['$'+i]).charCodeAt(0)
+					? ( a[a.length]=i ) // Register indices of locked elems
+					: ( q['$'+i]='\x00'+s.slice(1) )
+				);
+				
+				// [ADD211207] Manage the parents of locked nodes.
+				// ---
+				for( i=a.length ; i-- ; )
+				for
+				(
+					s=q['$'+a[i]] ;
+					0 <= (p=-1+s.charCodeAt(2)) && 2 != (s=q['$'+p]).charCodeAt(0) ;
+					q['$'+p] = '\x02'+s.slice(1)
+				);
+			},
+
 		})
 		.setup
 		//----------------------------------
@@ -762,24 +815,33 @@
 			GETI: function getItemAt(/*uint*/idx,  t){ return idx === idx >>> 0 && x < (t=this.getItems()).length && t[idx] },
 			NTFY: function notify(/*?uint|true|false*/idx){ ScriptUI.dispatch(this,'vchanged',{itemIndex:idx}) },
 
-			GETV: function getValue(  q,r,n,i,t,cc)
+			GETV: function getValue(  q,RN,inc,r,n,i,t,cc)
 			//----------------------------------
 			// Return the full item/state sequence in the form
 			// "<state> <name><X1><state> <name><X1>..."
 			// <state> being either `-`, `--`, `---`, etc
 			// or `+`, `++`, `+++`, etc, or `#`, `##`, `###`, etc
 			// [ADD211206] Support of state value 3 (locked.)
+			// [CHG220115] Ignore RootNode (if set.)
 			// ---
 			// this :: Group[[CheckList]]
 			// => seq  aka <X1>-separated string
 			{
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+
+				// [CHG220115] Ignore RootNode.
+				// ---
+				RN = 0 < (this.properties.RootNode||'').length;
+				inc = 2-RN; // 2 [NO-ROOT]  |  1 [HAS-ROOT]
+
 				for
 				(
 					r=[], n=q.length, i=-1 ;
 					++i < n ;
-					(t=q['$'+i]), r[r.length]=Array(2+t.charCodeAt(1)).join((cc=t.charCodeAt(0))?(3==cc?'#':'+'):'-')+' '+q[i]
+					(t=q['$'+i]), r[r.length]=Array(inc+t.charCodeAt(1)).join((cc=t.charCodeAt(0))?(3==cc?'#':'+'):'-')+' '+q[i]
 				);
+				
+				RN && r.shift();
 				return r.join('\x01');
 			},
 
@@ -798,7 +860,7 @@
 			// this :: Group[[CheckList]]
 			// => seq  aka <X1>-separated string [see getValue.]
 			{
-				tree = ScriptUI.CheckListFactory.FRMT(tree);
+				tree = ScriptUI.CheckListFactory.FRMT(tree, this.properties.RootNode||'');
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 				n = q.length = tree.length;
 				for( i = n ; i-- ; q[i]=tree[i], q['$'+i]=tree['$'+i] );
@@ -824,6 +886,86 @@
 
 				return this.getValue();
 			},
+			
+			PCHK: function preCheck(/*str[]|seq*/checkedNodes,/*'brackets'|'slashed'|'x2'=auto*/pathMode,  q,a,k,t,F,i,RN,p,j)
+			//----------------------------------
+			// Given an array (or <X1> sequence) of terminal node paths formatted as
+			// specified by `pathMode`, check every matched node in the present CheckList
+			// and uncheck every other nodes. If no match is found, all nodes are unchecked.
+			// Return the final number of checked nodes.
+			// E.g myCheckList.preCheck(["someNode1","path/to/node"]);
+			// => uint
+			{
+				this.__clear__();
+				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
+
+				a = (checkedNodes && (checkedNodes instanceof Array))
+				? checkedNodes.slice()
+				: String(checkedNodes||'').split('\x01');
+
+				if( !a.length ) return this.countNodes();
+				
+				k = 'string'==typeof pathMode ? pathMode.toUpperCase() : '';
+				while( 'BRACKETS'!=k && 'SLASHED'!=k && 'X2'!=k )
+				{
+					t = a.join('\x01');
+					if( 0 <= t.indexOf('\x02') ){ k='X2'; break; }
+					if( 0 <= ('\x01'.concat(t)).indexOf('\x01[') ){ k='BRACKETS'; break; }
+					k = 'SLASHED';
+					break;
+				}
+
+				// --> a :: { #name => [path1,path2,...] }
+				for
+				(
+					F=callee[k.slice(0,2)], i=-1 ;
+					++i < a.length ;
+					t=F(a[i]), k='#'.concat(t.pop()),
+					(a[k]||(a[k]=[])).push(t.join('\x02'))
+				);
+
+				RN = +(0 < (this.properties.RootNode||'').length); // 0|1
+				for( i=-1 ; ++i < q.length ; )
+				{
+					k = '#'.concat(q[i]);
+					if( !a.hasOwnProperty(k) ) continue;
+					for( j=i, p='' ; RN <= (j=-1+q['$'+j].charCodeAt(2)) ; p='\x02'.concat(q[j],p) );
+					p.length && (p=p.slice(1));
+
+					t = a[k];
+					for( j=t.length ; j-- && t[j]!==p ; );
+					0 <= j && (this.__toggle__(i));
+				}
+
+				this.__updateChecks__();
+				return this.countNodes();
+			}
+			.setup
+			({
+				X2: function(/*aaa<X2>bbb<X2>...*/path)
+				//----------------------------------
+				// => str[]
+				{
+					return path.split('\x02');
+				},
+				BR: function(/*[aaa][bbb]...*/path,  p,m,i,t)
+				//----------------------------------
+				// => str[]
+				{
+					if( -1 == (p=path.lastIndexOf(']')) ) return [path];
+					if( !(m=path.match(/\[[^\]]+\]/g)) )  return [path];
+					for( i=m.length ; i-- ; m[i]=m[i].slice(1,-1) );
+					0x20===(t=path.slice(1+p)).charCodeAt(0) && (t=t.slice(1));
+					m[m.length] = t;
+					return m;
+				},
+				SL: function(/*aaa/bbb/...*/path)
+				//----------------------------------
+				// => str[]
+				{
+					return path.split('/');
+				},
+			}),
 
 			COUN: function countNodes(/*bool=0*/ALL_NODES, q,z,p,i,t)
 			//----------------------------------
@@ -859,7 +1001,7 @@
 				return this.countNodes();
 			},
 			
-			UNAL: function uncheckAll(  q,a,i,s,p)
+			UNAL: function uncheckAll()
 			//----------------------------------
 			// Uncheck all non-locked terminal nodes and return
 			// this.countNodes(), that is, the number of locked
@@ -868,30 +1010,12 @@
 			// [CHG211206] Support of state value 3 (locked.)
 			// => uint
 			{
-				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
-				for
-				(
-					a=[], i=q.length ; i-- ;
-					3 == (s=q['$'+i]).charCodeAt(0)
-					? ( a[a.length]=i ) // Register indices of locked elems
-					: ( q['$'+i]='\x00'+s.slice(1) )
-				);
-				
-				// [ADD211207] Manage the parents of locked nodes.
-				// ---
-				for( i=a.length ; i-- ; )
-				for
-				(
-					s=q['$'+a[i]] ;
-					0 <= (p=-1+s.charCodeAt(2)) && 2 != (s=q['$'+p]).charCodeAt(0) ;
-					q['$'+p] = '\x02'+s.slice(1)
-				);
-
+				this.__clear__();
 				this.__updateChecks__();
 				return this.countNodes();
 			},
 
-			GETS: function getString(/*undef|bool*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,t,F,a,p,i)
+			GETS: function getString(/*undef|bool*/CHECKED_NODE,/*?'brackets'|'slashed'|'x2'*/fullPathMode,  q,RN,t,F,a,p,i)
 			//----------------------------------
 			// [CHG211212] An important change has been applied to get
 			// this method consistent with ModalScript.SmartListItemGetter:
@@ -913,6 +1037,7 @@
 			// - `parent/parent/.../nodeName`           in 'slashed' mode
 			// - `parent\x02parent\x02...\x02nodeName`  in 'x2' mode
 			// [REM] `fullPathMode` is case-insensitive.
+			// [CHG220115] Ignore RootNode (if set.)
 			// ---
 			// this :: Group[[CheckList]]
 			// => seq
@@ -923,32 +1048,45 @@
 
 				q = this.getData(); // idx=>name  ;  $idx=>CHR(state::0|1|2|3) + CHR(depth::0|1|2|3|4...) + CHR(1+parentIdx)
 
+				RN = +(0 < (this.properties.RootNode||'').length); // 0|1
+
 				// [ADD210902] Support of <X2> separator.
 				// ---
 				switch( t=fullPathMode && String(fullPathMode).toLowerCase() )
 				{
-					case 'brackets': F = callee.BRKT; break;
-					case 'slashed': (F=callee.SLSH).SEP = '/'; break;
-					case 'x2':      (F=callee.SLSH).SEP = '\x02'; break;
-					default:         F = callee.NAME;
+					case 'brackets':
+						F = callee.BRKT;
+						break;
+					case 'slashed':
+						(F=callee.SLSH).SEP = '/';
+						break;
+					case 'x2':
+						(F=callee.SLSH).SEP = '\x02';
+						break;
+					default:
+						F = callee.NAME;
 				}
 				
-				if( !CHECKED_NODE && F===callee.NAME ) return q.join('\x01');
+				if( !CHECKED_NODE && F===callee.NAME )
+				{
+					// [CHG220115] Ignore RootNode.
+					return (RN ? q.slice(1) : q).join('\x01');
+				}
 
 				a = [];
-
+				F.IDX_MIN = RN; // [ADD220115] IDX_MIN based on RootNode.
 				if( CHECKED_NODE )
 				{
 					for
 					(
 						p=-1, i=q.length ;
-						i-- ;
+						RN <= --i ;
 						(t=q['$'+i]), (i!=p && (1&t.charCodeAt(0)) && a[a.length]=F(q,i)), p=-1+t.charCodeAt(2)
 					);
 				}
 				else
 				{
-					for( i=q.length ; i-- ; a[a.length]=F(q,i,1) );
+					for( i=q.length ; RN <= --i ; a[a.length]=F(q,i,1) );
 				}
 
 				a.reverse();
@@ -967,14 +1105,19 @@
 				// Full bracket-path.
 				{
 					(t=CAN_BE_PARENT&&q['$'+(1+idx)])&&(t=q['$'+idx].charCodeAt(1)<t.charCodeAt(1));
+					const IMIN = callee.IDX_MIN;
 					for
 					(
 						t = t ? ('[' + q[idx] + ']') : q[idx];
-						0 <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
+						IMIN <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
 						t = '[' + q[idx] + '] ' + t
 					);
 					return t;
-				},
+				}
+				.setup
+				({
+					IDX_MIN: 0,
+				}),
 				SLSH: function(/*str[]+$idx=>sta*/q,/*uint*/idx,/*bool=0*/CAN_BE_PARENT,  t)
 				//----------------------------------
 				// Full path with custom separator ('/' by default.)
@@ -982,16 +1125,18 @@
 				{
 					const SEP = callee.SEP;
 					(t=CAN_BE_PARENT&&q['$'+(1+idx)])&&(t=q['$'+idx].charCodeAt(1)<t.charCodeAt(1));
+					const IMIN = callee.IDX_MIN;
 					for
 					(
 						t = q[idx] + (t ? SEP : '') ;
-						0 <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
+						IMIN <= (idx=-1+q['$'+idx].charCodeAt(2)) ;
 						t = q[idx] + SEP + t
 					);
 					return t;
 				}
 				.setup
 				({
+					IDX_MIN: 0,
 					SEP: '/',
 				}),
 			}),
