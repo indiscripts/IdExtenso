@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180429 (YYMMDD)
-		Modified:       211112 (YYMMDD)
+		Modified:       220212 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 211112, 'format'))
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 220212, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -90,7 +90,7 @@
 	({
 		UI32: function(/*str2*/HiLo){ return ((HiLo.charCodeAt(0)<<16)|HiLo.charCodeAt(1))>>>0 },
 
-		LOAD: function(/*{<start> => <end>}&*/q,/*uint[]*/a,/*int*/dx,  s,i,k,S,E,t)
+		LOAD: function(/*{<start> => <end>}&*/q,/*uint[]*/a,/*int*/dx,/*?str*/sgl,  s,i,k,S,E,t,c,p)
 		//----------------------------------
 		// (Load-Array.) Feeds q :: { <start> => <end> } based on the array
 		// of numbers `a` and the offset `dx` and returns the ordered start
@@ -100,6 +100,16 @@
 		// by +dx (possibly zero), so `a` may contain uints out of the range
 		// [1,0xFFFF] provided that `dx` satisfies `1 <= a[i]+dx <= 0xFFFF`.
 		// Hence it is still required that max(a)-min(a) < 0xFFFF.
+		// ---
+		// [ADD220212] If provided, the string `sgl` contains a sorted sequence
+		// of UTF16 chars (already shifted by dx) that specifies elements that
+		// MUST remain isolated (even in case they'd be part of range.) Those
+		// 'singletons' are post-processed by looping in `sgl`, rewriting both
+		// `q` and the retval `s` such that for every singleton e present in
+		// the input set,
+		//    1. e is promoted as a 'starter' in s
+		//    2. q[e]=e
+		//    3. no other range x..q[x] contains e.
 		// ---
 		// => str
 		{
@@ -125,17 +135,72 @@
 			}
 			
 			(s.length) && (s=s.split('').sort().join(''));
+			
+			// [ADD220212] Manage exceptions (forced singletons.)
+			// sgl :: Ordered sequence of unique UTF16.
+			// ---
+			if( sgl ) for( p=i=-1 ; ++i < sgl.length ; )
+			{
+				c = sgl.slice(i,1+i);
+				k = c.charCodeAt(0);
+
+				// Is c already a starter in s?
+				// ---
+				if( 0 <= (t=s.indexOf(c,1+p)) )
+				{
+					p = t;                                        // Only look after this index from now (better perf is s is huge.)
+					t = q[k];                                     // Endpoint of the range: k=>t
+					if( t==k ) continue;                          // Already a singleton: nothing to do! :)
+					s = s.slice(0,1+p)+CHR(1+k)+s.slice(1+p);     // s :: ...<k>... --> ...<k><k+1>...
+					q[1+k]=t, q[k]=k;                             // Split k=>t into { k=>k, k+1=>t }
+					continue;
+				}
+				
+				// Boring case: find the range S=>E that contains k (if any!)
+				// ---
+				for
+				(
+					E=false, t=p ;
+					(S=s.charCodeAt(++t)) < k && (E=q[S]) < k ;
+					E=false
+				);
+				if( false===E ) continue;                        // Failure: c is an outsider -> ignore it!
+				p = t;                                           // Only look after this index from now (better perf is s is huge.)
+				
+				// ---
+				// Now we have S <= k-1 < k <= E
+				// Warning: the case k===E may occur!
+				// ---
+
+				if( k===E )
+				{
+					s = s.slice(0,1+p)+CHR(k)+s.slice(1+p);      // s :: ...<S>... --> ...<S><k=E>...
+					q[S]=k-1, q[k]=k;                            // Split S=>E into { S=>k-1, k=>(E=k) }
+				}
+				else
+				{
+					s = s.slice(0,1+p)+CHR(k,1+k)+s.slice(1+p);  // s :: ...<S>... --> ...<S><k><k+1>...
+					q[S]=k-1, q[k]=k, q[1+k]=E;                  // Split S=>E into { S=>k-1, k=>k, k+1=>E }
+				}
+			}
+			
 			return s;
 		},
 		
-		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,  L,R,M,e0,e1,a,z,iMax,x0,x1,nx,t)
+		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,/*?str*/sgl,  L,R,M,e0,e1,a,z,iMax,x0,x1,nx,t)
 		//----------------------------------
 		// (Format.) Formats the ranges {start=>end} in `q` with respect to
 		// start locators in `s` and additional options. See µ.format() for
 		// more detail.
+		// [ADD220212] If `sgl` is truthy, it contains the ordered sequence
+		// of singletons (as UTF16 chars) that have been already 'isolated'
+		// in `s` and `q`. This argument is still required here to prevent
+		// the `gp` option from reintroducing forbidden ranges.
 		// ---
 		// => str
 		{
+			const CHR = !!sgl && String.fromCharCode; // Only invoked if `sgl` is truthy.
+
 			L = R = M = String;
 
 			if( callee.hasOwnProperty(t='ELI_'+eli) )
@@ -148,9 +213,11 @@
 
 			for( a=[], z=0, iMax=s.length-1, x0=nx=s.charCodeAt(0), i=-1 ; ++i <= iMax ; )
 			{
-				x1 = q[nx];                                           // Current end.
-				nx = i < iMax ? s.charCodeAt(1+i) : 1/0;              // Next start | +Infinity.
-				if( gp >= nx-x1 ) continue;                           // Small gap -> enlarge the range from x0.
+				x1 = q[nx];                                                     // Current end.
+				nx = i < iMax ? s.charCodeAt(1+i) : 1/0;                        // Next start | +Infinity.
+
+				// Small gap -> enlarge the range from x0.
+				if( gp >= nx-x1 && !(sgl && (0<=sgl.indexOf(CHR(nx))||0<=sgl.indexOf(CHR(x0)))) ) continue;
 
 				// [REM] Suppose gp==1 and mn==4. Then data like `2..3` and `5`
 				// shall temporarily produce a segment `2..5` (x0=2, x1=5). Now,
@@ -255,6 +322,24 @@
 			RE_NUM: /\d+/,
 			ARR_FALSE: [false],
 		}),
+		
+		SEQS: function(/*(uint|any)[]*/arr,/*int*/dx,  r,i,x)
+		//----------------------------------
+		// (Sequence-String.) Extract each integer x from arr and put
+		// x+dx (as a UTF16 character) in the output string, sorted and
+		// without duplicates. NaN and out-of-range numbers are ignored.
+		// ---
+		// => str  ;  e.g "\x02\x03\x08\x0A..."
+		{
+			const CHR = String.fromCharCode;
+			for
+			(
+				r='', i=-1 ; ++i < arr.length ;
+				1 <= (x=(dx+arr[i])>>>0) && x <= 0xFFFF
+				&& -1 == r.indexOf(x=CHR(x)) && (r+=x)
+			);
+			return r.length ? r.split('').sort().join('') : '';
+		},
 
 	})
 
@@ -265,12 +350,13 @@
 	[PUBLIC]
 	
 	({
-		format : function format_A_õ_S(/*(uint|str)[]*/numbers,/*?{}=auto*/options,  dx,sp,jn,gp,mn,eli,I,q,s)
+		format : function format_A_õ_S(/*(uint|str)[]*/numbers,/*?{}=auto*/options,  dx,sp,jn,gp,mn,eli,sgl,I,q,s,t)
 		//----------------------------------
 		// Formats an array of positive integers into an ordered sequence
 		// of single numbers and/or ranges. Returns the formatted string.
 		// E.g  µ([1000,3,6,8,5,12,9,5,999]) => "3, 5-6, 8-9, 12, 999-1000"
 		// [ADD210817] New version providing range elision option (see below.)
+		// [ADD220211] Added the `singletons` option  (see below.)
 		// --------------------------------------------------------------------
 		// <numbers>   The page numbers to format. Array of positive integers
 		//             or strings that coerce into positive integers. 
@@ -312,6 +398,23 @@
 		//                   'FewestFigures'    Strictly minimal form:
 		//                                      E.g  10-2, 42-5, 100-2, 132-6, 210-1, 352-65, 1021-3, 1491-560
 		//                   *[REM] `0` is not allowed as elision starter, so `1021-1023` cannot be reduced to "1021-023".
+		// .singletons (uint[]) If supplied, array of positive numbers (typically a
+		//                   subset of the incoming `numbers` array) that cannot be part
+		//                   of a range. This option allows you to arbitrarily exclude
+		//                   specific numbers -- e.g [10,11,12] -- from ranges.
+		//                   Every singleton that belongs to the input array will appear
+		//                   isolated in the final string, e.g "... 10, 11, 12 ...",
+		//                   disregarding other rules and formatting options.
+		//                   [REM] A number specified in `singletons` but not present in the
+		//                   original input array is simply ignored.
+		//             E.g   µ([1,2,4,5,6,8,9,10,11], {minRange:2, singletons:[4,11]})
+		//                   => "1, 2, 4, 5, 6, 8-10, 11"   ; instead of "1, 2, 4-6, 8-11"
+		// [REM] It is assumed here that `singletons` (if supplied) is a rela-
+		// tively short data stream that supports basic loop/sort procedures
+		// with no critical performance costs. In particular, if your original
+		// set of numbers has to be entirely formatted as an ordered sequence
+		// of singletons, there's no interest in using $$.PageRange since much
+		// direct algorithms can achieve the desired task very quickly.
 		// ---
 		// => str
 		{
@@ -324,8 +427,10 @@
 			&& error(__("Invalid `numbers` argument. Some elements are not positive numbers."),callee);
 
 			dx = 1-dx; // shift
-			
-			// Options :: { ?separator:str, ?joiner:str, ?minRange:uint, ?gap:uint, ?elision:str }
+
+			I = callee.µ['~'];
+
+			// Options :: { ?separator:str, ?joiner:str, ?minRange:uint, ?gap:uint, ?elision:str, ?singletons:uint[] }
 			// ---
 			options===Object(options) || (options=0);
 			('string' == typeof(sp=options.separator) && sp.length) || (sp = ', ');
@@ -333,15 +438,15 @@
 			(mn=options.minRange>>>0) || (mn=1);
 			(gp=options.gap>>>0)      || (gp=0);
 			eli = String(options.elision||'').toUpperCase(); // checked from ~.FRMT
-			
+			sgl = (t=options.singletons) && t instanceof Array && I.SEQS(t,dx); // [ADD220211] Singletons (as a string.)
+
 			// Ranges:  q :: { start => end } ; s :: CHR(start0,start1...) ; all shifted by `dx`.
 			// ---
-			I = callee.µ['~'];
-			s = I.LOAD(q={}, numbers, dx);
+			s = I.LOAD(q={}, numbers, dx, sgl);
 
 			// Format.
 			// ---
-			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli) : '';
+			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli,sgl) : '';
 		},
 
 		parse : function parse_S_õ_oaf_A(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}|fct*/map,  sp,jn,xLast,a,r,z,i,x,d)
@@ -380,7 +485,7 @@
 			('string' == typeof(sp=options.separator) && sp.length) || (sp = ',');
 			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
 			
-			// [CHG211112] Supports `map` as a function.
+			// [CHG211112] Supports `map` as a function or object.
 			// ---
 			'function' == typeof map
 			|| ( map===Object(map) && (callee.MAPF.Q=map, map=callee.MAPF) )
@@ -436,7 +541,7 @@
 			a = callee.µ['~'].PRSE(seq,sp,jn); // idx => <startHi><startLo> + `_<start>` => dist>0
 			if( !a.length ) return '';
 
-			// [CHG211112] Supports `map` as a function.
+			// [CHG211112] Supports `map` as a function or object.
 			// ---
 			'function' == typeof map
 			|| ( map===Object(map) && (callee.MAPF.Q=map, map=callee.MAPF) )
