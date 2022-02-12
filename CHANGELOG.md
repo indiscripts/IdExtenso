@@ -1,4 +1,4 @@
-##### [211112]
+##### [220212]
    - [**PageRange**](/etc/$$.PageRange.jsxlib). A subtle option, `singletons`, has been added to the main `format` method (see the specification of the `options` argument.) In substance, `singletons` allows you to prevent some special numbers from being included in a range, disregarding any other rule that would otherwise apply. There are indeed particular circumstances where you want to detach a page number and preserve its visibility, for example if it is associated to a footnote whose number must in turn be rendered in some way during postprocessing. Then, you can tell `$$.PageRange` to exclude such page number, say 123, from a range like _120-128_. Add the option `{singletons:[123]}` (array of uint) and you will retrieve something like `"120-122, 123, 124-128"` instead of `"120-128"`. If found in the input array, your singleton number(s) is/are always detached from possible ranges.
      
 > Keep in mind that those singletons are not _added_ to the input array. This is strictly a formatting option that reacts when such number is encountered while parsing and processing your data.
