@@ -334,6 +334,10 @@ This subfolder provides basic demo scripts showing the behaviors and features of
 
    ![TestCheckList screenshot](SuiFactories/TestCheckList.png)
 
+* [`TestDrawnCheck.jsx`](SuiFactories/TestDrawnCheck.jsx) instantiates various `DrawnCheck(Factory)` icons.
+
+   ![TestDrawnCheck screenshot](SuiFactories/TestDrawnCheck.png)
+
 * [`TestPopup.jsx`](SuiFactories/TestPopup.jsx) adds a `Popup(Factory)` component to the window and displays a popup message while the mouse moves over different widgets:
 
    ![TestPopup screenshot](SuiFactories/TestPopup.png)
