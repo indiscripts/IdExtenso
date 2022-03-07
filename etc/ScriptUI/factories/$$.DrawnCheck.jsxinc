@@ -1,0 +1,492 @@
+/*******************************************************************************
+
+		Name:           DrawnCheck(Factory)
+		Desc:           On/off icon based on custom onDraw.
+		Path:           /etc/ScriptUI/factories/$$.DrawnCheck.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI.builder ; ScriptUI/events [recommended]
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.DrawnCheckFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        220131 (YYMMDD)
+		Modified:       220307 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	DrawnCheckFactory provides a CS/CC-consistent 18x18 rounded icon based on a
+	custom implementation of onDraw. This component supports two-state icon buttons
+	(on/off) as well as simple buttons that react to click events. It is formally
+	based on a Checkbox object nested in a Group:
+
+	      +-------+
+	      ¦ +===+ ¦
+	      ¦ |   | ¦
+	      ¦ +===+ ¦
+	      +-------+
+
+	The Checkbox is redrawn according to a custom function that must be loaded
+	in the `ScriptUI.DrawnCheckFactory.Icons` map:
+	
+	1. Each custom function should have a name (uppercase recommended)
+	   matching the `icon` property. E.g.
+
+	      myIconFunc = function MY_ICON(gx,pen,bh){ . . . }
+	   
+	   where 'MY_ICON' is the key registered in the Icons map.
+	   
+	   [REM] icon_key == func_name is not involved in the current implemen-
+	         tation BUT could be used in the future, so we posit this
+	         condition as a formal requirement.
+
+	2. The function will be called in the context of the component, that is,
+	   with this===Group[[DrawnCheck]]. This opens the option to adjust
+	   drawing operation according to the component state.
+	
+	3. Three arguments are passed, gx::ScriptUIGraphics, pen::ScriptUIPen,
+	   and bh::ScriptUIBrush (in that order.) `gx` represents the 'canvas'
+	   of the inner Checkbox. Use it to create paths -- gx.newPath() --
+	   and initiate drawing operations. `pen` and `bh` can be used as default
+	   pen and brush, but you can create your own from within the function.
+	   The area available for drawing is (1,17)×(1,17).
+	
+	4. The returned value of the function is not used.
+	
+	[REM] Thanks to ScriptUIGraphics.prototype.draw (cf. $$.factories.jsxinc)
+	you can dramatically shorten the drawing procedure. Here is a function
+	that draws a 'LAYER' icon:
+
+		function LAYER(gx,pen,bh)
+		//----------------------------------
+		// this :: Group[[DrawnCheck]]
+		{
+			gx.newPath();
+			gx.draw(9,3)(3,7)(9,11)(15,7)(9,3);
+			gx.strokePath(pen);
+			gx.fillPath(bh);
+
+			gx.newPath();
+			gx.draw(3,10)(9,14)(15,10);
+			gx.strokePath(pen);
+		}
+	
+	(a) If your icon functions are to be declared before including the DrawnCheck
+	    factory, it is recommended to set you data in a MODULE (or CLASS) and use the
+	    `onEngine` handler for loading the keys in `ScriptUI.DrawnCheckFactory.Icons`.
+	    (Be sure then that you won't replace existing Icons keys.)
+	
+	(b) Othwerwise, you can use the scheme
+
+	      ScriptUI.DrawnCheckFactory.Icons.setup
+	      ({
+	         ICON1: function ICON1(gx,pen,bh){ ... },
+	         ICON2: function ICON2(gx,pen,bh){ ... },
+	         . . .
+	      })
+
+	    as soon as the DrawnCheck factory is included (and before loading the framework.)
+	
+	BUTTON FLAVORS
+	
+	1. To create a on/off icon button, just let the component toggle (based on its
+	   value property.) You can preset the value and change it dynamically.
+	
+	2. To create a simple, one-state button, set the option `locked` to true (this
+	   prevents the value to change, so the button won't toggle.) Then define the
+	   `onClickChange` handler to trigger the desired action.
+	
+	3. You can also create a 'passive' on/off icon through the option `ignoreClick`.
+	   In that case, the component won't respond to user interactions (no click, no
+	   focus) but its value can be changed programmatically.
+
+	Example in ScriptUI.builder:
+
+	      DrawnCheckFactory$MyCheckableIcon:
+	      [{
+	          icon:    "LAYER",                        // ScriptUI.DrawnCheckFactory.Icons.LAYER must exist
+	          help:    "Scan hidden layers.",          // helpTip
+	          value:   1,                              // initial value (0|1)
+	      }],
+
+	API
+	=======================================================================
+	properties      obj = { kind: "DrawnCheck", IgnoreClick:0|1, Locked:0|1 }
+	                Information properties.
+	-----------------------------------------------------------------------
+	value           0|1 = 0
+	                Getter & setter that turns the control OFF (0) or ON (1).
+	-----------------------------------------------------------------------
+	icon            str | ''
+	                Getter & setter ; can dynamically change the icon (key.)
+	-----------------------------------------------------------------------
+	helpTip         str = ""
+	                Help message (getter and setter).
+	=======================================================================
+	onClickChange   fct( ev[[clicked]] ) = undef
+	                Called back when the custom 'clicked' event has occured.
+	                This mechanism is more stable than a 'click' listener:
+	                it reacts *once* per click and ignore RIGHT mouse button.
+	                [REM] The 'clicked' event also occurs when the user
+	                      presses the [SPACE] key.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                clicked | rclicked
+	=======================================================================
+	setValue(nv)    => nv
+	                Equivalent to { this.value=nv; return this.value; }
+	-----------------------------------------------------------------------
+	getValue()      => (0|1)
+	                Equivalent to { return this.value; }
+	-----------------------------------------------------------------------
+	getControl()    => Checkbox
+	                Return the inner Checkbox.
+	-----------------------------------------------------------------------
+	popup(s,c,t)    => undef
+	                Shortcut for sending a popup event in automatic mode.
+	                If no Popup component is available, this method has no
+	                effect.
+	=======================================================================
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.DrawnCheckFactory = function DrawnCheck(/*container*/parent,/*str|{icon,help,value...}*/ops,  V,DRW,r)
+		//----------------------------------
+		// Options (ops):
+		// .icon       (key)        Icon key, ScriptUI.DrawnCheckFactory.Icons[icon] must exist and be a function.
+		// .helpTip    (str='')     Help tip (`help` can be supplied as an alias.)
+		// .value      (bool=0)      0:uncheked 1:checked (Bool supported.)
+		// ---
+		// .margins     (uint=1)    Margins around the icon.
+		// .ignoreClick (bool=0)    If set, left mouse buttons are ignored.
+		// .locked      (bool=0)    If set, the value cannot change (no toggle.)
+		// ---
+		// .onClickChange (?fct)    'clicked' handler.
+		// .onRightClick  (?fct)    'rclicked' handler.
+		// .onEvent       (?fct)    Any event handler.
+		// ---
+		// .enabled | .visible      States.
+		// ---
+		// => Group[[DrawnCheck]]  ::   G(C)
+		//   .properties           ::   { kind, IgnoreClick, Locked }
+		{
+			// Normalize options.
+			// ---
+			'string' == typeof ops && (ops={icon:ops});
+			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+			V = ops.value = 1*(0!=ops.value);                              // 0|1
+			
+			DRW = 'function' == typeof(callee.Icons[ops.icon]);
+
+			// Create the component.
+			// ---
+			r = ScriptUI.builder
+			(
+				{
+					// --- Layout.
+					margins:                ops.margins,
+					spacing:                0,
+					orientation:            'row',
+					alignChildren:          ScriptUI.CC,
+					// --- Watched.
+					value:                  V,
+					icon:                   DRW ? ops.icon : '',
+					helpTip:                ops.helpTip,
+					onClickChange:          void 0,
+					onRightClick:           void 0,
+					onEvent:                void 0,
+					// --- Inner events.
+					_mousedown_mouseup:     ops.ignoreClick ? void 0 : callee.HMOU,
+					// --- Public methods.
+					setValue:               callee.SETV,
+					getValue:               callee.GETV,
+					getControl:             callee.CTRL, // ret. the main component
+					popup:                  ScriptUI.POPU, // noop if Popup unavailable.
+					// --- Control.
+					CheckBox$0:
+					{
+						properties:         { text:'' },
+						alignment:          ScriptUI.CC,
+						value:              !!V,
+						__iconKey__:        DRW ? ops.icon : '',
+						onClick:            ops.ignoreClick ? void 0 : callee.HMOU,
+						onDraw:             callee.HDRW,
+						optimalSize:        callee.SIZE,
+						maximumSize:        callee.SIZE,
+						_blur:              callee.HBLU,
+						enabled:            !ops.ignoreClick,
+					},
+				},
+				parent.add( 'group', void 0, callee.CREA(ops) )
+			);
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			(
+				r,
+				['value', 'icon', 'helpTip', 'onClickChange', 'onRightClick', 'onEvent'],
+				callee.WTCH,
+				ops
+			);
+
+			// States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Parameters, tools.
+		//----------------------------------
+		({
+			// Container of icon functions.
+			// Each function will be called with context===Group[[DrawnCheck]]
+			// and arguments (ScriptUIGraphics, ScriptUIPen, ScriptUIBrush)
+			// Draw your icon in (1,17)×(1,17) square.
+			// ---
+			Icons: {},
+
+			SIZE: [18,18],
+
+			DEFS:
+			{
+				icon:         '',
+				helpTip:      '',
+				value:        0,
+				margins:      1,
+				ignoreClick:  0,
+				locked:       0,
+				// ---
+				onClickChange: void 0,
+				onRightClick:  void 0,
+				onEvent:       void 0,
+			},
+			
+			CREA: function(/*{}*/ops)
+			//----------------------------------
+			// this :: ScriptUI.DrawnCheckFactory
+			// => new {}  ; properties object
+			{
+				return {
+					kind:          this.name,
+					IgnoreClick:   ops.ignoreClick ? 1 : 0,
+					Locked:        ops.locked ? 1 : 0,
+				};
+			},
+		})
+		.setup
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		({
+			HDRW: function onDrawCheckbox(/*DrawState*/DS,  me,gx,v,k,a,p,b,f)
+			//----------------------------------
+			// onDraw callback of the inner Checkbox.
+			// this  :: Checkbox
+			{
+				if( (!this.visible) || !(gx=this.graphics) ) return;
+				me = this.parent; // DrawnCheck component.
+				v = this.value?1:0;
+				k = me.enabled ? ((DS.mouseOver ? 'X':'C') + (DS.hasFocus ? 'FOC':('VL'+v))) : 'CDSB';
+				
+				a = callee[k];
+				p = gx.newPen(0,a,1);
+				b = gx.newBrush(0,a);
+				
+				gx.newPath();
+				gx.draw.DX = gx.draw.DY = 0;
+				gx.draw(17,2)(17,16)(16,17)(2,17)(1,16)(1,2)(2,1)(16,1)(17,2);
+				gx.strokePath(p);
+				v && gx.fillPath(b);
+
+				f = ScriptUI.DrawnCheckFactory.Icons[this.__iconKey__];
+				if( 'function' != typeof f ) return;
+				
+				v &&
+				(
+					p=gx.newPen(0,callee.CINV,1),
+					b=gx.newBrush(0,callee.CINV)
+				);
+				f.call(me,gx,p,b);
+			}
+			.setup
+			({
+				// --- Colors
+				CDSB: $$.isDark ? [.35,.35,.35,  1] : [.75,.75,.75,  1],
+				CVL0: $$.isDark ? [.4,.4,.4,  1]    : [.7,.7,.7,  1],
+				CVL1: $$.isDark ? [.7,.7,.7,  1]    : [.4,.4,.4,  1],
+				CINV: $$.isDark ? [.2,.2,.2,  1]    : [.9,.9,.9,  1],
+				XVL0: $$.isDark ? [.8,.8,.8,  1]    : [.3,.3,.3,  1],
+				XVL1: $$.isDark ? [.8,.8,.8,  1]    : [.3,.3,.3,  1],
+				CFOC: [.3,.6,.9,  1],
+				XFOC: [.35,.65,.95,  1],
+			}),
+
+			// [FIX210122] In CC most widgets have an obscure focus/blur
+			// sequence that may keep them 'active' while losing the focus.
+			// Forcing this.active to false seems to solve the pb.
+			// ---
+			HBLU: $$.inCC && function onBlurCheckbox(){ this.active=false },
+
+			HMOU: function onMouse(/*?MouseEvent*/ev,  me,t)
+			//----------------------------------
+			// Manage both CB.onClick callback AND mouse events.
+			// ---
+			// this   :: Group[[DrawnCheck]]             | Checkbox
+			// ev     :: mousedown | mouseup             | undef (onClick handler)
+			// target :: this | Checkbox                 | ---
+			{
+				if( !ev )
+				{
+					// CB onClick callback. This pseudo-event also
+					// occurs when the user presses the [SPACE] key.
+					// ---
+					me = 'checkbox'==this.type && this.parent;
+				}
+				else
+				{
+					ev.stopPropagation();                                       // Don't go higher.
+					
+					if( ev.button )                                             // Catch non-LEFT button.
+					{
+						ev.preventDefault();                                    // Inhibit.
+
+						'mousedown'==ev.type
+						&& 2 == ev.button                                       // RIGHT button
+						&& (this===ev.target||callee.EV_PHASE==ev.eventPhase)   // 'bubble' is allowed in CS
+						&& ScriptUI.dispatch(this,'rclicked',ev);               // Notify 'rclicked'
+
+						return;
+					}
+
+					// Since CB onClick callback is treated separately,
+					// we are now addressing left mousedown/up sequence
+					// outside the CB area. This means:
+					// - in CS:  ev.target !== CB
+					// - in CC:  ev.target === this && <firstTarget> !== CB
+					//           where firstTarget can be determined using a timer.
+					// ---
+					// [REM] In CC mouse events are re-targeted toward the parent so
+					// we have to ignore events fired at the control level. But CC's
+					// Checkbox also blocks any event we would expect after mousedown,
+					// so we cannot manage the sequence CB[mousedown] + NonCB[mouseup]
+
+					t = 'mousedown' == ev.type
+					? -( ev.target && callee.CAN_STAMP(ev.target,this) && new Date ) // Stamp:  0 | <0
+					: +( 500 > +new Date + (this.__stamp__||0) );                    // OK-Up:  0 | +1  (<500ms)
+					
+					0 > t ? (this.__stamp__=t) : delete this.__stamp__;              // Arm vs. delete the timer.
+
+					me = 1 == t && this;
+				}
+
+				if( me )
+				{
+					me.setValue(1-me.value);                                    // Change value and redraw (rem: won't change if locked.)
+					ScriptUI.setFocus(me.getControl());                         // Forcibly focus the box.
+					ScriptUI.dispatch(me,'clicked',ev||0);                      // Notify 'clicked' to listeners.
+				}
+			}
+			.setup
+			({
+				EV_PHASE : $.inCC ? 'BREAK' : 'bubble',
+
+				CAN_STAMP : $.inCC ?
+				//----------------------------------
+				function(tg,me)
+				{
+					return 'checkbox' == tg.type ?
+						( (callee.TM=+new Date), false ) :
+						( tg===me && 100 < (+new Date - (callee.TM||0)) );
+				}:
+				function(tg)
+				{
+					return 'checkbox' != tg.type;
+				},
+			}),
+
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*str*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[Check]]
+			//    k   :: value | helpTip | icon
+			//           onClickChange | onRightClick | onEvent
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				var t,a;
+				switch( k )
+				{
+					case 'value': // 0 | 1
+						this.properties.Locked && (nv=ov);
+						nv >>>= 0;
+						t = this.children[0];
+						t.value=!!nv;
+						t.hide(),t.show(); // Refresh needed.
+						break;
+
+					case 'icon': // str
+						if( 'function' != typeof(ScriptUI.DrawnCheckFactory.Icons[nv]) ) return ov;
+						t = this.children[0];
+						t.__iconKey__ = nv;
+						t.hide(),t.show(); // Refresh needed.
+						break;
+
+					case 'helpTip': // str
+						nv = String(nv||'');
+						a = this.children;
+						a[0].helpTip = nv;
+						break;
+
+					case 'onClickChange': // fct
+						ScriptUI.callback(this,'clicked',ov,nv);
+						break;
+
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onEvent': // fct
+						ScriptUI.callback(this,['clicked','rclicked'],ov,nv);
+						break;
+
+					default:;
+				}
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public.
+		//----------------------------------
+		({
+			SETV: function setValue(nv){ return (this.value=nv), this.value },
+			GETV: function getValue(  ){ return this.value },
+			CTRL: function getControl(){ return this.children[0] },
+		});
+
+	}
