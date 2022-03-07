@@ -9,12 +9,12 @@
 		Kind:           Snippet
 		API:  ScriptUI. factoryOptions() setWatcher() dispatch()
 		                customEventHandler()
-		                LINE measureMulti()
-		                POPU() NOOP()
+		                LINE measureMulti() POPU() NOOP()
+		      ScriptUIGraphics.prototype.draw()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210128 (YYMMDD)
-		Modified:       210825 (YYMMDD)
+		Modified:       220307 (YYMMDD)
 
 *******************************************************************************/
 
@@ -719,4 +719,27 @@
 		// [ADD210629] Empty function. Useful in conditional assignments.
 		// ---
 		ScriptUI.NOOP = function noop(){};
+
+		ScriptUIGraphics.prototype.draw = function draw(x,y)
+		//----------------------------------
+		// [ADD220307] Syntactic sugar that provides a compact code for
+		// drawing a path from myWidget.graphics. Instead of
+		//    gx.moveTo(3,5); gx.lineTo(10,20); gx.lineTo(8,5); etc
+		// use
+		//    gx.draw(3,5)(10,20)(8,5)
+		// Optionally, preset gx.draw.DX and gx.DRAW.DY to shift any
+		// incoming (x,y) coordinate pair by (DX,DY).
+		{
+			(this||0).constructor===ScriptUIGraphics
+			? (callee.GX=this).moveTo(x+callee.DX,y+callee.DY)
+			: ( callee.GX && callee.GX.lineTo(x+callee.DX,y+callee.DY) );
+
+			return callee;
+		}
+		.setup
+		({
+			GX:false,
+			DX:0,
+			DY:0,
+		});
 	}
