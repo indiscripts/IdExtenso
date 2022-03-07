@@ -1,3 +1,14 @@
+##### [220307]
+   - [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc): Added the helper `ScriptUIGraphics.prototype.draw(x,y)`, providing a compact syntax for drawing a path from `anyWidget.graphics`. Instead of
+
+    gx.moveTo(3,5); gx.lineTo(10,20); gx.lineTo(8,5); etc
+
+   use
+
+    gx.draw(3,5)(10,20)(8,5);
+	
+   (Each time you initiate `draw()` from a `ScriptUIGraphics` instance it interprets the first `(x,y)` pair as a `moveTo` command, then the next coordinates passed to the function are interpreted as a `lineTo` command.)
+
 ##### [220212]
    - [**PageRange**](/etc/$$.PageRange.jsxlib). A subtle option, `singletons`, has been added to the main `format` method (see the specification of the `options` argument.) In substance, `singletons` allows you to prevent some special numbers from being included in a range, disregarding any other rule that would otherwise apply. There are indeed particular circumstances where you want to detach a page number and preserve its visibility, for example if it is associated to a footnote whose number must in turn be rendered in some way during postprocessing. Then, you can tell `$$.PageRange` to exclude such page number, say 123, from a range like _120-128_. Add the option `{singletons:[123]}` (array of uint) and you will retrieve something like `"120-122, 123, 124-128"` instead of `"120-128"`. If found in the input array, your singleton number(s) is/are always detached from possible ranges.
      
