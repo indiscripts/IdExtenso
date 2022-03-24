@@ -20,7 +20,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       210626 (YYMMDD)
+		Modified:       220324 (YYMMDD)
 
 *******************************************************************************/
 
@@ -592,8 +592,8 @@
 
 		String.prototype.split = function split(/*str|RegExp*/separator,/*?uint32*/limit,  IS_REGEX,t)
 		//----------------------------------
-		// [180709] Allows to split a string even if it contains
-		// occurrences of U+0000, in ExtendScript CS4
+		// [FIX220324] The patch had also to be applied to cases
+		// where `this` doesn't contain U+0000 (!)
 		// `separator` ::  String or RegExp
 		// `limit`     ::  Max. number of results [opt.]
 		// ---
@@ -617,11 +617,14 @@
 			(IS_REGEX = +(separator instanceof RegExp)) || (separator=String(separator));
 
 			// If:   (a) separator is undefined/empty
-			//    OR (b) `this` does not contain U+0000
-			//    OR (c) separator is a regexp that matches ''
+			//    OR (b) separator is a regexp that matches ''
 			// then the regular split() method is called.
+			// [FIX220324] Removed the case (-1 == this.indexOf('\0')) as it wasn't safe.
+			// In other words, even if this string does not contain U+0000, the patch must
+			// still be applied. Reason: "abc".split('\0') wrongly returns ["","","",""]
+			// in CS4 (instead of ["abc"].)
 			// ---
-			if( (!separator) || -1 == this.indexOf('\0') || (IS_REGEX && separator.test('')) )
+			if( (!separator) || (IS_REGEX && separator.test('')) )
 			{
 				return String.__split__.call(this,separator,limit);
 			}
