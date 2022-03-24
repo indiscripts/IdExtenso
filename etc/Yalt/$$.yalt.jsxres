@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       200531 (YYMMDD)
+		Modified:       220324 (YYMMDD)
 
 *******************************************************************************/
 
@@ -187,7 +187,7 @@
 	Language # Langue # Sprache # Idioma # Lingua # Язык
 	Layer # Calque # Ebene # Capa # Livello # Слой
 	Layers # Calques # Ebenen # Capas # Livelli # Слои
-	Layout # Mise en page # Layout # Maquetación # Layout # Макет
+	Layout # Mise en page # Layout # Maquetación # Layout # Макет
 	Length # Longueur # Länge # Longitud # Lunghezza # Длина
 	Letter # Lettre # Letter # Carta # Lettera # Letter
 	Level # Niveau # Ebene # Nivel # Livello # Уровень
@@ -325,7 +325,7 @@
 	Subject # Objet # Betreff # Asunto # Oggetto # Тема
 
 	Error # Erreur # Fehler # Error # Errore # Ошибка
-	Error! #  Erreur ! #  Fehler! #  Error. #  Errore! #  Ошибка!
+	Error! # Erreur ! # Fehler! # Error. # Errore! # Ошибка!
 	Errors # Erreurs # Fehler # Errores # Errori # Ошибки
 	Warning # Avertissement # Warnung # Aviso # Avvertimento # Внимание
 	Warnings # Avertissements # Warnungen # Avisos # Avvisi # Предупреждения
