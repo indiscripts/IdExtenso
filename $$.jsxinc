@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       210901 (YYMMDD)
+		Modified:       220324 (YYMMDD)
 
 *******************************************************************************/
 
@@ -258,7 +258,7 @@
 		#include 'core/$$.File.jsxlib'
 		#include 'core/$$.Log.jsxlib'
 		#include 'core/$$.Dom.jsxlib'
-		// --- [190120]
+		// ---
 		#include 'core/$$.SUI.jsxinc'
 		;
 
