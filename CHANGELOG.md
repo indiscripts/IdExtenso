@@ -1,5 +1,6 @@
-##### [220324]
-   - The CS4 patch [`String.prototype.split`](/core/Ext/$$.string.jsxinc) wasn't working as expected on strings that _do not_ contain U+0000. Fixed.
+## 2.20324
+
+- Security update (March 24, 2022) including latest fixes and additions. Main changes in the core area: 1. The CS4 patch [`String.prototype.split`](/core/Ext/$$.string.jsxinc) wasn't working as expected on strings that _do not_ contain U+0000. It is now fixed. 2. [`RegExp.escape`](/core/Ext/$$.regexp.jsxinc) wasn't supporting the empty string. Fixed! 3. [`RegExp.fromCodeRanges`](/core/Ext/$$.regexp.jsxinc) had a logical bug related to surrogate pairs. Fixed! Also, the special escape sequence `\-` is now used for U+002D, instead of `\u002D` which is not properly handled in ExtendScript. In addition, `fromCodeRanges` supports a new option as 2nd argument, `OUT_MODE` (set it to `-1` to get a more compact range pattern.)
 
 ##### [220307]
    - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc) is a new component that manages CS/CC-consistent icon buttons (18×18 px) based on a customized `onDraw` callback. Unlike PNG sprites (that consume more memory and undergo UI scaling issues in various environments), `DrawnCheck` components are purely drawn from the `ScriptUIGraphics` canvas. You need to provide a unique key and function for each icon, as detailed in the [notice](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc). See also [TestDrawnCheck.jsx](/tests/SuiFactories/TestDrawnCheck.jsx) for a working example with three distinct icons.
