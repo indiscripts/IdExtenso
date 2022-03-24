@@ -1,3 +1,6 @@
+##### [220324]
+   - The CS4 patch [`String.prototype.split`](/core/Ext/$$.string.jsxinc) wasn't working as expected on strings that _do not_ contain U+0000. Fixed.
+
 ##### [220307]
    - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc) is a new component that manages CS/CC-consistent icon buttons (18×18 px) based on a customized `onDraw` callback. Unlike PNG sprites (that consume more memory and undergo UI scaling issues in various environments), `DrawnCheck` components are purely drawn from the `ScriptUIGraphics` canvas. You need to provide a unique key and function for each icon, as detailed in the [notice](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc). See also [TestDrawnCheck.jsx](/tests/SuiFactories/TestDrawnCheck.jsx) for a working example with three distinct icons.
    - [ScriptUI/factories](/etc/ScriptUI/$$.factories.jsxinc): Added the helper `ScriptUIGraphics.prototype.draw(x,y)`, providing a compact syntax for drawing a path from `anyWidget.graphics`. Instead of
