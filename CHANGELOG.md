@@ -1,3 +1,6 @@
+##### [220402]
+   - [**UniAsc**](/etc/$$.UniAsc.jsxlib): new module offering Unicode-to-ASCII transliteration.
+
 ## 2.20324
 
 - Security update (March 24, 2022) including latest fixes and additions. Main changes in the core area: 1. The CS4 patch [`String.prototype.split`](/core/Ext/$$.string.jsxinc) wasn't working as expected on strings that _do not_ contain U+0000. It is now fixed. 2. [`RegExp.escape`](/core/Ext/$$.regexp.jsxinc) wasn't supporting the empty string. Fixed! 3. [`RegExp.fromCodeRanges`](/core/Ext/$$.regexp.jsxinc) had a logical bug related to surrogate pairs. Fixed! Also, the special escape sequence `\-` is now used for U+002D, instead of `\u002D` which is not properly handled in ExtendScript. In addition, `fromCodeRanges` supports a new option as 2nd argument, `OUT_MODE` (set it to `-1` to get a more compact range pattern.)
