@@ -1,5 +1,5 @@
 ##### [220402]
-   - [**UniAsc**](/etc/$$.UniAsc.jsxlib): new module offering Unicode-to-ASCII transliteration.
+   - [**UniAsc**](/etc/$$.UniAsc.jsxlib): this new module provides basic Unicode-to-ASCII transliteration. When included, it appends a `translit()` method to `String.prototype` so you can simply use e.g. `"北亰".translit()` (which returns `"Bei Jing "`.)
 
 ## 2.20324
 
