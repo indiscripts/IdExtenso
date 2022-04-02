@@ -1,0 +1,153 @@
+/*******************************************************************************
+
+		Name:           UniAsc
+		Desc:           Efficient Unicode-to-ASCII transliteration.
+		Path:           /etc/$$.UniAsc.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =convert()
+		              + String.prototype.translit()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        220402 (YYMMDD)
+		Modified:       220402 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('UniAsc') || eval(__(MODULE, $$, 'UniAsc', 220402, 'convert'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+	
+	/*
+	
+		This module offers a simple implementation of the nice Junidecode
+		library from Giuseppe Cardone (github.com/gcardone/junidecode),
+		derived from the historical Text::Unidecode perl module created by
+		Sean M. Burke (metacpan.org/release/SBURKE/Text-Unidecode-0.04)
+
+		Use it to either remove accents/diacritics from a Latin-based string,
+		or to provide basic transliteration functionalities. The resulting
+		string is always in ASCII.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+		Since $$.UniAsc extends String.prototype, the converter can be invoked
+		in two equivalent ways:
+		
+		(1)   $$.UniAsc(myString)    // Alias of $$.UniAsc.convert(myString)
+		
+		(2)   myString.translit()    // Same result.
+		
+		Note: Unlike myString.unaccent() -- which preserves e.g Greek or
+		Cyrillic base letters -- myString.translit() always produces
+		ASCII7 sequence (U+0020..U+007E.) Compare:
+		
+		     "ΐΫάέή".unaccent()   -> "ιΥαεη"
+		     "ΐΫάέή".translit()   -> "IUaee"
+
+	*/
+
+	//==========================================================================
+	// PRIVATE
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		EMPT: '\x01',        // Empty character code   (Reserved: U+0001.)
+		MISS: '\x02',        // Missing representation (U+0002.)
+
+		// ~.TBLE maps each 'Hi' code (00..FF) to a string of 256 'Lo'
+		// chars. Then each 'Lo' char is either
+		// • '\x01'  <-> meaning: empty result
+		// • '\x02'  <-> missing transliteration, rendered '[?]'
+		// • a single ASCII character  <-> quick match
+		// • over '\0x7F': an 0x80-based index X so that x=X-0x80 is
+		//   the index of the result in the secondary table ~.EXTN.
+		// ---
+		TBLE:
+		[
+		#include 'UniAsc/$$.TBLE.jsxres'
+		]
+		.setup({ MAX_CHAR:'\x7E', OFFSET:0x80 }),
+		
+
+		// This table provides multichar translations, as specified above.
+		// ---
+		EXTN:
+		[
+		#include 'UniAsc/$$.EXTN.jsxres'
+		],
+		
+		CONV: function(  I,T,MX,s,r,n,i,t,cc)
+		//----------------------------------
+		// (Converter.) Note: this internal methode could be easily
+		// extended/hacked to support a different TBLE/EXTN pair if,
+		// for example, we wanted to allow extra-ASCII characters in
+		// the output. Make sure that TBLE.MAX_CHAR (char) and
+		// TBLE.OFFSET (uint) are consistent.
+		// this :: str  [WARNING: the context is a String instance]
+		// ---
+		// => str
+		{
+			I = callee.µ['~'];
+			T = I.TBLE;
+			MX = T.MAX_CHAR;
+			s = this.valueOf();
+
+			for
+			(
+				r='', n=s.length, i=-1 ;
+				++i < n ;
+				r += (t=T[(cc=s.charCodeAt(i))>>>8]) &&
+				(
+					MX >= (t=t.charAt(0xFF&cc))
+					? ( ' ' <= t ? t : (I.MISS===t ? '[?]' : '') )
+					: I.EXTN[t.charCodeAt(0)-T.OFFSET]
+				)
+			);
+
+			return r;
+		},
+	})
+	
+	//==========================================================================
+	// API
+	//==========================================================================
+	
+	[PUBLIC]
+	
+	({
+		onEngine: function onEngine_()
+		//----------------------------------
+		{
+			String.prototype.translit = callee.µ['~'].CONV;
+		},
+
+		convert: function convert_S_S(/*str*/input,  t)
+		//----------------------------------
+		// Given a string (UTF16), returns a 'reasonable ASCII7-only
+		// string' representing the input.
+		// E.g   "Ô fête, ô Pâques"      => "O fete, o Paques"
+		//       "¹²³ ¦ ¼ ½ Ĉ Ę Œ Ⱥ ɸ "  => "123 | 1/4 1/2 C E OE A F"
+		//       "\u5317\u4eb0"          => "Bei Jing "
+		// ---
+		// => str
+		{
+			'string' == (t=typeof input)
+			|| error( __("Invalid 'input' argument (%1). Should be a string.",t), callee );
+			
+			return callee.µ['~'].CONV.call(input);
+		},
+
+	})
