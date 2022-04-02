@@ -348,6 +348,17 @@ This subfolder provides basic demo scripts showing the behaviors and features of
 
 ---
 
+##### [`UnicodeToAscii.jsx`](UnicodeToAscii.jsx)
+
+Basic Unicode-to-ASCII transliteration.
+
+_Demonstrates:_
+   
+* Including and using the `$$.UniAsc` module.
+* Live-testing the `translit()` method from a ScriptUI dialog made up from `ScriptUI.builder()`.
+
+---
+
 ##### [`UseJsxBlindLib.jsx`](UseJsxBlindLib.jsx)
 
 Scramble a jsxbin file choosen by the user.
