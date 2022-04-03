@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           WSYS
-		Desc:           Main writing systems
+		Desc:           Writing systems
 		Path:           /etc/Linguist/$$.WSYS.jsxres
 		Require:        ---
 		Encoding:       ÛȚF8
@@ -11,16 +11,58 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170426 (YYMMDD)
-		Modified:       200317 (YYMMDD)
+		Modified:       220403 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
 	// DATA  (each system key has four Titlecase chars)
-	// ISO 15924 systems registered here are only those involved in ~.LISO
 	// [RES] https://en.wikipedia.org/wiki/ISO_15924
 	//==========================================================================
+	
+	// [ADD220403] Added keys.
+	/*
+		Adlm,Aghb,Ahom,Armi,Avst,
+		Bali,Bamu,Bass,Batk,Bhks,Bopo,Brah,Brai,Buhd,
+		Cakm,Cari,Cham,Copt,Cprt,
+		Dogr,Dsrt,Dupl,
+		Egyp,Elba,Elym,
+		Glag,Gong,Gonm,Gran,Guru,
+		Hang,Hano,Hatr,Hira,Hluw,Hmng,Hmnp,Hung,
+		Ital,Java,
+		Kali,Kana,Khar,Khoj,Kthi,
+		Lana,Lepc,Limb,Lina,Linb,Lisu,Lyci,Lydi,
+		Mahj,Maka,Mand,Mani,Marc,Medf,Mend,Merc,Mero,Modi,Mong,Mroo,Mtei,Mult,
+		Nand,Narb,Nbat,Newa,Nkoo,Nshu,
+		Ogam,Olck,Orkh,Osge,Osma,
+		Palm,Pauc,Perm,Phag,Phlp,Phnx,Plrd,Prti,
+		Rjng,Rohg,Runr,
+		Samr,Sarb,Saur,Shaw,Sgnw,Shrd,Sidd,Sind,Sogd,Sogo,Sora,Soyo,Sund,Sylo,
+		Tagb,Takr,Tale,Talu,Tang,Tavt,Tglg,Tfng,Tirh,
+		Ugar,Vaii,Wara,Wcho,
+		Xpeo,Xsux,Zanb,Zinh,Zyyy
+	*/
 
+	Adlm :
+	{
+		name:   "Adlam",
+		dir:    "R2L",
+		ranges: [ [0x1E900,0x1E95F] ],
+	},
+
+	Aghb :
+	{
+		name:   "Caucasian Albanian",
+		dir:    "L2R",
+		ranges: [ [0x10530,0x1056F] ],
+	},
+
+	Ahom :
+	{
+		name:   "Ahom",
+		dir:    "L2R",
+		ranges: [ [0x11700,0x1173F] ],
+	},
 
 	Arab :
 	{
@@ -28,24 +70,57 @@
 		dir:    "R2L",
 		ranges: [
 			[0x600,0x6FF],[0x750,0x77F],[0x8A0,0x8FF],[0xFB50,0xFDFF],[0xFE70,0xFEFF],
-			[0x1EE00,0x1EEFF],[0x10E60,0x10E7F]
+			[0x1EE00,0x1EEFF],[0x10E60,0x10E7F],[0x1EE00,0x1EEBB],[0x1EEF0,0x1EEF1],
 		],
-		// U+0600 - U+06FF     Arabic
-		// U+0750 - U+077F     Arabic Supplement
-		// U+08A0 - U+08FF     Arabic Extended-A
-		// U+FB50 - U+FDFF     Arabic Pres. Forms-A
-		// U+FE70 - U+FEFF     Arabic Pres. Forms-B
-		// U+1EE00 - U+1EEFF   Arabic Mathematical...
-		// U+10E60 - U+10E7F   Rumi Numeral Symbols
+	},
+
+	Armi :
+	{
+		name:   "Imperial Aramaic",
+		dir:    "R2L",
+		ranges: [ [0x10840,0x1085F] ],
 	},
 
 	Armn :
 	{
-		name: "Armenian",
-		dir: "L2R",
+		name:   "Armenian",
+		dir:    "L2R",
 		ranges: [ [0x530,0x58F],[0xFB00,0xFB17] ],
-		// U+0530 - U+058F Armenian
-		// U+FB00 - U+FB17 Alphabetic Pres. Forms
+	},
+
+	Avst :
+	{
+		name:   "Avestan",
+		dir:    "R2L",
+		ranges: [ [0x10B00,0x10B3F] ],
+	},
+
+	Bali :
+	{
+		name:   "Balinese",
+		dir:    "L2R",
+		ranges: [ [0x1B00,0x1B7C] ],
+	},
+
+	Bamu :
+	{
+		name:   "Bamum",
+		dir:    "L2R",
+		ranges: [ [0xA6A0,0xA6F7],[0x16800,0x16A38] ],
+	},
+
+	Bass :
+	{
+		name:   "Bassa Vah",
+		dir:    "L2R",
+		ranges: [ [0x16AD0,0x16AF5] ],
+	},
+
+	Batk :
+	{
+		name:   "Batak",
+		dir:    "L2R",
+		ranges: [ [0x1BC0,0x1BFF] ],
 	},
 
 	Beng :
@@ -53,7 +128,34 @@
 		name:   "Bengali",
 		dir:    "L2R",
 		ranges: [ [0x980,0x9FF] ],
-		// U+0980 - U+09FF
+	},
+
+	Bhks :
+	{
+		name:   "Bhaiksuki",
+		dir:    "L2R",
+		ranges: [ [0x11C00,0x11C6C] ],
+	},
+
+	Bopo :
+	{
+		name:   "Bopomofo",
+		dir:    "L2R",
+		ranges: [ [0x02EA,0x02EB],[0x3105,0x312F],[0x31A0,0x31BA] ],
+	},
+
+	Brah :
+	{
+		name:   "Brahmi",
+		dir:    "L2R",
+		ranges: [ [0x11000,0x1107F] ],
+	},
+
+	Brai :
+	{
+		name:   "Braille",
+		dir:    "L2R",
+		ranges: [ [0x2800,0x28FF] ],
 	},
 
 	Bugi :
@@ -61,7 +163,20 @@
 		name:   "Buginese",
 		dir:    "L2R",
 		ranges: [ [0x1A00,0x1A1F] ],
-		// U+1A00 - U+1A1F
+	},
+
+	Buhd :
+	{
+		name:   "Buhid",
+		dir:    "L2R",
+		ranges: [ [0x1740,0x1753] ],
+	},
+
+	Cakm :
+	{
+		name:   "Chakma",
+		dir:    "L2R",
+		ranges: [ [0x11100,0x11146] ],
 	},
 
 	Cans :
@@ -69,8 +184,20 @@
 		name:   "Canadian Aboriginal",
 		dir:    "L2R",
 		ranges: [ [0x1400,0x167F],[0x18B0,0x18FF] ],
-		// U+1400 - U+167F Unified Canadian Aboriginal Syllabics,
-		// U+18B0 - U+18FF Unified Canadian Aboriginal Syllabics Extended
+	},
+
+	Cari :
+	{
+		name:   "Carian",
+		dir:    "VAR",
+		ranges: [ [0x102A0,0x102D0] ],
+	},
+
+	Cham :
+	{
+		name:   "Cham",
+		dir:    "L2R",
+		ranges: [ [0xAA00,0xAA5F] ],
 	},
 
 	Cher :
@@ -78,20 +205,27 @@
 		name:   "Cherokee",
 		dir:    "L2R",
 		ranges: [ [0x13A0,0x13FF],[0xAB70,0xABBF] ],
-		// U+13A0 - U+13FF Cherokee
-		// U+AB70 - U+ABBF Cherokee Supplement
+	},
+
+	Copt :
+	{
+		name:   "Coptic",
+		dir:    "L2R",
+		ranges: [ [0x03E2,0x03EF],[0x2C80,0x2CFF] ],
+	},
+
+	Cprt :
+	{
+		name:   "Cypriot",
+		dir:    "R2L",
+		ranges: [ [0x10800,0x1083F] ],
 	},
 
 	Cyrl :
 	{
 		name:   "Cyrillic",
 		dir:    "L2R",
-		ranges: [ [0x400,0x4FF],[0x500,0x52F],[0x2DE0,0x2DFF],[0xA640,0xA69F],[0x1C80,0x1C8F] ],
-		// U+0400 - U+04FF Cyrillic
-		// U+0500 - U+052F Cyrillic Supplement
-		// U+2DE0 - U+2DFF Cyrillic Extended-A
-		// U+A640 - U+A69F Cyrillic Extended-B
-		// U+1C80 - U+1C8F Cyrillic Extended-C
+		ranges: [ [0x0400,0x052F],[0x1C80,0x1C88],[0x1D2B,0x1D2B],[0x1D78,0x1D78],[0x2DE0,0x2DFF],[0xA640,0xA69F],[0xFE2E,0xFE2F] ],
 	},
 
 	Cyrs :
@@ -99,41 +233,90 @@
 		name:   "Early Cyrillic",
 		dir:    "VAR",
 		ranges: [ [0x400,0x4FF],[0x500,0x52F],[0x2DE0,0x2DFF],[0xA640,0xA69F],[0x1C80,0x1C8F] ],
-		// U+0400 - U+04FF Cyrillic
-		// U+0500 - U+052F Cyrillic Supplement
-		// U+2DE0 - U+2DFF Cyrillic Extended-A
-		// U+A640 - U+A69F Cyrillic Extended-B
-		// U+1C80 - U+1C8F Cyrillic Extended-C
 	},
 
 	Deva :
 	{
 		name:   "Devanagari",
 		dir:    "L2R",
-		ranges: [ [0x900,0x97F],[0xA8E0,0xA8FF],[0x1CD0,0x1CFF] ],
-		// U+0900 - U+097F Devanagari,
-		// U+A8E0 - U+A8FF Devanagari Extended,
-		// U+1CD0 - U+1CFF Vedic Extensions
+		ranges: [ [0x900,0x97F],[0xA8E0,0xA8FF] ],
+	},
+
+	Dogr :
+	{
+		name:   "Dogra",
+		dir:    "L2R",
+		ranges: [ [0x11800,0x1183B] ],
+	},
+
+	Dsrt :
+	{
+		name:   "Deseret",
+		dir:    "L2R",
+		ranges: [ [0x10400,0x1044F] ],
+	},
+
+	Dupl :
+	{
+		name:   "Duployan",
+		dir:    "L2R",
+		ranges: [ [0x1BC00,0x1BC9F] ],
+	},
+
+	Egyp :
+	{
+		name:   "Egyptian Hieroglyphs",
+		dir:    "R2L",
+		ranges: [ [0x13000,0x13438] ],
+	},
+
+	Elba :
+	{
+		name:   "Elbasan",
+		dir:    "L2R",
+		ranges: [ [0x10500,0x10527] ],
+	},
+
+	Elym :
+	{
+		name:   "Elymaic",
+		dir:    "R2L",
+		ranges: [ [0x10FE0,0x10FF6] ],
 	},
 
 	Ethi :
 	{
 		name:   "Ethiopic",
 		dir:    "L2R",
-		ranges: [ [0x1200,0x137F],[0x1380,0x139F],[0x2D80,0x2DDF],[0xAB00,0xAB2F] ],
-		// U+1200 - U+137F Ethiopic
-		// U+1380 - U+139F Ethiopic Supplement
-		// U+2D80 - U+2DDF Ethiopic Extended
-		// U+AB00 - U+AB2F Ethiopic Extended-A
+		ranges: [ [0x1200,0x139F],[0x2D80,0x2DDF],[0xAB00,0xAB2F] ],
 	},
 
 	Geor :
 	{
 		name:   "Georgian",
 		dir:    "L2R",
-		ranges: [ [0x10A0,0x10FF],[0x2D00,0x2D2F] ],
-		// U+10A0 - U+10FF Georgian
-		// U+2D00 - U+2D2F Georgian Supplement
+		ranges: [ [0x10A0,0x10FF],[0x1C90,0x1CBF],[0x2D00,0x2D2F] ],
+	},
+
+	Glag :
+	{
+		name:   "Glagolitic",
+		dir:    "L2R",
+		ranges: [ [0x2C00,0x2C5E],[0x1E000,0x1E02A] ],
+	},
+
+	Gong :
+	{
+		name:   "Gunjala Gondi",
+		dir:    "L2R",
+		ranges: [ [0x11D60,0x11DA9] ],
+	},
+
+	Gonm :
+	{
+		name:   "Masaram Gondi",
+		dir:    "L2R",
+		ranges: [ [0x11D00,0x11D59] ],
 	},
 
 	Goth :
@@ -141,16 +324,23 @@
 		name:   "Gothic",
 		dir:    "L2R",
 		ranges: [ [0x10330,0x1034F] ],
-		// U+10330 - U+1034F
+	},
+
+	Gran :
+	{
+		name:   "Grantha",
+		dir:    "L2R",
+		ranges: [ [0x11300,0x11374] ],
 	},
 
 	Grek :
 	{
 		name:   "Greek",
 		dir:    "L2R",
-		ranges: [ [0x370,0x3FF],[0x1F00,0x1FFF] ],
-		// U+0370 - U+03FF Greek and Coptic
-		// U+1F00 - U+1FFF Greek Extended
+		ranges: [
+			[0x0370,0x03FF],[0x1D26,0x1D2A],[0x1D5D,0x1D6A],[0x1DBF,0x1DBF],[0x1F00,0x1FFF],[0x2126,0x2126],[0xAB65,0xAB65],
+			[0x10140,0x1018E],[0x101A0,0x101A0],[0x1D200,0x1D245]
+		],
 	},
 
 	Gujr :
@@ -158,7 +348,27 @@
 		name:   "Gujarati",
 		dir:    "L2R",
 		ranges: [ [0xA80,0xAFF] ],
-		// U+0A80 - U+0AFF
+	},
+
+	Guru :
+	{
+		name:   "Gurmukhi",
+		dir:    "L2R",
+		ranges: [ [0x0A01,0x0A76] ],
+	},
+
+	Hang :
+	{
+		name:   "Hangul",
+		dir:    "L2R",
+		ranges: [ [0x1100,0x11FF],[0x302E,0x302F],[0x3131,0x318E],[0x3200,0x321E],[0x3260,0x327E],[0xA960,0xA97C],[0xAC00,0xD7FB],[0xFFA0,0xFFDC] ],
+	},
+
+	Hano :
+	{
+		name:   "Hanunoo",
+		dir:    "L2R",
+		ranges: [ [0x1720,0x1734] ],
 	},
 
 	Hans :
@@ -171,52 +381,25 @@
 			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],
 			[0x2B820,0x2CEAF],[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
 		],
-		// Hans-Hant:
-		// CJK Radicals Supplement (2E80 - 2EFF)
-		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
-		// Ideographic Description Characters (2FF0 - 2FFF)
-		// CJK Symbols and Punctuation (3000 - 303F)
-		// CJK Strokes (31C0 - 31EF)
-		// Enclosed CJK Letters and Months (3200 - 32FF)
-		// CJK Unified Ideographs Extension A (3400 - 4DBF)
-		// CJK Unified Ideographs (4E00 - 9FFF)
-		// CJK Compatibility Ideographs (F900 - FAFF)
-		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
-		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
-		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
-		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
-		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
-		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
-		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
 	},
 
 	Hant :
 	{
 		name:   "Han Traditional",
-		dir:    "L2R",
+		dir:    "VAR",
 		ranges: [
 			[0x2E80,0x2EFF],[0x2F00,0x2FDF],[0x2FF0,0x2FFF],[0x3000,0x303F],[0x31C0,0x31EF],
 			[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],[0xF900,0xFAFF],
 			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],
 			[0x2B820,0x2CEAF],[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
 		],
-		// Hans-Hant:
-		// CJK Radicals Supplement (2E80 - 2EFF)
-		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
-		// Ideographic Description Characters (2FF0 - 2FFF)
-		// CJK Symbols and Punctuation (3000 - 303F)
-		// CJK Strokes (31C0 - 31EF)
-		// Enclosed CJK Letters and Months (3200 - 32FF)
-		// CJK Unified Ideographs Extension A (3400 - 4DBF)
-		// CJK Unified Ideographs (4E00 - 9FFF)
-		// CJK Compatibility Ideographs (F900 - FAFF)
-		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
-		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
-		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
-		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
-		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
-		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
-		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
+	},
+
+	Hatr :
+	{
+		name:   "Hatran",
+		dir:    "R2L",
+		ranges: [ [0x108E0,0x108FF] ],
 	},
 
 	Hebr :
@@ -224,8 +407,55 @@
 		name:   "Hebrew",
 		dir:    "R2L",
 		ranges: [ [0x590,0x05FF],[0xFB1D,0xFB4F] ],
-		// U+0590 to U+05FF Hebrew,
-		// U+FB1D to U+FB4F Alphabetic Presentation Forms
+	},
+
+	Hira :
+	{
+		name:   "Hiragana",
+		dir:    "VAR",
+		ranges: [ [0x3041,0x309F],[0x1B001,0x1B11E],[0x1B150,0x1B152],[0x1F200,0x1F200] ],
+	},
+
+	Hluw :
+	{
+		name:   "Anatolian Hieroglyphs",
+		dir:    "L2R",
+		ranges: [ [0x14400,0x14646] ],
+	},
+
+	Hmng :
+	{
+		name:   "Pahawh Hmong",
+		dir:    "L2R",
+		ranges: [ [0x16B00,0x16B8F] ],
+	},
+
+	Hmnp :
+	{
+		name:   "Nyiakeng Puachue Hmong",
+		dir:    "L2R",
+		ranges: [ [0x1E100,0x1E14F] ],
+	},
+
+	Hung :
+	{
+		name:   "Old Hungarian",
+		dir:    "R2L",
+		ranges: [ [0x10C80,0x10CFF] ],
+	},
+
+	Ital :
+	{
+		name:   "Old Italic",
+		dir:    "VAR",
+		ranges: [ [0x10300,0x1032F] ],
+	},
+
+	Java :
+	{
+		name:   "Javanese",
+		dir:    "L2R",
+		ranges: [ [0xA980,0xA9DF] ],
 	},
 
 	Jpan :
@@ -233,9 +463,27 @@
 		name:   "Japanese",
 		dir:    "L2R",
 		ranges: [ [0x4E00,0x9FBF],[0x3040,0x309F],[0x30A0,0x30FF] ],
-		// U+4E00 - U+9FBF Kanji
-		// U+3040 - U+309F Hiragana
-		// U+30A0 - U+30FF Katakana
+	},
+
+	Kali :
+	{
+		name:   "Kayah Li",
+		dir:    "L2R",
+		ranges: [ [0xA900,0xA92F] ],
+	},
+
+	Kana :
+	{
+		name:   "Katakana",
+		dir:    "VAR",
+		ranges: [ [0x30A1,0x30FF],[0x31F0,0x31FF],[0x32D0,0x3357],[0xFF66,0xFF9D],[0x1B000,0x1B000],[0x1B164,0x1B167] ],
+	},
+
+	Khar :
+	{
+		name:   "Kharoshthi",
+		dir:    "R2L",
+		ranges: [ [0x10A00,0x10A58] ],
 	},
 
 	Khmr :
@@ -243,8 +491,13 @@
 		name:   "Khmer",
 		dir:    "L2R",
 		ranges: [ [0x1780,0x17FF],[0x19E0,0x19FF] ],
-		// U+1780 - U+17FF Khmer
-		// U+19E0 - U+19FF Khmer Symbols
+	},
+
+	Khoj :
+	{
+		name:   "Khojki",
+		dir:    "L2R",
+		ranges: [ [0x11200,0x1123E] ],
 	},
 
 	Knda :
@@ -252,7 +505,13 @@
 		name:   "Kannada",
 		dir:    "L2R",
 		ranges: [ [0xC80,0xCFF] ],
-		// U+0C80 - U+0CFF
+	},
+
+	Kthi :
+	{
+		name:   "Kaithi",
+		dir:    "L2R",
+		ranges: [[0x11080,0x110CD]],
 	},
 
 	Kore :
@@ -260,35 +519,21 @@
 		name:   "Korean",
 		dir:    "L2R",
 		ranges: [
-			[0xAC00,0xD7AF],[0x1100,0x11FF],[0x2E80,0x2EFF],[0x2F00,0x2FDF],[0x2FF0,0x2FFF],[0x3000,0x303F],
-			[0x3130,0x318F],[0x31C0,0x31EF],[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],[0xA960,0xA97F],
-			[0xD7B0,0xD7FF],[0xF900,0xFAFF],[0xFF00,0xFFEF],
+			[0x1100,0x11FF],
+			[0x2E80,0x2EFF],[0x2F00,0x2FFF],
+			[0x3000,0x303F],[0x3130,0x318F],[0x31C0,0x31EF],[0x3200,0x32FF],[0x3400,0x4DBF],[0x4E00,0x9FFF],
+			[0xA960,0xA97F],[0xAC00,0xD7FF],
+			[0xF900,0xFAFF],[0xFF00,0xFFEF],
 			[0x1F200,0x1F2FF],[0x20000,0x2A6DF],[0x2A700,0x2B73F],[0x2B740,0x2B81F],[0x2B820,0x2CEAF],
 			[0x2CEB0,0x2CEBF],[0x2F800,0x2FA1F]
 			],
-		// U+AC00 - U+D7AF Hangul Syllables
-		// U+1100 - U+11FF Hangul Jamo
-		// U+3130 - U+318F Hangul Compatibility Jamo
-		// U+A960 - U+A97F Hangul Jamo Extended-A
-		// U+D7B0 - U+D7FF Hangul Jamo Extended-B
-		// U+FF00 - U+FFEF Halfwidth and Fullwidth Forms
-		// + Han:
-		// CJK Radicals Supplement (2E80 - 2EFF)
-		// CJK Radicals / KangXi Radicals (2F00 - 2FDF)
-		// Ideographic Description Characters (2FF0 - 2FFF)
-		// CJK Symbols and Punctuation (3000 - 303F)
-		// CJK Strokes (31C0 - 31EF)
-		// Enclosed CJK Letters and Months (3200 - 32FF)
-		// CJK Unified Ideographs Extension A (3400 - 4DBF)
-		// CJK Unified Ideographs (4E00 - 9FFF)
-		// CJK Compatibility Ideographs (F900 - FAFF)
-		// Enclosed Ideographic Supplement (1F200 - 1F2FF)
-		// CJK Unified Ideographs Extension B (20000 - 2A6DF)
-		// CJK Unified Ideographs Extension C (2A700 - 2B73F)
-		// CJK Unified Ideographs Extension D (2B740 - 2B81F)
-		// CJK Unified Ideographs Extension E (2B820 - 2CEAF)
-		// CJK Unified Ideographs Extension F (2CEB0 - 2CEBF)
-		// CJK Compatibility Ideographs Supplement (2F800 - 2FA1F)
+	},
+
+	Lana :
+	{
+		name:   "Tai Tham",
+		dir:    "L2R",
+		ranges: [ [0x1A20,0x1AAD] ],
 	},
 
 	Laoo :
@@ -296,7 +541,6 @@
 		name:   "Lao",
 		dir:    "L2R",
 		ranges: [ [0xE80,0xEFF] ],
-		// U+0E80 - U+0EFF
 	},
 
 	Latn :
@@ -304,28 +548,124 @@
 		name:   "Latin",
 		dir:    "L2R",
 		ranges: [
-			[0x0,0x7F],[0x80,0xFF],[0x100,0x17F],[0x180,0x24F],[0x250,0x2AF],[0x2B0,0x2FF],
-			[0x1D00,0x1D7F],[0x1D80,0x1DBF],[0x1E00,0x1EFF],[0x2070,0x209F],[0x2100,0x214F],
-			[0x2150,0x218F],[0x2C60,0x2C7F],[0xA720,0xA7FF],[0xAB30,0xAB6F],[0xFB00,0xFB4F],
-			[0xFF00,0xFFEF]
+			[0x41,0xFF],[0x100,0x2FF],
+			[0x1D00,0x1DBF],[0x1E00,0x1EFF],
+			[0x2070,0x209F],[0x2100,0x214F],[0x2150,0x218F],[0x2C60,0x2C7F],
+			[0xA720,0xA7FF],[0xAB30,0xAB6F],
+			[0xFB00,0xFB4F],[0xFF20,0xFF5A]
 		],
-		// Basic Latin, 0000 - 007F. This block corresponds to ASCII.
-		// Latin-1 Supplement, 0080 - 00FF
-		// Latin Extended-A, 0100 - 017F
-		// Latin Extended-B, 0180 - 024F
-		// IPA Extensions, 0250 - 02AF
-		// Spacing Modifier Letters, 02B0 - 02FF
-		// Phonetic Extensions, 1D00 - 1D7F
-		// Phonetic Extensions Supplement, 1D80 - 1DBF
-		// Latin Extended Additional, 1E00 - 1EFF
-		// Superscripts and Subscripts, 2070 - 209F
-		// Letterlike Symbols, 2100 - 214F
-		// Number Forms, 2150 - 218F
-		// Latin Extended-C, 2C60 - 2C7F
-		// Latin Extended-D, A720 - A7FF
-		// Latin Extended-E, AB30 - AB6F
-		// Alphabetic Presentation Forms (Latin ligatures) FB00 - FB4F
-		// Halfwidth and Fullwidth Forms (fullwidth Latin letters) FF00 - FFEF
+	},
+
+	Lepc :
+	{
+		name:   "Lepcha",
+		dir:    "L2R",
+		ranges: [ [0x1C00,0x1C4F] ],
+	},
+
+	Limb :
+	{
+		name:   "Limbu",
+		dir:    "L2R",
+		ranges: [ [0x1900,0x194F] ],
+	},
+
+	Lina :
+	{
+		name:   "Linear A",
+		dir:    "L2R",
+		ranges: [ [0x10600,0x10767] ],
+	},
+
+	Linb :
+	{
+		name:   "Linear B",
+		dir:    "L2R",
+		ranges: [ [0x10000,0x1005D],[0x10080,0x100FA] ],
+	},
+
+	Lisu :
+	{
+		name:   "Lisu",
+		dir:    "L2R",
+		ranges: [ [0xA4D0,0xA4FF] ],
+	},
+
+	Lyci :
+	{
+		name:   "Lycian",
+		dir:    "L2R",
+		ranges: [ [0x10280,0x1029C] ],
+	},
+
+	Lydi :
+	{
+		name:   "Lydian",
+		dir:    "R2L",
+		ranges: [ [0x10920,0x1093F] ],
+	},
+
+	Mahj :
+	{
+		name:   "Mahajani",
+		dir:    "L2R",
+		ranges: [ [0x11150,0x11176] ],
+	},
+
+	Maka :
+	{
+		name:   "Makasar",
+		dir:    "L2R",
+		ranges: [ [0x11EE0,0x11EF8] ],
+	},
+
+	Mand :
+	{
+		name:   "Mandaic",
+		dir:    "R2L",
+		ranges: [ [0x0840,0x085E] ],
+	},
+
+	Mani :
+	{
+		name:   "Manichaean",
+		dir:    "R2L",
+		ranges: [ [0x10AC0,0x10AF6] ],
+	},
+
+	Marc :
+	{
+		name:   "Marchen",
+		dir:    "L2R",
+		ranges: [ [0x11C70,0x11CB6] ],
+	},
+
+	Medf :
+	{
+		name:   "Medefaidrin",
+		dir:    "L2R",
+		ranges: [ [0x16E40,0x16E9A] ],
+	},
+
+	Mend :
+	{
+		name:   "Mende Kikakui",
+		dir:    "R2L",
+		ranges: [ [0x1E800,0x1E8D6] ],
+	},
+
+	Merc :
+	{
+		name:   "Meroitic Cursive",
+		dir:    "R2L",
+		ranges: [ [0x109A0,0x109FF] ],
+	},
+
+	Mero :
+	{
+		name:   "Meroitic Hieroglyphs",
+		dir:    "R2L",
+		ranges: [ [0x10980,0x1099F] ],
 	},
 
 	Mlym :
@@ -333,15 +673,111 @@
 		name:   "Malayalam",
 		dir:    "L2R",
 		ranges: [ [0xD00,0xD7F] ],
-		// U+0D00 - U+0D7F
+	},
+
+	Modi :
+	{
+		name:   "Modi",
+		dir:    "L2R",
+		ranges: [ [0x11600,0x11659] ],
+	},
+
+	Mong :
+	{
+		name:   "Mongolian",
+		dir:    "VAR",
+		ranges: [ [0x1800,0x18AA],[0x11660,0x1166C] ],
+	},
+
+	Mroo :
+	{
+		name:   "Mro",
+		dir:    "L2R",
+		ranges: [ [0x16A40,0x16A6F] ],
+	},
+
+	Mtei :
+	{
+		name:   "Meetei Mayek",
+		dir:    "L2R",
+		ranges: [ [0xAAE0,0xAAF6],[0xABC0,0xABF9] ],
+	},
+
+	Mult :
+	{
+		name:   "Multani",
+		dir:    "L2R",
+		ranges: [ [0x11280,0x112A9] ],
 	},
 
 	Mymr :
 	{
 		name:   "Myanmar",
 		dir:    "L2R",
-		ranges: [ [0x1000,0x104F] ],
-		// U+1000 - U+104F
+		ranges: [ [0x1000,0x109F],[0xA9E0,0xA9FE],[0xAA60,0xAA7F] ],
+	},
+
+	Nand :
+	{
+		name:   "Nandinagari",
+		dir:    "L2R",
+		ranges: [ [0x119A0,0x119E4] ],
+	},
+
+	Narb :
+	{
+		name:   "Old North Arabian",
+		dir:    "VAR",
+		ranges: [ [0x10A80,0x10A9F] ],
+	},
+
+	Nbat :
+	{
+		name:   "Nabataean",
+		dir:    "R2L",
+		ranges: [ [0x10880,0x108AF] ],
+	},
+
+	Newa :
+	{
+		name:   "Newa",
+		dir:    "L2R",
+		ranges: [ [0x11400,0x1145F] ],
+	},
+
+	Nkoo :
+	{
+		name:   "NKo",
+		dir:    "R2L",
+		ranges: [ [0x07C0,0x07FF] ],
+	},
+
+	Nshu :
+	{
+		name:   "Nushu",
+		dir:    "VAR",
+		ranges: [ [0x16FE1,0x16FE1],[0x1B170,0x1B2FB] ],
+	},
+
+	Ogam :
+	{
+		name:   "Ogham",
+		dir:    "VAR",
+		ranges: [ [0x1680,0x169C] ],
+	},
+
+	Olck :
+	{
+		name:   "Ol Chiki",
+		dir:    "L2R",
+		ranges: [ [0x1C50,0x1C7F] ],
+	},
+
+	Orkh :
+	{
+		name:   "Old Turkic",
+		dir:    "R2L",
+		ranges: [ [0x10C00,0x10C48] ],
 	},
 
 	Orya :
@@ -349,7 +785,48 @@
 		name:   "Oriya (Odia)",
 		dir:    "L2R",
 		ranges: [ [0xB00,0xB7F] ],
-		// U+0B00 - U+0B7F
+	},
+
+	Osge :
+	{
+		name:   "Osage",
+		dir:    "L2R",
+		ranges: [ [0x104B0,0x104FB] ],
+	},
+
+	Osma :
+	{
+		name:   "Osmanya",
+		dir:    "L2R",
+		ranges: [ [0x10480,0x104A9] ],
+	},
+
+	Palm :
+	{
+		name:   "Palmyrene",
+		dir:    "R2L",
+		ranges: [ [0x10860,0x1087F] ],
+	},
+
+	Pauc :
+	{
+		name:   "Pau Cin Hau",
+		dir:    "L2R",
+		ranges: [ [0x11AC0,0x11AF8] ],
+	},
+
+	Perm :
+	{
+		name:   "Old Permic",
+		dir:    "L2R",
+		ranges: [ [0x10350,0x1037A] ],
+	},
+
+	Phag :
+	{
+		name:   "Phags-Pa",
+		dir:    "VAR",
+		ranges: [ [0xA840,0xA877] ],
 	},
 
 	Phli :
@@ -357,7 +834,111 @@
 		name:   "Inscriptional Pahlavi",
 		dir:    "R2L",
 		ranges: [ [0x10B60,0x10B7F] ],
-		// U+10B60 - U+10B7F
+	},
+
+	Phlp :
+	{
+		name:   "Psalter Pahlavi",
+		dir:    "R2L",
+		ranges: [ [0x10B80,0x10BAF] ],
+	},
+
+	Phnx :
+	{
+		name:   "Phoenician",
+		dir:    "R2L",
+		ranges: [ [0x10900,0x1091F] ],
+	},
+
+	Plrd :
+	{
+		name:   "Miao", // Pollard
+		dir:    "L2R",
+		ranges: [ [0x16F00,0x16F9F] ],
+	},
+
+	Prti :
+	{
+		name:   "Inscriptional Parthian",
+		dir:    "R2L",
+		ranges: [ [0x10B40,0x10B5F] ],
+	},
+
+	Rjng :
+	{
+		name:   "Rejang",
+		dir:    "L2R",
+		ranges: [ [0xA930,0xA95F] ],
+	},
+
+	Rohg :
+	{
+		name:   "Hanifi Rohingya",
+		dir:    "R2L",
+		ranges: [ [0x10D00,0x10D39] ],
+	},
+
+	Runr :
+	{
+		name:   "Runic",
+		dir:    "L2R",
+		ranges: [ [0x16A0,0x16F8] ],
+	},
+
+	Samr :
+	{
+		name:   "Samaritan",
+		dir:    "R2L",
+		ranges: [ [0x0800,0x083E] ],
+	},
+
+	Sarb :
+	{
+		name:   "Old South Arabian",
+		dir:    "R2L",
+		ranges: [ [0x10A60,0x10A7F] ],
+	},
+
+	Saur :
+	{
+		name:   "Saurashtra",
+		dir:    "L2R",
+		ranges: [ [0xA880,0xA8D9] ],
+	},
+
+	Shaw :
+	{
+		name:   "Shavian",
+		dir:    "L2R",
+		ranges: [ [0x10450,0x1047F] ],
+	},
+
+	Sgnw :
+	{
+		name:   "SignWriting",
+		dir:    "VAR",
+		ranges: [ [0x1D800,0x1DAAF] ],
+	},
+
+	Shrd :
+	{
+		name:   "Sharada",
+		dir:    "L2R",
+		ranges: [ [0x11180,0x111DF] ],
+	},
+
+	Sidd :
+	{
+		name:   "Siddham",
+		dir:    "L2R",
+		ranges: [ [0x11580,0x115DD] ],
+	},
+
+	Sind :
+	{
+		name:   "Khudawadi", // Sindhi
+		dir:    "L2R",
+		ranges: [ [0x112B0,0x112F9] ],
 	},
 
 	Sinh :
@@ -365,24 +946,111 @@
 		name:   "Sinhala",
 		dir:    "L2R",
 		ranges: [ [0xD80,0xDFF],[0x111E0,0x111FF] ],
-		// U+0D80 - U+0DFF Sinhala
-		// U+111E0 - U+111FF Sinhala Archaic Numbers
+	},
+
+	Sogd :
+	{
+		name:   "Sogdian",
+		dir:    "VAR",
+		ranges: [ [0x10F30,0x10F59] ],
+	},
+
+	Sogo :
+	{
+		name:   "Old Sogdian",
+		dir:    "R2L",
+		ranges: [ [0x10F00,0x10F27] ],
+	},
+
+	Sora :
+	{
+		name:   "Sora Sompeng",
+		dir:    "L2R",
+		ranges: [ [0x110D0,0x110F9] ],
+	},
+
+	Soyo :
+	{
+		name:   "Soyombo",
+		dir:    "L2R",
+		ranges: [ [0x11A50,0x11AA2] ],
+	},
+
+	Sund :
+	{
+		name:   "Sundanese",
+		dir:    "L2R",
+		ranges: [ [0x1B80,0x1BBF],[0x1CC0,0x1CC7] ],
+	},
+
+	Sylo :
+	{
+		name:   "Syloti Nagri",
+		dir:    "L2R",
+		ranges: [ [0xA800,0xA82B] ],
 	},
 
 	Syrc :
 	{
 		name:   "Syriac",
 		dir:    "R2L",
-		ranges: [ [0x700,0x74F] ],
-		// U+0700 - U+074F
+		ranges: [ [0x700,0x74F],[0x0860,0x086A] ],
+	},
+
+	Tagb :
+	{
+		name:   "Tagbanwa",
+		dir:    "L2R",
+		ranges: [ [0x1760,0x1773] ],
+	},
+
+	Takr :
+	{
+		name:   "Takri",
+		dir:    "L2R",
+		ranges: [ [0x11680,0x116C9] ],
+	},
+
+	Tale :
+	{
+		name:   "Tai Le",
+		dir:    "L2R",
+		ranges: [ [0x1950,0x1974] ],
+	},
+
+	Talu :
+	{
+		name:   "New Tai Lue",
+		dir:    "L2R",
+		ranges: [ [0x1980,0x19DF] ],
 	},
 
 	Taml :
 	{
 		name:   "Tamil",
 		dir:    "L2R",
-		ranges: [ [0xB80,0xBFF] ],
-		// U+0B80 - U+0BFF
+		ranges: [ [0xB80,0xBFF],[0x11FC0,0x11FFF] ],
+	},
+
+	Tang :
+	{
+		name:   "Tangut",
+		dir:    "VAR",
+		ranges: [ [0x16FE0,0x16FE0],[0x17000,0x18AF2] ],
+	},
+
+	Tavt :
+	{
+		name:   "Tai Viet",
+		dir:    "L2R",
+		ranges: [ [0xAA80,0xAAC2],[0xAADB,0xAADF] ],
+	},
+
+	Tglg :
+	{
+		name:   "Tagalog",
+		dir:    "L2R",
+		ranges: [ [0x1700,0x1714] ],
 	},
 
 	Telu :
@@ -390,7 +1058,13 @@
 		name:   "Telugu",
 		dir:    "L2R",
 		ranges: [ [0xC00,0xC7F] ],
-		// U+0C00 - U+0C7F
+	},
+
+	Tfng :
+	{
+		name:   "Tifinagh",
+		dir:    "L2R",
+		ranges: [ [0x2D30,0x2D7F] ],
 	},
 
 	Thaa :
@@ -398,7 +1072,6 @@
 		name:   "Thaana",
 		dir:    "R2L",
 		ranges: [ [0x780,0x7BF] ],
-		// U+0780 - U+07BF
 	},
 
 	Thai :
@@ -406,7 +1079,6 @@
 		name:   "Thai",
 		dir:    "L2R",
 		ranges: [ [0xE00,0xE7F] ],
-		// U+0E00 - U+0E7F
 	},
 
 	Tibt :
@@ -414,14 +1086,97 @@
 		name:   "Tibetan",
 		dir:    "L2R",
 		ranges: [ [0xF00,0xFFF] ],
-		// U+0F00 - U+0FFF
+	},
+
+	Tirh :
+	{
+		name:   "Tirhuta",
+		dir:    "L2R",
+		ranges: [ [0x11480,0x114D9] ],
+	},
+
+	Ugar :
+	{
+		name:   "Ugaritic",
+		dir:    "L2R",
+		ranges: [ [0x10380,0x1039F] ],
+	},
+
+	Vaii :
+	{
+		name:   "Vai",
+		dir:    "L2R",
+		ranges: [ [0xA500,0xA62B] ],
+	},
+
+	Wara :
+	{
+		name:   "Warang Citi",
+		dir:    "L2R",
+		ranges: [[0x118A0,0x118FF]],
+	},
+
+	Wcho :
+	{
+		name:   "Wancho",
+		dir:    "L2R",
+		ranges: [ [0x1E2C0,0x1E2FF] ],
+	},
+
+	Xpeo :
+	{
+		name:   "Old Persian",
+		dir:    "L2R",
+		ranges: [ [0x103A0,0x103D5] ],
+	},
+
+	Xsux :
+	{
+		name:   "Cuneiform", // Sumero-Akkadian
+		dir:    "L2R",
+		ranges: [ [0x12000,0x12399],[0x12400,0x12543] ],
 	},
 
 	Yiii :
 	{
 		name:   "Yi",
 		dir:    "L2R",
-		ranges: [ [0xA000,0xA48F],[0xA490,0xA4CF] ],
-		// U+A000 - U+A48F Yi Syllables,
-		// U+A490 - U+A4CF Yi Radicals
+		ranges: [ [0xA000,0xA4CF] ],
 	},
+
+	Zanb :
+	{
+		name:   "Zanabazar Square",
+		dir:    "L2R",
+		ranges: [ [0x11A00,0x11A47] ],
+	},
+
+	Zinh :
+	{
+		name:   "Inherited", // Code for inherited script
+		dir:    "VAR",
+		ranges: [
+			[0x0300,0x036F],[0x0485,0x0486],[0x064B,0x0655],[0x0670,0x0670],[0x0951,0x0954],[0x1AB0,0x1ABE],[0x1CD0,0x1CF9],[0x1DC0,0x1DFF],
+			[0x200C,0x200D],[0x20D0,0x20F0],[0x302A,0x302D],[0x3099,0x309A],[0xFE00,0xFE0F],[0xFE20,0xFE2D],
+			[0x101FD,0x101FD],[0x102E0,0x102E0],[0x1133B,0x1133B],[0x1D167,0x1D169],[0x1D17B,0x1D18B],[0x1D1AA,0x1D1AD],[0xE0100,0xE01EF]
+		],
+	},
+
+	Zyyy :
+	{
+		name:   "Common", // Code for undetermined script
+		dir:    "VAR",
+		ranges: [
+			[0x0000,0x0040],[0x005B,0x0060],[0x007B,0x00BF],[0x00D7,0x00D7],[0x00F7,0x00F7],[0x02B9,0x02FF],[0x0374,0x0387],[0x0589,0x0589],
+			[0x0605,0x061F],[0x0640,0x0640],[0x06DD,0x06DD],[0x08E2,0x08E2],[0x0964,0x0965],[0x0E3F,0x0E3F],[0x0FD5,0x0FD8],[0x10FB,0x10FB],
+			[0x16EB,0x16ED],[0x1735,0x1736],[0x1802,0x1805],[0x1CD3,0x1CFA],[0x2000,0x208E],[0x20A0,0x20BF],[0x2100,0x215F],[0x2189,0x2426],
+			[0x2440,0x244A],[0x2460,0x27FF],[0x2900,0x2BFF],[0x2E00,0x2E4F],[0x2FF0,0x303F],[0x309B,0x30A0],[0x30FB,0x30FC],[0x3190,0x319F],
+			[0x31C0,0x31E3],[0x3220,0x325F],[0x327F,0x32CF],[0x32FF,0x32FF],[0x3358,0x33FF],[0x4DC0,0x4DFF],[0xA700,0xA721],[0xA788,0xA78A],
+			[0xA830,0xA839],[0xA92E,0xA92E],[0xA9CF,0xA9CF],[0xAB5B,0xAB5B],[0xFD3E,0xFD3F],[0xFE10,0xFE19],[0xFE30,0xFE6B],[0xFEFF,0xFF20],
+			[0xFF3B,0xFF40],[0xFF5B,0xFF70],[0xFF9E,0xFF9F],[0xFFE0,0xFFFD],
+			[0x10100,0x1013F],[0x10190,0x1019B],[0x101D0,0x101FC],[0x102E1,0x102FB],[0x16FE2,0x16FE3],[0x1BCA0,0x1BCA3],[0x1D000,0x1D1E8],
+			[0x1D2E0,0x1D378],[0x1D400,0x1D7FF],[0x1EC71,0x1ECB4],[0x1ED01,0x1ED3D],[0x1F000,0x1F1AC],[0x1F1E6,0x1F265],[0x1F300,0x1F7EB],
+			[0x1F800,0x1F8AD],[0x1F900,0x1FA95],[0xE0001,0xE0001],[0xE0020,0xE007F]
+		],
+	},
+
