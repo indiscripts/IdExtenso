@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170424 (YYMMDD)
-		Modified:       200528 (YYMMDD)
+		Modified:       220403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -56,6 +56,7 @@
 	Aleut # Aléoute # Aleutisch # Aleutiano # Aleuto # Алеутский
 	American English # Anglais américain # Amerikanisches Englisch # Inglés estadounidense # Inglese americano # Американский английский
 	Amharic # Amharique # Amharisch # Amárico # Amarico # Амхарский
+	Anatolian Hieroglyphs # Hiéroglyphes hittites # Anatolische Hieroglyphen # Jeroglíficos de Anatolia # Geroglifico anatolico
 	Ancient Egyptian # Égyptien ancien # Ägyptisch # Egipcio antiguo # Egiziano antico # Древнеегипетский
 	Ancient Greek # Grec ancien # Altgriechisch # Griego antiguo # Greco antico # Древнегреческий
 	Angika # Angika # Angika # Angika # Angika # Ангика
@@ -105,7 +106,10 @@
 	Blin # Blin # Blin # Blin # Blin # Билин (блин)
 	Blissymbols # Symboles Bliss # Bliss-Symbole # Símbolos Bliss # Blissymbol # Блиссимволика
 	Bodo # Bodo # Bodo # Bodo # Bodo # Бодо
+	Bopomofo # Bopomofo # Zhuyin # Zhuyin # Bopomofo # Чжуинь фухао
 	Bosnian # Bosniaque # Bosnisch # Bosnio # Bosniaco # Боснийский
+	Brahmi # Brahmi # Brahmi-Schrift # Brahmi # Alfabeto Brahmi # Брахми
+	Braille # Braille # Brailleschrift # Braille # Braille # Шрифт Брайля
 	Braj # Braj # Braj-Bhakha # Braj # Braj # Брауи
 	Brazilian Portuguese # Portugais brésilien # Brasilianisches Portugiesisch # Portugués de Brasil # Portoghese brasiliano # Бразильский португальский
 	Breton # Breton # Bretonisch # Bretón # Bretone # Бретонский
@@ -155,6 +159,8 @@
 	Creek # Creek # Muskogee-Sprache # Creek # Creek # Крик
 	Crimean Tatar # Turc de Crimée # Krimtatarisch # Tártaro de Crimea # Turco crimeo # Крымско-татарский
 	Croatian # Croate # Kroatisch # Croata # Croato # Хорватский
+	Cuneiform # Cunéiforme # Keilschrift # Escritura cuneiforme # Scrittura cuneiforme # Клинопись
+	Cypriot # Syllabaire chypriote # Kyprische Schrift # Silabario chipriota # Sillabario cipriota # Кипрское письмо
 	Cyrillic # Cyrillique # Kyrillisches Alphabet # Alfabeto cirílico # Alfabeto cirillico # Кириллица
 	Czech # Tchèque # Tschechisch # Checo # Ceco # Чешский
 	============================================================================
@@ -176,6 +182,7 @@
 	Early Cyrillic # Cyrillique archaïque # Altkyrillisches Alphabet # Alfabeto cirílico arcaico # Alfabeto cirillico arcaico # Старославянская азбука
 	Efik # Efik # Efik # Efik # Efik # Эфик
 	Egyptian Arabic # Arabe égyptien # Ägyptisch-Arabisch # Árabe egipcio # Arabo egiziano # Египетский диалект арабского
+	Egyptian Hieroglyphs # Écriture hiéroglyphique égyptienne # Ägyptische Hieroglyphen # Jeroglíficos egipcios # Geroglifici egizi # Египетское иероглифическое письмо
 	Ekajuk # Ekajuk # Ekajuk # Ekajuk # Ekajuka # Экаджук
 	Elamite # Élamite # Elamisch # Elamita # Elamitico # Эламский
 	Embu # Embou # Embu # Embu # Embu # Эмбу
@@ -234,6 +241,7 @@
 	Haitian # Créole haïtien # Haiti-Kreolisch # Haitiano # Haitiano # Гаитянский
 	Han Simplified # Sinogrammes simplifiés # Kurzzeichen # Caracteres chinos simplificados # Caratteri cinesi semplificati # Упрощение иероглифов
 	Han Traditional # Sinogrammes traditionnels # Langzeichen # Caracteres chinos tradicionales # Caratteri cinesi tradizionali # Традиционные китайские иероглифы
+	Hangul # Hangeul # Koreanisches Alphabet # Hangul # Hangŭl # Хангыль
 	Hakka # Hakka # Hakka # Hakka # Hakka # Хакка
 	Hausa # Haoussa # Haussa # Hausa # Hausa # Хауса
 	Hawaiian # Hawaïen # Hawaiisch # Hawaiano # Hawaiano # Гавайский
@@ -253,6 +261,7 @@
 	Ido # Ido # Ido-Sprache # Ido # Ido # Идо
 	Igbo # Igbo # Igbo # Igbo # Igbo # Игбо
 	Ilocano # Ilocano # Ilokano-Sprache # Ilocano # Ilocano # Илоко
+	Imperial Aramaic # Alphabet araméen # Aramäische Schrift # Alfabeto arameo # Alfabeto aramaico # Арамейское письмо
 	Inari Sami # Sami d’Inari # Inari-Samisch # Sami inari # Sami di Inari # Инари-саамский
 	Indonesian # Indonésien # Indonesisch # Indonesio # Indonesiano # Индонезийский
 	Ingush # Ingouche # Inguschisch # Ingush # Ingush # Ингушский
@@ -288,6 +297,7 @@
 	Kashmiri # Kashmiri # Kaschmiri # Cachemiro # Kashmiri # Кашмири
 	Kashubian # Kachoube # Kaschubisch # Casubio # Kashubian # Кашубианский
 	Kawi # Kawi # Kawi # Kawi # Kawi # Кави
+	Kayah Li # Écriture kayah li # Kayah Li # Kayah li # Kayah li # Кая-ли
 	Kazakh # Kazakh # Kasachisch # Kazajo # Kazako # Казахский
 	Khasi # Khasi # Khasi-Sprache # Khasi # Khasi # Кхаси
 	Kirghiz # Kirghize # Kirgisisch # Kirguís # Kirghiso # Киргизский
@@ -329,6 +339,8 @@
 	Latvian # Letton # Lettisch # Letón # Lettone # Латышский
 	Lezgian # Lezghien # Lesgisch # Lezgiano # Lezghian # Лезгинский
 	Limburgish # Limbourgeois # Limburgisch # Limburgués # Limburgese # Лимбургский
+	Linear A # Linéaire A # Linearschrift A # Lineal A # Lineare A # Линейное письмо А
+	Linear B # Linéaire B # Linearschrift B # Lineal B # Lineare B # Линейное письмо Б
 	Lingala # Lingala # Lingala # Lingala # Lingala # Лингала
 	Lithuanian # Lituanien # Litauisch # Lituano # Lituano # Литовский
 	Lojban # Lojban # Lojban # Lojban # Lojban # Ложбан
@@ -374,10 +386,15 @@
 	Masai # Masai # Massai # Masái # Masai # Масаи
 	Mazanderani # Mazandérani # Masanderanisch # Mazandaraní # Mazandarani # Мазендеранский
 	Medumba # Medumba # Medumba # Medumba # Medumba # Медумба
+	Meetei Mayek # Meitei mayek # Meetei Mayek # Alfabeto meitei # Meitei mayek # Манипури (письмо)
+	Medefaidrin # Medefaidrin # Medefaidrin # Medefaidrin # Medefaidrin # Обэри-Окаимэ
 	Mende # Mendé # Mende-Sprache # Mende # Mende # Менде
+	Meroitic Cursive # Alphabet méroïtique # Meroitische Schrift # Escritura meroítica # Alfabeto meroitico # Мероитское письмо
 	Meru # Merou # Meru # Meru # Meru # Меру
+	Meta # Méta’ # Meta’ # Meta’ # Meta’ # Мета
 	Metaʼ # Méta’ # Meta’ # Meta’ # Meta’ # Мета
 	Mexican Spanish # Espagnol mexicain # Mexikanisches Spanisch # Español de México # Spagnolo messicano # Мексиканский испанский
+	Miao # Écriture miao (Pollard) # Pollard-Schrift # Miao # Miao # Письмо Полларда
 	Micmac # Micmac # Micmac-Sprache # Micmac # Micmac # Микмак
 	Middle Dutch # Moyen néerlandais # Mittelniederländisch # Neerlandés medieval # Olandese medio # Средненидерландский
 	Middle English # Moyen anglais # Mittelenglisch # Inglés medieval # Inglese medio # Среднеанглийский
@@ -416,6 +433,8 @@
 	Ngomba # Ngomba # Ngomba # Ngomba # Ngamambo # Нгомба
 	Nias # Nias # Nias-Sprache # Nias # Nias # Ниас
 	Niuean # Niué # Niue-Sprache # Niueano # Niue # Ниуэ
+	NKo # N’ko # N’Ko # N’ko # N’ko # Нко
+	N’Ko # N’ko # N’Ko # N’ko # N’ko # Нко
 	Nogai # Nogaï # Nogai # Nogai # Nogai # Ногайский
 	Norfolk # Norfolk # Norfolk # Norfuk # Norfuk # Норфолкский
 	Norman # Normand # Normannisch # Normando # Normanno # Нормандский
@@ -432,18 +451,25 @@
 	Nyasa Tonga # Tonga nyasa # Tsonga-Sprache # Tonga del Nyasa # Nyasa del Tonga # Ньяса (тонга)
 	Nyoro # Nyoro # Nyoro # Nyoro # Nyoro # Ньоро
 	Nzima # Nzema # Nzima # Nzima # Nzima # Нзима
-	N’Ko # N’ko # N’Ko # N’ko # N’ko # Нко
 	============================================================================
 	Occitan # Occitan # Okzitanisch # Occitano # Occitano # Окситанский
 	Ojibwe # Ojibwé # Ojibwa-Sprache # Ojibwa # Ojibwa # Оджибве
+	Ol Chiki # Alphabet santali # Ol Chiki # Ol Chiki # Ol Chiki # Ол-чики
 	Old Church Slavonic # Vieux-slave # Altkirchenslawisch # Antiguo eslavo eclesiástico # Slavo ecclesiastico antico # Старославянский
 	Old English # Ancien anglais # Altenglisch # Inglés antiguo # Inglese antico # Староанглийский
 	Old French # Ancien français # Altfranzösisch # Francés antiguo # Francese antico # Старофранцузский
 	Old High German # Ancien haut allemand # Althochdeutsch # Alemán de la alta edad antigua # Tedesco antico alto # Древневерхненемецкий
+	Old Hungarian # Runes hongroises # Altungarische Schrift # Alfabeto húngaro antiguo # Alfabeto ungherese antico # Венгерские руны
 	Old Irish # Ancien irlandais # Altirisch # Irlandés antiguo # Irlandese antico # Староирландский
+	Old Italic # Vieil italique # Altitalisches Alphabet # Alfabetos itálicos # Alfabeto etrusco
 	Old Norse # Vieux norrois # Altnordisch # Nórdico antiguo # Norse antico # Старонорвежский
+	Old North Arabian # Arabe ancien septentrional # Frühnordarabische Sprache # Árabe antiguo septentrional # Old North Arabian # Североаравийские языки
+	Old Permic # Alphabet permien # Altpermische Schrift # Abur # Abur # Древнепермское письмо
 	Old Persian # Persan ancien # Altpersisch # Persa antiguo # Persiano antico # Староперсидский
+	Old Provencal # Provençal ancien # Altprovenzalisch # Provenzal antiguo # Provenzale antico # Старопровансальский
 	Old Provençal # Provençal ancien # Altprovenzalisch # Provenzal antiguo # Provenzale antico # Старопровансальский
+	Old South Arabian # Alphabet sudarabique # Altsüdarabische Schrift # Alfabeto sudarábico # Alfabeto musnad # Южноаравийское письмо
+	Old Turkic # Alphabet de l’Orkhon # Orchon-Runen # Antiguo alfabeto turco # Alfabeto dell’Orhon # Древнетюркское письмо
 	Oriya # Oriya # Oriya # Oriya # Oriya # Ория
 	Oriya (Odia) # Alphasyllabaire odia # Oriya-Schrift # Oriya (Odia) # Oriya (Odia) # Ория (письмо)
 	Oromo # Oromo # Oromo # Oromo # Oromo # Оромо
@@ -451,14 +477,17 @@
 	Ossetian # Ossète # Ossetisch # Osético # Ossetico # Осетинский
 	Ottoman Turkish # Turc ottoman # Osmanisch # Turco otomano # Turco ottomano # Старотурецкий
 	============================================================================
+	Pahawh Hmong # Pahawh hmong # Pahawh Hmong # Pahawh hmong # Pahawh hmong # Пахау
 	Pahlavi # Pahlavi # Mittelpersisch # Pahlavi # Pahlavi # Пехлевийский
 	Palauan # Palau # Palau # Palauano # Palau # Палау
 	Pali # Pali # Pali # Pali # Pali # Пали
+	Palmyrene # Alphabet palmyrénien # Palmyrene # Alfabeto de Palmira # Alfabeto palmireno # Пальмирский алфавит
 	Pampanga # Pampangan # Pampanggan-Sprache # Pampanga # Pampanga # Пампанга
 	Pangasinan # Pangasinan # Pangasinan-Sprache # Pangasinán # Pangasinan # Пангасинан
 	Papiamento # Papiamento # Papiamento # Papiamento # Papiamento # Папьяменто
 	Pashto # Pachto # Paschtu # Pastún # Pashto # Пушту
 	Persian # Persan # Persisch # Persa # Persiano # Персидский
+	Phags-Pa # Écriture phagpa # Phagpa-Schrift # Alfabeto ’Phags-pa # Alfabeto ’Phags-pa # Монгольское квадратное письмо
 	Phoenician # Phénicien # Phönikisch # Fenicio # Fenicio # Финикийский
 	Picard # Picard # Picardisch # Picardo # Picard # Пикардский
 	Piedmontese # Piémontais # Piemontesisch # Piamontés # Piemontese # Пьемонтский
@@ -473,6 +502,7 @@
 	Rajasthani # Rajasthani # Rajasthani # Rajasthani # Rajasthani # Раджастхани
 	Rapanui # Rapanui # Osterinsel-Sprache # Rapanui # Rapanui # Рапануи
 	Rarotongan # Rarotongien # Rarotonganisch # Rarotongano # Rarotonga # Раротонганский
+	Rejang # Écriture redjang # Rejang-Schrift # Rejang # Scrittura rejang # Реджанг
 	Reunionese # Créole réunionnais # Réunion-Kreolisch # Criollo reunionés # Creolo della Riunione # реюньонский креольский
 	Romanian # Roumain # Rumänisch # Rumano # Rumeno # Румынский
 	Romansh # Romanche # Rätoromanisch # Retorrománico # Romancio # Романшский
@@ -480,12 +510,14 @@
 	Rombo # Rombo # Rombo # Rombo # Rombo # Ромбо
 	Root # Racine # Root # Raíz # Root # Корневой
 	Rundi # Roundi # Rundi # Kiroundi # Rundi # Рунди
+	Runic # Rune # Runen # Alfabeto rúnico # Alfabeto runico # Руны
 	Russian # Russe # Russisch # Ruso # Russo # Русский
 	Rusyn # Rusyn # Russinisch # Rusino # Russino # РусинскийSakha
 	Rwa # Rwa # Rwa # Rwa # Rwa # Руанда
 	============================================================================
 	Saho # Saho # Saho # Saho # Saho # Сахо
 	Sakha (Yakut) # Iakoute # Jakutisch # Sakha # Yakut # Якутский
+	Samaritan # Alphabet samaritain # Samaritanische Schrift # Alfabeto samaritano # Alfabeto samaritano # Самаритянское письмо
 	Samaritan Aramaic # Araméen samaritain # Samaritanisch # Arameo samaritano # Aramaico samaritano # Самаритянский арамейский
 	Samburu # Samburu # Samburu # Samburu # Samburu # Самбуру
 	Samoan # Samoan # Samoanisch # Samoano # Samoano # Самоанский
@@ -507,10 +539,12 @@
 	Serer # Sérère # Serer-Sprache # Serer # Serer # Серер
 	Shambala # Chambala # Shambala # Shambala # Shambala # Шамбала
 	Shan # Shan # Schan-Sprache # Shan # Shan # Шанский
+	Shavian # Alphabet shavien # Shaw-Alphabet # Alfabeto shaviano # Alfabeto shaviano # Алфавит Шоу
 	Shona # Shona # Shona # Shona # Shona # Шона
 	Sichuan Yi # Yi du Sichuan # Yi # Yi de Sichuán # Sichuan yi # Сычуань
 	Sicilian # Sicilien # Sizilianisch # Siciliano # Siciliano # Сицилийский
 	Sidamo # Sidamo # Sidamo # Sidamo # Sidamo # Сидама
+	SignWriting # SignWriting # Gebärdenschrift # Escritura de signos # SignWriting # SignWriting
 	Siksika # Siksika # Blackfoot-Sprache # Siksika # Siksika # Сиксика
 	Silesian # Silésien # Schlesisch # Silesio # Slesiano # Силезский
 	Simplified Chinese # Chinois simplifié # Chinesisch (vereinfacht) # Chino simplificado # Cinese semplificato # Упрощенный китайский
@@ -522,7 +556,8 @@
 	Slovak # Slovaque # Slowakisch # Eslovaco # Slovacco # Словацкий
 	Slovenian # Slovène # Slowenisch # Esloveno # Sloveno # Словенский
 	Soga # Soga # Soga # Soga # Soga # Сога
-	Sogdien # Sogdien # Sogdisch # Sogdiano # Sogdiano # Согдийский
+	Sogdian # Sogdien # Sogdisch # Alfabeto sogdiano # Alfabeto sogdiano # Согдийское письмо
+	Sogdien # Sogdien # Sogdisch # Alfabeto sogdiano # Alfabeto sogdiano # Согдийское письмо
 	Somali # Somali # Somali # Somalí # Somalo # Сомали
 	Soninke # Soninké # Soninke-Sprache # Soninké # Soninke # Сонинке
 	Southern Altai # Altaï du Sud # Süd-Altaisch # Altái meridional # Altai meridionale # Южноалтайский
@@ -542,15 +577,20 @@
 	Swiss French # Français suisse # Schweizer Französisch # Francés suizo # Francese svizzero # Швейцарский французский
 	Swiss German # Suisse allemand # Schweizerdeutsch # Alemán suizo # Tedesco svizzero # Швейцарский немецкий
 	Swiss High German # Allemand suisse # Schweizer Hochdeutsch # Alto alemán suizo # Alto tedesco svizzero # Швейцарский верхненемецкий
+	Syloti Nagri # Syloti Nagri # Sylheti Nagari # Siloti Nagri # Siloti Nagri # Силхетское нагари
 	Syriac # Syriaque # Syrisch # Siriaco # Siriaco # Сирийский
 	============================================================================
 	Tachelhit # Chleuh # Taschelhit # Tashelhit # Tashelhit # Ташельхит
 	Tagalog # Tagalog # Tagalog # Tagalo # Tagalog # Тагалог
 	Tahitian # Tahitien # Tahitisch # Tahitiano # Taitiano # Таитянский
+	Tai Le # Taï-le # Tai Le # Alfabeto tai le # Alfabeto tai Le # Лы (письмо)
+	Tai Tham # Taï tham # Lanna (Schrift) # Alfabeto tai tham # Alfabeto tai tham # Ланна (письмо)
+	Tai Viet # Taï viêt # Tai Viet # Alfabeto tai viet # Alfabeto tai viet
 	Taita # Taita # Taita # Taita # Taita # Таита
 	Tajik # Tadjik # Tadschikisch # Tayiko # Tagico # Таджикский
 	Tamashek # Tamacheq # Tamaseq # Tamashek # Tamashek # Тамашек
 	Tamil # Tamoul # Tamil # Tamil # Tamil # Тамильский
+	Tangut # Écriture tangoute # Xixia-Schrift # Escritura tangut # Scrittura Tangut # Тангутское письмо
 	Tarantino # Tarentin # Tarandíne # Tarentino # Tarantino # Тарантинский
 	Taroko # Taroko # Taroko # Taroko # Taroko # Тароко
 	Tasawaq # Tasawaq # Tasawaq # Tasawaq # Tasawaq # Тасавак
@@ -604,6 +644,7 @@
 	============================================================================
 	Walloon # Wallon # Wallonisch # Valón # Vallone # Валлонский
 	Walser # Walser # Walser-Dialekte # Walser # Walser # Валисский
+	Warang Citi # Warang Citi # Warang Citi # Warang Citi # Warang Citi # Варанг-кшити
 	Waray # Waray # Waray # Waray # Waray # Варай
 	Warlpiri # Warlpiri # Warlpiri # Warlpiri # Warlpiri # Вальбири
 	Washo # Washo # Washo-Sprache # Washo # Washo # Вашо
