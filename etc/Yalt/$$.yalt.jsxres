@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       220324 (YYMMDD)
+		Modified:       220403 (YYMMDD)
 
 *******************************************************************************/
 
@@ -34,9 +34,9 @@
 
 	============================================== PUNCTUATION, INTERJECTIONS, SHORT TERMS...
 
-	%1: # %1 : # %1: # %1: # %1: # %1:
-	%1: %2 # %1 : %2 # %1: %2 # %1: %2 # %1: %2 # %1: %2
-	%1! # %1 ! # %1! # %1! # %1! # %1!
+	%1: # %1 : # %1: # %1: # %1: # %1:
+	%1: %2 # %1 : %2 # %1: %2 # %1: %2 # %1: %2 # %1: %2
+	%1! # %1 ! # %1! # %1! # %1! # %1!
 	N/A # N/A # n. zutr. # N/D # N/D # Нет данных
 	Untitled-%1 # Sans titre-%1 # Unbenannt-%1 # Sin título-%1 # Senza titolo-%1 # Безымянный-%1
 
@@ -166,12 +166,12 @@
 	Documents # Documents # Dokumente # Documentos # Documenti # Документы
 	Effects # Effets # Effekte # Efectos # Effetti # Эффекты
 	File # Fichier # Datei # Archivo # File # Файл
-	Files # Fichiers # Dateien # Archivos # File # Файлы
+	Files # Fichiers # Dateien # Archivos # File # Файлы
 	Folder # Dossier # Ordner # Carpeta # Cartella # Папка
 	Folders # Dossiers # Ordner # Carpetas # Cartelle # Папки
 	Font # Police # Schriftart # Fuente # Font # Шрифт
 	Fonts # Polices # Schriftarten # Fuentes # Font # Шрифты
-	Format # Format # Format # Formato # Formato # Формат
+	Format # Format # Format # Formato # Formato # Формат
 	Glyph # Glyphe # Glyphe # Pictograma # Glifo # Глиф
 	Glyphs # Glyphes # Glyphen # Pictogramas # Glifi # Глифы
 	Graphic # Image # Grafik # Gráfico # Elemento grafico # Графика
@@ -259,7 +259,7 @@
 	Typing # Saisie # Eingabe # Escribir # Immissione # Ввод текста
 	Utilities # Utilitaires # Hilfsprogramme # Utilidades # Utilità # Служебные программы
 	Weight # Epaisseur # Stärke # Grosor # Spessore # Толщина
-	Width # Largeur # Breite # Anchura # Larghezza # Ширина
+	Width # Largeur # Breite # Anchura # Larghezza # Ширина
 
 	============================================== PRODUCT, INTERACTION, PROCESSING
 
@@ -273,7 +273,7 @@
 	User # Utilisateur # Benutzer # Usuario # Utente # Пользователь
 	User Name # Nom d'utilisateur # Benutzername # Nombre de usuario # Nome utente # Имя пользователя
 	Full Name # Nom complet # Vollständiger Name # Nombre completo # Nome completo # Полное имя
-	Hello %1! # Bonjour %1 ! # Hallo %1! # ¡Hola, %1! # Salve %1! # Здравствуйте, %1!
+	Hello %1! # Bonjour %1 ! # Hallo %1! # ¡Hola, %1! # Salve %1! # Здравствуйте, %1!
 	Welcome... # Bienvenue... # Willkommen... # Bienvenida... # Benvenuti... # Приветствие...
 	Unknown User # Utilisateur indéterminé # Unbekannter Benutzer # Usuario desconocido # Utente sconosciuto # Неизвестный пользователь
 	Unknown User Name # Nom d'utilisateur inconnu # Unbekannter Benutzername # Nombre de usuario desconocido # Nome ut. sconosciuto # Неизвестное имя пользователя
@@ -317,12 +317,12 @@
 	Feedback # Commentaire # Feedback # Mensaje # Feedback # Обратная связь
 	Suggestion # Suggestion # Vorschlag # Sugerencia # Suggerimento # Предложение
 	Email # Courriel # E-Mail # Correo electr. # E-mail # Эл. почта
-	Email to: %1 # Envoyer par e-mail à : %1 # Senden an: %1 # Enviar correo a: %1 # E-mail a: %1 # Отправить письмо: %1
+	Email to: %1 # Envoyer par e-mail à : %1 # Senden an: %1 # Enviar correo a: %1 # E-mail a: %1 # Отправить письмо: %1
 	Submit # Envoyer # Senden # Enviar # Invia # Отправить
 	Messages # Messages # Meldungen # Mensajes # Messaggi # Сообщения
 	Report # Rapport # Bericht # Informe # Resoconto # Отчет
 	Review # Avis # Rezension # Reseña # Recensione # Отзыв
-	Subject # Objet # Betreff # Asunto # Oggetto # Тема
+	Subject # Objet # Betreff # Asunto # Oggetto # Тема
 
 	Error # Erreur # Fehler # Error # Errore # Ошибка
 	Error! # Erreur ! # Fehler! # Error. # Errore! # Ошибка!
