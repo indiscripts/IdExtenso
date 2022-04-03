@@ -11,11 +11,11 @@
 		DOM-access:     YES (app.languagesWithVendors, app.findKeyStrings)
 		Todo:           isoToLanguage [needed?]
 		Created:        170424 (YYMMDD)
-		Modified:       200528 (YYMMDD)
+		Modified:       220403 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 200528, 'getIso'))
+;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 220403, 'getIso'))
 
 	//==========================================================================
 	// NOTICE
@@ -64,7 +64,7 @@
 		},
 
 		// Set of Writing Systems.
-		// key (4 chars) => { name:str, dir:'L2R'|'R2L', ranges: [u24,u24][] }
+		// key (4 chars) => { name:str, dir:'L2R'|'R2L'|'VAR', ranges: [u24,u24][] }
 		// E.g: 'Armn' : { name:"Armenian", dir:"L2R", ranges: [ [0x530,0x58F],[0xFB00,0xFB17] ] }
 		// ---
 		WSYS :
