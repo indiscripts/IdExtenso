@@ -1,5 +1,5 @@
 ##### [220403]
-   - [**Yalt**](/etc/$$.Yalt.jsxlib): added a 2nd param (_inCurrentLocale_) to the `hasKey()` method. Purpose: allows the client code to check whether a key string is available in either the global YALT map (whatever the locale), or specifically in the current (activated) locale.
+   - [**Yalt**](/etc/$$.Yalt.jsxlib): added a 2nd param (_inCurrentLocale_) to the `hasKey()` method. Purpose: allows the client code to check whether a key string is available in either the global YALT map (whatever the locale), or specifically in the current, active locale.
 
 ##### [220402]
    - [**UniAsc**](/etc/$$.UniAsc.jsxlib): this new module provides basic Unicode-to-ASCII transliteration. When included, it appends a `translit()` method to `String.prototype` so you can simply use e.g. `"北亰".translit()` (which returns `"Bei Jing "`.)
