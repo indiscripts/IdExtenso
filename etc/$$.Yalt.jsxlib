@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       210901 (YYMMDD)
+		Modified:       220403 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 210901, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 220403, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -58,7 +58,8 @@
 	to refer to the translation of that string in the current Yalt locale. Thanks to
 	this mechanism, you can write your entire project using default English strings,
 	and deal separately with the localization package. Strings that have no match
-	in the active locale will remain as passed in.
+	in the active locale will remain as passed in [except in case of a mute terminator,
+	as detailed below.]
 
 
 	1. LONG LINES
@@ -115,7 +116,7 @@
 	is active, both key strings will result in the word "All" (the terminator is
 	removed). Otherwise, the desired translation will be selected.
 
-	This feature allows you to address gender or number inflections that are not marked
+	This feature allows you to address gender or plural inflections that are not marked
 	in English, as well as pure homographs like "left" (side) vs. "left" (past participle
 	of leave.)
 
@@ -128,7 +129,7 @@
 	[REM] Technically, there is no relationship between these special keys based on
 	      mute terminators. That is, strings like `abc` and `abc\x01` are purely stored
 	      as distinct keys in the internal translation map. The trick relies on the
-	      fact that Yalt will ouput "abc" when the default language is active.
+	      fact that Yalt will still ouput "abc" when the default language is active.
 
 
 	5. EMPTY LINES AND COMMENTS
@@ -417,13 +418,13 @@
 			RE_END_CTRL: /[\x01\x02\x03\x04]$/,
 		}),
 		
-		HASK : function(/*str*/s)
+		HASK : function(/*str*/s,/*0|1*/useL10N)
 		//----------------------------------
-		// [ADD170424] Whether the key-string `s` is known from L10N.
+		// [ADD170424] Whether the key-string `s` is known from TRNS or L10N.
 		// [REM] Alias of hasKey.
 		// => 1 [OK] | 0 [KO]
 		{
-			return this.L10N.hasOwnProperty(this.KPFX+s) ? 1 : 0;
+			return this[useL10N?'L10N':'TRNS'].hasOwnProperty(this.KPFX+s) ? 1 : 0;
 		},
 	})
 
@@ -557,12 +558,19 @@
 			return callee.µ.activate.PENDING ? 0 : 1;
 		},
 		
-		hasKey : function hasKey_S_B(/*str*/keyString)
+		hasKey : function hasKey_S_b_B(/*str*/keyString,/*bool=0*/inCurrentLocale)
 		//----------------------------------
-		// [ADD170424] Whether keyString is available among Yalt translation strings.
+		// Whether keyString is available among Yalt translation strings.
+		// - By default, the keyString is searched within the internal map
+		//   (~.TRNS) that controls ALL translation keys (whatever the
+		//   current locale.)
+		// - If `inCurrentLocale` is truthy, the keyString is specifically
+		//   searched in the current locale map (~.L10N.)
+		// [ADD220403] Fixed, adding `inCurrentLocale` arg.
+		// ---
 		// => 0 | 1
 		{
-			return keyString ? callee.µ['~'].HASK(keyString) : 0;
+			return 'string' == typeof keyString && keyString.length ? callee.µ['~'].HASK(keyString,inCurrentLocale?1:0) : 0;
 		},
 
 	})
