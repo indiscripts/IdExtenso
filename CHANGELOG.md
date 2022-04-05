@@ -1,3 +1,11 @@
+##### [220406]
+   - Important changes in the [**Collator**](/etc/$$.Collator.jsxlib) and [**MetaCollator**](/etc/$$.MetaCollator.jsxlib) modules (the latter being only involved in regenerating the resources of the former.) First, a small bug  was identified (and fixed!) in the `~.TMAP` routine. Although dormant, it could have had devastating effects on tailoring rules. Furthermore, a new public method `baseKey(str)` is now exposed in `$$.Collator`. It is independent from `sort()` and does not interact with the collating process. However, it provides a useful functionality, the ability to represent the _level1_ initial key of any string as a basic character, e.g `'ä'=>'A'`, `'œ'=>'O'` (in Latin script), and the same in other supported writing systems. Typically, `baseKey(input)` can be used for creating alphabetic groups ('A', 'B', 'C'…) surrounding your data. It automatically ignores _variable elements_ (punctuation marks, etc) so `baseKey("[hello]")` will still return `'H'`. Also, `baseKey()` is aware of the active tailoring rules defined by `setTailor(someLocale)`. So, for example, the code
+
+    $$.Collator.setTailor('br');             // Select Breton
+    alert( $$.Collator.baseKey("C'hweg") );  // => C'H
+
+   will display the base key `C'H` (which is an independent letter in Breton.) In Spanish, `ñ` will be identified to `Ñ` (separate letter) while it would just produce `N` in the scope of European Ordering Rules (EOR.)
+
 ##### [220403]
    - [**Yalt**](/etc/$$.Yalt.jsxlib): added a 2nd param (_inCurrentLocale_) to the `hasKey()` method. Purpose: allows the client code to check whether a key string is available in either the global YALT map (whatever the locale), or specifically in the current, active locale.
    - [**Linguist**](/etc/$$.Linguist.jsxlib): added more than 120 keys to `~.WSYS` in order to address [ISO 15924](https://en.wikipedia.org/wiki/ISO_15924) writing systems that weren't supported yet.
