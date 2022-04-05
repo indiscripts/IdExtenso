@@ -9,15 +9,15 @@
 		Kind:           Module
 		API:            =sort() setTailor() getTailor() findTailor()
 		                getRichList() selectLanguage()
-		                getLocaleKey() localeSort()
+		                getLocaleKey() localeSort() baseKey()
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       211118 (YYMMDD)
+		Modified:       220406 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 211118, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220406, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -393,6 +393,7 @@
 	Language-Territory Information: unicode.org/cldr/charts/latest/supplemental/language_territory_information.html
 	Collation Charts per language:  www.unicode.org/cldr/charts/28/collation/
 	Alphabetical Order (WP):        en.wikipedia.org/wiki/Alphabetical_order
+	List of Latin-script letters    en.wikipedia.org/wiki/List_of_Latin-script_letters
 	Common Locale Data Repository:  cldr.unicode.org
 	Collation Customization:        userguide.icu-project.org/collation/customization
 	Languages:                      101languages.net/
@@ -401,6 +402,30 @@
 	Linguistic Collation (SAS)      support.sas.com/resources/papers/linguistic_collation.pdf
 	Comparing with JS Collators     dev.to/aumayeung/comparing-non-english-strings-with-javascript-collators-57bf
 	ISKO: Alphabetization           www.isko.org/cyclo/alphabetization
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	[ADD220405] The internal map `W1BA` has been added to provide easy access
+	to fondamental characters ('base keys') from level1 weights. This map
+	is not involved in sorting. Given a non-variable key whose level1 weight
+	(`1111 1111 1111 1xxx`) is represented by the character W="\uHHHH",
+	W1BA[W] returns the first* WMAP key associated to that level1 weight.
+	This information can be used to extract the alphabetical group of a
+	key, e.g. to link 'à' or 'Æ' to the base key 'A' in Latin, or 'ΰ'
+	to 'Υ', etc.
+	
+	* By construction, the first WMAP key associated to a weight is usually
+	  the uppercase form of a letter, so is the W1BA value in most cases.
+	  However, the client code shouldn't assume that W1BA[W] is the upper-
+	  case form in every Unicode area that provide alphabetic characters.
+	  Better is to apply .toLowerCase() [resp. toUpperCase()] depending on
+	  your requirements.
 
 	*/
 
@@ -430,6 +455,23 @@
 		WMAP:
 		#include 'Collator/$$.WMAP.jsxres'
 		,
+
+		// Level1-to-BaseKey map. Each level1 weight (\uHHHH) is
+		// associated to a 'base key', typically the uppercase form of
+		// a fundamental alphabetic letter.
+		// ---
+		W1BA:
+		#include 'Collator/$$.W1BA.jsxres'
+		,
+
+		// Attractors (used to extract better baseKeys when possible.)
+		// An attractor can be supplied as 2nd arg to `baseKey()`.
+		// [REM] The last character refers to the outside bound.
+		// ---
+		ATTR:
+		{
+			LATIN: "ABCDEFGHIJKLMNOPQRSTUVWXYZ\u00DE",
+		},
 
 		// Regex that retrieve all weighted keys from a string.
 		// ---
@@ -508,7 +550,7 @@
 		// can set `UPD_LENGTH` to 1 to force the update of `<ret>.length` when
 		// absolutely necessary (that's more time-consuming.)
 		// ---
-		// `this` :: ~
+		// this :: ~
 		// => str[]&  [VOLATILE]  + .SIZE 
 		{
 			// Init.
@@ -516,7 +558,7 @@
 			F = callee[ SPLIT_BY_FFFD ? 'REPL' : 'REPL_FFFD' ]; // [CHG200616]
 			SPLIT_BY_FFFD && (F.OFS=0);
 			(a=F.RET).SIZE = 0;
-			
+
 			// [FIX210519] Needed to support empty imput. In that case,
 			// skip the replace routine (would kill CS4 otherwise.)
 			// ---
@@ -526,7 +568,7 @@
 				// ---
 				0 <= (i=s.indexOf('\0')) && (s=s.slice(0,i));
 				
-				// Preprocessing.
+				// Preprocessing routines (keys specified in callee.PREP.)
 				// ---
 				for( i=-1, n=(ks=callee.PREP).SIZE ; ++i < n ; s=this[ks[i]](s) );
 
@@ -598,7 +640,18 @@
 			PREP: [].setup({ SIZE:0 }),
 		}),
 		
-		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,k,keys,op,rf,m,i,t,w,b)
+		SPLT_EXT: function(/*str*/s,/*bool=0*/UPD_LENGTH)
+		//----------------------------------
+		// (Split-External.) [ADD220328] Alias of `~.SPLT` made available to
+		// external context. (Could be used by callback functions.)
+		// ---
+		// this :: any
+		// => str[]&  [VOLATILE]  + .SIZE 
+		{
+			return callee.µ['~'].SPLT(s, UPD_LENGTH);
+		},
+
+		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,TB,k,keys,op,rf,m,i,t,w,b,w1)
 		//----------------------------------
 		// (Tailor-Map.) Set the tailor map with respect to incoming rules.
 		// This function also updates `~.SPLT.CUR_MTCH` accordingly.
@@ -616,6 +669,11 @@
 		// `k_j` (j>i). Keys are therefore reordered to guarantee that
 		// longest strings will be captured first while splitting an input.
 		// ---
+		// [ADD220405] `TMAP.BASE` and `~.W1BA` share the same W=>BaseKey
+		// structure. TMAP.BASE is used to augment or partially supersede
+		// W1BA assignments: if a WEIGHT is found in TMAP.BASE its asso-
+		// ciated Base Key will be used.
+		// ---
 		// rule   ::  ( `==` | `>1` | `>2` | `>3` ) + refString
 		// `this` ::  ~
 		// ---
@@ -627,12 +685,16 @@
 			for( k in TM ) delete TM[k];
 			this.SPLT.CUR_MTCH = this.MTCH;  // So far, activate the default regex.
 
+			TB = callee.BASE;                // [ADD220405] Tailored Weight1-to-BaseKey
+			for( k in TB ) delete TB[k];
+
 			if( !TL ) return;                // Nothing to do: goes back to default.
 
 			// Init.
 			// ---
 			(WRN = callee.WARNS).length = 0;
 			const WM = this.WMAP;
+			const WB = this.W1BA;
 			const MAX1 = parseInt(WM['\uFFFD'],36)>>>16; // Maximal L1 weight
 			const CHR = String.fromCharCode;
 			this.SPLT.PREP.SIZE = 0;
@@ -673,6 +735,11 @@
 				for( i=m.length ; i-- ; m[i] = TM.hasOwnProperty(t=m[i]) ? TM[t] : WM[t] );   // m :: [ "w11,w12...", "w21,w22...", ... ]
 
 				// EQUAL -> strict weight equivalence (just concatenate.)
+				// [REM] The key `k` being associated to the (new) weight string `m.join(',')`
+				// there's no need to update TB. Indeed, TM[k] will return the new weight(s)
+				// and ~.W1BA already associates the level1 weight to the correct Base Key.
+				// E.g `Y ==Z` leads to TM['Y']=WM['Z'] so Weight(Y)==Weight(Z) through TM,
+				//     and W1BA[W] is 'Z' for the level1 weight W associated to Y.
 				// ---
 				if( '==' == op ){ TM[k]=m.join(','); continue; }
 
@@ -680,6 +747,7 @@
 				// ---
 				t = m.pop().split(',');        // We only want to increase the weight of the *last* component.
 				w = parseInt(t.pop(),36)>>>0;  // w :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
+				w1 = 0;                        // uint16, new level1 weight if created.
 
 				switch( op )
 				{
@@ -689,9 +757,9 @@
 						// ---
 						b = w>>>16;
 						7 == (7&b) && (WRN[WRN.length] = __("No enough LEVEL1 extra bits for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
-						++b;
+						w1 = ++b;   // [ADD220405] Store the final uint16 in w1.
 						if( MAX1 <= b ) return __("LEVEL1 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
-						w = (++b)<<16;
+						w = b<<16;  // [FIX220405] Removed the duplicated incrementation `++b`, already done above!
 						break;
 
 					case '>2':
@@ -724,8 +792,13 @@
 				m.push(t.join(','));
 				
 				TM[k] = m.join(',');           // Add k=>WS to the map.
+
+				0 < w1 && (TB[CHR(w1)]=k);     // [ADD220405] Append new level1=>k association
+				                               // E.g  ...=>"ch" and  ...=>"c'h"  in BR tailoring.
 			}
 
+			// Update the matching regex in ~.SPLT.
+			// ---
 			if( i=keys.length )
 			{
 				keys.sort();
@@ -736,6 +809,7 @@
 		.setup
 		({
 			DATA:  {},
+			BASE:  {}, // [ADD220405]
 			WARNS: [],
 		}),
 		
@@ -1335,7 +1409,7 @@
 			i = 0;
 			ops || (ops={});
 			ops.sortNumbers && (PP[i++]='ZPAD');
-
+			
 			// [ADD200708] Parse punctMode.
 			// ---
 			switch( punctMode )
@@ -1536,7 +1610,7 @@
 			},
 		}),
 
-		localeSort:  function localeSort_L_ý_bk_o_L(/*str[]&*/arr,/*1|2|3|4=1*/level,/*bool|'LBL'|WBW'=0*/punctMode,/*{}=0*/ops,  µ,bkp)
+		localeSort: function localeSort_L_ý_bk_o_L(/*str[]&*/arr,/*1|2|3|4=1*/level,/*bool|'LBL'|WBW'=0*/punctMode,/*{}=0*/ops,  µ,bkp)
 		//----------------------------------
 		// Sort alphabetically an array of strings based on the current locale ($$.Env.locale.)
 		// -> All parameters are detailed in `µ.sort`.
@@ -1562,6 +1636,81 @@
 			
 			return arr;
 		},
+		
+		baseKey: function baseKey_S_k_S(/*str*/input,/*?key*/attractor,  I,TM,t,w1,r,a)
+		//----------------------------------
+		// Get the first 'base key' (usually, a letter) found in the
+		// input string w.r.t. the current tailoring rules. A base
+		// key is typically an alphabetic character without diacritics.
+		// In some cases it may be a n-gram (like 'CH' in Breton or 'LL'
+		// in traditional Spanish) or an accented letter ('Ñ' in Spanish,
+		// 'Ё' in Belarusian, etc) depending on tailored level1 weights.
+		// The result *must be considered case-insensitive* and the
+		// function always return the upperCase() form.
+		// - attractor :: 'LATIN' [more keys coming soon!]
+		//   If supplied, the 'attractor' specifies a simplified alphabet
+		//   within a given writing system (e.g Latin: A..Z) and then
+		//   the routine try to coerce unusual letters (`Ⱥ`,`Ɖ`...) having
+		//   a dedicated L1 weight into more common letters ('A','D'...).
+		//   This feature (experimental!) is not needed for basic diacritics
+		//   removal since diacritics are ignored at level 1.
+		// ---
+		// E.g   µ.baseKey("électeur") => 'E'
+		//       µ.baseKey("ǟxxx")     => 'A'
+		//       µ.baseKey("ύ...")     => 'Υ' (Greek)
+		//       µ.setTailor('es_tradi');µ.baseKey("llamar") => 'LL'
+		//       µ.baseKey("ђ...")     => 'Ђ' (Cyrillic)
+		// ---
+		// => char|str [OK]  |  '' [KO]
+		{
+			if( 'string' != typeof input || (!input.length) ) return '';
+
+			I = callee.µ['~'];
+			(TM=I.TMAP.DATA).__count__ || (TM=I.WMAP);
+			
+			// t :: level1 weight string.
+			// E.g "\u75D0\u78C0\u74D0\u7A30\u79F8\u7BA0\u75D0"
+			// ---
+			t = I.WG_1(I.SPLT(input), TM, 1);  // 1 <-> ignore variable elems
+			if( !t.length ) return '';
+			
+			w1 = t.charAt(0);
+			((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) || (t=I.W1BA);
+			r = (t[w1]||'').toUpperCase();
+			
+			1 == r.length                                                   // Attractor only inspect single char.
+			&& 'string' == typeof attractor                                 // Is there an attractor specified?
+			&& (t=I.ATTR).hasOwnProperty(attractor=attractor.toUpperCase()) // Valid attractor key?
+			&& -1 == (t=t[attractor]).indexOf(r)                            // Don't go further if r is already in the attractor string `t`
+			&& t.length == (a=I.WG_1(I.SPLT(t), TM, 1).split('')).length    // There must be as many level1 weights in `a` than characters in `t` (1-to-1 mapping.)
+			&& (r=callee.REFN(w1,t,a,r));
+
+			return r;
+		}
+		.setup
+		({
+			REFN: function(/*char::\uWWWW*/w1,/*strN*/attStr,/*\uWWWW[N]*/attWgs,/*char*/defRet,  n,a,i,x)
+			//----------------------------------
+			// Find the index `i` s.t. attWgs[i] <= w1 < attWgs[1+i]
+			// and return attStr[i] (if found), defRet otherwise.
+			{
+				// E.g
+				// w1     :: "\u74D8"
+				// attStr :: "ABCDEFGHIJKLMNOPQRSTUVWXYZ\xDE"
+				// attWgs :: ["\u74D0", "\u7518", "\u7550", "\u7590", "\u75D0", "\u7658", "\u7690", "\u76E8", "\u7748", "\u7788", "\u77B8", "\u77F0", "\u7888", "\u78C0", "\u7918", "\u79B0", "\u79F8", "\u7A30", "\u7AF0", "\u7B58", "\u7BA0", "\u7C20", "\u7C58", "\u7C70", "\u7CB0", "\u7CE8", "\u7D50"]
+
+				n = attWgs.length;
+				if( 2 > n || w1 < attWgs[0] || attWgs[n-1] <= w1 ) return defRet;
+				for
+				(
+					a=[i=0,n-1] ;
+					( ((x=1), w1 < attWgs[i=(a[0]+a[1])>>>1]) || ((x=0),attWgs[1+i] <= w1) ) && ( 1 < a[1]-a[0] || (i=false) ) ;
+					a[x] = i
+				);
+				
+				return false===i ? defRet : attStr.charAt(i);
+			},
+		}),
 
 	})
 
