@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        160104 (YYMMDD)
-		Modified:       160104 (YYMMDD)
+		Modified:       220405 (YYMMDD)
 
 *******************************************************************************/
 	//==========================================================================
@@ -49,8 +49,8 @@
 	*/
 
 	"cs" : ">1C", "Cs" : ">3cs", "CS" : ">3Cs",
-	"dz" : ">1D", "Dz" : ">3dz", "DZ" : ">3Dz",
-	"dzs" : ">1DZ", "Dzs" : ">3dzs", "DZS" : ">3Dzs",
+	"ǳ" : ">1D", "ǲ" : ">3ǳ", "Ǳ" : ">3ǲ",         // [FIX220405] Provide the most composed character for better coverage.
+	"ǳs" : ">1Ǳ", "ǲs" : ">3ǳs", "DZS" : ">3ǲs",   // etc
 	"gy" : ">1G", "Gy" : ">3gy", "GY" : ">3Gy",
 	"ly" : ">1L", "Ly" : ">3ly", "LY" : ">3Ly",
 	"ny" : ">1N", "Ny" : ">3ny", "NY" : ">3Ny",
@@ -63,8 +63,8 @@
 	"zs" : ">1Z", "Zs" : ">3zs", "ZS" : ">3Zs",
 
 	"ccs" : ">3CSCS", "Ccs" : ">3ccs", "CCS" : ">3Ccs",
-	"ddz" : ">3DZDZ", "Ddz" : ">3ddz", "DDZ" : ">3Ddz",
-	"ddzs" : ">3DZSDZS", "Ddzs" : ">3ddzs", "DDZS" : ">3Ddzs",
+	"dǳ" : ">3ǱǱ", "Dǳ" : ">3dǳ", "DǱ" : ">3Dǳ",
+	"dǳs" : ">3ǱSǱS", "Dǳs" : ">3dǳs", "DǱS" : ">3Dǳs",
 	"ggy" : ">3GYGY", "Ggy" : ">3ggy", "GGY" : ">3Ggy",
 	"lly" : ">3LYLY", "Lly" : ">3lly", "LLY" : ">3Lly",
 	"nny" : ">3NYNY", "Nny" : ">3nny", "NNY" : ">3Nny",
