@@ -12,14 +12,15 @@
 		DOM-access:     ---
 		Todo:           May provide direct download of allkeys/decomps...
 		Created:        200222 (YYMMDD)
-		Modified:       200531 (YYMMDD)
+		Modified:       220405 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Meta ){ alert(__("%1 requires the %2 module.",'MetaCollator','Meta')); exit(); }
 ;if( !$$.Unicode ){ alert(__("%1 requires the %2 module.",'MetaCollator','Unicode')); exit(); }
 ;if( !$$.Linguist ){ alert(__("%1 requires the %2 module.",'MetaCollator','Linguist')); exit(); }
-;$$.hasOwnProperty('MetaCollator') || eval(__(MODULE, $$, 'MetaCollator', 200531, 'parseCollatorKeys'))
+
+;$$.hasOwnProperty('MetaCollator') || eval(__(MODULE, $$, 'MetaCollator', 220405, 'parseCollatorKeys'))
 
 	//==========================================================================
 	// NOTICE
@@ -33,10 +34,20 @@
 	
 	It will update the following files:
 
-	      /etc/Collator/$$.WMAP.jsxres       ;  Key-to-weight map
+	      /etc/Collator/$$.WMAP.jsxres       ;  Key-to-Weight map
+	      /etc/Collator/$$.W1BA.jsxres       ;  Weight1-to-BaseKey map [ADD220405]
 	      /etc/Collator/$$.MTCH.jsxres       ;  Key matcher (regex)
 	      /etc/Collator/$$.ZROS.jsxres       ;  Zero-weight keys (str)
 
+	[ADD220405] The map `W1BA` has been added to provide easy access to
+	fondamental characters ('base keys') from level1 weights. This map
+	is not involved in sorting. Given a non-variable key whose level1 weight
+	(`1111 1111 1111 1xxx`) is represented by the character W="\uHHHH",
+	W1BA[W] returns the first WMAP key associated to that level1 weight.
+	This information can be used to extract the alphabetical group of a
+	key, e.g. to link 'à' or 'Æ' to the base key 'A' in Latin, or 'ΰ'
+	to 'Υ', etc.
+	
 	Simply call `$$.MetaCollator()` to reconstruct the resources, in case the
 	set of filtered UCA keys has changed.
 	
@@ -423,10 +434,10 @@
 			I.KEYS = a.join('\r');
 		},
 		
-		parseCollatorKeys: function parseCollatorKeys_(  $$,PB,I,W1,W2,W3,MAP,ALL,ZER,a,i,s,m,k,isZero,ws,p,w,t,x)
+		parseCollatorKeys: function parseCollatorKeys_(  $$,PB,I,W1,W2,W3,MAP,ALL,ZER,a,i,s,m,k,isZero,ws,p,w,w1,k1,t,x)
 		//----------------------------------
 		// Parse all lines of `~.KEYS` and rebuild the associated resources
-		// in etc/Collator: `WMAP`, `MTCH`, and `ZROS`
+		// in etc/Collator: `WMAP`, `W1BA`, `MTCH`, and `ZROS`
 		// [REM] This function reduces the original weights to fit the int32
 		// encoding of the Collator module:
 		//          1111 1111 1111 1xxx 2222 222y 3333 3zzV
@@ -571,13 +582,15 @@
 
 			// ---
 			// Output data.
-			// WMAP :: i  =>  `"<key>" : "<w1>,<w2>..."`
+			// WMAP :: i  =>  `"<key>"  : "<w_1>,<w_2>..."`
+			// W1BA :: i  =>  `"\uWWWW" : "<firstKey>"`  , where \uWWWW represents w1<<<3 for non-variable elems.
 			// ---
 			
 			// 1. Recalculate MAP weights -> WMAP
 			// ---
 			const WMAP = [];
-			PB && PB.message( __("Rebuilding $$.WMAP.jsxres...") );
+			const W1BA = [];
+			PB && PB.message( __("Rebuilding $$.WMAP and $$.W1BA...") );
 			for( k in MAP )
 			{
 				if( !MAP.hasOwnProperty(k) ) continue;
@@ -591,18 +604,36 @@
 					x = W1[ws.charAt(1+i)] | W2[ws.charAt(2+i)] | W3[ws.charAt(3+i)] | ('\x01'===ws.charAt(i));
 					s += ',' + (x>>>0).toString(36);
 					t += __(" %4%1.%2.%3"
-						, x>>>(16+3)
-						, 0x7F&(x>>>(8+1))
-						, 0x1F&(x>>>(1+2))
-						, (1&x)?'*':' '
+						, x>>>(16+3)         // uint13(w1)
+						, 0x7F&(x>>>(8+1))   //  uint7(w2)
+						, 0x1F&(x>>>(1+2))   //  uint5(w3)
+						, (1&x)?'*':' '      // var => `*`
 						);
 				}
 				
-				// E.g 	`"\xB4"          : "bjs3n",`
-				WMAP[WMAP.length] = __('\t%1: %2 // %3', k.toSource().rpad(16), (s.slice(1).toSource()+',').rpad(40), t);
+				if( i===4 && !(1&x) && (w1=x>>>16) && !W1BA.hasOwnProperty(k1='_'+w1) )
+				{
+					W1BA[k1] = 1;
+					// E.g  `"\uWWWW" : "C",`
+					W1BA[W1BA.length] = __('\t"%1" : %2 //%3'
+						, w1.toHexa('\\u',4)
+						, (k.toSource()+',').rpad(16)
+						, t);
+				}
+				
+				// E.g  `"\xB4"          : "bjs3n",`
+				WMAP[WMAP.length] = __('\t%1: %2 // %3'
+					, k.toSource().rpad(16)
+					, (s.slice(1).toSource()+',').rpad(40)
+					, t
+					);
 			}
 			s = __("{%1%2%1\t}", $$.Meta.NewLine, WMAP.join($$.Meta.NewLine));
 			I.OUT_RES(s, $$, 'WMAP', "Default Weight Mapping", 'map', '151229');
+
+			W1BA.sort(); // Better display
+			s = __("{%1%2%1\t}", $$.Meta.NewLine, W1BA.join($$.Meta.NewLine));
+			I.OUT_RES(s, $$, 'W1BA', "Weigth-1 Bases", 'map', '220405');
 			
 			// 2. Regenerate the regex that captures *any* measurable key -> MTCH
 			// ---
@@ -657,7 +688,7 @@
 				ff = a[i];
 				k = (ff.name.match(RE_ff)||0)[1];  // k :: 'af_ZA' | 'de_DE_phone' | 'EOR' | ...
 				if( !k ) continue;
-				
+
 				PB && PB(~~(100*i/a.length), __("Parsing [%1] tailoring rules...", k));
 				(s=$$.File.readUTF8(ff)) || $$.error(__("Unable to read the file %1.",ff.displayName), callee);
 				(hd=$$.Meta.parseHeader(s)) || $$.error(__("Invalid header in file %1.",ff.displayName), callee);
@@ -744,36 +775,29 @@
 					// apply the decomposed equivalent and create a rule '==<rk>'
 					// ---
 					rule = '==' + rk;
-					for( rk='', j=-1 ; ++j < cps.length ; )
+					if( (t=callee.ALTS(cps,DEC)).length )  // [CHG220405] Find more decomposed alternatives (deeper algo.)
 					{
-						t = DEC.match(RegExp('[\\r\\n]' + cps[j] + ';(.*);([^#]+)#'));
-
-						if( !t || !(''==t[1] || '<compat>'==t[1] || '<sort>'==t[1]) )
+						for each( rk in t )
 						{
-							rk += String.fromCodePoint(parseInt(cps[j],16));
-							continue;
+							if( rk==rule.slice(2) ) continue; // Would mean `rk`==`rk`!
+
+							if( outObj.hasOwnProperty(rk) )
+							{
+								$$.warn
+								( __("Cannot override %1 -> %2  ;  so the IMPLICIT rule %1 -> %3 won't be added. (Usually, this is not a critical issue.)"
+									, rk.toSource()
+									, outObj[rk].toSource()
+									, rule.toSource()
+									)
+								);
+							}
+							else
+							{
+								$$.trace( __("+RULE: %1 [%2] : %3",rk.toSource(),I.COPS(rk),rule.toSource()) );
+								outObj[rk] = rule;
+							}
 						}
-
-						t = t[2].trim().split(' ');
-						while( s=t.shift() ) rk += String.fromCodePoint(parseInt(s,16));
 					}
-
-					if( rk==rule.slice(2) ) continue; // Would mean `rk`==`rk`!
-					
-					if( outObj.hasOwnProperty(rk) )
-					{
-						$$.warn
-						( __("Cannot override %1 -> %2  ;  so the IMPLICIT rule %1 -> %3 won't be added. (Usually, this is not a critical issue.)"
-							, rk.toSource()
-							, outObj[rk].toSource()
-							, rule.toSource()
-							)
-						);
-						continue;
-					}
-					
-					$$.trace( __("+RULE: %1 [%2] : %3",rk.toSource(),I.COPS(rk),rule.toSource()) );
-					outObj[rk] = rule;
 				}
 				
 				ret[k] = ret.length; // Register the key index.
@@ -823,8 +847,69 @@
 			ret.sort();
 			s = __("{%1%2%1\t}", $$.Meta.NewLine, ret.join($$.Meta.NewLine));
 			I.OUT_RES(s, $$, 'TLRM', "Tailoring Map", 'map', '200215', infos.join($$.Meta.NewLine));
-		},
-		
+		}
+		.setup
+		({
+			ALTS: function(/*`HHHH+`[]*/cps,/*decomps_str*/DEC,  r,i,cp,m,s,j,a,pair,p,t,z,sz,k)
+			//----------------------------------
+			// [ADD220405] Deeper algo.
+			// Return an array of decomposed alternatives for the supplied code points.
+			// E.g [...,'01C4',...] => ["...DŽ...","...DZ\u030C...", "...\u01F1\u030C..."]
+			// => str[]
+			{
+				for( r=[''], i=-1 ; ++i < cps.length ; )
+				{
+					cp = cps[i]; // `HHHH+`
+					m = DEC.match(RegExp('[\\r\\n]' + cp + ';(.*);([^#]+)#'));
+
+					// $1 :: ''|'<compat>'|'<sort>'|etc
+					// $2 :: e.g '0044 005A 030C' | '0044 005A' | ...
+
+					if( !m || !(''==m[1] || '<compat>'==m[1] || '<sort>'==m[1]) )
+					{
+						s = String.fromCodePoint(parseInt(cp,16));
+						for( j=r.length ; j-- ; r[j] += s );
+						continue;
+					}
+
+					// m[2] :: e.g "0044 005A 030C" (means D+Z+<caron>)
+					//   a  :: ['0044', '005A', '030C'] => add s :: "\u0044\u005A\u030C"
+					// ---
+					a = m[2].trim().split(' ');
+					for( s='', j=-1 ; ++j < a.length ; s+=String.fromCodePoint(parseInt(a[j],16)) );
+					for( j=r.length ; j-- ; r[j]+=s );
+					
+					// [REM] `s` is now the full decomposed form of cp
+					// E.g "\u0044\u005A\u030C"
+
+					if( (sz=s.length) != a.length ) continue; // Skip the case of surrogate pairs in s.
+
+					// Try to find decomposed pairs in `a` that recompose into U+HHHH (hex4 only!)
+					// E.g ['0044','005A'] => U+01F1
+					//     ['005A','030C'] => U+017D
+					// ---
+					z = r.length;
+					for( j=a.length ; --j ; )
+					{
+						pair = a[j-1] + ' ' + a[j];
+						if( 0 > (p=DEC.indexOf(';' + pair + ' # ')) ) continue;
+
+						m = DEC.match(RegExp('[\\r\\n]([0-9A-F]{4});(.*);' + pair + ' #'));
+						if( !m || !(''==m[2] || '<compat>'==m[2]) ) continue;
+
+						t = String.fromCharCode(parseInt(m[1],16));
+						t = s.slice(0,j-1) + t + s.slice(j+1);
+						
+						// Create z new strings in r, based on r[0..z-1],
+						// and replacing the s.length last chars by t.
+						// ---
+						for( k=-1 ; ++k < z ; r.push(r[k].slice(0,-sz)+t) );
+					}
+				}
+				return r[0] ? r : [];
+			},
+		}),
+
 		setLanguageFullMap: function setLanguageFullMap_(  $$,PB,I,ret,a,o,k,t,eor,src,i,s)
 		//----------------------------------
 		// [ADD200525] Create the LING map and the extra YALT package.
