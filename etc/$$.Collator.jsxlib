@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       220406 (YYMMDD)
+		Modified:       220409 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220406, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220409, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -466,11 +466,133 @@
 
 		// Attractors (used to extract better baseKeys when possible.)
 		// An attractor can be supplied as 2nd arg to `baseKey()`.
-		// [REM] The last character refers to the outside bound.
+		// [REM] The last character must provide a codepoint that is
+		// just beyond the last letter.
 		// ---
 		ATTR:
 		{
-			LATIN: "ABCDEFGHIJKLMNOPQRSTUVWXYZ\u00DE",
+			// LATIN:
+			// Aa Bb Cc Dd Ee[Əə] Ff Gg Hh Ii[ı] Jj Kk Ll Mm Nn[Ŋŋ]
+			// Oo Pp Qq (ĸ) Rr Ss Tt[Ŧŧ] Uu Vv Ww Xx Yy Zz (Þþ)
+			// ---
+			// ATTRACTOR:
+			// A[Ⱥ…ꭤ] B[ʙ…Ƃ] C[Ȼ…Ꜿ] D[Ɖ…ẟ] E[ꬲ…ɤ] F[ꜰ…ꟻ] G[ɡ…Ƣ] H[ʜ…ɧ] ʻ[ʼ] I[ı…Ɩ]
+			// J[ȷ…ʄ] K[Ƙ…ʞ] L[ʟ…ʎ] M[ᴍ…ꝳ] N[ɴ…ꬼ] O[ꬽ…Ȣ] P[Ᵽ…ⱷ] Q[Ꝗ…Ɋ] ĸ R[ꭅ…Ꝝ] S[ꜱ…ʆ] T[Ŧ…ʇ]
+			// U[ꭎ…Ʊ] V[Ꝟ…Ʌ] W[Ⱳ…ʍ] X[ꭖ…ꭕ] Y[ʏ…Ȝ] Z[Ƶ…ʓ] Þ[Ꝥ…Ꝧ]   \u01BF
+			// ---
+			// Absorbs: Əə, ı, Ŋŋ, ĸ, Ŧŧ
+			// Keeps:   ĸ U+0138 and Þ U+00DE (THORN) as individual letters.
+			LATIN: "ABCDEFGHIJKLMNOPQĸRSTUVWXYZÞ" + "\u01BF",
+
+			// GREEK (U+0391...U+03A9)
+			// Αα Ββ Γγ Δδ Εε Ζζ Ηη Θθ Ιι Κκ Λλ Μμ Νν Ξξ Οο Ππ Ρρ Σσς Ττ Υυ Φφ Χχ Ψψ Ωω
+			// ---
+			// ATTRACTOR:
+			// Α Β Γ Δ Ε (Ϝ[Ͷ]) (Ϛ) Ζ (Ͱ) Η Θ Ι (Ϳ) Κ Λ Μ Ν
+			// Ξ Ο Π (Ϻ) (Ϟ[Ϙ]) Ρ[ϼ] Σ[ͼͻͽ] Τ Υ Φ Χ Ψ Ω[ꭥ]   \u03E0
+			// ---
+			// Absorbs: Ͷ (PAMPHYLIAN DIGAMMA), Ϙ (ARCHAIC KOPPA), ϼ, ͼͻͽ [SIGMAs] and ꭥ
+			// Keeps    Ϝ (DIGAMMA), Ϛ (STIGMA), Ͱ (HETA), Ϳ (YOT),
+			//          Ϻ (SAN), Ϟ (KOPPA) as individual letters.
+			GREEK: "ΑΒΓΔΕϜϚΖͰΗΘΙͿΚΛΜΝΞΟΠϺϞΡΣΤΥΦΧΨΩ" + "\u03E0",
+
+			// CYRILLIC ATTRACTOR:
+			// Аа[Әә] Бб Вв Гг[Ғғ,Ѓѓ] Дд (Ђђ) (Ҙ) Ее[Єє] Жж[Җҗ] Зз (Ѕѕ)
+			// Ии[Іі] Йй (Јј) Кк[Ққ,Ҝҝ] (Ԛ) Лл[Љљ] Мм Нн[Ңң,Њњ] Оо[Өө] Пп (Ҁ)
+			// Рр Сс Тт (Ћћ) Уу[Ўў,Үү,Ұұ] Фф Хх[Ҳҳ] (Һһ) (Ѡ) Цц
+			// Чч[Ҹҹ] (Ҽ) (Ҿ) (Џџ) Шш Щщ (\uA64E) Ъъ Ыы Ьь Ээ Юю (\uA656) Яя
+			// ---
+			// - А absorbs Ә (SCHWA) since it's often assimilated to Ӓ
+			//   https://en.wikipedia.org/wiki/Schwa_(Cyrillic)
+			// - Г (GHE) absorbs Ғ (GHE WITH STROKE) and variants like Ӷ;
+			//   it also absorbs Ѓ \u0403 (GJE) analyzed as a diactrical variant
+			// - Д (DE) absorbs \u0500 (KOMI DE), \uA680 (DWE)
+			// - Ђ (DJE) absorbs \uA662 (SOFT DE), \u0502 (KOMI DJE)
+			// - Ҙ \u0498 (ZE WITH DESCENDER, or DHE) is unique to the Bashkir language;
+			//   in UCA it has a specific weight < Е, hence before З (ZE, \u0417)
+			//      . . .
+			//      "\u0498" //  4118.1.6  Ҙ (ZE WITH DESCENDER)
+			//      "\u0415" //  4119.1.6  Е (IE)
+			//      . . .
+			//   so we had to introduce this exception before Е to prevent wrong grouping.
+			//   https://en.wikipedia.org/wiki/Bashkir_language
+			// - Е (IE) absorbs Є (UKRAINIAN IE)
+			// - Ж (ZHE) absorbs \u052A (DZZHE), \uA684 (ZHWE) and Җ (ZHE WITH DESCENDER)
+			// - З (ZE) absorbs \uA640 (ZEMLYA), \u0504 (KOMI ZJE), \u0510 (REVERSED ZE)
+			//   and \uA642 (DZELO)
+			// - Ѕ (DZE) absorbs \uA644 (REVERSED DZE), \u04E0 (ABKHASIAN DZE),
+			//   \uA688 (DZZE), \u0506 (KOMI DZJE) and uA682 (DZWE)
+			// - И (I) absorbs \u048A (SHORT I WITH TAIL), \u0406 (BYELORUSSIAN-UKRAINIAN I)
+			//   \uA646 (IOTA) -- Note: \u048A SHORT I WITH TAIL is an exception, used only
+			//   in Kildin Sami language (https://en.wikipedia.org/wiki/Short_I_with_tail)
+			// - Й (SHORT I or YOT) is a separate letter, although made of И with a breve.
+			//   It has a distinct position in alphabet depending on the language:
+			//      Belarusian 11th ("non-syllabic I")
+			//      Bulgarian  10th ("short I")
+			//      Russian    11th ("short I")
+			//      Ukrainian  14th
+			//      Kazakh     13th
+			//   Cf. https://en.wikipedia.org/wiki/Short_I
+			// - К (KA) absorbs many diacritical variants like Қ (KA WITH DESCENDER),
+			//   Ӄ (KA WITH HOOK) etc.
+			// - Ԛ (QA) is unusual but has dedicated level1 weight between К and Л.
+			// - Л (EL) absorbs many diacritical variants like Ӆ, Ԯ, etc, as well as
+			//   Љ (LJE) which is a ligature used in Macedonian and Itelmen,
+			//   and Ԕ (LHA) analyzed as a cross-digraph of Л (EL) and Х (KHA).
+			// - М (EM) absorbs Ӎ (EM WITH TAIL) and \uA666 (SOFT EM).
+			// - Н (EN) absorbs many diactrical variants (with hooks, tail, descender...)
+			//   and  \u04A4 (LIGATURE EN GHE), \u040A Њ (NJE, Macedonian), \u050A Ԋ (KOMI NJE).
+			// - О (\u041E) absorbs \u04E8 (BARRED O).
+			// - П (PE) absorbs Ԥ (PE WITH DESCENDER), Ҧ (PE WITH MIDDLE HOOK).
+			// - Ҁ \u0480 (KOPPA) is an archaical letter: "certain modern textbooks and
+			//   dictionaries of Old Church Slavonic language insert this character (...)
+			//   either between П and Р (to reproduce the Greek alphabetical order) or at
+			//   the very end of the list." П < Ҁ < Р is adopted in the UCA.
+			//   https://en.wikipedia.org/wiki/Koppa_(Cyrillic)
+			// - Р (ER) absorbs Ҏ (ER WITH TICK) and Ԗ (RHA) analyzed as a cross-digraph
+			//   of Р and Х (was used in the Moksha language.)
+			// - С (ES) absorbs \u050C Ԍ (KOMI SJE) and Ҫ (ES WITH DESCENDER).
+			// - Т (TE) absorbs \uA68C Ꚍ (TWE), \u050E Ԏ (KOMI TJE), \u04AC Ҭ (TE WITH
+			//   DESCENDER), \uA68A Ꚋ (TE WITH MIDDLE HOOK)
+			// - Ћ \u040B (TSHE) has its own level1 weight and is a separated base key
+			//   it is used in the Serbian Cyrillic alphabet, https://en.wikipedia.org/wiki/Tshe
+			// - У (U) absorbs \u04AE Ү (STRAIGHT U), \u04B0 Ұ and the special UK element
+			//   \u1C88 (SMALL LETTER UNBLENDED UK) and \u0478 (UK).
+			// - Х (HA) absorbs diacritical variants \u04FC Ӽ, \u04FE Ӿ and \u04B2 Ҳ
+			// - Һ (SHHA, or HE) has its form derived from the Latin letter H, "but the capital
+			//   forms are more similar to a rotated Cyrillic letter Che (Ч) or a stroke-less Tshe (Ћ).
+			//   Most of the languages using the letter call it ha - the name shha was created when
+			//   the letter was encoded in Unicode." https://en.wikipedia.org/wiki/Shha
+			//   It absorbs Ԧ (SHHA WITH DESCENDER) and \uA694 Ꚕ (HWE)
+			// - Ѡ (CYRILLIC OMEGA) was adopted into the early Cyrillic alphabet, it absorbs
+			//   \u047E Ѿ (OT), \uA64C Ꙍ (BROAD OMEGA), \u047C Ѽ (OMEGA WITH TITLO : "beautiful omega")
+			//   and \u047A Ѻ (ROUND OMEGA)
+			// - Ц (TSE) absorbs \uA660 (REVERSED TSE), \uA68E (TSWE), \u04B4 Ҵ (LIGATURE TE TSE)
+			//   and \uA690 Ꚑ (TSSE) whose shape originated as a ligature of TE and ES (it is used in
+			//   the Abkhaz language.)
+			// - Ч (CHE) absorbs \u052C Ԭ (DCHE), \uA692 Ꚓ (TCHE), \u04B6 Ҷ (CHE WITH DESCENDER),
+			//   \u04CB Ӌ (KHAKASSIAN CHE), \u04B8 Ҹ (CHE WITH VERTICAL STROKE) and \uA686 Ꚇ (CCHE).
+			// - Ҽ (ABKHASIAN CHE) and its descender form \u04BE Ҿ (ABKHASIAN CHE WITH DESCENDER)
+			//   are inserted as two separate base keys, although used only in the Abkhaz language.
+			//   In this alphabet, Џ < Ҽ < Ҿ -- cf https://en.wikipedia.org/wiki/Abkhazian_Che --
+			//   which violates default UCA ordering...
+			// - Џ (DZHE) should collate before Ҽ in Abkhaz alphabet!
+			// - Ш (SHA) absorbs \uA696 (SHWE)
+			// - Щ (SHCHA) in Russian and Ukrainian corresponds to ШЧ in related words in Belarusian.
+			// - \uA64E Ꙏ (NEUTRAL YER) is used "in transcribing documents when it is hard to tell
+			//   the difference between a Ь and a Ъ. It was common in Late Medieval Russian archival
+			//   materials and scripts." This special base key must be explicit as it collates before
+			//   \u042A Ъ (HARD SIGN) at level 1. It then absorbs \u2E2F (VERTICAL TILDE) and
+			//   \uA67F (PAYEROK=omitted yer)
+			// - Ъ (HARD SIGN) absorbs \uA650 Ꙑ (YERU WITH BACK YER)
+			// - Ы (YERU) is distinct from \uA650 (YERU WITH BACK YER)
+			// - Ь (SOFT SIGN) absorbs Ҍ (SEMISOFT SIGN) and the old-Cyrillic letter \u0462 Ѣ (YAT),
+			//   as well as \uA652 (IOTIFIED YAT)
+			// - Ю (YU) absorbs \uA654 (REVERSED YU)
+			// - \uA656 (IOTIFIED or 'Iotated' A) Ꙗ is an archaic letter used today only in Church Slavonic.
+			//   It is introduced w.r.t UCA between YU and YA.
+			// ---
+			CYRILLIC: "АБВГДЂҘЕЖЗЅИЙЈКԚЛМНОПҀРСТЋУФХҺѠЦЧҼҾЏШЩ\uA64EЪЫЬЭЮ\uA656Я" + "\u0464",
 		},
 
 		// Regex that retrieve all weighted keys from a string.
@@ -1637,7 +1759,7 @@
 			return arr;
 		},
 		
-		baseKey: function baseKey_S_k_S(/*str*/input,/*?key*/attractor,  I,TM,t,w1,r,a)
+		baseKey: function baseKey_S_k_S(/*str*/input,/*?key*/attractor,  I,TM,t,w1,r,atts,attStr,i,a,s)
 		//----------------------------------
 		// Get the first 'base key' (usually, a letter) found in the
 		// input string w.r.t. the current tailoring rules. A base
@@ -1647,13 +1769,16 @@
 		// 'Ё' in Belarusian, etc) depending on tailored level1 weights.
 		// The result *must be considered case-insensitive* and the
 		// function always return the upperCase() form.
-		// - attractor :: 'LATIN' [more keys coming soon!]
+		// - attractor :: 'LATIN'|'GREEK'|'CYRILLIC' [more keys coming soon]
 		//   If supplied, the 'attractor' specifies a simplified alphabet
 		//   within a given writing system (e.g Latin: A..Z) and then
 		//   the routine try to coerce unusual letters (`Ⱥ`,`Ɖ`...) having
 		//   a dedicated L1 weight into more common letters ('A','D'...).
 		//   This feature (experimental!) is not needed for basic diacritics
 		//   removal since diacritics are ignored at level 1.
+		//   [CHG220409] You can also specifies multiple attractors,
+		//   separated by `_`, e.g. 'LATIN_GREEK'. Each individual key
+		//   must be a valid attractor per se. Unknown keys are ignored.
 		// ---
 		// E.g   µ.baseKey("électeur") => 'E'
 		//       µ.baseKey("ǟxxx")     => 'A'
@@ -1678,18 +1803,31 @@
 			((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) || (t=I.W1BA);
 			r = (t[w1]||'').toUpperCase();
 			
-			1 == r.length                                                   // Attractor only inspect single char.
-			&& 'string' == typeof attractor                                 // Is there an attractor specified?
-			&& (t=I.ATTR).hasOwnProperty(attractor=attractor.toUpperCase()) // Valid attractor key?
-			&& -1 == (t=t[attractor]).indexOf(r)                            // Don't go further if r is already in the attractor string `t`
-			&& t.length == (a=I.WG_1(I.SPLT(t), TM, 1).split('')).length    // There must be as many level1 weights in `a` than characters in `t` (1-to-1 mapping.)
-			&& (r=callee.REFN(w1,t,a,r));
+			if( 1 == r.length && 'string' == typeof attractor )            // Attractors only inspect single char.
+			for( atts=attractor.toUpperCase().split('_'), t=I.ATTR, i=-1 ; ++i < atts.length ; )
+			{
+				// Valid attractor key?
+				// ---
+				if( !(attStr=t[atts[i]]) ) continue;
+				
+				// Don't go further if r is already in the attractor string `attStr`
+				// ---
+				if( 0 <= attStr.indexOf(r) ) break;
+				
+				// There must be as many level1 weights in `a` than characters in `attStr` (1-to-1 mapping.)
+				// ---
+				if( attStr.length != (a=I.WG_1(I.SPLT(attStr), TM, 1).split('')).length ) continue;
+				
+				// Find the base key in `attStr`.
+				// ---
+				if( false!==(s=callee.REFN(w1,attStr,a,false)) ){ r=s; break; }
+			}
 
 			return r;
 		}
 		.setup
 		({
-			REFN: function(/*char::\uWWWW*/w1,/*strN*/attStr,/*\uWWWW[N]*/attWgs,/*char*/defRet,  n,a,i,x)
+			REFN: function(/*char::\uWWWW*/w1,/*strN*/attStr,/*\uWWWW[N]*/attWgs,/*any*/defRet,  n,a,i,x)
 			//----------------------------------
 			// Find the index `i` s.t. attWgs[i] <= w1 < attWgs[1+i]
 			// and return attStr[i] (if found), defRet otherwise.
