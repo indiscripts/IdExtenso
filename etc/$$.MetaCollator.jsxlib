@@ -12,7 +12,7 @@
 		DOM-access:     ---
 		Todo:           May provide direct download of allkeys/decomps...
 		Created:        200222 (YYMMDD)
-		Modified:       220405 (YYMMDD)
+		Modified:       220409 (YYMMDD)
 
 *******************************************************************************/
 
@@ -20,7 +20,7 @@
 ;if( !$$.Unicode ){ alert(__("%1 requires the %2 module.",'MetaCollator','Unicode')); exit(); }
 ;if( !$$.Linguist ){ alert(__("%1 requires the %2 module.",'MetaCollator','Linguist')); exit(); }
 
-;$$.hasOwnProperty('MetaCollator') || eval(__(MODULE, $$, 'MetaCollator', 220405, 'parseCollatorKeys'))
+;$$.hasOwnProperty('MetaCollator') || eval(__(MODULE, $$, 'MetaCollator', 220409, 'parseCollatorKeys'))
 
 	//==========================================================================
 	// NOTICE
@@ -47,6 +47,10 @@
 	This information can be used to extract the alphabetical group of a
 	key, e.g. to link 'à' or 'Æ' to the base key 'A' in Latin, or 'ΰ'
 	to 'Υ', etc.
+	
+	[ADD220409] ~.REBA provides local refinements to `W1BA`, making sure that
+	the resulting base key is the expected one (in common writing systems.)
+	E.g.  'µ' -> 'Μ' (GREEK CAPITAL LETTER MU)
 	
 	Simply call `$$.MetaCollator()` to reconstruct the resources, in case the
 	set of filtered UCA keys has changed.
@@ -81,6 +85,22 @@
 		// $3 :: `HHHH( HHHH)* `
 		// $4 :: <desc>
 		DREG: /^([0-9A-F]{4,6});([^;]*);([^#]+)# (.+)$/,
+		
+		// [ADD220409] Some 'base keys' in ~.W1BA were unproperly assigned
+		// because the underlying level1 weight appears prematurely in the
+		// weight map. The purpose of ~.REBA (oldKey => newKey) is to
+		// restore more relevant base keys. IMPORTANT: you must always check
+		// that `oldKey` and `newKey` have the same Level1 weight before
+		// adding anything here.
+		REBA:
+		{
+			// Old Key       New Key (fix)
+			// ---
+			'\u037A':        '\u0399',   // iota subscript -> IOTA (Greek)
+			'\xB5':          '\u039C',   // µ -> Μ (Greek)
+			'\u0418\u0306':  '\u0419',   // И + \u306 (decomposed) -> Й (U+0419 CYRILLIC CAPITAL LETTER SHORT I)
+			'\u2DFC':        '\uA656',   // COMBINING CYRILLIC LETTER IOTIFIED A -> Ꙗ CYRILLIC CAPITAL LETTER IOTIFIED A
+		},
 	})
 
 	//==========================================================================
@@ -590,6 +610,7 @@
 			// ---
 			const WMAP = [];
 			const W1BA = [];
+			const REBA = I.REBA; // [ADD220409]
 			PB && PB.message( __("Rebuilding $$.WMAP and $$.W1BA...") );
 			for( k in MAP )
 			{
@@ -617,7 +638,7 @@
 					// E.g  `"\uWWWW" : "C",`
 					W1BA[W1BA.length] = __('\t"%1" : %2 //%3'
 						, w1.toHexa('\\u',4)
-						, (k.toSource()+',').rpad(16)
+						, ((REBA[k]||k).toSource()+',').rpad(16)
 						, t);
 				}
 				
