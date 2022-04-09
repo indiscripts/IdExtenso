@@ -1,3 +1,12 @@
+##### [220409]
+   - [**MetaCollator**](/etc/$$.MetaCollator.jsxlib) improves `W1BA`'s base keys using local replacements for a few letters whose level1 weight could appear prematurely in the Unicode map. See details in `~.REBA`:
+
+    // Old Key       New Key (fix)
+	// ---
+	'\u037A':        '\u0399',   // iota subscript -> IOTA (Greek)
+	'\xB5':          '\u039C',   // µ -> Μ (Greek)
+	// etc
+
 ##### [220406]
    - Important changes in the [**Collator**](/etc/$$.Collator.jsxlib) and [**MetaCollator**](/etc/$$.MetaCollator.jsxlib) modules (the latter being only involved in regenerating the resources of the former.) First, a small bug  was identified (and fixed!) in the `~.TMAP` routine. Although dormant, it could have had devastating effects on tailoring rules. Furthermore, a new public method `baseKey(str)` is now exposed in `$$.Collator`. It is independent from `sort()` and does not interact with the collating process. However, it provides a useful functionality, the ability to represent the _level1_ initial key of any string as a basic character, e.g `'ä'=>'A'`, `'œ'=>'O'` (in Latin script), and the same in other supported writing systems. Typically, `baseKey(input)` can be used for creating alphabetic groups ('A', 'B', 'C'…) surrounding your data. It automatically ignores _variable elements_ (punctuation marks, etc) so `baseKey("[hello]")` will still return `'H'`. Also, `baseKey()` is aware of the active tailoring rules defined by `setTailor(someLocale)`. So, for example, the code
 
