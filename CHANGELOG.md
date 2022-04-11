@@ -1,5 +1,5 @@
-##### [220411]
-   - ⚠ A **highly critical bug** was found (and fixed!) in the [core/Ext/patterns](/core/Ext/$$.patterns.jsxinc) registry. It was affecting the static regexes `RegExp._BK`, `RegExp._SL`, `RegExp._DT`, `RegExp._OR` capturing respectively the escaped forms of `\` (backslash), `/` (slash), `.` (dot), and `|` (vertical line). Even if your script does not explicitly use these predefined patterns you should update the framework as soon as possible. Serious internal routines were indeed impacted, like `String.prototype.toSource()` or `$$.JSON()`!
+## 2.20411
+  - Important update (Apr. 11, 2022.) ⚠ A **highly critical bug** was found (and fixed!) in the [core/Ext/patterns](/core/Ext/$$.patterns.jsxinc) registry. It was affecting the static regexes `RegExp._BK`, `RegExp._SL`, `RegExp._DT`, `RegExp._OR` capturing respectively the escaped forms of `\` (backslash), `/` (slash), `.` (dot), and `|` (vertical line). Even if your script does not explicitly use these predefined patterns you should update the framework as soon as possible. Serious internal routines were indeed impacted, like `String.prototype.toSource()` or `$$.JSON()`!
 
 ##### [220409]
    - [**MetaCollator**](/etc/$$.MetaCollator.jsxlib) improves `W1BA`'s base keys using local replacements for a few letters whose level1 weight could appear prematurely in the Unicode map. See details in `~.REBA`:
