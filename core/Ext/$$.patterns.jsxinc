@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170320 (YYMMDD)
-		Modified:       210703 (YYMMDD)
+		Modified:       220411 (YYMMDD)
 
 *******************************************************************************/
 
@@ -185,7 +185,9 @@
 	String.BK   = '\u005C';
 	RegExp.BK   = /\u005C/g;                                    // /BK/
 	String._BK  = String.BK + String.BK;                        // Regular esc `\\`
-	RegExp._BK  = /\u005C(?:\u005C|u005[Cc]|[xX]05[Cc])/g;      // /any-esc/
+
+	// [FIX220411] Captures all valid escape sequences of `\` in ExtendScript
+	RegExp._BK  = /\u005C(?:u005[Cc]|[xX]5[Cc]|\u005C)/g;       // /any-esc/  ; that is `\u005C` | `\u005c` | `\x5C` | `\x5c` | `\X5C` | `\X5c` | `\\`
 	RegExp.BKBK = /\u005C\u005C/g;                              // /BKBK/ only
 
 	// <SL> U+002F `/` Slash (Solidus)
@@ -193,7 +195,8 @@
 	String.SL   = '\u002F';
 	RegExp.SL   = /\u002F/g;                                    // /SL/
 	String._SL  = String.BK + String.SL;                        // Regular esc `\/`
-	RegExp._SL  = /\u005C(?:\u002F|u002[Ff]|[xX]02[Ff])/g;      // /any-esc/
+	// [FIX220411] Captures all valid escape sequences of `/` in ExtendScript
+	RegExp._SL  = /\u005C(?:u002[Ff]|[xX]2[Ff]|\u002F)/g;       // /any-esc/  ; that is `\u002F` | `\u002f` | `\x2F` | `\x2f` | `\X2F` | `\X2f` | `\/`
 	RegExp.BKSL = /\u005C\u002F/g;                              // /BKSL/ only
 	RegExp.SLs  = /\u002F+/g;                                   // /SL+/
 
@@ -202,7 +205,8 @@
 	String.DT   = '\u002E';
 	RegExp.DT   = /\u002E/g;                                    // /DT/
 	String._DT  = String.BK + String.DT;                        // Regular esc `\.`
-	RegExp._DT  = /\u005C(?:\u002E|u002[Ee]|[xX]02[Ee])/g;      // /any-esc/
+	// [FIX220411] Captures all valid escape sequences of `.` in ExtendScript
+	RegExp._DT  = /\u005C(?:u002[Ee]|[xX]2[Ee]|\u002E)/g;       // /any-esc/  ; that is `\u002E` | `\u002e` | `\x2E` | `\x2e` | `\X2E` | `\X2e` | `\.`
 	RegExp.BKDT = /\u005C\u002E/g;                              // /BKDT/ only
 	// ---
 	RegExp.DTs  = /\u002E+/g;                                   // /one-or-more-DT/
@@ -214,7 +218,8 @@
 	String.OR   = '\u007C';
 	RegExp.OR   = /\u007C/g;                                    // /OR/
 	String._OR  = String.BK + String.OR;                        // Regular esc `\|`
-	RegExp._OR  = /\u005C(?:\u007C|u007[Cc]|[xX]07[Cc])/g;      // /any-esc/
+	// [FIX220411] Captures all valid escape sequences of `|` in ExtendScript
+	RegExp._OR  = /\u005C(?:u007[Cc]|[xX]7[Cc]|\u007C)/g;       // /any-esc/  ; that is `\u007C` | `\u007c` | `\x7C` | `\x7c` | `\X7C` | `\X7c` | `\/`
 	RegExp.BKOR = /\u005C\u007C/g;                              // /BKOR/ only
 
 	// <DQ> U+0022 `"` Double Quote
@@ -224,13 +229,13 @@
 	RegExp.DQ   = /\u0022/g;                                    // /DQ/
 	String._DQ  = String.BKDQ = String.BK + String.DQ;          // Regular esc `\"`
 	RegExp.BKDQ = /\u005C\u0022/g;                              // /BKDQ/ only
-	RegExp._DQ  = /\u005C(?:\u0022|u0022|[xX]22)/g;             // /any-esc/
+	RegExp._DQ  = /\u005C(?:u0022|[xX]22|\u0022)/g;             // /any-esc/  ; that is `\u0022` | `\x22` | `\X22` | `\"`
 	// ---
 	String.SQ   = '\u0027';
 	RegExp.SQ   = /\u0027/g;                                    // /SQ/
-	String._SQ  = String.BKSQ = String.BK + String.SQ;          // Regular esc `\"`
+	String._SQ  = String.BKSQ = String.BK + String.SQ;          // Regular esc `\'`
 	RegExp.BKSQ = /\u005C\u0027/g;                              // /BKSQ/ only
-	RegExp._SQ  = /\u005C(?:\u0027|u0027|[xX]27)/g;             // /any-esc/
+	RegExp._SQ  = /\u005C(?:u0027|[xX]27|\u0027)/g;             // /any-esc/  ; that is `\u0027` | `\x27` | `\X27` | `\'`
 
 	// <CR> U+000D \r  Carriage Return
 	// <LF> U+000A \n  Line Feed
@@ -245,17 +250,17 @@
 	String.CR   = '\u000D';
 	RegExp.CR   = /\u000D/g;                                    // /CR/
 	String._CR  = String.BK + 'r';                              // Regular esc `\r`
-	RegExp._CR  = /\u005C(?:r|u000[Dd]|[xX]0[Dd])/g;            // /any-esc/
+	RegExp._CR  = /\u005C(?:u000[Dd]|[xX]0[Dd]|r)/g;            // /any-esc/  ; that is `\u000D` | `\u000d` | `\x0D` | `\x0d` | `\X0D` | `\X0d` | `\r`
 	// ---
 	String.LF   = '\u000A';
 	RegExp.LF   = /\u000A/g;                                    // /LF/
 	String._LF  = String.BK + 'n';                              // Regular esc `\n`
-	RegExp._LF  = /\u005C(?:n|u000[Aa]|[xX]0[Aa])/g;            // /any-esc/
+	RegExp._LF  = /\u005C(?:u000[Aa]|[xX]0[Aa]|n)/g;            // /any-esc/  ; that is `\u000A` | `\u000a` | `\x0A` | `\x0a` | `\X0A` | `\X0a` | `\n`
 	// ---
 	String.CRLF = String.CR + String.LF;                        // <CRLF>=<CR>+<LF>
 	RegExp.CRLF = RegExp(String.CRLF,'g');                      // /CRLF/
 	String._CRLF= String._CR + String._LF;                      // Regular esc `\r\n`
-	RegExp._CRLF= /\u005C(?:r|u000[Dd]|[xX]0[Dd])\u005C(?:n|u000[Aa]|[xX]0[Aa])/g; // /any-esc/
+	RegExp._CRLF= /\u005C(?:u000[Dd]|[xX]0[Dd]|r)\u005C(?:u000[Aa]|[xX]0[Aa]|n)/g; // /any-esc/  (cf _CR and _LF)
 	// ---
 	String.LS   = '\u2028';
 	RegExp.LS   = /\u2028/g                                     // /LS/
@@ -276,50 +281,56 @@
 	String.TB   = '\u0009';
 	RegExp.TB   = /\u0009/g;                                    // /TB/
 	String._TB  = String.BK + 't';                              // Regular esc `\t`
-	RegExp._TB  = /\u005C(?:t|u0009|[xX]09)/g;                  // /any-esc/
+	RegExp._TB  = /\u005C(?:u0009|[xX]09|t)/g;                  // /any-esc/  ; that is `\u0009` | `\x09` | `\X09` | `\t`
 	// ---
 	String.VT   = '\u000B';
 	RegExp.VT   = /\u000B/g;                                    // /VT/
 	String._VT  = String.BK + 'v';                              // Regular esc `\v`
-	RegExp._VT  = /\u005C(?:v|u000[Bb]|[xX]0[Bb])/g;            // /any-esc/
+	RegExp._VT  = /\u005C(?:u000[Bb]|[xX]0[Bb]|v)/g;            // /any-esc/  ; that is `\u000B` | `\u000b` | `\x0B` | `\x0b` | `\X0B` | `\X0b` | `\v`
 	// ---
 	String.BS   = '\u0008';
 	RegExp.BS   = /\u0008/g;                                    // /BS/
 	String._BS  = String.BK + 'b';                              // Regular esc `\b`
-	RegExp._BS  = /\u005C(?:b|u0008|[xX]08)/g;                  // /any-esc/
+	RegExp._BS  = /\u005C(?:u0008|[xX]08|b)/g;                  // /any-esc/  ; that is `\u0008` | `\x08` | `\X08` | `\b`
 	// ---
 	String.FF   = '\u000C';
 	RegExp.FF   = /\u000C/g;                                    // /FF/
 	String._FF  = String.BK + 'f';                              // Regular esc `\f`
-	RegExp._FF  = /\u005C(?:f|u000[Cc]|[xX]0[Cc])/g;            // /any-esc/
+	RegExp._FF  = /\u005C(?:u000[Cc]|[xX]0[Cc]|f)/g;            // /any-esc/  ; that is `\u000C` | `\u000c` | `\x0C` | `\x0c` | `\X0C` | `\X0c` | `\f`
 
 	// Other ASCII controls.
 	// -------------------------------------------------------------------------
 	String.X0   = '\u0000';                                     // U+0000 Nul
 	RegExp.X0   = /\u0000/g;                                    // /X0/
-	RegExp._X0  = /\u005C(?:u0000|[xX]00|(?:0(?!\d)))/g;        // /any-esc/
+	RegExp._X0  = /\u005C(?:u0000|[xX]00|(?:0(?!\d)))/g;        // /any-esc/  ; that is `\u0000` | `\x00` | `\X00` | `\0`[not-followed-by-digit]
 	// ---
 	String.X1   = '\u0001';                                     // U+0001 Start of Heading
 	RegExp.X1   = /\u0001/g;                                    // /X1/
-	RegExp._X1  = /\u005C(?:u0001|[xX]01)/g;                    // /any-esc/
+	RegExp._X1  = /\u005C(?:u0001|[xX]01)/g;                    // /any-esc/  ; that is `\u0001` | `\x01` | `\X01`
 	// ---
 	String.X2   = '\u0002';                                     // U+0002 Start of Text
 	RegExp.X2   = /\u0002/g;                                    // /X2/
+	RegExp._X2  = /\u005C(?:u0002|[xX]02)/g;                    // /any-esc/  ; that is `\u0002` | `\x02` | `\X02`   [ADD220411]
 	// ---
 	String.X3   = '\u0003';                                     // U+0003 End of Text [used in ID]
 	RegExp.X3   = /\u0003/g;                                    // /X3/
+	RegExp._X3  = /\u005C(?:u0003|[xX]03)/g;                    // /any-esc/  ; that is `\u0003` | `\x03` | `\X03`   [ADD220411]
 	// ---
 	String.X4   = '\u0004';                                     // U+0004 End of Transm
 	RegExp.X4   = /\u0004/g;                                    // /X4/
+	RegExp._X4  = /\u005C(?:u0004|[xX]04)/g;                    // /any-esc/  ; that is `\u0004` | `\x04` | `\X04`   [ADD220411]
 	// ---
 	String.X5   = '\u0005';                                     // U+0005 Enquiry
 	RegExp.X5   = /\u0005/g;                                    // /X5/
+	RegExp._X5  = /\u005C(?:u0005|[xX]05)/g;                    // /any-esc/  ; that is `\u0005` | `\x05` | `\X05`   [ADD220411]
 	// ---
 	String.X6   = '\u0006';                                     // U+0006 Acknowledge
 	RegExp.X6   = /\u0006/g;                                    // /X6/
+	RegExp._X6  = /\u005C(?:u0006|[xX]06)/g;                    // /any-esc/  ; that is `\u0006` | `\x06` | `\X06`   [ADD220411]
 	// ---
 	String.X7   = '\u0007';                                     // U+0007 Alert [used in ID]
 	RegExp.X7   = /\u0007/g;                                    // /X7/
+	RegExp._X7  = /\u005C(?:u0007|[xX]07)/g;                    // /any-esc/  ; that is `\u0007` | `\x07` | `\X07`   [ADD220411]
 	// ---
 	String.XE   = '\u000E';                                     // U+000E Locking-Shift-1
 	RegExp.XE   = /\u000E/g;                                    // /XE/
