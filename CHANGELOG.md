@@ -1,3 +1,6 @@
+#### [220415]
+   - [**Linguist**](/etc/$$.Linguist.jsxlib): Made the `~.LNGS` map a separate resource file, so it might be accessed from an external module (just in case.)
+
 ## 2.20411
   - Important update (Apr. 11, 2022.) ⚠ A **highly critical bug** was found (and fixed!) in the [core/Ext/patterns](/core/Ext/$$.patterns.jsxinc) registry. It was affecting the static regexes `RegExp._BK`, `RegExp._SL`, `RegExp._DT`, `RegExp._OR` capturing respectively the escaped forms of `\` (backslash), `/` (slash), `.` (dot), and `|` (vertical line). Even if your script does not explicitly use these predefined patterns you should update the framework as soon as possible. Serious internal routines were indeed impacted, like `String.prototype.toSource()` or `$$.JSON()`!
 
