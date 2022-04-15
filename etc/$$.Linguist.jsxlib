@@ -11,11 +11,11 @@
 		DOM-access:     YES (app.languagesWithVendors, app.findKeyStrings)
 		Todo:           isoToLanguage [needed?]
 		Created:        170424 (YYMMDD)
-		Modified:       220403 (YYMMDD)
+		Modified:       220415 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 220403, 'getIso'))
+;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 220415, 'getIso'))
 
 	//==========================================================================
 	// NOTICE
@@ -81,6 +81,13 @@
 	[PRIVATE]
 	
 	({
+		// Used by ~.IDLG
+		// [CHG220415] Separate resource file.
+		LNGS:
+		{
+		#include 'Linguist/$$.LNGS.jsxres'
+		},
+
 		IDLO : function(/*?-1|-2|uint|LocaleEnum|str*/loc,/*?-1|-2|str*/iso,  o,q,k)
 		//----------------------------------
 		// (InDesign-Locales.) Generic INDD-Locale from/to ISO converter.
@@ -169,11 +176,12 @@
 		//     lng can be supplied as a Language instance or name (either EN or localized.)
 		// (b) If `iso` is truthy, get the closest Language (if any), or return undef.
 		// ---
+		// this :: ~
 		// => str | Language|LanguageWithVendors [OK]  |  undef [KO]
 		{
 			if( lng )
 			{
-				o = callee.LNGS;
+				o = this.LNGS; // [CHG220415]
 				q = this.CAPS;
 
 				if( 'string' == typeof lng )
@@ -236,85 +244,7 @@
 				return t.isValid ? t : void 0;
 			}
 
-		}.setup
-		({
-			// Native InDesign Languages(WithVendors) mapped to ICU.
-			// [REM] `Language.icuLocaleName` is available from ID CS5 (7.0)
-			// - In CS4, the match can be recovered by parsing the array
-			//   `app.findKeyStrings(Language.name)`, if not empty.
-			//   Some languages listed below weren't available yet.
-			// - In CS5+, some languages like `Bengali (India)` have no
-			//   obvious "$ID/..." keystring and cannot be accessed from
-			//   their name property; in that case `...itemByName(<icu>)`
-			//   seems to work: app.languageWithVendors.itemByName("bn_IN")
-			//   returns the valid, Bengali instance. [Tested in CC.]
-			// ---
-			LNGS:
-			{
-				// Language Name (EN)                    ICU          KEY in findKeyStrings()
-				// --------------------------------------------------------------------------
-				"[No Language]"                      : { icu:"en_US", fks:"/%1" },
-				"Arabic"                             : { icu:"ar_SA", fks:"/%1" },
-				"Bengali (India)"                    : { icu:"bn_IN", fks:0 },
-				"Bulgarian"                          : { icu:"bg_BG", fks:"/%1" },
-				"Burmese (Myanmar [Burma])"          : { icu:"my_MM", fks:0 },
-				"Catalan"                            : { icu:"ca_ES", fks:"/%1" },
-				"Croatian"                           : { icu:"hr_HR", fks:"/%1" },
-				"Czech"                              : { icu:"cs_CZ", fks:"/%1" },
-				"Danish"                             : { icu:"da_DK", fks:"/%1" },
-				"Dutch: 2005 Reform"                 : { icu:"nl_NL", fks:"/nl_NL_2005" },
-				"Dutch: Old Rules"                   : { icu:"nl_NL", fks:"/Dutch" },
-				"English: Canadian"                  : { icu:"en_CA", fks:"/%1" },
-				"English: UK"                        : { icu:"en_GB", fks:"/%1" },
-				"English: USA Legal"                 : { icu:"en_US", fks:"/%1" },
-				"English: USA Medical"               : { icu:"en_US", fks:"/%1" },
-				"English: USA"                       : { icu:"en_US", fks:"/%1" },
-				"Estonian"                           : { icu:"et_EE", fks:"/%1" },
-				"Finnish"                            : { icu:"fi_FI", fks:"/%1" },
-				"French"                             : { icu:"fr_FR", fks:"/%1" },
-				"French: Canadian"                   : { icu:"fr_CA", fks:"/%1" },
-				"German: 1996 Reform"                : { icu:"de_DE", fks:"/German: Reformed" },
-				"German: 2006 Reform"                : { icu:"de_DE", fks:"/de_DE_2006" },
-				"German: Austria 2006 Reform"        : { icu:"de_AT", fks:"/German: Austrian" },
-				"German: Old Rules"                  : { icu:"de_DE", fks:"/German: Traditional" },
-				"German: Swiss 2006 Reform"          : { icu:"de_CH", fks:"/de_CH_2006" },
-				"German: Swiss"                      : { icu:"de_CH", fks:"/%1" },
-				"Greek"                              : { icu:"el_GR", fks:"/%1" },
-				"Gujarati (India)"                   : { icu:"gu_IN", fks:0 },
-				"Hebrew"                             : { icu:"he_IL", fks:"/%1" },
-				"Hindi (India)"                      : { icu:"hi_IN", fks:0 },
-				"Hungarian"                          : { icu:"hu_HU", fks:"/%1" },
-				"Indonesian (Indonesia)"             : { icu:"id_ID", fks:0 },
-				"Italian"                            : { icu:"it_IT", fks:"/%1" },
-				"Kannada (India)"                    : { icu:"kn_IN", fks:0 },
-				"Khmer (Cambodia)"                   : { icu:"km_KH", fks:0 },
-				"Lao (Laos)"                         : { icu:"lo_LA", fks:0 },
-				"Latvian"                            : { icu:"lv_LV", fks:"/%1" },
-				"Lithuanian"                         : { icu:"lt_LT", fks:"/%1" },
-				"Malayalam (India)"                  : { icu:"ml_IN", fks:0 },
-				"Marathi (India)"                    : { icu:"mr_IN", fks:0 },
-				"Norwegian: Bokmål"                  : { icu:"nb_NO", fks:"/Norwegian: Bokmal" },
-				"Norwegian: Nynorsk"                 : { icu:"nn_NO", fks:"/%1" },
-				"Oriya (India)"                      : { icu:"or_IN", fks:0 },
-				"Polish"                             : { icu:"pl_PL", fks:"/%1" },
-				"Portuguese"                         : { icu:"pt_PT", fks:"/%1" },
-				"Portuguese: Brazilian"              : { icu:"pt_BR", fks:"/%1" },
-				"Portuguese: Orthographic Agreement" : { icu:"pt_BR", fks:"/%1" },
-				"Punjabi (India)"                    : { icu:"pa_IN", fks:0 },
-				"Romanian"                           : { icu:"ro_RO", fks:"/%1" },
-				"Russian"                            : { icu:"ru_RU", fks:"/%1" },
-				"Sinhala (Sri Lanka)"                : { icu:"si_LK", fks:0 },
-				"Slovak"                             : { icu:"sk_SK", fks:"/%1" },
-				"Slovenian"                          : { icu:"sl_SI", fks:"/%1" },
-				"Spanish"                            : { icu:"es_ES", fks:"/%1" },
-				"Swedish"                            : { icu:"sv_SE", fks:"/%1" },
-				"Tamil (India)"                      : { icu:"ta_IN", fks:0 },
-				"Telugu (India)"                     : { icu:"te_IN", fks:0 },
-				"Thai"                               : { icu:"th_TH", fks:"/%1" },
-				"Turkish"                            : { icu:"tr_TR", fks:"/%1" },
-				"Ukrainian"                          : { icu:"uk_UA", fks:"/%1" },
-			},
-		}),
+		},
 
 		// Registered ExtendScript languages.
 		// ---
