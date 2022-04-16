@@ -8,8 +8,8 @@
 		Core:           YES
 		Kind:           Part of the Env module.
 		API:            appScriptsPath usrScriptsPath idexEntryPath runningScript
-		                engineState() runCount() idEngine() inBinStream() inStartup()
-		                scriptsPanel()
+		                engineState() runCount() session()
+		                idEngine() inBinStream() inStartup() scriptsPanel()
 		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
 		                uiLevel()->$$ canToolkit()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ;
@@ -17,7 +17,7 @@
 		                      app.performanceMetric
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       210404 (YYMMDD)
+		Modified:       220416 (YYMMDD)
 
 *******************************************************************************/
 
@@ -302,13 +302,40 @@
 			return callee.µ['~'].ENST && callee.µ['~'].STUP ? 1 : 0;
 		},
 
-		runCount: function runCount_I()
+		runCount: function runCount_b_I(/*bool=0*/resetCount)
 		//----------------------------------
 		// Count of IdExtenso runs during that InDesign session.
 		// Run count is incremented each time $$.jsxinc re-runs.
+		// ---
+		// [REM] Regardless of their respective engine, two distinct IdEx
+		// scripts may increment consecutively the (shared) `IDEXTENSO`
+		// env variable, referred to as runCount here. For that
+		// reason, runCount > 1 *does not* imply that a specific script
+		// has been executed before (within the present session.) Typi-
+		// cally, if some IdExtenso startup scripts are installed,
+		// a particular script may read $$.Env.runCount() > 1 even if
+		// it is executed for the 1st time in the session. To control
+		// session-related settings at the script level, use $$.Settings.
+		// ---
 		// => 1, 2, 3...
 		{
-			return $.getenv('IDEXTENSO');
+			resetCount && $.setenv('IDEXTENSO',1);
+			return +$.getenv('IDEXTENSO'); // [CHG220416] string-to-int conversion
+		},
+
+		session: function session_b_S(/*bool=0*/resetID)
+		//----------------------------------
+		// [ADD220416] Return a unique alphanumeric string
+		// associated to that InDesign session. It is determined
+		// once, whatever the script that runs IdExtenso for the
+		// first time. Hence, `$$.Env.session()` returns a unique
+		// string *per InDesign session*, although that string
+		// could be shared by distinct IdExtenso scripts.
+		// ---
+		// => str
+		{
+			resetID && $.setenv('IDEX_SESSION',(+new Date).toString(36));
+			return $.getenv('IDEX_SESSION');
 		},
 
 		idEngine : function idEngine_S()
