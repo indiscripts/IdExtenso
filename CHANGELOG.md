@@ -1,6 +1,7 @@
 #### [220416]
    - Added a `IDEX_SESSION` env variable, cf [ENTRY POINT]($$.jsxinc), and the corresponding [`$$.Env.session()`](/core/Env/$$.script.jsxinc) method.
    - A few technical details added to **$$.Env** too.
+   - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): Made some improvements. Better internal `UNIQ` property in `select()`.
 
 #### [220415]
    - [**Linguist**](/etc/$$.Linguist.jsxlib): Made the `~.LNGS` map a separate resource file, so it might be accessed from an external module (just in case.)
