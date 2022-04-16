@@ -15,11 +15,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       220114 (YYMMDD)
+		Modified:       220416 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220114, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220416, 'select'))
 
 
 	//==========================================================================
@@ -550,6 +550,8 @@
 	[PUBLIC]
 
 	({
+		// Ignore the (No Style) paragraph style?
+		IgnoreNoParaStyle: 1,
 
 		onLoad: function onLoad_()
 		//----------------------------------
@@ -850,7 +852,7 @@
 			return r;
 		},
 		
-		select: function select_AS_I(/*str|str[]*/docNames,  $$,I,qB,qD,R,SMOR,z,o,i,k,q,bk,bkBased,t,s,idx,gh,a,b,c,spe,doc,smok,ord)
+		select: function select_AS_I(/*str|str[]*/docNames,  $$,I,qB,qD,R,SMOR,unsv,z,o,i,k,q,bk,bkBased,t,s,idx,gh,a,b,c,spe,doc,smok,ord)
 		//----------------------------------
 		// Given an array of docNames (which may contain undesired duplicates with ` [index]` suffix),
 		// prepare the Scope module to work with them as a subset.
@@ -1074,10 +1076,12 @@
 			const PS = callee.PSTY;
 			const CS = callee.CSTY;
 			(SMOR = callee.SMOR).length=0;
+			unsv = 0;
 			for( k in R )
 			{
 				if( (!R.hasOwnProperty(k)) || !(UK == (c=k.charAt(0)) || NK == c) ) continue;
 				doc = D[z=R[k]];
+				(!doc.properties.saved) && ++unsv;
 				
 				$$.spin();
 
@@ -1112,7 +1116,7 @@
 
 				// Styles                                                     PSTY ; CSTY
 				// ---
-				callee.STYL.EXID = doc.paragraphStyles[0].id;                      // [CHG220114] Exclude [No Paragraph Style]
+				callee.µ.IgnoreNoParaStyle && (callee.STYL.EXID = doc.paragraphStyles[0].id); // [CHG220118] Exclude [No Paragraph Style] if µ.IgnoreNoParaStyle
 				PS[k] = callee.STYL('paragraph', '', PS, z+'_', doc, '').slice(1); // psPath1<X1>psPath2<X1>...
 
 				delete callee.STYL.EXID;                                           // [CHG220114] Remove EXID filter.
@@ -1127,9 +1131,22 @@
 			(+$$.trace) && $$.trace(__("%1 > select() done. Documents: %2.",callee.µ,z));
 			
 			callee.BOOK_BASED = bkBased > (z>>>1);
-			callee.UNIQ = callee.BOOK_BASED && (t=app.books[0].properties.fullName)
-			? t.absoluteURI
-			: SMOR.join('\x01');
+			if( callee.BOOK_BASED && (t=app.books[0].properties.fullName) )
+			{
+				t = t.absoluteURI;
+			}
+			else
+			{
+				t = SMOR.join('\x01');
+
+				// [ADD220416] Add the session UID if unsaved documents are present.
+				// This way, a name like `Untitled-1` won't be affected to the
+				// same UNIQ string from one session to another.
+				// ---
+				unsv && (t+=' {'+$$.Env.session()+'}');
+			}
+			
+			callee.UNIQ = t;
 
 			return (callee.OPEN=z);
 		}
@@ -1211,13 +1228,14 @@
 			return callee.µ.select.OPEN;
 		},
 		
-		layerList: function layerList_s_A(/*?'visible'|'mixed'|'hidden'|'all'*/TREE_SEL,  t,PF,a,k,p)
+		layerList: function layerList_s_A(/*?'visible'|'mixed'|'hidden'|'all'|'none'*/TREE_SEL,  t,PF,a,k,p)
 		//----------------------------------
 		// Return the tree-list of layers in the *selected* scope.
 		// TREE_SEL :: 'visible' -> precheck visible layers (default.)
 		//             'mixed'   -> precheck visible and mixed layers.
 		//             'hidden'  -> precheck hidden layers, excl. mixed.
 		//             'all'     -> precheck all layers.
+		//             'none'    -> precheck nothing
 		// The array is returned with mixed layers first (1st level), then
 		// visible and hidden layers both at 2nd level in a dedicated group.
 		// ---
@@ -1231,12 +1249,21 @@
 			// ---
 			TREE_SEL = 'string'==typeof TREE_SEL
 			? ( callee.OPT[TREE_SEL.toLowerCase()]||0 )
-			: ( TREE_SEL>>>0 );
+			: ( 0|TREE_SEL );
 			
 			PF = callee.PFX;
-			PF[0] = 2!=TREE_SEL  ? '++ ' : '-- '; // visible prefix
-			PF[1] = (1&TREE_SEL) ? '+ '  : '- ';  // mixed prefix
-			PF[2] = (1<TREE_SEL) ? '++ ' : '-- '; // hidden prefix
+			if( 0 <= TREE_SEL )
+			{
+				PF[0] = 2!=TREE_SEL  ? '++ ' : '-- '; // visible prefix
+				PF[1] = (1&TREE_SEL) ? '+ '  : '- ';  // mixed prefix
+				PF[2] = (1<TREE_SEL) ? '++ ' : '-- '; // hidden prefix
+			}
+			else
+			{
+				PF[0] = '-- '; // visible prefix
+				PF[1] = '- ';  // mixed prefix
+				PF[2] = '-- '; // hidden prefix
+			}
 
 			a = [ [], [], [] ]; // [vis,mix,hid]
 			for( k in LY )
@@ -1254,7 +1281,7 @@
 		}
 		.setup
 		({
-			OPT: {visible:0,mixed:1,hidden:2,all:3},
+			OPT: {visible:0,mixed:1,hidden:2,all:3,none:-1},
 			PFX: ['-- ', '- ', '-- '],
 		}),
 
