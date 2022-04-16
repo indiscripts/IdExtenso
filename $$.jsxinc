@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Check that $.gc() does not cause issues.
 		Created:        160731 (YYMMDD)
-		Modified:       220411 (YYMMDD)
+		Modified:       220416 (YYMMDD)
 
 *******************************************************************************/
 
@@ -140,11 +140,19 @@
 	// Per-session run count (1, 2, 3, ...) -- cf Env module.
 	// [REM] Values managed through $.setenv/getenv are session
 	// persistent, even in the 'main' engine.
-	// [TODO] We may need to add/or manage runCount for each specific
-	// script/engine, because the framework might be *shared* across
-	// multiple clients. (?!)
+	// ---
+	// Regardless of their respective engine, two distinct IdExtenso
+	// scripts may increment consecutively the (shared) `IDEXTENSO`
+	// env variable, referred to as runCount in $$.Env. For that
+	// reason, runCount > 1 *does not* imply that a specific script
+	// has been executed before (within the present session.) Typi-
+	// cally, if some IdExtenso startup scripts are installed,
+	// a particular script may read $$.Env.runCount() > 1 even if
+	// it is executed for the 1st time in the session. To control
+	// session-related settings at the script level, use $$.Settings.
 	// ---
 	$.setenv('IDEXTENSO',1+(+($.getenv('IDEXTENSO')||0)));
+	$.getenv('IDEX_SESSION')||$.setenv('IDEX_SESSION',(+new Date).toString(36)); // [ADD220416]
 
 	if( 'function' != typeof $.global['$$'] && ($.global['\x24\x24']='$$') )
 	//----------------------------------
