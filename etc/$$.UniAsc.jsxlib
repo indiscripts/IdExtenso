@@ -7,16 +7,16 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =convert()
+		API:            =convert() sibling()
 		              + String.prototype.translit()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220402 (YYMMDD)
-		Modified:       220402 (YYMMDD)
+		Modified:       220425 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('UniAsc') || eval(__(MODULE, $$, 'UniAsc', 220402, 'convert'))
+;$$.hasOwnProperty('UniAsc') || eval(__(MODULE, $$, 'UniAsc', 220425, 'convert'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -119,6 +119,31 @@
 
 			return r;
 		},
+
+		FIND: function(/*char*/base,/*?char*/excl,  q,r,T,CHR,hi,s,lo)
+		//----------------------------------
+		// this :: ~
+		{
+			// Cache.
+			if( (q=callee.Q).hasOwnProperty(base) )
+			{
+				r = q[base];
+			}
+			else
+			{
+				r = '';
+				for( CHR=String.fromCharCode, T=this.TBLE, hi=-1 ; ++hi < T.length ; )
+				for( s=T[hi], lo=-1 ; 0 <= (lo=s.indexOf(base,1+lo)) ; r += CHR((hi<<8)|lo) );
+				q[base] = r;
+			}
+
+			return excl ? r.split(excl).join('') : r;
+		}
+		.setup
+		({
+			Q:{},
+		}),
+
 	})
 	
 	//==========================================================================
@@ -148,6 +173,34 @@
 			|| error( __("Invalid 'input' argument (%1). Should be a string.",t), callee );
 			
 			return callee.µ['~'].CONV.call(input);
+		},
+
+		sibling: function sibling_C_S(/*char*/input,  t,base,r)
+		//----------------------------------
+		// Given a character (UTF16), return all characters that would
+		// convert to the same ASCII representation. If no base letter
+		// can be associated to `input`, return ''. Otherwise, the
+		// returned string always contain `input` as first character.
+		// E.g   "é"  => "éeèêëēĕėęěȅȇȩɇɘɛɜɝɞͤέήεηϵ϶(...)ℇ℮ℯℰⅇ(...)"
+		//       "p"  => "pƥπϖпպףפپܦܧޕपপਪપପபపಪപපปປཔྤပპᄑᅋᇁᑉᑊᗮᚘᚚᛈᛔᛕបᠫᡌᡦᢒṕṗ⠏ㅍףּפּפֿｐﾽ"
+		// ---
+		// => str [OK]  |  '' [KO]
+		{
+			'string' == (t=typeof input)
+			|| error( __("Invalid 'input' argument (%1). Should be a string.",t), callee );
+
+			base = input.translit();
+
+			if( 1 !== base.length )
+			{
+				$.global[callee.µ.__root__].warn(__("%1 > The input %2 has no sibling."
+					, callee.µ
+					, input.rtrunc(10).toSource()
+					));
+				return '';
+			}
+			
+			return input + callee.µ['~'].FIND(base,input);
 		},
 
 	})
