@@ -1,3 +1,6 @@
+#### [220425]
+   - [**UniAsc**](/etc/$$.UniAsc.jsxlib): Added the method `sibling(anyChar)` that returns the whole string of sibling characters (incl. _anyChar_), that is, the set of characters that share the same ASCII base.
+
 #### [220416]
    - Added a `IDEX_SESSION` env variable, cf [ENTRY POINT]($$.jsxinc), and the corresponding [`$$.Env.session()`](/core/Env/$$.script.jsxinc) method.
    - A few technical details added to **$$.Env** too.
