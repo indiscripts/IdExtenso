@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       220409 (YYMMDD)
+		Modified:       220501 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220409, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220501, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -930,8 +930,8 @@
 		}
 		.setup
 		({
-			DATA:  {},
-			BASE:  {}, // [ADD220405]
+			DATA:  {}, // key=>WS
+			BASE:  {}, // W=>BaseKey [ADD220405]
 			WARNS: [],
 		}),
 		
@@ -1759,7 +1759,7 @@
 			return arr;
 		},
 		
-		baseKey: function baseKey_S_k_S(/*str*/input,/*?key*/attractor,  I,TM,t,w1,r,atts,attStr,i,a,s)
+		baseKey: function baseKey_S_k_S(/*str*/input,/*?key*/attractor,  I,TM,t,w1,w1Tailored,r,atts,attStr,i,a,s)
 		//----------------------------------
 		// Get the first 'base key' (usually, a letter) found in the
 		// input string w.r.t. the current tailoring rules. A base
@@ -1800,10 +1800,15 @@
 			if( !t.length ) return '';
 			
 			w1 = t.charAt(0);
-			((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) || (t=I.W1BA);
+
+			( w1Tailored = ((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) )
+			|| (t=I.W1BA);
+
 			r = (t[w1]||'').toUpperCase();
 			
-			if( 1 == r.length && 'string' == typeof attractor )            // Attractors only inspect single char.
+			// Attractors only inspect *non-tailored* single char. [FIX220501]
+			// ---
+			if( !w1Tailored && 1 == r.length && 'string' == typeof attractor )
 			for( atts=attractor.toUpperCase().split('_'), t=I.ATTR, i=-1 ; ++i < atts.length ; )
 			{
 				// Valid attractor key?
