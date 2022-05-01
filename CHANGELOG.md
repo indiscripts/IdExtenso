@@ -1,3 +1,6 @@
+#### [220501]
+   - [**Collator**](/etc/$$.Collator.jsxlib): Adjusted the `baseKey()` method so it takes care of tailored level1 weights in a way that gives them precedence over attractor(s).
+
 #### [220425]
    - [**UniAsc**](/etc/$$.UniAsc.jsxlib): Added the method `sibling(anyChar)` that returns the whole string of sibling characters (incl. _anyChar_), that is, the set of characters that share the same ASCII base.
 
