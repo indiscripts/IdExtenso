@@ -1589,7 +1589,7 @@
 			return arr;
 		},
 
-		setTailor: function setTailor_K$false$_(/*key|false*/isoKey,  $$,I,tk,msg,i)
+		setTailor: function setTailor_K$false$_(/*key|false*/isoKey,  $$,I,tk,msg,i,x)
 		//----------------------------------
 		// Activate the tailoring rules associated to the specified key.
 		// (a) If `isoKey` is false or 'ROOT', reset the rules to the DUCET (default ordering)
