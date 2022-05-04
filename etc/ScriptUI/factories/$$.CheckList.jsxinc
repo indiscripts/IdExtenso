@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       220119 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
@@ -690,7 +690,7 @@
 			// ---
 			HBLU_FIX: $$.inCC ? function onBlur(){ this.active=false } : void 0,
 
-			HINN: function onInnerEvent(/*event*/ev,  k,me,item,c,idx)
+			HINN: function onInnerEvent(/*event*/ev,  k,me,item,c,idx,x)
 			//----------------------------------
 			// Dispatch or inhibit ListBox events.
 			// ---
