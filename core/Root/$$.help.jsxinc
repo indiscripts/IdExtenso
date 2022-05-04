@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Make listbox sub items optional to allow exotic apps to run $$.help()
 		Created:        171108 (YYMMDD)
-		Modified:       190215 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
@@ -61,7 +61,7 @@
 			w.modInfo.text =  (k && w.data['§'+k])||'';
 		},
 
-		RSCW: function(/*ListBox*/lb,/*uint[]*/widths,  o,FK)
+		RSCW: function(/*ListBox*/lb,/*uint[]*/widths,  o,FK,i)
 		//----------------------------------
 		// (Reset-Column-Widths.) [190215] This function forcibly
 		// refreshes the listbox and smartly re-adjust column widths.
