@@ -1,19 +1,19 @@
-#### [220504]
+##### [220504]
    - Global cleanup in various modules, adding missing declarations in a few functions. (This is not a critical fix but it keeps the `[[global]]` scope much cleaner and may improve performances.)
    - [**Settings**](/etc/$$.Settings.jsxlib): Added the method `footprint(scope)` that creates a unique _footprint_ of the current settings in the specified scope(s). Useful when you need to determine whether some changes have been applied (to the settings) between two points of your process. Typical use: display a conditional "Save settings?" message when the user closes the main dialog. Just take a footprint before and after and compare the strings. Thanks to the _scope_ arg you can decide which kind of settings are traced here. The default value is `120` which merges the scopes `ENGI|SESS|OBJ|APP|HYB` and represents all keys that might be restored, regardless of CONST, RESET, and LIVE keys that are meaningless to this respect.
 
-#### [220501]
+##### [220501]
    - [**Collator**](/etc/$$.Collator.jsxlib): Adjusted the `baseKey()` method so it takes care of tailored level1 weights in a way that gives them precedence over attractor(s).
 
-#### [220425]
+##### [220425]
    - [**UniAsc**](/etc/$$.UniAsc.jsxlib): Added the method `sibling(anyChar)` that returns the whole string of sibling characters (incl. _anyChar_), that is, the set of characters that share the same ASCII base.
 
-#### [220416]
+##### [220416]
    - Added a `IDEX_SESSION` env variable, cf [ENTRY POINT]($$.jsxinc), and the corresponding [`$$.Env.session()`](/core/Env/$$.script.jsxinc) method.
    - A few technical details added to **$$.Env** too.
    - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): Made some improvements. Better internal `UNIQ` property in `select()`.
 
-#### [220415]
+##### [220415]
    - [**Linguist**](/etc/$$.Linguist.jsxlib): Made the `~.LNGS` map a separate resource file, so it might be accessed from an external module (just in case.)
 
 ## 2.20411
