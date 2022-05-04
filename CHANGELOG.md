@@ -1,3 +1,6 @@
+#### [220504]
+   - [**Settings**](/etc/$$.Settings.jsxlib): Added the method `footprint(scope)` that creates a unique _footprint_ of the current settings in the specified scope(s). Useful when you need to determine whether some changes have been applied (to the settings) between two points of your process. Typical use: display a conditional "Save settings?" message when the user closes the main dialog. Just take a footprint before and after and compare the strings. Thanks to the _scope_ arg you can decide which kind of settings are traced here. The default value is `120` which merges the scopes `ENGI|SESS|OBJ|APP|HYB` and represents all keys that might be restored, regardless of CONST, RESET, and LIVE keys that are meaningless to this respect.
+
 #### [220501]
    - [**Collator**](/etc/$$.Collator.jsxlib): Adjusted the `baseKey()` method so it takes care of tailored level1 weights in a way that gives them precedence over attractor(s).
 
