@@ -1,4 +1,5 @@
 #### [220504]
+   - Global cleanup in various modules, adding missing declarations in a few functions. (This is not a critical fix but it keeps the `[[global]]` scope much cleaner and may improve performances.)
    - [**Settings**](/etc/$$.Settings.jsxlib): Added the method `footprint(scope)` that creates a unique _footprint_ of the current settings in the specified scope(s). Useful when you need to determine whether some changes have been applied (to the settings) between two points of your process. Typical use: display a conditional "Save settings?" message when the user closes the main dialog. Just take a footprint before and after and compare the strings. Thanks to the _scope_ arg you can decide which kind of settings are traced here. The default value is `120` which merges the scopes `ENGI|SESS|OBJ|APP|HYB` and represents all keys that might be restored, regardless of CONST, RESET, and LIVE keys that are meaningless to this respect.
 
 #### [220501]
