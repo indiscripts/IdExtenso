@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       220501 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220501, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220504, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1186,7 +1186,7 @@
 			}),
 		}),
 		
-		PLBL: function(/*str*/s,F,re)
+		PLBL: function(/*str*/s,  F,re)
 		//----------------------------------
 		// (Preprocess-Letter-by-Letter.)
 		// Remove *initial* left-parentheses and commas.
@@ -1196,7 +1196,7 @@
 			return s.replace(re,'');
 		},
 
-		PWBW: function(/*str*/s,F,re1)
+		PWBW: function(/*str*/s,  F,re1,re2)
 		//----------------------------------
 		// (Preprocess-Word-by-Word.)
 		// [CHG210514] Added 2nd replacement to comply with Chicago Manual of Style [2010, p. 833]
@@ -1271,6 +1271,7 @@
 		// Collator actually supports or may support in the future.
 		// The returned Array has additional mappings:
 		//    `_<LocName>`         => <TailorKey>
+		//    `µ<LocName>`         => zz  (ISO code, lowercase, 2 or 3 letters, cf Linguist.LISO)
 		//    `=<TailorOrIsoKey>   => <LocName>
 		//    `§<LocName>`         => <NativeName>
 		// `this` :: ~
@@ -1313,6 +1314,7 @@
 				t = (sf && S[sf]) || DF;                    // { def:0|1, ptn:`..%1..` }
 				q[i++] = s = __(t.ptn, __(en));             // LocName
 				q['_'+s] = k;                               // _LocName => TailorKey
+				q['µ'+s] = zz;                              // µLocName => zz [ADD220504]
 				q['='+k] = s;                               // =TailorK => LocName
 				q['§'+s] = na;                              // §LocName => NatName
 				if( t.def )
@@ -1339,6 +1341,7 @@
 				// ---
 				q[i++] = s = __(sf,__(en));                 // LocName [EOR|DUCET]
 				q['_'+s] = k;                               // _LocName => TailorKey
+				q['µ'+s] = zz;                              // µLocName => zz [ADD220504]
 				q['='+zz] = s;                              // =IsoKey  => LocName
 				q['§'+s] = na;                              // §LocName => NatName
 			}
@@ -1350,9 +1353,9 @@
 				__("European Ordering Rules [EOR]"),
 				"-"
 			);
-			s = q[0]; q['_'+s] = q['§'+s] = 'ROOT';         // index 0 : ROOT
+			s = q[0]; q['_'+s] = q['µ'+s] = q['§'+s] = 'ROOT';         // index 0 : ROOT
 			q['=ROOT'] = s;
-			s = q[1]; q['_'+s] = q['§'+s] = 'EOR';          // index 1 : EOR
+			s = q[1]; q['_'+s] = q['µ'+s] = q['§'+s] = 'EOR';          // index 1 : EOR
 			q['=EOR'] = s;
 
 			return q;
@@ -1653,6 +1656,8 @@
 		// or may support in the future. The returned Array is an entity with extra
 		// mappings:
 		//    `_<LocName>`         => <TailorKey>
+		//    `µ<LocName>`         => zz  (ISO code, lowercase, 2 or 3 letters, cf Linguist.LISO)
+		//                         or ROOT|EOR
 		//    `=<TailorOrIsoKey>`  => <LocName>
 		//    `§<LocName>`         => <NativeName>
 		// [REM] By default indices 0 to 2 are predefined as follows:
