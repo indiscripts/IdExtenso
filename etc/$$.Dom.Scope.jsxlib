@@ -10,16 +10,16 @@
 		API:            =select() onLoad() onUnload() onClosing() close() clear() init()
 		                isOpen() count() hasBook() bookName() hasText()
 		                hasVisible() hasGhost() isEmpty() isSingle() list()
-		                selCount() layerList() layerCount() styleList() styleCount()
+		                uniqueKey() selCount() layerList() layerCount() styleList() styleCount()
 		                info() getAutoFolder()
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       220416 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220416, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220504, 'select'))
 
 
 	//==========================================================================
@@ -343,7 +343,7 @@
 			DATA: { ACTV:false, SIZE:0, GHSZ:0 },
 		}),
 
-		BOOK: function(/*BookContent[]&|{}|str*/req,/*str*/bkName,  a,q,PROX,z,waitOp,err,t,pp,px,ik,ff,uk,nk)
+		BOOK: function(/*BookContent[]&|{}|str*/req,/*str*/bkName,  a,q,PROX,z,waitOp,err,t,pp,px,ik,ff,uk,nk,k)
 		//----------------------------------
 		// (Book-Documents-Cache.)
 		// this  :: ~
@@ -1081,7 +1081,7 @@
 			{
 				if( (!R.hasOwnProperty(k)) || !(UK == (c=k.charAt(0)) || NK == c) ) continue;
 				doc = D[z=R[k]];
-				(!doc.properties.saved) && ++unsv;
+				doc.properties.saved || ++unsv;
 				
 				$$.spin();
 
@@ -1134,6 +1134,7 @@
 			if( callee.BOOK_BASED && (t=app.books[0].properties.fullName) )
 			{
 				t = t.absoluteURI;
+				callee.UNSAVED = 0;
 			}
 			else
 			{
@@ -1143,16 +1144,16 @@
 				// This way, a name like `Untitled-1` won't be affected to the
 				// same UNIQ string from one session to another.
 				// ---
-				unsv && (t+=' {'+$$.Env.session()+'}');
+				( callee.UNSAVED=unsv ) && (t+=' {'+$$.Env.session()+'}');
 			}
 			
 			callee.UNIQ = t;
-
 			return (callee.OPEN=z);
 		}
 		.setup
 		({
 			BOOK_BASED: false, // Whether the selected scope is mainly book based.
+			UNSAVED: 0,
 			UNIQ: '',
 			OPEN: 0,
 			RE_NME_IDX: /^(.+) \[(\d+)\]$/,
@@ -1197,7 +1198,36 @@
 				return seq;
 			},
 		}),
-		
+
+		uniqueKey: function uniqueKey_S()
+		//----------------------------------
+		// Get the unique key of the selected scope.
+		// (a) If book chapters dominate the set, the unique key
+		// is the URI of the saved book file
+		// (b) Otherwise, unique key is based on smart-ordered
+		// document keys. In this context, if the scope contains
+		// unsaved documents (e.g "Untitle 1"), the unique key
+		// integrates `$$.Env.session()` to still make it 'unique'
+		// even if the user restart ID and work on a new "Untitle 1"
+		// document.
+		// Return false if no scope is selected.
+		// ---
+		// => str [OK]  |  0 [KO]
+		{
+			return callee.µ.isOpen() && callee.µ.select.UNIQ;
+		},
+
+		unsaved: function unsaved_IB()
+		//----------------------------------
+		// Whether the selected scope is not based on book chapters
+		// and contains unsaved document(s). Returns the number of
+		// unsaved docs, or zero if all docs are saved. (Returns
+		// false if no scope is selected.)
+		// => >0 [UNSAVED]  |  0 [ALL-SAVED]  |  false
+		{
+			return callee.µ.isOpen() ? callee.µ.select.UNSAVED : false;
+		},
+
 		getAutoFolder: function getAutoFolder_$Folder$$false$(  µ,ff,i,k)
 		//----------------------------------
 		// Assign and return a default folder to the selected scope.
@@ -1361,9 +1391,10 @@
 			return z;
 		},
 
-		info: function info_S(  µ,n,SMOR,R,P,a,s,i,k,c,p,z,re,t)
+		info: function info_s_S(/*?str*/line,  µ,n,SMOR,R,P,a,s,i,k,c,p,z,re,t)
 		//----------------------------------
 		// Return information about the *selected* documents and page counts.
+		// [ADD220427] If `line` supplied, use it as line separator.
 		// => str :: `<summary><X1><line><X1><doc1Info><X1><doc2Info>...`
 		{
 			const MAX_LEN = 20;
@@ -1396,8 +1427,10 @@
 			n > MAX_LEN && (a.length=MAX_LEN, a[MAX_LEN]="...");
 			
 			t = 1 == n ? s : __("%1 documents",n);
-			t = __( "%1 (%2 %3)", t, p, __(1<p?"pages":"page") );
-			t += '\x01' + Array((2+z)>>>1).join('\u2014') + '\x01\u2022 ' + a.join('\x01\u2022 ');
+			t = __( "%1 (%2\xA0%3)", t, p, __(1<p?"pages":"page") );
+
+			'string'==typeof line || (line=Array((2+z)>>>1).join('\u2015'));
+			t += '\x01' + line + '\x01\u2022 ' + a.join('\x01\u2022 ');
 
 			return t;
 		},
