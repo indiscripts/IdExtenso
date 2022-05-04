@@ -20,12 +20,16 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       220324 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
 	// [Static] String.SourceEscapes entity.
+	// Rich array ::
+	// [ "\\", "\r", "\n", '"', "'", "\t", "\b", "\x0B", "\f" ]
+	// { "\\":'BK', "\r":'CR', "\n":'LF', '"':'DQ', "'":'SQ',
+	//   "\t":'TB', "\b":'BS', "\x0B":'VT', "\f":'FF'}
 	//==========================================================================
 
 	String.SourceEscapes = (function(/*str[]&*/a,  i,n,k)
@@ -42,7 +46,6 @@
 		return a;
 
 	})(['BK','CR','LF','DQ','SQ','TB','BS','VT','FF']);
-
 
 	//==========================================================================
 	// [180703] String.fromCodePoint()          -- cf ECMA-262, 9th Edition
@@ -315,7 +318,7 @@
 		return r;
 	};
 
-	String.levenFilter = function levenFilter(/*str[]*/strings,/*str*/s,/*uint=auto*/maxDist,/*bool=0*/CASE_SENSITIVE,  n,TOS,D,C,r,i,z,d)
+	String.levenFilter = function levenFilter(/*str[]*/strings,/*str*/s,/*uint=auto*/maxDist,/*bool=0*/CASE_SENSITIVE,  n,TOS,D,C,r,i,z,d,t)
 	//----------------------------------
 	// [190313] Return the subset of `strings` that match the string `s` with respect to
 	// a maximum Levenshtein distance `maxDist`. The output is a new Array, where strings
@@ -464,112 +467,113 @@
 		// Final result.
 		// ---
 		return (NOQ&&(quote='')), quote + r.replace(RegExp.X1, String._BK) + quote;
-	};
-
-	String.prototype.toSource.Q = (function(/*obj&*/R,  err,o,t,s,i,n,a)
-	//----------------------------------
-	// Cached structure (-> toSource.)
-	// => { start: int>0, end: int<0, longUni: 0|1, unsafeQuote: <DQ>|<SQ>|'', improvable: char* }
-	// [REM] The once-call function parses ExtendScript's native toSource behavior.
-	{
-		err = '';
-		o = String.SourceEscapes;
-
-		// Create a test string for analyzing the original toSource().
-		// ExtendScript produces verbose results looking like
-		// s :: `(new String("ZZ\\ZZ\rZZ\nZZ\"...\x0BZZ\fZZ\u00C0ZZ"))`
-		// ---
-		t = 'ZZ';
-		s = t + (o.join('')+'\xC0').split('').join(t) + t;
-		s = String.__toSource__.call(s);
-
-		// Compute magic offsets (start,end) so that string inside quotes
-		// *always* matches src.substring(start, end+src.length).
-		// ---
-		R.start = s.indexOf(t);
-		R.end   = (i=t.length) + s.lastIndexOf(t) - (n=s.length);
-
-		// Store escapes in array. Desired result is
-		// a :: [<_BK>,<_CR>,<_LF>,<_DQ>,<SQ>,<_TB>,<_BS>,<_VT>,<_FF>,`\u00C0`]
-		// ---
-		a = s.substring(i+R.start,-i+n+R.end).split(t);
-
-		// ---
-		// Almost every character is reduced to its shortest escape sequence.
-		// However, `\u00HH` can be shortened `\xHH` and `\x0B` is in fact `\v`.
-		// Also, <DQ> is usually escaped while <SQ> is not. We now have enough
-		// information to create a better toSource converter.
-		// [REM] We assume ExtendScript *may change* the native method,
-		// so we have to keep the algorithm fully agnostic.
-		// ---
-
-		// Whether we have to reduce `\u00HH`.
-		// ---
-		R.longUni = +(0 <= a.pop().indexOf('u00'));
-
-		// Check that String.SourceEscapes and `a` have now the same length.
-		// ---
-		if( a.length != o.length )
+	}
+	.setup
+	({
+		Q: (function(/*obj&*/R,  err,o,t,s,i,n,a)
+		//----------------------------------
+		// Cached structure (-> toSource.)
+		// => { start: int>0, end: int<0, longUni: 0|1, unsafeQuote: <DQ>|<SQ>|'', improvable: char* }
+		// [REM] The once-call function parses ExtendScript's native toSource behavior.
 		{
-			err = "A fatal error occured while analyzing String.prototype.toSource.";
-		}
+			err = '';
+			o = String.SourceEscapes;
 
-		// Check whether each escapable character is reduced as desired,
-		// that is, a[i] == String['_'+o[o[i]]].
-		// OK => Change a[i] into ''   (nothing to do, skip.)
-		// KO => Change a[i] into o[i] (character whose esc must be improved.)
-		// ---
-		// [REM] For the sake of abstraction we allow unsafeQuote=='', which would
-		// reflect native toSource() method to escape all quotation marks.
-		// Such case wouldn't lead to errors in the present implementation :-)
-
-		for( R.unsafeQuote='', i=a.length ; (!err) && i-- ; )
-		{
-			t = a[i];     // Native escape sequence, e.g `\r`
-			s = o[o[i]];  // Key, e.g 'CR'.
-
-			// Match case :-)
+			// Create a test string for analyzing the original toSource().
+			// ExtendScript produces verbose results looking like
+			// s :: `(new String("ZZ\\ZZ\rZZ\nZZ\"...\x0BZZ\fZZ\u00C0ZZ"))`
 			// ---
-			if( t == String['_'+s] ){ a[i]=''; continue; }
+			t = 'ZZ';
+			s = t + (o.join('')+'\xC0').split('').join(t) + t;
+			s = String.__toSource__.call(s);
 
-			// Case where ExtendScript doesn't escape a quote,
-			// usually t==<SQ>. That's OK anyway.
+			// Compute magic offsets (start,end) so that string inside quotes
+			// *always* matches src.substring(start, end+src.length).
 			// ---
-			if( t == String.SQ || t == String.DQ ){ R.unsafeQuote=t; a[i]=''; continue; }
+			R.start = s.indexOf(t);
+			R.end   = (i=t.length) + s.lastIndexOf(t) - (n=s.length);
 
-			// ExtendScript does not escape <BK> the right way :-(
+			// Store escapes in array. Desired result is
+			// a :: [<_BK>,<_CR>,<_LF>,<_DQ>,<SQ>,<_TB>,<_BS>,<_VT>,<_FF>,`\u00C0`]
 			// ---
-			if( 'BK' == s )
+			a = s.substring(i+R.start,-i+n+R.end).split(t);
+
+			// ---
+			// Almost every character is reduced to its shortest escape sequence.
+			// However, `\u00HH` can be shortened `\xHH` and `\x0B` is in fact `\v`.
+			// Also, <DQ> is usually escaped while <SQ> is not. We now have enough
+			// information to create a better toSource converter.
+			// [REM] We assume ExtendScript *may change* the native method,
+			// so we have to keep the algorithm fully agnostic.
+			// ---
+
+			// Whether we have to reduce `\u00HH`.
+			// ---
+			R.longUni = +(0 <= a.pop().indexOf('u00'));
+
+			// Check that String.SourceEscapes and `a` have now the same length.
+			// ---
+			if( a.length != o.length )
 			{
-				err = __("Unexpected escape sequence %1 for the backslash.", String.__toSource__call(t));
-				break;
+				err = "A fatal error occured while analyzing String.prototype.toSource.";
 			}
 
-			// ExtendScript does not output a capturable escape sequence :-(
+			// Check whether each escapable character is reduced as desired,
+			// that is, a[i] == String['_'+o[o[i]]].
+			// OK => Change a[i] into ''   (nothing to do, skip.)
+			// KO => Change a[i] into o[i] (character whose esc must be improved.)
 			// ---
-			if( ! RegExp['_'+s].test(t) )
+			// [REM] For the sake of abstraction we allow unsafeQuote=='', which would
+			// reflect native toSource() method to escape all quotation marks.
+			// Such case wouldn't lead to errors in the present implementation :-)
+
+			for( R.unsafeQuote='', i=a.length ; (!err) && i-- ; )
 			{
-				err = __("Cannot capture the escape sequence %1 for the character <%2>.", String.__toSource__call(t), s);
-				break;
+				t = a[i];     // Native escape sequence, e.g `\r`
+				s = o[o[i]];  // Key, e.g 'CR'.
+
+				// Match case :-)
+				// ---
+				if( t == String['_'+s] ){ a[i]=''; continue; }
+
+				// Case where ExtendScript doesn't escape a quote,
+				// usually t==<SQ>. That's OK anyway.
+				// ---
+				if( t == String.SQ || t == String.DQ ){ R.unsafeQuote=t; a[i]=''; continue; }
+
+				// ExtendScript does not escape <BK> the right way :-(
+				// ---
+				if( 'BK' == s )
+				{
+					err = __("Unexpected escape sequence %1 for the backslash.", String.__toSource__call(t));
+					break;
+				}
+
+				// ExtendScript does not output a capturable escape sequence :-(
+				// ---
+				if( ! RegExp['_'+s].test(t) )
+				{
+					err = __("Cannot capture the escape sequence %1 for the character <%2>.", String.__toSource__call(t), s);
+					break;
+				}
+
+				// Finally, we provide a better escape sequence. Typical case is <VT>
+				// treated `\x0B` while it could be shortened `\v`. (We set a[i] to
+				// o[i] only if our own esc is shorter.)
+				// ---
+				a[i] = 2 < t.length ? o[i] : '';
 			}
 
-			// Finally, we provide a better escape sequence. Typical case is <VT>
-			// treated `\x0B` while it could be shortened `\v`. (We set a[i] to
-			// o[i] only if our own esc is shorter.)
-			// ---
-			a[i] = 2 < t.length ? o[i] : '';
-		}
+			if( err )
+			{
+				throw Error(__("%1 > %2", 'Ext/string', err));
+			}
 
-		if( err )
-		{
-			throw Error(__("%1 > %2", 'Ext/string', err));
-		}
+			R.improvable = [a.join(''),a.length=0][0];
+			return R;
 
-		R.improvable = [a.join(''),a.length=0][0];
-		return R;
-
-	})({});
-
+		})({})
+	});
 
 	//==========================================================================
 	// String.prototype.split [CS4 patch.]
