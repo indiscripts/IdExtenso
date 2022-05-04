@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module
-		API:            =format() parse() normalize() count()
+		API:            =format() getFormatter() parse() normalize() count()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180429 (YYMMDD)
-		Modified:       220212 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 220212, 'format'))
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 220504, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -187,7 +187,7 @@
 			return s;
 		},
 		
-		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,/*?str*/sgl,  L,R,M,e0,e1,a,z,iMax,x0,x1,nx,t)
+		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,/*str|falsy*/sgl,/*str*/sty,/*str*/pfx,  L,R,M,e0,e1,a,z,i,iMax,x0,x1,nx,t)
 		//----------------------------------
 		// (Format.) Formats the ranges {start=>end} in `q` with respect to
 		// start locators in `s` and additional options. See µ.format() for
@@ -201,9 +201,11 @@
 		{
 			const CHR = !!sgl && String.fromCharCode; // Only invoked if `sgl` is truthy.
 
-			L = R = M = String;
+			// [CHG220213] Style support.
+			// ---
+			L = R = M = callee.hasOwnProperty(t='STY_'+sty) ? callee[t] : String;
 
-			if( callee.hasOwnProperty(t='ELI_'+eli) )
+			if( callee.hasOwnProperty(t='ELI_'+eli) && callee.CAN_ELIDE.test(R.name) )
 			{
 				t = callee[t];
 				e0 = t[0];
@@ -230,9 +232,9 @@
 				// Add x0..x1 value(s).
 				// ---
 				if( x1-x0 >= mn )
-					a[z++] = L(t=dx+x0) + jn + R(dx+x1,t,e0,e1);        // Range `x0-x1` [dx]
+					a[z++] = pfx + L(t=dx+x0) + jn + R(dx+x1,t,e0,e1);        // Range `x0-x1` [dx]
 				else
-					for(; x0 <= x1 ; (q[x0]&&(a[z++]=M(dx+x0))),++x0 ); // Split into `x0, etc, x1` [dx]
+					for(; x0 <= x1 ; (q[x0]&&(a[z++]=pfx+M(dx+x0))),++x0 );   // Split into `x0, etc, x1` [dx]
 
 				x0 = nx;
 			}
@@ -241,6 +243,10 @@
 		}
 		.setup
 		({
+			// [ADD220213] Style formatters that supports elision.
+			// ---
+			CAN_ELIDE: /^String|ONEZ|TWOZ|THRZ$/,
+
 			ELI: function(/*uint*/y,/*uint*/x,/*uint*/MIN,/*bool=0*/NO_TENS,  n,z,i)
 			//----------------------------------
 			{
@@ -255,9 +261,91 @@
 			ELI_FINALTWODIGITS:   [2,0],
 			ELI_OXFORD:           [1,1],
 			ELI_FEWESTFIGURES:    [1,0],
+
+			STY_ONEZ: function ONEZ(/*uint>0*/z)
+			//----------------------------------
+			// SINGLE_LEADING_ZEROS Numbering Style
+			// => str
+			{
+				return 10 > z ? ('0'+z) : z.toString();
+			},
+
+			STY_TWOZ: function TWOZ(/*uint>0*/z)
+			//----------------------------------
+			// DOUBLE_LEADING_ZEROS Numbering Style
+			// => str
+			{
+				return 100 < z ? z.toString() : ('00'+z).slice(-3);
+			},
+
+			STY_THRZ : function THRZ(/*uint>0*/z)
+			//----------------------------------
+			// TRIPLE_LEADING_ZEROS Numbering Style
+			// => str
+			{
+				return 1000 < z ? z.toString() : ('000'+z).slice(-4);
+			},
+
+			STY_UROM: function UROM(/*uint>0*/z,  r,k)
+			//----------------------------------
+			// UPPER_ROMAN Numbering Style
+			// => str
+			{
+				const MF = Math.floor;
+
+				r = '';
+				if( 1000 <= z )
+				{
+					k = MF(z/1000);
+					r = 5 <= k ? callee(k) : 'MMMM'.slice(-k);
+					z %= 1000;
+				}
+				100 <= z && ( (r+=['C','CC','CCC','CD','D','DC','DCC','DCCC','CM'][-1+MF(z/100)]),(z %= 100) );
+				10  <= z && ( (r+=['X','XX','XXX','XL','L','LX','LXX','LXXX','XC'][-1+MF(z/10)]), (z %= 10)  );
+				1   <= z && (  r+=['I','II','III','IV','V','VI','VII','VIII','IX'][-1+z] );
+				
+				return r;
+			},
+			
+			STY_LROM: function LROM(/*uint>0*/z,  r,k)
+			//----------------------------------
+			// LOWER_ROMAN Numbering Style
+			// => str
+			{
+				const MF = Math.floor;
+
+				r = '';
+				if( 1000 <= z )
+				{
+					k = MF(z/1000);
+					r = 5 <= k ? callee(k) : 'mmmm'.slice(-k);
+					z %= 1000;
+				}
+				100 <= z && ( (r+=['c','cc','ccc','cd','d','dc','dcc','dccc','cm'][-1+MF(z/100)]),(z %= 100) );
+				10  <= z && ( (r+=['x','xx','xxx','xl','l','lx','lxx','lxxx','xc'][-1+MF(z/10)]), (z %= 10)  );
+				1   <= z && (  r+=['i','ii','iii','iv','v','vi','vii','viii','ix'][-1+z] );
+				
+				return r;
+			},
+
+			STY_ULET: function ULET(/*uint>0*/z)
+			//----------------------------------
+			// UPPER_LETTERS Numbering Style
+			// => str
+			{
+				return (--z >= 26 ? callee(Math.floor(z/26)) : '') + String.fromCharCode(0x41 + (z%26));
+			},
+
+			STY_LLET: function LLET(/*uint>0*/z)
+			//----------------------------------
+			// LOWER_LETTERS Numbering Style
+			// => str
+			{
+				return (--z >= 26 ? callee(Math.floor(z/26)) : '') + String.fromCharCode(0x61 + (z%26));
+			},
 		}),
 
-		PRSE: function(/*str*/seq,/*str*/sp,/*str*/jn,  r,re,ERR,i,t,p,x,y,d)
+		PRSE: function(/*str*/seq,/*str*/sp,/*str*/jn,  r,re,ERR,i,t,p,x,y,k,d)
 		//----------------------------------
 		// (Parse.) Pre-parse the sequence and return an ordered rich array of start
 		// numbers formatted as `<Hi><Lo>` strings (2 chars). Each start number
@@ -350,13 +438,14 @@
 	[PUBLIC]
 	
 	({
-		format : function format_A_õ_S(/*(uint|str)[]*/numbers,/*?{}=auto*/options,  dx,sp,jn,gp,mn,eli,sgl,I,q,s,t)
+		format : function format_A_õ_S(/*(uint|str)[]*/numbers,/*?{}=auto*/options,  dx,sp,jn,gp,mn,eli,sgl,sty,pfx,I,q,s,t)
 		//----------------------------------
 		// Formats an array of positive integers into an ordered sequence
 		// of single numbers and/or ranges. Returns the formatted string.
 		// E.g  µ([1000,3,6,8,5,12,9,5,999]) => "3, 5-6, 8-9, 12, 999-1000"
 		// [ADD210817] New version providing range elision option (see below.)
 		// [ADD220211] Added the `singletons` option  (see below.)
+		// [ADD220213] Added the `style` and `prefix` options.
 		// --------------------------------------------------------------------
 		// <numbers>   The page numbers to format. Array of positive integers
 		//             or strings that coerce into positive integers. 
@@ -409,12 +498,32 @@
 		//                   original input array is simply ignored.
 		//             E.g   µ([1,2,4,5,6,8,9,10,11], {minRange:2, singletons:[4,11]})
 		//                   => "1, 2, 4, 5, 6, 8-10, 11"   ; instead of "1, 2, 4-6, 8-11"
-		// [REM] It is assumed here that `singletons` (if supplied) is a rela-
-		// tively short data stream that supports basic loop/sort procedures
-		// with no critical performance costs. In particular, if your original
-		// set of numbers has to be entirely formatted as an ordered sequence
-		// of singletons, there's no interest in using $$.PageRange since much
-		// direct algorithms can achieve the desired task very quickly.
+		//                   [REM] It is assumed here that `singletons` (if supplied) is a rela-
+		//                   tively short data stream that supports basic loop/sort procedures
+		//                   with no critical performance costs. In particular, if your original
+		//                   set of numbers has to be entirely formatted as an ordered sequence
+		//                   of singletons, there's no interest in using $$.PageRange since much
+		//                   direct algorithms can achieve the desired task very quickly.
+		// .style    (?str)  One of the following strings (case-insensitive):
+		//                  'ARAB' : 1, 2, 3, 4... (default.)
+		//                  'ONEZ' : 01, 02, 03, 04...
+		//                  'TWOZ' : 001, 002, 003, 004...
+		//                  'THRZ' : 0001, 0002, 0003, 0004...
+		//                  'UROM' : I, II, III, IV...
+		//                  'LROM' : i, ii, iii, iv...
+		//                  'ULET' : A, B, C, D, ... AA, AB...
+		//                  'LLET' : a, b, c, d, ... aa, ab...
+		//             E.g   µ([1,2,4,5,6,8,9,10,11], {minRange:2, style:'LROM'})
+		//                   => "i, ii, iv-vi, viii-xi"
+		//             E.g   µ([10,11,12,59,60,61,210,211,212], {elision:'Oxford', style:'THRZ'})
+		//                   => "0010-12, 0059-61, 0210-12"
+		//                   [REM] The `elision` option only applies if `style` is
+		//                   'ARAB', 'ONEZ', 'TWOZ', or 'THRZ'. If `elision` is 'None',
+		//                   styles involving leading zeros ('ONEZ', 'TWOZ', 'THRZ')
+		//                   will output ranges in full format, e.g "0012-0013".
+		// .prefix    (str)  Optional prefix added before every single number and range.
+		//             E.g   µ([4,1,3,8,9,6], {prefix: 'II.'})
+		//                   => "II.1, II.3-4, II.6, II.8-9"
 		// ---
 		// => str
 		{
@@ -437,8 +546,10 @@
 			('string' == typeof(jn=options.joiner) && jn.length)    || (jn = '-');
 			(mn=options.minRange>>>0) || (mn=1);
 			(gp=options.gap>>>0)      || (gp=0);
-			eli = String(options.elision||'').toUpperCase(); // checked from ~.FRMT
+			eli = String(options.elision||'').toUpperCase();                    // checked from ~.FRMT
 			sgl = (t=options.singletons) && t instanceof Array && I.SEQS(t,dx); // [ADD220211] Singletons (as a string.)
+			sty = String(options.style||'').toUpperCase();                      // [ADD220213] checked from ~.FRMT
+			('string' == typeof(pfx=options.prefix)) || (pfx = '');             // [ADD220213]
 
 			// Ranges:  q :: { start => end } ; s :: CHR(start0,start1...) ; all shifted by `dx`.
 			// ---
@@ -446,7 +557,18 @@
 
 			// Format.
 			// ---
-			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli,sgl) : '';
+			return s.length ? I.FRMT(s,q,-dx,mn,1+gp,sp,jn,eli,sgl,sty,pfx) : '';
+		},
+		
+		getFormatter : function getFormatter_S_F(/*str*/style)
+		//----------------------------------
+		// Return the formatter associated to that style, if any.
+		// As a fallback, the String function is returned.
+		// style :: One of ARAB|ONEZ|TWOZ|THRZ|UROM|LROM|ULET|LLET
+		// ---
+		// => fct [OK]
+		{
+			return callee.µ['~'].FRMT['STY_'+style] || String;
 		},
 
 		parse : function parse_S_õ_oaf_A(/*str*/seq,/*?{separator:str,joiner:str}=auto*/options,/*?{num=>any}|fct*/map,  sp,jn,xLast,a,r,z,i,x,d)
