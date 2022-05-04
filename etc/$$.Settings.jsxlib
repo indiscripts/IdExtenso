@@ -3,21 +3,22 @@
 		Name:           Settings
 		Desc:           Encapsulates a set of custom settings handled throughout a script.
 		Path:           /etc/$$.Settings.jsxlib
-		Require:        Dom/label ; $$.kill() $$.clone()
+		Require:        Dom/label ; $$.kill() $$.clone() $$.JSON()
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =access() DontClone declare() hasScope() hasKey()
+		API:            =access() DontClone declare()
+		                hasScope() footprint() hasKey()
 		                canDeclare() activate() reset() backup()
 		                addLive() objKeyCount() appKeyCount()
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       220118 (YYMMDD)
+		Modified:       220504 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 220118, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 220504, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -764,10 +765,14 @@
 		//----------------------------------
 		// [ADD180309] Whether the declared settings contain (at least)
 		// one key associated to the supplied scope(s).
-		// CNST: 1 ; LIVE: 2 ; RSET: 4 ; ENGI: 8 ; SESS:16
-		// DOBJ:32 ; INDD:64 ; HYBR:96
+		// `scope` :: 'CNST'|'CONST'|1  ; 'LIVE'|2 ; 'RSET'|'RESET'|4 ;
+		//            'ENGI'|'ENGINE'|8 ; 'SESS'|'SESSION'|16 ;
+		//            'DOBJ'|'OBJ'|32   ; 'INDD'|'APP'|64 ; 'HYBR'|'HYB'|96
 		// As an uint, `scope` can be a OR of mixed values.
-		// => >0 [OK]  |  0 [KO]
+		// [REM] The scope 96 (HYB) actually represents the three options
+		// OBJ or APP or HYB. To test whether a key is strictly hybrid,
+		// check whether retval===96.
+		// => >0 [OK]  |  0 [KO]  |  ERR
 		{
 			if( !(I=callee.µ['~']).SUID )
 			{
@@ -793,12 +798,76 @@
 			return t&I.MASK;
 		},
 
+		footprint : function footprint_is_b_S(/*uint|str=120*/scope,/*bool=0*/STRICT,  $$,I,t,o,r,k)
+		//----------------------------------
+		// [ADD220504] Return a 'footprint' (hash string) representing
+		// unambiguously the *current* settings in the supplied scope(s).
+		// `scope` :: 'CNST'|'CONST'|1  ; 'LIVE'|2 ; 'RSET'|'RESET'|4 ;
+		//            'ENGI'|'ENGINE'|8 ; 'SESS'|'SESSION'|16 ;
+		//            'DOBJ'|'OBJ'|32   ; 'INDD'|'APP'|64 ; 'HYBR'|'HYB'|96
+		// As an uint, `scope` can be a OR of mixed values.
+		// The default scope is assumed 120, which represents all keys that
+		// might be restored (ENGI|SESS|OBJ|APP|HYB).
+		// `STRICT` :: bool [reserved] Whether the keys must *exactly* have
+		//             the scope specified by `scope` (disregarding mixed cases.)
+		//             Only makes sense for extracting strict OBJ (vs. APP,
+		//             vs. HYB) keys.
+		// [REM] The scope 96 (HYB) actually represents the three options
+		// OBJ or APP or HYB. To extract OBJ(vs. APP vs. HYB keys) only, use
+		// STRICT=1. And to get e.g a footprint of OBJ and APP keys *excluding
+		// HYB*, merge the strings µ.footprint('OBJ',1)+µ.footprint('APP',1).
+		// ---
+		// => str [OK]  |  '' [KO]  |  ERR
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			if( !(I=callee.µ['~']).SUID )
+			{
+				$$.error( __("Settings must be declared before calling footprint."), callee );
+			}
+
+			switch( typeof(t=scope) )
+			{
+				case 'undefined':
+					t=120;
+					break;
+
+				case 'number':
+					t|=0;
+					break;
+
+				default:
+					scope = String(scope).toUpperCase();
+					
+					// ---
+					// [TODO] Might be improved to support "s1|s2|s3..."
+					// ---
+
+					t = I.BRCH(scope) || (I.hasOwnProperty(scope) && I.BRCH.RE.test(scope) && I[scope]);
+			}
+
+			if( !t )
+			{
+				$$.error( __("The scope %1 is not recognized.",scope), callee );
+			}
+			
+			o = I.KEYS;
+			r = [];
+			
+			if( STRICT )
+				for( k in o ) o.hasOwnProperty(k) && (t===I.KSCO(k)) && (r.push(k+':'+$$.JSON(o[k])));
+			else
+				for( k in o ) o.hasOwnProperty(k) && (t&I.KSCO(k)) && (r.push(k+':'+$$.JSON(o[k])));
+
+			return r.length ? ('{'+r.sort().join(',')+'}') : '';
+		},
+
 		hasKey : function hasKey_K_I(/*key*/k,  I,t)
 		//----------------------------------
 		// [ADD180318] Whether the declared settings contain a key `k`.
 		// If so, returns the associated scope (>0.)
-		// CNST: 1 ; LIVE: 2 ; RSET: 4 ; ENGI: 8 ; SESS:16
-		// DOBJ:32 ; INDD:64 ; HYBR:96
+		// Retval :: 1 (CNST)  ; 2 (LIVE) ; 4 (RSET)  ; 8 (ENGI)
+		//           16 (SESS) ; 32 (OBJ) ; 64 (INDD) ; 96 (HYBR)
 		// => >0 [OK]  |  0 [KO]
 		{
 			if( !(I=callee.µ['~']).SUID )
