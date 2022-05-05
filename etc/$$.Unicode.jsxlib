@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           WIP: Do we need to expose and include $$.UniSet (?)
 		Created:        170428 (YYMMDD)
-		Modified:       220114 (YYMMDD)
+		Modified:       220505 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'Unicode', 220114, 'toString'))
+;$$.hasOwnProperty('Unicode') || eval(__(MODULE, $$, 'Unicode', 220505, 'toString'))
 
 	[PRIVATE]
 	
