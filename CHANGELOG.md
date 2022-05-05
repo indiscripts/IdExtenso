@@ -1,3 +1,14 @@
+##### [220505]
+   - [**Unicode**](/etc/$$.Unicode.jsxlib): this module had a wrong prolog, this is now fixed. Note: if your project uses it, the present fix is required to restore the normal behavior of your script with a `#targetengine` directive. Indeed, the error was to introduce the module using _only_
+
+    ;eval(__(MODULE, $$, 'Unicode',  etc ))...
+
+   instead of the regular form
+
+    ;$$.hasOwnProperty('Unicode') || eval(__(MODULE, $$, 'Unicode',  etc ))...
+
+   The missing part `$$.hasOwnProperty('Unicode') ||` is of primary importance. If you write your own IdExtenso modules, do not forget this crucial part and always apply the entire scheme above for every extension (i.e., outside of the `core` branch.) Otherwise, the intepreter will throw an obscure _"Unknown MODULE identifier"_ error while re-running the script in a persistent engine. The `#targetengine` directive is a great way of speeding up our scripts, since all heavy structures (core data and outer modules) can be declared once and for all (throughout the app session). However, we need to take great care of global identifiers then. Once loaded, **IdExtenso** automatically cleans up its own temporary globals (`MODULE` and many more.) Hence, the command `eval(__(MODULE, ... ))` would fail!
+
 ##### [220504]
    - Global cleanup in various modules, adding missing declarations in a few functions. (This is not a critical fix but it keeps the `[[global]]` scope much cleaner and may improve performances.)
    - [**Settings**](/etc/$$.Settings.jsxlib): Added the method `footprint(scope)` that creates a unique _footprint_ of the current settings in the specified scope(s). Useful when you need to determine whether some changes have been applied (to the settings) between two points of your process. Typical use: display a conditional "Save settings?" message when the user closes the main dialog. Just take a footprint before and after and compare the strings. Thanks to the _scope_ arg you can decide which kind of settings are traced here. The default value is `120` which merges the scopes `ENGI|SESS|OBJ|APP|HYB` and represents all keys that might be restored, regardless of CONST, RESET, and LIVE keys that are meaningless to this respect.
