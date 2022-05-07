@@ -7,13 +7,13 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module
-		API:            =log() spaces onUnload() init() push()
+		API:            =log() spaces onUnload() init() push() hits()
 		                mute()->$$ trace()->$$ warn()->$$
 		                show() chrono()
 		DOM-access:     NO
 		Todo:           WINDOW device.
 		Created:        150502 (YYMMDD)
-		Modified:       210106 (YYMMDD)
+		Modified:       220507 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,7 +32,7 @@
 	// WARN mode can only warn.
 	// ---
 
-;eval(__(MODULE, $$, 'Log', 210106, 'log'))
+;eval(__(MODULE, $$, 'Log', 220507, 'log'))
 
 	[PRIVATE]
 	
@@ -88,11 +88,13 @@
 		// => 1 [OK]  |  0 [ERROR]
 		{
 			callee.CAN_ESTK && this.WPSH(s);
+			++callee.COUNT;
 			return this.FPSH(s);
 		}
 		.setup
 		({
 			CAN_ESTK:0, // Updated from µ.init
+			COUNT:0,    // Push count [ADD220507]
 		}),
 
 		SFMT : function(/*0|1*/RESET,/*0|1*/DMS_ONLY,  q,dt,ymd,hms,dms)
@@ -241,6 +243,10 @@
 			// ---
 			callee.µ['~'].PUSH.CAN_ESTK = $.global[callee.µ.__root__].canToolKit();
 
+			// [ADD220507] Allows $$.unLoad to know whether the Log was invoked.
+			// ---
+			callee.µ['~'].PUSH.COUNT = 0;
+
 			// Invalidate the Log file.
 			// ---
 			delete callee.µ['~'].FPSH.Q;
@@ -361,6 +367,15 @@
 					&& callee.µ.push(__(I.MDLG, I.SFMT(0), I.LVLS[v], s))
 					&& v
 				);
+		},
+		
+		hits : function hits_I()
+		//----------------------------------
+		// [ADD220507] Return the PUSH count, that is, the number of times
+		// the Log had to push strings.
+		// => uint
+		{
+			return callee.µ['~'].PUSH.COUNT;
 		},
 
 		show : function show_(  ff)
