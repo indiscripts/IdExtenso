@@ -14,11 +14,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       220411 (YYMMDD)
+		Modified:       220507 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 220411, 'load'))
+;eval(__(MODULE, '$.global', $$, 220507, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -493,9 +493,10 @@
 			// ---
 			app.properties.activeDocument && app.activeDocument.getElements();
 
-			// Automatic Log.show (if log level != 0.)
+			// Automatic Log.show
+			// [CHG220507] The log file is shown iff strings have been added (whatever the current log level.)
 			// ---
-			if( $$.Log() )
+			if( $$.Log.hits() )
 			{
 				$$.Log.mute();
 				$$.Log.show();
