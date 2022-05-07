@@ -1,4 +1,5 @@
 ##### [220507]
+   - [Log](/core/$$.Log.jsxlib) now exposes a `hits()` method that tells whether the logging system has been invoked during the execution of the script.
    - Updated [Env/winver](/core/Env/$$.winver.jsxres).
    
 ##### [220505]
