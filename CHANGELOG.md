@@ -1,3 +1,6 @@
+##### [220507]
+   - Updated [Env/winver](/core/Env/$$.winver.jsxres).
+   
 ##### [220505]
    - [**Unicode**](/etc/$$.Unicode.jsxlib): this module had a wrong prolog, this is now fixed. Note: if your project uses it, the present fix is required to restore the normal behavior of your script with a `#targetengine` directive. Indeed, the error was to introduce the module using _only_
 
