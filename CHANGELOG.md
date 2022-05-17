@@ -1,3 +1,6 @@
+##### [220517]
+   - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): added the methods `hasStyle()` and `hasLayer()`.
+
 ## 2.200507
    - Minor update (May 7, 2022.) Provides cosmetic changes and a global cleanup (missing declarations added in a few core functions.)
    - [Root](/core/$$.Root.jsxlib): slight change in the 'unloading' mechanism, `$$.Log.show()` is called _whatever the final log level_ as soon as the log file has been accessed. This makes the logging system more responsive even if the script just used raw `$$.Log.push(...)` commands (which are still honored in MUTE mode.)
