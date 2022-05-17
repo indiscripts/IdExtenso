@@ -10,16 +10,17 @@
 		API:            =select() onLoad() onUnload() onClosing() close() clear() init()
 		                isOpen() count() hasBook() bookName() hasText()
 		                hasVisible() hasGhost() isEmpty() isSingle() list()
-		                uniqueKey() selCount() layerList() layerCount() styleList() styleCount()
+		                uniqueKey() selCount() layerList() hasLayer() layerCount()
+		                styleList() hasStyle() styleCount()
 		                info() getAutoFolder()
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       220517 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220504, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220517, 'select'))
 
 
 	//==========================================================================
@@ -1075,6 +1076,7 @@
 			const LY = callee.LYRS;
 			const PS = callee.PSTY;
 			const CS = callee.CSTY;
+
 			(SMOR = callee.SMOR).length=0;
 			unsv = 0;
 			for( k in R )
@@ -1315,6 +1317,19 @@
 			PFX: ['-- ', '- ', '-- '],
 		}),
 
+		hasLayer: function hasLayer_S_B(/*str*/layerName,  t)
+		//----------------------------------
+		// Whether the *selected* scope contains the layer `layerName`.
+		// ---
+		// => 1 [YES] | 0 [NO] | false [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return false;
+			
+			// t.LYRS :: { refKey => `lyName1<X1>lyName2<X1>...` ; _lyName => `domIndex1_[01]_yid1`|`domIndex2_[01]_yid2`... }
+
+			return +t.LYRS.hasOwnProperty('_' + layerName);
+		},
+
 		layerCount: function layerCount_I(  t,k,z)
 		//----------------------------------
 		// [ADD210831] Return the number of layer names
@@ -1363,6 +1378,22 @@
 			}
 			
 			return r;
+		},
+
+		hasStyle: function hasStyle_S_B_B(/*str*/x2StylePath,/*bool=0*/CHAR_STYLES,  t)
+		//----------------------------------
+		// Whether the *selected* scope contains the style `x2StylePath`,
+		// supplied as a <X2> separated path. If CHAR_STYLES is truthy,
+		// look up in Character Styles; otherwise, look up in Paragraph Styles.
+		// ---
+		// => 1 [YES] | 0 [NO] | false [SCOPE-CLOSED]
+		{
+			if( !(t=callee.µ.select).OPEN ) return false;
+
+			// S :: { refKey => `path1<X1>path2<X1>...` ; _path => `domIndex1_csid1`|`domIndex2_csid2`... }
+			//      where each csPath_i has the form `name(<X2>name)*`
+			const S = CHAR_STYLES ? t.CSTY : t.PSTY;
+			return +S.hasOwnProperty('_' + x2StylePath);
 		},
 
 		styleCount: function styleCount_b_b_I(/*bool=0*/CHAR_STYLES,/*bool=0*/EXCL_GROUPS,  t,k,z)
