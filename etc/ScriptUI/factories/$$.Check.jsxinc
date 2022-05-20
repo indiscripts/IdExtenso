@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180909 (YYMMDD)
-		Modified:       210821 (YYMMDD)
+		Modified:       220521 (YYMMDD)
 
 *******************************************************************************/
 
@@ -162,6 +162,8 @@
 					onEvent:                void 0,
 					// --- Inner events.
 					_mousedown_mouseup:     callee.HMOU,
+					// --- Private
+					__mouseDetails__:       '', // [ADD220520]
 					// --- Public methods.
 					setValue:               callee.SETV,
 					getValue:               callee.GETV,
@@ -176,6 +178,7 @@
 						__minus__:          0 > V,
 						__circle__:         ops.radio,
 						value:              !!V,
+						_mousedown:         ops.ignoreClick ? void 0 : callee.HDWN, // [ADD220520] Only for registering the MouseEvent props
 						onClick:            callee.HMOU,
 						onDraw:             CB ? callee.HDRW : void 0,
 						optimalSize:        CB ? callee.HDRW.SIZE : { height:14 },
@@ -297,7 +300,35 @@
 			// ---
 			HBLU: $$.inCC && function onBlurCheckbox(){ this.active=false },
 
-			HMOU: function onMouse(/*?MouseEvent*/ev,  me,t)
+			HDWN: function onMouseDown(/*mousedown*/ev)
+			//----------------------------------
+			// [ADD220520] This extra handler *only* registers essential mouse details.
+			// It is used by HMOU to recreate an informed event when necessary.
+			// Sets the `__mouseDetails__` private prop (str), structure:
+			// `<ctrlKey>|<altKey>|<shiftKey>|<metaKey>|<button>|<screenX>|<screenY>|<clientX>|<clientY>`
+			// all stringified from their numeric value (booleans being coerced into '0' or '1'.)
+			// ---
+			// this   :: Inner Checkbox
+			// ev     :: mousedown
+			// target :: this | Checkbox
+			// => undef
+			{
+				ev.target===this && (this.parent.__mouseDetails__ =
+				[
+					(0|ev.ctrlKey),
+					(0|ev.altKey),
+					(0|ev.shiftKey),
+					(0|ev.metaKey),
+					// ---
+					(0|ev.button),
+					(0|ev.screenX),
+					(0|ev.screenY),
+					(0|ev.clientX),
+					(0|ev.clientY)
+				].join('|'));
+			},
+
+			HMOU: function onMouse(/*?MouseEvent*/ev,  me,t,fire)
 			//----------------------------------
 			// Manage both CB.onClick callback AND mouse events.
 			// ---
@@ -305,12 +336,29 @@
 			// ev     :: mousedown | mouseup             | undef (onClick handler)
 			// target :: this | Checkbox | StaticText    | ---
 			{
+				t = this.type;
+				me = 'checkbox'==t ? this.parent : this;
+
 				if( !ev )
 				{
 					// CB onClick callback. This pseudo-event also
 					// occurs when the user presses the [SPACE] key.
 					// ---
-					me = 'checkbox'==this.type && this.parent;
+					fire = 'checkbox'==t;
+					t = (me.__mouseDetails__||'').split('|');
+					ev =
+					{
+						base:     'M',
+						ctrlKey:   '1'===t[0],
+						altKey:    '1'===t[1],
+						shiftKey:  '1'===t[2],
+						metaKey:   '1'===t[3],
+						button:    0|parseInt(t[4],10),
+						screenX:   0|parseInt(t[5],10),
+						screenY:   0|parseInt(t[6],10),
+						clientX:   0|parseInt(t[7],10),
+						clientY:   0|parseInt(t[8],10),
+					};
 				}
 				else
 				{
@@ -346,10 +394,10 @@
 					
 					0 > t ? (this.__stamp__=t) : delete this.__stamp__;              // Arm vs. delete the timer.
 
-					me = 1 == t && this;
+					fire = 1 == t;
 				}
 
-				if( me )
+				if( fire )
 				{
 					t = me.cycle();                                             // Change value and redraw.
 					ScriptUI.setFocus(me.getControl());                         // Forcibly focus the box.
@@ -403,7 +451,7 @@
 						nv = String(nv);
 						if( nv==(t=this.children[1]).text ) break;
 						(a=t.graphics) && (a=a.measureString(nv));
-						a && (t.size=a, t.parent.layout.resize());
+						a && (t.size=a, t.parent.layout.layout(1)); //[FIX220215] .layout(1) seems more reliable than .resize()
 						t.text = nv;
 						break;
 
