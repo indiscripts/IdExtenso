@@ -1,5 +1,5 @@
 ##### [220521]
-   - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc). Technically, the `onClickChange` handler of your DrawnCheck component receives as 1st argument a custom `clicked` event which is of little interest in most applications. But you may want to know more about that event in some specific cases. For example, was it a “Click” or a “Ctrl Click”? Or what was the location of the mouse cursor? This information is now present in the `clicked` event. It contains, when available,  the _essential_ properties of a ScriptUI `MouseEvent`, that is
+   - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc). Technically, the `onClickChange` handler of your **DrawnCheck** component receives as 1st argument a custom `clicked` event which is of little interest in most applications. But you may want to know more about that event in some specific cases. For example, was it a “Click” or a “Ctrl Click”? Or what was the location of the mouse cursor? This information is now present in the `clicked` event. It contains, when available,  the _essential_ properties of a ScriptUI `MouseEvent`, that is
 
 ~~~~
 	         screenX    (int=0)       Screen X coord.
@@ -12,6 +12,7 @@
 	         metaKey    (bool=false)  Whether the [Meta]  key is down.
 	         button     (uint=0)      Mouse button (0|1|2).
 ~~~~
+   - [`Check(Factory)`](/etc/ScriptUI/factories/$$.Check.jsxinc). The same enhancement has been applied to the **Check** component.
 
 ##### [220517]
    - [**Dom.Scope**](/etc/$$.Dom.Scope.jsxlib): added the methods `hasStyle()` and `hasLayer()`.
