@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220307 (YYMMDD)
+		Modified:       220521 (YYMMDD)
 
 *******************************************************************************/
 
@@ -117,7 +117,8 @@
 
 	API
 	=======================================================================
-	properties      obj = { kind: "DrawnCheck", IgnoreClick:0|1, Locked:0|1 }
+	properties      obj = { kind: "DrawnCheck", IgnoreClick:0|1, Locked:0|1,
+	                        NoBorder:0|1 }
 	                Information properties.
 	-----------------------------------------------------------------------
 	value           0|1 = 0
@@ -125,6 +126,9 @@
 	-----------------------------------------------------------------------
 	icon            str | ''
 	                Getter & setter ; can dynamically change the icon (key.)
+	-----------------------------------------------------------------------
+	extra           any = undef
+	                Custom property.
 	-----------------------------------------------------------------------
 	helpTip         str = ""
 	                Help message (getter and setter).
@@ -174,12 +178,14 @@
 		// ---
 		// .margins     (uint=1)    Margins around the icon.
 		// .ignoreClick (bool=0)    If set, left mouse buttons are ignored.
-		// .locked      (bool=0)    If set, the value cannot change (no toggle.)
+		// .locked      (bool=0)    If set, the value cannot be changed by the user.
+		// .noBorder    (bool=0)    If set, the button border is hidden.
 		// ---
 		// .onClickChange (?fct)    'clicked' handler.
 		// .onRightClick  (?fct)    'rclicked' handler.
 		// .onEvent       (?fct)    Any event handler.
 		// ---
+		// .extra      (any)        Any custom property.
 		// .enabled | .visible      States.
 		// ---
 		// => Group[[DrawnCheck]]  ::   G(C)
@@ -208,11 +214,14 @@
 					value:                  V,
 					icon:                   DRW ? ops.icon : '',
 					helpTip:                ops.helpTip,
+					extra:                  ops.extra, // not watched
 					onClickChange:          void 0,
 					onRightClick:           void 0,
 					onEvent:                void 0,
 					// --- Inner events.
 					_mousedown_mouseup:     ops.ignoreClick ? void 0 : callee.HMOU,
+					// --- Private
+					__mouseDetails__:       '', // [ADD220520]
 					// --- Public methods.
 					setValue:               callee.SETV,
 					getValue:               callee.GETV,
@@ -225,6 +234,7 @@
 						alignment:          ScriptUI.CC,
 						value:              !!V,
 						__iconKey__:        DRW ? ops.icon : '',
+						_mousedown:         ops.ignoreClick ? void 0 : callee.HDWN, // [ADD220520] Only for registering the MouseEvent props
 						onClick:            ops.ignoreClick ? void 0 : callee.HMOU,
 						onDraw:             callee.HDRW,
 						optimalSize:        callee.SIZE,
@@ -275,6 +285,7 @@
 				margins:      1,
 				ignoreClick:  0,
 				locked:       0,
+				noBorder:     0,
 				// ---
 				onClickChange: void 0,
 				onRightClick:  void 0,
@@ -290,6 +301,7 @@
 					kind:          this.name,
 					IgnoreClick:   ops.ignoreClick ? 1 : 0,
 					Locked:        ops.locked ? 1 : 0,
+					NoBorder:      ops.noBorder ? 1 : 0,
 				};
 			},
 		})
@@ -312,11 +324,14 @@
 				p = gx.newPen(0,a,1);
 				b = gx.newBrush(0,a);
 				
-				gx.newPath();
 				gx.draw.DX = gx.draw.DY = 0;
-				gx.draw(17,2)(17,16)(16,17)(2,17)(1,16)(1,2)(2,1)(16,1)(17,2);
-				gx.strokePath(p);
-				v && gx.fillPath(b);
+				if( !(me.properties||0).NoBorder )
+				{
+					gx.newPath();
+					gx.draw(17,2)(17,16)(16,17)(2,17)(1,16)(1,2)(2,1)(16,1)(17,2);
+					gx.strokePath(p);
+					v && gx.fillPath(b);
+				}
 
 				f = ScriptUI.DrawnCheckFactory.Icons[this.__iconKey__];
 				if( 'function' != typeof f ) return;
@@ -347,7 +362,35 @@
 			// ---
 			HBLU: $$.inCC && function onBlurCheckbox(){ this.active=false },
 
-			HMOU: function onMouse(/*?MouseEvent*/ev,  me,t)
+			HDWN: function onMouseDown(/*mousedown*/ev,  me)
+			//----------------------------------
+			// [ADD220520] This extra handler *only* registers essential mouse details.
+			// It is used by HMOU to recreate an informed event when necessary.
+			// Sets the `__mouseDetails__` private prop (str), structure:
+			// `<ctrlKey>|<altKey>|<shiftKey>|<metaKey>|<button>|<screenX>|<screenY>|<clientX>|<clientY>`
+			// all stringified from their numeric value (booleans being coerced into '0' or '1'.)
+			// ---
+			// this   :: Inner Checkbox
+			// ev     :: mousedown
+			// target :: this | Checkbox
+			// => undef
+			{
+				ev.target===this && (this.parent.__mouseDetails__ =
+				[
+					(0|ev.ctrlKey),
+					(0|ev.altKey),
+					(0|ev.shiftKey),
+					(0|ev.metaKey),
+					// ---
+					(0|ev.button),
+					(0|ev.screenX),
+					(0|ev.screenY),
+					(0|ev.clientX),
+					(0|ev.clientY)
+				].join('|'));
+			},
+
+			HMOU: function onMouse(/*?MouseEvent*/ev,  me,t,fire)
 			//----------------------------------
 			// Manage both CB.onClick callback AND mouse events.
 			// ---
@@ -355,12 +398,29 @@
 			// ev     :: mousedown | mouseup             | undef (onClick handler)
 			// target :: this | Checkbox                 | ---
 			{
+				t = this.type;
+				me = 'checkbox'==t ? this.parent : this;
+
 				if( !ev )
 				{
 					// CB onClick callback. This pseudo-event also
 					// occurs when the user presses the [SPACE] key.
 					// ---
-					me = 'checkbox'==this.type && this.parent;
+					fire = 'checkbox'==t;
+					t = (me.__mouseDetails__||'').split('|');
+					ev =
+					{
+						base:     'M',
+						ctrlKey:   '1'===t[0],
+						altKey:    '1'===t[1],
+						shiftKey:  '1'===t[2],
+						metaKey:   '1'===t[3],
+						button:    0|parseInt(t[4],10),
+						screenX:   0|parseInt(t[5],10),
+						screenY:   0|parseInt(t[6],10),
+						clientX:   0|parseInt(t[7],10),
+						clientY:   0|parseInt(t[8],10),
+					};
 				}
 				else
 				{
@@ -396,10 +456,10 @@
 					
 					0 > t ? (this.__stamp__=t) : delete this.__stamp__;              // Arm vs. delete the timer.
 
-					me = 1 == t && this;
+					fire = 1 == t;
 				}
 
-				if( me )
+				if( fire )
 				{
 					me.setValue(1-me.value);                                    // Change value and redraw (rem: won't change if locked.)
 					ScriptUI.setFocus(me.getControl());                         // Forcibly focus the box.
