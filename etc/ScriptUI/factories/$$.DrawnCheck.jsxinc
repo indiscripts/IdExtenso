@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220521 (YYMMDD)
+		Modified:       220523 (YYMMDD)
 
 *******************************************************************************/
 
@@ -362,7 +362,7 @@
 			// ---
 			HBLU: $$.inCC && function onBlurCheckbox(){ this.active=false },
 
-			HDWN: function onMouseDown(/*mousedown*/ev,  me)
+			HDWN: function onMouseDown(/*mousedown*/ev)
 			//----------------------------------
 			// [ADD220520] This extra handler *only* registers essential mouse details.
 			// It is used by HMOU to recreate an informed event when necessary.
@@ -426,12 +426,16 @@
 				{
 					ev.stopPropagation();                                       // Don't go higher.
 					
-					if( ev.button )                                             // Catch non-LEFT button.
+					// [FIX220522] Certain OS/laptops treat Ctrl+Click as RightClick
+					// and forcibly set `ev.button` to 2. Since we want to detect Ctrl+Click
+					// separately, it is necessary to exclude `ev.ctrlKey==true` below.
+					// ---
+					if( (t=ev.button) && !(ev.ctrlKey && 2==t) )                // Catch non-LEFT button.
 					{
 						ev.preventDefault();                                    // Inhibit.
 
 						'mousedown'==ev.type
-						&& 2 == ev.button                                       // RIGHT button
+						&& 2 == t                                               // RIGHT button
 						&& (this===ev.target||callee.EV_PHASE==ev.eventPhase)   // 'bubble' is allowed in CS
 						&& ScriptUI.dispatch(this,'rclicked',ev);               // Notify 'rclicked'
 
