@@ -1,3 +1,6 @@
+##### [220523]
+   - [`Check(Factory)`](/etc/ScriptUI/factories/$$.Check.jsxinc) and [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc): Better detection of Ctrl+Click.
+
 ##### [220521]
    - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc). Technically, the `onClickChange` handler of your **DrawnCheck** component receives as 1st argument a custom `clicked` event which is of little interest in most applications. But you may want to know more about that event in some specific cases. For example, was it a “Click” or a “Ctrl Click”? Or what was the location of the mouse cursor? This information is now present in the `clicked` event. It contains, when available,  the _essential_ properties of a ScriptUI `MouseEvent`, that is
 
