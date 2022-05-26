@@ -11,11 +11,11 @@
 		DOM-access:     YES
 		Todo:           More tests and NOTICE
 		Created:        201209 (YYMMDD)
-		Modified:       220118 (YYMMDD)
+		Modified:       220526 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Footnote') || eval(__(MODULE, $$.Dom.toSource(), 'Footnote', 220118, 'getNumeral'))
+;$$.Dom.hasOwnProperty('Footnote') || eval(__(MODULE, $$.Dom.toSource(), 'Footnote', 220526, 'getNumeral'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -43,47 +43,21 @@
 	*/
 
 	//==========================================================================
-	// NUMBERING STYLE ENUMERATION AND TOOLS
+	// COMMON ENUMERATION AND TOOLS
+	//==========================================================================
+
+	#include 'Dom.FootEndnote/$$.common.jsxinc'
+
+	//==========================================================================
+	// FOOTNOTE ENUMS AND DATA
 	//==========================================================================
 
 	[PRIVATE]
 
 	({
-		NS2S : eval(FootnoteNumberingStyle.revSource()),    // {1298231906:"ARABIC", 1296855660:"LOWER_LETTERS", etc}
-		RS2S : eval(FootnoteRestarting.revSource()),        // {1180988019:"DONT_RESTART", 1181774451:"PAGE_RESTART", 1181053555:"SECTION_RESTART", 1181971059:"SPREAD_RESTART"}
-		PS2S : eval(FootnotePrefixSuffix.revSource()),      // {1181774702:"NO_PREFIX_SUFFIX", 1181774690:"PREFIX_SUFFIX_BOTH", 1181774708:"PREFIX_SUFFIX_MARKER", 1181774706:"PREFIX_SUFFIX_REFERENCE" }
+		RS2S : eval(FootnoteRestarting.revSource()),   // {1180988019:"DONT_RESTART", 1181774451:"PAGE_RESTART", 1181053555:"SECTION_RESTART", 1181971059:"SPREAD_RESTART"}
 		
-		// Algorithm keys (4 characters) for numbering styles enums.
-		// Each string maps to a private function key.
-		// [REM] If an enum have no associated key, then the
-		// algorithm is not implemented yet.
-		// ---
-		ALGO :
-		{
-			ARABIC:                 'ARAB',       // 1, 2, 3, 4...
-			SINGLE_LEADING_ZEROS:   'ONEZ',       // 01, 02, 03, 04...
-			DOUBLE_LEADING_ZEROS:   'TWOZ',       // 001, 002, 003, 004...
-			UPPER_ROMAN:            'UROM',       // I, II, III, IV...
-			LOWER_ROMAN:            'LROM',       // i, ii, iii, iv...
-			UPPER_LETTERS:          'ULET',       // A, B, C, D, ... AA, AB...
-			LOWER_LETTERS:          'LLET',       // a, b, c, d, ... aa, ab...
-			SYMBOLS:                'SYMB',       // *, †, ‡, §, ¶, **, ††, ‡‡, §§, ¶¶, ...
-			ASTERISKS:              'ASTE',       // *, **, ***, ****, *****, ******, *******, ******** [max 8 and repeat]
-			FULL_WIDTH_ARABIC:      'FULW',       // (Use fullwidth digits U+FF10..U+FF19 instead of U+0030..U+0039.)
-			// ---
-			ARABIC_ALIF_BA_TAH:     'BATA',       // أ, ب, ت, ث, ج, ح, خ, د, ذ, ر, ز, س, ش, ص, ض, ط, ظ, ع, غ, ف, ق, ك, ل, م, ن, ه, و, ي,  أ أ, ب ب ...
-			                                      // Order: U+06..23,28,2A,2B,2C,2D,2E,2F,30,31,32,33,34,35,36,37,38,39,3A,41,42,43,44,45,46,47,48,4A  (28 chars)
-			ARABIC_ABJAD:           'ABJA',       // أ, ب, ج, د, ه, و, ز, ح, ط, ي, ك, ل, م, ن, س, ع, ف, ص, ق, ر, ش, ت, ث, خ, ذ, ض, غ, ظ,  أ أ, ب ب ...
-			                                      // Order: U+06..23,28,2C,2F,47,48,32,2D,37,4A,43,44,45,46,33,39,41,35,42,31,34,2A,2B,2E,30,36,3A,38  (28 chars)
-			// ---
-			HEBREW_BIBLICAL:        'HBIB',       // 1..999 ; Cf. github.com/chaimleib/hebrew-special-numbers
-			                                      // In InDesign, only '15' and '16' suffixes undergo a special rewriting.
-			HEBREW_NON_STANDARD:    'HNON',       // א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת (22 chars then ULET algo.)
-			// ---
-			KANJI:                  'KANJ',       // Simplified Chinese numerals ; maps `0..9` to '\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D'
-		},
-
-		// Restart option map (0|1|2|3)
+		// Footnote restart option map (0|1|2|3)
 		// ---
 		RSTA :
 		{
@@ -91,16 +65,6 @@
 			PAGE_RESTART:              1,
 			SECTION_RESTART:           2,
 			SPREAD_RESTART:            3,
-		},
-		
-		// PrefixSuffix option map (0|1|2|3)
-		// ---
-		PFSF :
-		{
-			NO_PREFIX_SUFFIX:          0,
-			PREFIX_SUFFIX_MARKER:      1,
-			PREFIX_SUFFIX_REFERENCE:   2,
-			PREFIX_SUFFIX_BOTH:        3,
 		},
 		
 		// Cached footnote data per document  ::  { docSpec => <dataStr>, 0_docSpec =>{}, 1_docSpec=>{}, ... }
@@ -116,113 +80,10 @@
 		// [REM] Details about <i>_docSpec keys are explained in the code.
 		// ---
 		DOCS: {/*docSpec => dataStr, 0_docSpec=>{}, 1_docSpec=>{}, ...*/},
-		
-		AMAP : function(/*num[]&*/a,  i)
-		//----------------------------------
-		// Given an array of distinct numbers, add the reciprocal set
-		// that maps any number `_n` to its index in `a`.
-		// E.g [3,6,17,5] -->  [3,6,17,5] + { '_3':0, '_6':1, '_17':2, '_5':3 }
-		// ---
-		// => a&
-		{
-			for( i=-1 ; ++i < a.length ; a['_'+a[i]]=i );
-			return a;
-		},
-
-		FTBL : function(/*uint[]&*/fids,/*str*/ipSrc,  re,s,a,i,pad,t)
-		//----------------------------------
-		// (Footnote-Tables.) Reorder an array of footnote IDs with
-		// respect to insertion-points indices within story and cells.
-		// This routine is called only when necessary, that is, when
-		// some footnotes emanate from table(s).
-		// ---
-		// ipSrc :: `[resolve("<DS>//<LOCATION>"),...]`
-		// where DS is the document specifier e.g `/document[@id=123]`
-		// and <LOCATION> is of form (a) or (b)
-		// (a) `story[@id=123]/insertion-point[456]`           ; regular footnote ip.
-		// (b) `text-frame[@id=123]/<TC>insertion-point[89]    ; footnote ip in cell
-		//      where <TC> :: `table[@id=456]/cell[@id=7]/`+
-		// this ::  ~
-		// ---
-		// => fids& [OK]  |  false [KO]
-		{
-			// 1. Reformat ipSrc into s :: `[ <X1>("...insertion-point[x.y.z.etc]"), ...]`
-			// where `x.y.z.etc` is a dot separated sequence of indices.
-			// ---
-			for
-			(
-				//              |------- $1 TABLE SPEC -------|    |-------------- LOOK AHEAD -------------------|
-				//                                       -$2-
-				re = /\u0001\("([^\u0001]+?\/table\[@id=(\d+)\])(?=\/cell\[@id=\d+\]\/insertion-point\[[0-9_]+\]"\))/,
-				s = ipSrc.replace(/resolve/g,'\x01')
-				;
-				// a[1] :: table spec  ;  a[2] :: table ID.
-				// ---
-				a = s.match(re)
-				;
-				// Repl. `/table[...]/cell[@id=<cId>]/insertion-point[<any>]")` by `insertion-point[<tableOffset>_<cId>_<any>]")`
-				// ---
-				s = s.replace
-				(
-					//                                               -$1-                          --$2---
-					RegExp('\\/table\\[@id='+a[2]+'\\]\\/cell\\[@id=(\\d+)\\]\\/insertion-point\\[([0-9_]+)\\]"\\)','g'),
-					'/insertion-point['+resolve(a[1]).storyOffset.index+'_$1_$2]")'
-				)
-			);
-			
-			// 2. Extract each index-sequence as an ordering string.
-			// ---
-			const RP = callee.REPL;
-			RP.MAX_SZ = 0;
-			re = /\u0001[^\u0001]+\/insertion-point\[([^\]]+)\]"\)/g;
-			s = s.replace(re,RP);                           // s :: `["\x00\x03","\x00\x45\x00\x02...","\x01\x67",...]`
-			a = eval('(' + s + ')');                        // a ::  ["\x00\x03","\x00\x45\x00\x02...","\x01\x67",...]
-			
-			// 3. Checkpoint.
-			// ---
-			i = a.length;
-			if( i != fids.length )
-			{
-				$.global[callee.µ.__root__].warn(__("%1 > Unable to determine footnote indices with respect to tables.", callee.µ));
-				return false;
-			}
-
-			// 4. Make `fids` sortable by prepending the ordering key.
-			// ---
-			pad = 2*RP.MAX_SZ;
-			for
-			(
-				s = Array(1+pad).join('\0') ;
-				i-- ;
-				fids[i] = ((t=a[i]).length < pad ? (t+s).slice(0,pad) : t) + fids[i]
-			);
-			
-			// 5. Sort `fids`, remove keys and return.
-			// ---
-			fids.sort();
-			for( i=fids.length ; i-- ; t=fids[i], fids[i]=1*t.slice(pad) );
-
-			return fids;
-		}
-		.setup
-		({
-			REPL: function(_,$1,a,i,x)
-			//----------------------------------
-			// Replacement routine.
-			// => `"..."`
-			{
-				a = $1.split('_');
-				(i = a.length) > callee.MAX_SZ && (callee.MAX_SZ=i);
-				for( ; i-- ; x=1*a[i], a[i]=String.fromCharCode(x>>>16, 0xFFFF&x) );
-
-				return a.join('').toSource();
-			},
-		}),
-
 	})
 
 	//==========================================================================
-	// GET RELATIVE INDEX: FID0, FID1, FID2, FID3
+	// GET RELATIVE INDEX: FID1, FID2, FID3, FIDX
 	//==========================================================================
 
 	[PRIVATE]
@@ -270,43 +131,7 @@
 			SPRD: $$.Dom.parentSpread,
 		}),
 
-		FID0 : function(/*Footnote*/fn,/*{_stoId=>fnId[]+{_fnId=>index}}&*/Q0,  _id,sto,ks,q,FV,t,s)
-		//----------------------------------
-		// (Absolute-Footnote-Index.) Return the *actual* 0-based index of this footnote
-		// within its story. (Since CC>=2020 we cannot rely on `fn.index`.)
-		// Cache Q0 :: { _storyID => fnId[]+{_fnId=>index} }
-		// this :: ~
-		// ---
-		// => uint
-		{
-			_id = '_'+fn.id;                      // _fid
-			sto = fn.parent;                      // Story
-			ks = '_' + sto.id;                    // _sid
-
-			if( q=Q0[ks] )
-			{
-				if( q.hasOwnProperty(_id) ) return q[_id];
-				$.global[callee.µ.__root__].kill(q);
-			}
-			
-			FV = sto.footnotes.everyItem();
-			
-			// :-)  As long as no footnote emanates from a table, the array
-			//     `FV.id` is ordered as expected (in-sync with actual indices.)
-			// :-(  Otherwise, it is necessary to rebuild the correct order
-			//      from parsing `FV.storyOffset`, because table footnotes are
-			//      scanned at the end of `FV`, disregarding their index.
-			// ---
-			t = sto.tables.count()
-				&& 0 <= (s=FV.storyOffset.toSource()).indexOf('/table[')
-				&& this.FTBL(FV.id,s);         // May be false in case of failure
-			
-			q = Q0[ks] = this.AMAP(t||FV.id);  // Always use FV.id as a fallback.
-
-			return q[_id];
-		},
-
-		FIDX : function(/*Footnote*/fn,/*{_stoId=>fnId[]+{_fnId=>index}}&*/Q0,/*{_fnId=>xId}&*/QX,/*'1'|'2'|'3'*/X,  x,sto,FN,a,RX,k,id,i)
+		FIDX : function(/*Footnote*/fn,/*{_stoId=>fnId[]+{_fnId=>index}}&*/Q0,/*{_fnId=>xId}&*/QX,/*'1'|'2'|'3'*/X,  x,sto,K,a,RX,k,id,i)
 		//----------------------------------
 		// (Relative-Footnote-Index.) Return the 0-based index of this footnote
 		// relative to its page, spread, or section.
@@ -316,220 +141,24 @@
 		// ---
 		// => uint [OK]  |  false [KO]
 		{
-			x = this.FID0(fn,Q0);                                     // Absolute index
+			x = this.NIND(fn,Q0);                                     // Absolute index
 
 			sto = fn.parent;                                          // Story
-			FN = sto.footnotes;                                       // Footnotes
+			K = sto.footnotes;                                        // Footnotes
 			a = Q0['_' + sto.id];                                     // a :: fid[] + {_fid=>index}
 
-			RX = this['RID'+X];                                       // FX :: footnote-to-OwnerId()
+			RX = this['RID'+X];                                       // RX :: footnote-to-OwnerId()
 			id = QX[k='_'+a[x]] || (QX[k]=RX(fn));                    // id :: (pg|sec|spd)Id
 			if( false===id ) return false;
 
 			for
 			(
 				i=x ;
-				i-- && id===(QX[k='_'+a[i]] || (QX[k]=RX(FN.itemByID(a[i])))) ;
+				i-- && id===(QX[k='_'+a[i]] || (QX[k]=RX(K.itemByID(a[i])))) ;
 			);
 
 			return x-(1+i);
 		},
-
-	})
-
-	//==========================================================================
-	// NUMBER-TO-NUMERAL ALGORITHMS
-	//==========================================================================
-
-	[PRIVATE]
-	
-	({
-		ARAB: function(/*uint>0*/z)
-		//----------------------------------
-		// ARABIC Numbering Style
-		// => str
-		{
-			return z.toString();
-		},
-		
-		ONEZ: function(/*uint>0*/z)
-		//----------------------------------
-		// SINGLE_LEADING_ZEROS Numbering Style
-		// => str
-		{
-			return 10 > z ? ('0'+z) : z.toString();
-		},
-
-		TWOZ: function(/*uint>0*/z)
-		//----------------------------------
-		// DOUBLE_LEADING_ZEROS Numbering Style
-		// => str
-		{
-			return 100 < z ? z.toString() : ('00'+z).slice(-3);
-		},
-
-		UROM: function(/*uint>0*/z,  r,k)
-		//----------------------------------
-		// UPPER_ROMAN Numbering Style
-		// => str
-		{
-			const MF = Math.floor;
-
-			r = '';
-			if( 1000 <= z )
-			{
-				k = MF(z/1000);
-				r = 5 <= k ? callee(k) : 'MMMM'.slice(-k);
-				z %= 1000;
-			}
-			100 <= z && ( (r+=['C','CC','CCC','CD','D','DC','DCC','DCCC','CM'][-1+MF(z/100)]),(z %= 100) );
-			10  <= z && ( (r+=['X','XX','XXX','XL','L','LX','LXX','LXXX','XC'][-1+MF(z/10)]), (z %= 10)  );
-			1   <= z && (  r+=['I','II','III','IV','V','VI','VII','VIII','IX'][-1+z] );
-			
-			return r;
-		},
-		
-		LROM: function(/*uint>0*/z)
-		//----------------------------------
-		// LOWER_ROMAN Numbering Style
-		// this :: ~
-		// => str
-		{
-			return this.UROM(z).toLowerCase();
-		},
-
-		ULET: function(/*uint>0*/z)
-		//----------------------------------
-		// UPPER_LETTERS Numbering Style
-		// => str
-		{
-			return (--z >= 26 ? callee(Math.floor(z/26)) : '') + String.fromCharCode(0x41 + (z%26));
-		},
-
-		LLET: function(/*uint>0*/z)
-		//----------------------------------
-		// LOWER_LETTERS Numbering Style
-		// => str
-		{
-			return (--z >= 26 ? callee(Math.floor(z/26)) : '') + String.fromCharCode(0x61 + (z%26));
-		},
-
-		SYMB: function(/*uint>0*/z,  c)
-		//----------------------------------
-		// SYMBOLS Numbering Style
-		// => str
-		{
-			c = "*\u2020\u2021\xA7\xB6".charAt((--z)%5);
-			return 5 > z ? c : Array(2+Math.floor(z/5)).join(c);
-		},
-		
-		ASTE: function(/*uint>0*/z)
-		//----------------------------------
-		// ASTERISKS Numbering Style
-		// => str
-		{
-			return '********'.slice(8 <= z ? -8 : -z);
-		},
-		
-		FULW: function(/*uint>0*/z)
-		//----------------------------------
-		// FULL_WIDTH_ARABIC Numbering Style
-		// => str
-		{
-			// Maps [0-9] --> (U+FF10..U+FF19)
-			// ---
-			return z.toString().replace(/[0-9]/g,callee.REPL);
-		}
-		.setup
-		({
-			REPL: function(dig){ return String.fromCharCode(0xFF10+1*dig) },
-		}),
-		
-		BATA: function(/*uint>0*/z,  c,N)
-		//----------------------------------
-		// ARABIC_ALIF_BA_TAH Numbering Style
-		// => str
-		{
-			const Q = "\u0623\u0628\u062A\u062B\u062C\u062D\u062E\u062F\u0630\u0631\u0632\u0633\u0634\u0635\u0636\u0637\u0638\u0639\u063A\u0641\u0642\u0643\u0644\u0645\u0646\u0647\u0648\u064A";
-			c = Q.charAt((--z)%(N=Q.length));
-			return N > z ? c : Array(2+Math.floor(z/N)).join(c);
-		},
-
-		ABJA: function(/*uint>0*/z,  c,N)
-		//----------------------------------
-		// ARABIC_ABJAD Numbering Style
-		// => str
-		{
-			const Q = "\u0623\u0628\u062C\u062F\u0647\u0648\u0632\u062D\u0637\u064A\u0643\u0644\u0645\u0646\u0633\u0639\u0641\u0635\u0642\u0631\u0634\u062A\u062B\u062E\u0630\u0636\u063A\u0638";
-			c = Q.charAt((--z)%(N=Q.length));
-			return N > z ? c : Array(2+Math.floor(z/N)).join(c);
-		},
-		
-		HBIB: function(/*uint>=0*/z,  s,n,t,r,i,p)
-		//----------------------------------
-		// HEBREW_BIBLICAL Numbering Style
-		// => str
-		{
-			s = z.toString();
-			
-			if( 3 < (n=s.length) )
-			{
-				// Beyond 999, numerals are just splitted in two parts:
-				// f(3456) => f(3) + f(456)
-				// In particular, f(1000) => f(1) since f(0) is empty.
-				// ---
-				return callee(Math.floor(z/1e3)) + callee(z%1e3);
-			}
-			
-			if( 1 < n && ('15'===(t=s.slice(-2)) || '16'===t) )
-			{
-				// Special treatment for `..15` and `..16` forms.
-				// E.g  f(916) => f(900) + "\u05D8\u05D6"
-				// ---
-				return callee(z-t) + ["\u05D8\u05D5","\u05D8\u05D6"][t-15];
-			}
-			
-			const CHR = String.fromCharCode;
-			const TEN = '\u05D9\u05DB\u05DC\u05DE\u05E0\u05E1\u05E2\u05E4\u05E6'; // 10 | 20 | ... | 90
-			const HUN = [
-				'\u05E7','\u05E8','\u05E9','\u05EA',                          // 100 | 200 | 300 | 400
-				'\u05EA\u05E7','\u05EA\u05E8','\u05EA\u05E9','\u05EA\u05EA',  // 500 | 600 | 700 | 800
-				'\u05EA\u05EA\u05E7'                                          // 900
-				];
-
-			for(
-				r='', i=-1 ;
-				++i < n ;
-				(t=1*s.charAt(i))
-				&& ( p=n-i, r+=(1===p&&CHR(0x5CF+t))||(2===p&&TEN.charAt(t-1))||(3===p&&HUN[t-1]) )
-			);
-
-			return r;
-		},
-
-		HNON: function(/*uint>0*/z, N,c)
-		//----------------------------------
-		// HEBREW_NON_STANDARD Numbering Style
-		// => str
-		{
-			const Q = "\u05D0\u05D1\u05D2\u05D3\u05D4\u05D5\u05D6\u05D7\u05D8\u05D9\u05DB\u05DC\u05DE\u05E0\u05E1\u05E2\u05E4\u05E6\u05E7\u05E8\u05E9\u05EA";
-			c = Q.charAt((--z)%(N=Q.length));
-			return (z >= N ? callee(Math.floor(z/N)) : '') + c;
-		},
-
-		KANJ: function(/*uint>0*/z)
-		//----------------------------------
-		// KANJI Numbering Style
-		// => str
-		{
-			// Maps [0-9] --> '\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D'
-			// ---
-			return z.toString().replace(/[0-9]/g,callee.REPL);
-		}
-		.setup
-		({
-			REPL: function(/*[0-9]*/c){ return '\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D'.charAt(1*c) },
-		}),
 
 	})
 
@@ -603,7 +232,7 @@
 
 				Q0 = D['0'+k];
 				rs = t[1]; // '0' | '1' | '2' | '3'
-				x = '0'===rs ? I.FID0(fn,Q0) : I.FIDX(fn,Q0,D[rs+k],rs);
+				x = '0'===rs ? I.NIND(fn,Q0) : I.FIDX(fn,Q0,D[rs+k],rs);
 				
 				x = false!==x && I[t[0]](x + 1*t[3]);
 
