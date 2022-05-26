@@ -1,0 +1,177 @@
+/*******************************************************************************
+
+		Name:           Endnote
+		Desc:           Provide access to endnote 'numerals.'
+		Path:           /etc/$$.Dom.Endnote.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =getNumeral() onLoad()
+		DOM-access:     YES
+		Todo:           More tests and NOTICE
+		Created:        220524 (YYMMDD)
+		Modified:       220526 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('Endnote') || eval(__(MODULE, $$.Dom.toSource(), 'Endnote', 220526, 'getNumeral'))
+
+	//==========================================================================
+	// COMMON ENUMERATION AND TOOLS
+	//==========================================================================
+
+	#include 'Dom.FootEndnote/$$.common.jsxinc'
+
+	//==========================================================================
+	// ENDNOTE ENUMS AND DATA
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		RS2S : $$.Env.domVersion(13) && eval(EndnoteRestarting.revSource()),    // {1164210803:"CONTINUOUS", 1165193843:"STORY_RESTART"}
+
+		// Endnote restart option map (0|1)
+		// ---
+		RSTA :
+		{
+			CONTINUOUS:                0,
+			STORY_RESTART:             1,
+		},
+		
+		// Cached endnote data per document  ::  { docSpec => <dataStr>, 0_docSpec =>{}, 1_docSpec=>{} }
+		// where <dataStr>    :: <ALGO><X1><RSTA><X1><PFSF><X1><StartAt><X1><Prefix><X1><Suffix><X1><Separator>
+		//                         0         1         2           3           4           5            6
+		// where <ALGO>       :: one of the ALGO keys (4 characters)
+		//       <RSTA>       :: '0' | '1'              ; 0<->Document-Numbering | 1<->Story-Numbering   ; cf ~.RSTA
+		//       <PFSF>       :: '0' | '1' | '2' | '3'  ; cf ~.PFSF
+		//       <StartAt>    :: `uint`
+		//       <Prefix>     :: str
+		//       <Suffix>     :: str
+		//       <Separator>  :: str
+		// [REM] Details about <i>_docSpec keys are explained in the code.
+		// ---
+		DOCS: {/* docSpec => dataStr, 0_docSpec=>{}, 1_docSpec=>{} */},
+	})
+
+	//==========================================================================
+	// GET RELATIVE INDEX: RID1 EIDX
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		DOCX : function(/*Endnote*/en,/*_nid => absoluteIndex }&*/Q,/*Document|_<docSpec>*/doc,  _id,NV,a,b,i)
+		//----------------------------------
+		// (Absolute-Endnote-Index-in-Doc) Return the 0-based index of this endnote
+		// relative to its document.
+		// Cache Q :: { _nid => absoluteIndex }
+		// this :: ~
+		// ---
+		// => uint [OK]  |  false [KO]
+		{
+			_id = '_' + en.id;                                        // _<noteId>
+			
+			if( Q.hasOwnProperty(_id) ) return Q[_id];
+			if( Q.__count__ ) return (q[_id]=false);                  // Shouldn't happen.
+
+			// Create the cache once.
+			// ---
+			'string' == typeof(doc) && (doc=resolve(doc.slice(1)));
+			if( !doc.isValid ) return false;                          // Shouldn't happen.
+			
+			NV = doc.stories.everyItem().endnotes.everyItem();
+			a = NV.id.slice();
+			b = NV.index.slice();
+
+			for( i=a.length ; i-- ; Q['_'+a[i]]=b[i] );               // _nid => index
+
+			return Q[_id];
+		},
+
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		onLoad: function onLoad_(  q,k)
+		//----------------------------------
+		// Clean up caches?
+		{
+		},
+		
+		getNumeral: function getNumeral_$Endnote$_t_b_S(/*Endnote|PluralEndnote*/en,/*-1|0|+1=0*/format,/*bool=0*/FORCE_ARRAY,  I,D,a,i,doc,t,k,rs,ps,x)
+		//----------------------------------
+		// Returns the endnote number as a string, with respect to the
+		// numbering style option (e.g "12", "012", "xii", etc.)
+		// If `format` is falsy, the numeral is returned with no prefix/suffix.
+		// If `format` is -1, apply the format of the *EN reference* (as shown
+		// in the main text),
+		// If `format` is +1, apply the format of the *EN marker* (as shown
+		// in the endnote text.)
+		// [REM] If en is a plural endnote, this function may return an
+		// array as well as a single string. Set FORCE_ARRAY to get an
+		// Array in any case.
+		// ---
+		// => str | str[]
+		{
+			( en && 'Endnote'==en.constructor.name && en.isValid )
+			|| error(__("Invalid `en` argument. Should be a valid Endnote."),callee);
+			
+			(format|=0) && (format=0>format?1:2); // format :: 00b_NO | 01b_MARK | 10b_REF
+			
+			I = callee.µ['~'];
+			D = I.DOCS;
+
+			a = en.getElements();
+			for( i=a.length ; i-- ; )
+			{
+				en = a[i];
+				(t=en.toSpecifier()) && (t=t.slice(0,t.indexOf('//')));
+				
+				doc = false;
+				if( !D.hasOwnProperty(k='_'+t) )
+				{
+					doc = resolve(t); // Document
+					doc.isValid || error(__("Invalid document associated to endnote %1.",en.toSpecifier()),callee);
+
+					t = doc.endnoteOptions.properties;
+					D[k] = (I.ALGO[I.NS2S[+t.endnoteNumberingStyle]]||'ARAB') +
+						'\x01' + (I.RSTA[I.RS2S[+t.restartEndnoteNumbering]]||'0') +
+						'\x01' + (I.PFSF[I.PS2S[+t.showEndnotePrefixSuffix]]||'0') +
+						'\x01' + t.startEndnoteNumberAt +
+						'\x01' + t.endnotePrefix +
+						'\x01' + t.endnoteSuffix +
+						'\x01' + t.endnoteSeparatorText;
+					
+					D['0'+k] = {/* _nid => absoluteIndex */};
+					D['1'+k] = {/* _stoId => nid[] + {_nid=>storyIndex} */};
+				}
+
+				// E.g "LROM<X1>0<X1>0<X1>123<X1>MyPrefix<X1>MySuffix<X1>\t"
+				//  -> ["LROM", "0", "0", "123", "MyPrefix", "MySuffix", "\t" ]
+				//        0      1    2     3         4           5       6
+				// ---
+				t = D[k].split('\x01');
+
+				rs = t[1]; // '1'<->StoNumber | '0'<->DocNumber
+				x = '1'===rs ? I.NIND(en,D['1'+k]) : I.DOCX(en,D['0'+k],doc||k);
+				
+				x = false!==x && I[t[0]](x + 1*t[3]);
+
+				format && x.length && (t[2]&format)         // t[2] :: 0_NO_PREFIX_SUFFIX | 1_PREFIX_SUFFIX_MARKER | 2_PREFIX_SUFFIX_REFERENCE | 3_PREFIX_SUFFIX_BOTH
+				&& (x=t[4]+x+t[5]);
+
+				a[i] = x;
+			}
+			
+			return (FORCE_ARRAY || 1 < a.length) ? a : a[0];
+		},
+
+	})
+
