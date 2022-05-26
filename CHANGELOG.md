@@ -1,3 +1,6 @@
+##### [220526]
+   - Added the module [`Dom.Endnote`](/etc/$$.Dom.Endnote.jsxlib), the counterpart of [`Dom.Footnote`](/etc/$$.Dom.Footnote.jsxlib) for endnotes. Both now rely on a [common toolbox](/etc/Dom.FootEndnote/$$.common.jsxinc).
+
 ##### [220523]
    - [`Check(Factory)`](/etc/ScriptUI/factories/$$.Check.jsxinc) and [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc): Better detection of Ctrl+Click.
 
