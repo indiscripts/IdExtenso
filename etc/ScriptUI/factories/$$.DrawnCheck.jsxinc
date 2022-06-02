@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220602 (YYMMDD)
+		Modified:       220603 (YYMMDD)
 
 *******************************************************************************/
 
@@ -309,6 +309,7 @@
 				F.XFOC = [r,g,b,1];
 				
 				// [ADD220602] Support .onLoad for each ICON function.
+				// WARNING: Not supported in CS4.
 				o = this.Icons;
 				for( k in o )
 				{
@@ -600,4 +601,6 @@
 			GETV: function getValue(  ){ return this.value },
 			CTRL: function getControl(){ return this.children[0] },
 		});
+		
+		$$.domVersion(7)||ScriptUI.DrawnCheckFactory.onLoad(); // CS4 fallback
 	}
