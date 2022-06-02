@@ -1,3 +1,10 @@
+##### [220603]
+  - Due to a specific limitation of ExtendScript CS4 —unability to retrieve _function_ keys using `for( k in o )`— the ScriptUI factory callbacks aren't available in InDesign CS4 (til someone find a genius hack!) So, if your script has to support this version, it is recommended to provide a fallback strategy at the factory level. Basically, the `onLoad` method of your factory won't be invoked in CS4. A simple trick is to add the line
+
+        $$.domVersion(7) || ScriptUI.MyCustomFactory.onLoad(); // CS4 fallback
+
+at the end of your code. This solution is now used in [`Check(Factory)`](/etc/ScriptUI/factories/$$.Check.jsxinc) and [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc).
+
 ##### [220602]
    - [`Env`](/core/$$.Env.jsxlib) now exposes a `isHighContrast` property (bool) in addition to `isDark`. So you can determine whether the UI, dark or light, is in high contrast state. Both properties are inherited by `$$`. The combination of `$$.isDark` and `$$.isHighContrast` allows your script to adjust its UI colors to the four possible states of the InDesign GUI.
    - The ScriptUI factories wrapper, [`$$.factories`](/etc/ScriptUI/$$.factories.jsxinc), now embeds a special, hidden module `$$.ScriptUIFactories` that connects any factory to IdExtenso's `onEngine` / `onLoad` / `onUnload` callback mechanism. Thus, you can declare a static `onLoad` method (resp. `onEngine`, `onUnload`) in your custom factory and then have it automatically called at the corresponding `$$` stage. Since ScriptUI factories are not _modules_, you couldn't enjoy usual callbacks in previous versions. Implementing `ScriptUI.myComponentFactory.onLoad` is very likely what you'll want to do to have internal data updated with respect to the context in which the framewok is loading. Typically, `$$.isDark` may have changed between two executions of your script in a session-persistent engine, so you may need to adjust UI colors accordingly, etc.
