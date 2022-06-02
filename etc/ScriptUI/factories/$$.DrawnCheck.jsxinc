@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220523 (YYMMDD)
+		Modified:       220602 (YYMMDD)
 
 *******************************************************************************/
 
@@ -92,6 +92,9 @@
 	      })
 
 	    as soon as the DrawnCheck factory is included (and before loading the framework.)
+	
+	[ADD220602] Each ICON function can provide a special `onLoad` method
+	that will be triggered at loading stage.
 	
 	BUTTON FLAVORS
 	
@@ -265,6 +268,61 @@
 		}
 		.setup
 		//----------------------------------
+		// Static
+		//----------------------------------
+		({
+			onLoad: function onLoad(  F,dk,d,x,t,r,g,b,o,k)
+			//----------------------------------
+			// (Re)set HDRW colors: CDSB, CVL0, CVL1, CINV, XVL0, XVL1, CFOC, XFOC
+			// this :: ScriptUI.DrawnCheckFactory
+			// => this&
+			{
+				F = this.HDRW;
+				dk = $$.isDark;
+				d = dk ? (1-$$.isHighContrast) : (2+$$.isHighContrast); // 0|1|2|3
+
+				F.CDSB = ( (x=[.40,.48,.58,.75][d]), [x,x,x,1] );
+
+				dk ? (x+=.1) : (x-=.1);
+				F.CVL0 = [x,x,x,1];
+				// ---
+				t = [.75,.78,.30,.35][d];
+				F.CVL1 = [t,t,t,1];
+				// ---
+				t = dk ? (x-.2) : (x+.2);
+				F.CINV = [t,t,t,1];
+				// ---
+				t = dk ? (x+.4) : (x-.4);
+				F.XVL0 = [t,t,t,1];
+				// ---
+				1 < (t+=.05)  && (t=1);
+				F.XVL1 = [t,t,t,1];
+
+				r = [.30,.30,.25,.32][d];
+				g = [.60,.61,.56,.65][d];
+				b = [.90,.92,.87,.98][d];
+				F.CFOC = [r,g,b,1];
+
+				1 < (r += .1)  && (r=1);
+				1 < (g += .05) && (g=1);
+				1 < (b += .02) && (b=1);
+				F.XFOC = [r,g,b,1];
+				
+				// [ADD220602] Support .onLoad for each ICON function.
+				o = this.Icons;
+				for( k in o )
+				{
+					o.hasOwnProperty(k)
+					&& 'function' == typeof(t=o[k])
+					&& 'function' == typeof(t.onLoad)
+					&& t.onLoad();
+				}
+
+				return this;
+			},
+		})
+		.setup
+		//----------------------------------
 		// Parameters, tools.
 		//----------------------------------
 		({
@@ -313,6 +371,8 @@
 			HDRW: function onDrawCheckbox(/*DrawState*/DS,  me,gx,v,k,a,p,b,f)
 			//----------------------------------
 			// onDraw callback of the inner Checkbox.
+			// [REM] Inner colors CDSB, CVL0, CVL1, CINV, XVL0, XVL1, CFOC, XFOC
+			// are now managed from onLoad.
 			// this  :: Checkbox
 			{
 				if( (!this.visible) || !(gx=this.graphics) ) return;
@@ -342,19 +402,7 @@
 					b=gx.newBrush(0,callee.CINV)
 				);
 				f.call(me,gx,p,b);
-			}
-			.setup
-			({
-				// --- Colors
-				CDSB: $$.isDark ? [.35,.35,.35,  1] : [.75,.75,.75,  1],
-				CVL0: $$.isDark ? [.4,.4,.4,  1]    : [.7,.7,.7,  1],
-				CVL1: $$.isDark ? [.7,.7,.7,  1]    : [.4,.4,.4,  1],
-				CINV: $$.isDark ? [.2,.2,.2,  1]    : [.9,.9,.9,  1],
-				XVL0: $$.isDark ? [.8,.8,.8,  1]    : [.3,.3,.3,  1],
-				XVL1: $$.isDark ? [.8,.8,.8,  1]    : [.3,.3,.3,  1],
-				CFOC: [.3,.6,.9,  1],
-				XFOC: [.35,.65,.95,  1],
-			}),
+			},
 
 			// [FIX210122] In CC most widgets have an obscure focus/blur
 			// sequence that may keep them 'active' while losing the focus.
@@ -552,5 +600,4 @@
 			GETV: function getValue(  ){ return this.value },
 			CTRL: function getControl(){ return this.children[0] },
 		});
-
 	}
