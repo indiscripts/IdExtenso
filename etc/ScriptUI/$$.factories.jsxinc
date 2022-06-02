@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210128 (YYMMDD)
-		Modified:       220307 (YYMMDD)
+		Modified:       220602 (YYMMDD)
 
 *******************************************************************************/
 
@@ -418,6 +418,36 @@
 	//----------------------------------
 	// This condition is required in persistent engines.
 	{
+		// [ADD220602] Create a $$.ScriptUIFactories module to enable
+		// onEngine/onLoad/onUnload mechanism at the factory level.
+		// Each xyzFactory can then have a *static* onEngine/onLoad/onUnload
+		// method in-sync with the corresponding IdExtenso stages.
+		// ---
+		eval(__(MODULE, $$, 'ScriptUIFactories', 220602))
+		[PRIVATE]
+		({
+			LOOP: function(/*key*/meth,  $$,k,f)
+			//----------------------------------
+			{
+				$$ = $.global[callee.µ.__root__];
+				
+				for( k in ScriptUI )
+				'Factory'==k.slice(-7)
+				&& 'function'==typeof(f=ScriptUI[k])
+				&& 'function'==typeof(f[meth])
+				&&
+				(
+					$$.trace(__("--- ScriptUI.%1.%2()", k,meth)),
+					f[meth]()
+				);
+			},
+		})
+		[PUBLIC]
+		({
+			onEngine: function onEngine_(){ callee.µ['~'].LOOP('onEngine') },
+			onLoad:   function onLoad_()  { callee.µ['~'].LOOP('onLoad')   },
+			onUnload: function onUnload_(){ callee.µ['~'].LOOP('onUnload') },
+		});
 
 		ScriptUI.factoryOptions = function factoryOptions(/*obj|str|num|bool*/ini,/*{}*/defs,  r,k,x,v,t)
 		//----------------------------------
