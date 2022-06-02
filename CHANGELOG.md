@@ -1,3 +1,6 @@
+##### [220602]
+   - [`Env`](/core/$$.Env.jsxlib) now exposes a `isHighContrast` property (bool) in addition to `isDark`. So you can determine whether the UI, dark or light, is in high contrast state. Both properties are inherited by `$$`. The combination of `$$.isDark` and `$$.isHighContrast` allows your script to adjust its UI colors to the four possible states of the InDesign GUI.
+
 ##### [220526]
    - Added the module [`Dom.Endnote`](/etc/$$.Dom.Endnote.jsxlib), the counterpart of [`Dom.Footnote`](/etc/$$.Dom.Footnote.jsxlib) for endnotes. Both now rely on a [common toolbox](/etc/Dom.FootEndnote/$$.common.jsxinc).
 
