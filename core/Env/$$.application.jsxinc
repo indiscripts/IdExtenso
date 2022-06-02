@@ -11,7 +11,7 @@
 		DOM-access:     [GET] app.version ; app.fullName ; app.generalPreferences.uiBrightnessPreference
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190202 (YYMMDD)
+		Modified:       220602 (YYMMDD)
 
 *******************************************************************************/
 
@@ -38,7 +38,7 @@
 			, µ['~'].IDVS
 			),
 
-		DARK : function(/*undef|1|0*/BKP,  v)
+		DARK : function(/*undef|1|0*/BKP,  v,x)
 		//----------------------------------
 		// Compute the DARK flag at loading stage.
 		// The caller is responsible for updating ~.SPRF if needed,
@@ -54,6 +54,7 @@
 		// and base this flag on the current DOM version and prefs.
 		// [REM] uiBrightnessPreference (available in INDD >= 9)
 		// is APPLICATION-persistent.
+		// [ADD220601] Determines the `HIGH` flag too.
 		{
 			if( 'undefined' == typeof BKP ) return callee.Q;
 
@@ -62,7 +63,10 @@
 			// GeneralPreference.uiBrightnessPreference (0.0 - 1.0)
 			// [CC13] Dark:0.0 ; MidDark:0.50 ; MidBright:0.51 ; Bright:1.0
 			// [CC 9] Dark:0.0 ; MidDark:0.33 ; MidBright:0.67 ; Bright:1.0
-			v = +(9 <= v && .5 >= app.generalPreferences.uiBrightnessPreference);
+			x = 1.0; // Default (CS.)
+			v = +(9 <= v && .5 >= (x=app.generalPreferences.uiBrightnessPreference));
+			
+			callee.HIGH = v ? +( x < .33 ) : +( x > .67 ); // [ADD220601] High contrast flag.
 
 			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
 
