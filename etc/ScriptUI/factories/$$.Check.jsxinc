@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180909 (YYMMDD)
-		Modified:       220602 (YYMMDD)
+		Modified:       220603 (YYMMDD)
 
 *******************************************************************************/
 
@@ -544,4 +544,6 @@
 			},
 
 		});
+		
+		$$.domVersion(7)||ScriptUI.CheckFactory.onLoad(); // CS4 fallback
 	}
