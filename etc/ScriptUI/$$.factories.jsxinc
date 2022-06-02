@@ -6,15 +6,16 @@
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           NO
-		Kind:           Snippet
+		Kind:           Snippet (including module)
 		API:  ScriptUI. factoryOptions() setWatcher() dispatch()
 		                customEventHandler()
 		                LINE measureMulti() POPU() NOOP()
 		      ScriptUIGraphics.prototype.draw()
+		             +  $$.ScriptUIFactories
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210128 (YYMMDD)
-		Modified:       220602 (YYMMDD)
+		Modified:       220603 (YYMMDD)
 
 *******************************************************************************/
 
@@ -423,11 +424,18 @@
 		// Each xyzFactory can then have a *static* onEngine/onLoad/onUnload
 		// method in-sync with the corresponding IdExtenso stages.
 		// ---
+		// WARNING: Since *in ExtendScript CS4* function keys cannot be
+		// browsed using `for( k in obj )`, the entire callback loop does
+		// not work in InDesign CS4. Hence you need to provide a fallback
+		// mechanism at the factory level if your script is intended to
+		// support CS4.
+		// ---
 		eval(__(MODULE, $$, 'ScriptUIFactories', 220602))
 		[PRIVATE]
 		({
 			LOOP: function(/*key*/meth,  $$,k,f)
 			//----------------------------------
+			// WARNING: CS4 cannot browse function keys!
 			{
 				$$ = $.global[callee.µ.__root__];
 				
