@@ -11,7 +11,7 @@ reduxPair   (str) Special suffix for formatting pairs if minRange > 1.
                   => "1f., 4-6, 10f., 15" ; implied minRange=2
 
 reduxMore   (str) Special suffix for formatting N consecutive numbers
-                  from N=3 to N=minRange-1, provided that reduxPair is
+                  from N=3 to N=minRange, provided that reduxPair is
                   defined. (`minRange` is set to 3 if not supplied.)
 
             E.g   $$.PageRange([1,2,4,5,6,10,11,15], {reduxPair:"f.", reduxMore:"ff."})
