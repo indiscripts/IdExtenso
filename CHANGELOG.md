@@ -1,5 +1,30 @@
+##### [220610]
+   - [`PageRange`](/etc/$$.PageRange.jsxlib): added the options `reduxPair` and `reduxMore` to the `format` method.
+
+~~~~
+reduxPair   (str) Special suffix for formatting pairs if minRange > 1.
+                  (`minRange` is set to at least 2 if not supplied.)
+                  Note: If reduxPair is missing while reduxMore is
+                  non-empty, assume reduxPair=reduxMore.
+
+            E.g   $$.PageRange([1,2,4,5,6,10,11,15], {reduxPair:"f."})
+                  => "1f., 4-6, 10f., 15" ; implied minRange=2
+
+reduxMore   (str) Special suffix for formatting N consecutive numbers
+                  from N=3 to N=minRange-1, provided that reduxPair is
+                  defined. (`minRange` is set to 3 if not supplied.)
+
+            E.g   $$.PageRange([1,2,4,5,6,10,11,15], {reduxPair:"f.", reduxMore:"ff."})
+                  => "1f., 4ff., 10f., 15" ; implied minRange=3
+
+         WARNING  reduxPair/reduxMore operate whatever the `style` option,
+                  which might lead to Roman numbers (i, ii, iii...) or
+                  alphabetic sequences (a, b, c...) The client code is
+                  responsible for adjusting the redux string accordingly.
+~~~~
+
 ##### [220603]
-  - Due to a specific limitation of ExtendScript CS4 —unability to retrieve _function_ keys using `for( k in o )`— the ScriptUI factory callbacks aren't available in InDesign CS4 (til someone find a genius hack!) So, if your script has to support this version, it is recommended to provide a fallback strategy at the factory level. Basically, the `onLoad` method of your factory won't be invoked in CS4. A simple trick is to add the line
+  - Due to a specific limitation of ExtendScript CS4 —unability to retrieve _function_ keys using `for( k in o )`— the ScriptUI factory callbacks aren't available in InDesign CS4 (til someone finds a genius hack!) So, if your script has to support this version, it is recommended to provide a fallback strategy at the factory level. Basically, the `onLoad` method of your factory won't be invoked in CS4. A simple trick is to add the line
 
         $$.domVersion(7) || ScriptUI.MyCustomFactory.onLoad(); // CS4 fallback
 
