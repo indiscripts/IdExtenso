@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of /Ext
-		API:            nudeName()
+		API:            nudeName() fresh()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        171202 (YYMMDD)
-		Modified:       171203 (YYMMDD)
+		Modified:       220713 (YYMMDD)
 
 *******************************************************************************/
 
@@ -116,13 +116,51 @@
 	// File.prototype.nudeName()
 	//==========================================================================
 
-	File.prototype.nudeName = function nudeName(/*bool=0*/uriEsc,  s,p)
+	File.prototype.nudeName = function nudeName(/*bool=0*/uri,  s,p)
 	//----------------------------------
 	// Return the name of this file without its extension.
-	// `uriEsc` (default:0) :: preserve UTF8 escape sequences.
+	// `uri` (default:0) :: return URI notation (based on `myFile.name`);
+	//       otherwise the `displayName` property is used.
+	// ---
 	// => str   -- e.g  File("path/to/foo.bar") => "foo"
 	{
-		s = this[uriEsc?'displayName':'name'];
-		return -1 == (p=s.lastIndexOf('.')) ? s : s.substr(0,p);
+		s = this[uri?'name':'displayName']; // [FIX220713] Was inversed!
+		return -1 == (p=s.lastIndexOf('.')) ? s : s.slice(0,p);
 	};
 
+	//==========================================================================
+	// [ADD220713] File.prototype.fresh()
+	//==========================================================================
+
+	File.prototype.fresh = function fresh(/*bool=0*/EXCLUDE_ME,  ff,fd,base,ext,i,t)
+	//----------------------------------
+	// Return a File *that does not exist yet*, based on this file,
+	// adding an incremental ` (#)` suffix to the display name.
+	// E.g `path/to/myFile.csv` -> `path/to/myFile (2).csv`
+	// 1. If `this` does not exist, return `this` if EXCLUDE_ME is
+	//    falsy (default behavior); otherwise apply the algorithm.
+	// 2. The returned File is built (if necessary) through `new File(...)`
+	// 3. If `this` name already has a counter suffix--e.g `myFile (3).txt`--
+	//    then it is incremented: `myFile (4).txt`
+	// ---
+	// => new File | this
+	{
+		if( !this.exists && !EXCLUDE_ME ) return this;
+		
+		fd = (ff=this).parent;
+		base = ff.nudeName();
+		ext = ff.displayName.slice(base.length);
+		base = base.trim();
+		i = 1;
+
+		if( t=base.match(callee.RE||(callee.RE=/\(\d+\)$/)) )
+		{
+			t = t[0];                              // `(...)`
+			i = parseInt(t.slice(1),10)||0;        // Existing index
+			base = base.slice(0,-t.length).trim(); // base :: `xyz (#)` --> `xyz`
+		}
+
+		while( (ff=new File(fd+'/'+base+' ('+(++i)+')'+ext)).exists );
+
+		return ff;
+	};
