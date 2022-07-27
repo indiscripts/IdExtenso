@@ -1,3 +1,6 @@
+##### [220728]
+   - Added the [`RectPack`](/etc/$$.RectPack.jsxlib) module, a fast and simple rectangle-packing algorithm that you can use for various layout-optimization projects. Goto [tests/RectPackTest](https://github.com/indiscripts/IdExtenso/tree/master/tests#rectpacktestjsx) for a basic InDesign demo script.
+
 ##### [220713]
    - Fixed a typo in [Ext/file](/core/Ext/$$.file.jsxinc)--the `nudeName()` wasn't honoring its argument--and added the method `File.prototype.fresh()` which always return a non-existing File instance based on the present File object. `myFile.fresh()` creates if necessary an incremental suffixed path, like in `"path/to/myFile (2).txt"`, etc.
 
