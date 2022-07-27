@@ -247,6 +247,19 @@ _Demonstrates:_
 
 ---
 
+##### [`RectPackTest.jsx`](RectPackTest.jsx)
+
+Simple rectangle packing (without rotation) on the active spread. (Undoable.)
+
+![RectPackTest Before/After](RectPackTest.gif)
+
+_Demonstrates:_
+   
+* Using the `RectPack` module (`etc` branch.)
+* Invoking the `error()` function.
+
+---
+
 ##### [`RegexFromCodeRanges.jsx`](RegexFromCodeRanges.jsx)
 
 A useful static routine available in the `RegExp` object.
