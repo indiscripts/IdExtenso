@@ -1,0 +1,279 @@
+/*******************************************************************************
+
+		Name:           RectPack
+		Desc:           Fast and simple rectangle packer algorithm.
+		Path:           /etc/$$.RectPack.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =pack() SatisfyingFill
+		DOM-access:     NO
+		Todo:           ---
+		Created:        220727 (YYMMDD)
+		Modified:       220728 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('RectPack') || eval(__(MODULE, $$, 'RectPack', 220728, 'pack'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+		This rectangle packing module is directly inspired by the great and
+		simple `potpack` implementation -- <github.com/mapbox/potpack> --
+		a "tiny JavaScript library for packing 2D rectangles into a near-
+		square container."
+		
+		When porting the code into IdExtenso, some changes have been applied
+		though. In particular, our `pack()` method offers as 2nd arg a boolean
+		option that 'allows 90 deg rotations' (ALLOW_ROT) in case the primary
+		algorithm would fail to produce a satisfying `fill` ratio. Note,
+		however, that the potpack algo is not heuristically optimized for
+		supporting rotations, so ALLOW_ROT is just a last-resort refinement
+		that will only *occasionally* find a better solution. Anyway, this
+		sometimes happened during my tests, so I kept this small hack!
+		
+		If ALLOW_ROT is enabled, the process will be twice slower on average,
+		unless you set a low `µ.SatisfyingFill` condition. Usual fill ratios
+		are around 0.8 (meaning that 80% of the packing canvas is finally filled.)
+		Now suppose you settle for a ratio of 0.6, then the rotational variant
+		of the algorithm will be invoked *only if* the primary solution is worse
+		(fill < 0.6), which should rarely happen.
+
+		USAGE
+		________________________________________________________________________
+
+		Supply a `boxes` array initialized with rectangle objects of the form
+		
+		  { w:<width>, h:<height>, ?<additional_properties> }
+
+		Your incoming elements can have <additional_properties> like id, name, etc.
+		Only `w` and `h` (positive numbers) are mandatory keys. If you provide
+		initial `x`, `y` coordinates, they will be overwritten by `pack` but still
+		serve for determining `xMin` and `yMin` properties available in the returned
+		structure (see below.)
+		
+		The `pack()` method is automatic, so
+
+		  $$.RectPack.pack( myBoxes )
+
+		is equivalent to
+
+		  $$.RectPack( myBoxes )
+		
+		When the function returns, the original elements have new `x` and `y`
+		properties that determine the solution. In case ALLOW_ROT is enabled,
+		the property `rot` may be set on some elems, indicating that such
+		object has to be rotated to fit the resulting layout.
+		
+		However, `w` and `h` remain unchanged; it's up to you to interpret
+		`rot` and apply any desired change on the target objects--typically,
+		InDesign components.
+
+		An informational structure is returned:
+		{
+		  wTot:   Width of the resulting canvas.
+		  hTot:   Height of the resulting canvas.
+		  fill:   Fill ratio, that is, <boxesArea>/<canvasArea>
+		  
+		  ?xMin:  If available, minimum `x` property of the INCOMING elems.
+		          Zero otherwise.
+		  ?yMin:  If available, minimum `y` property of the INCOMING elems.
+		          Zero otherwise.
+		}
+		
+		Note that `$$.RectPack` does not send any DOM command. It only resolves
+		the packing problem in setting x, y coordinates on the `boxes` elements.
+		Hence the client script can use this module for other purposes than
+		packing InDesign PageItems.
+
+	*/
+
+	//==========================================================================
+	// PRIVATE
+	//==========================================================================
+	
+	[PRIVATE]
+	
+	({
+		HSRT: function(/*{w,h}*/a,/*{w,h}*/b)
+		//----------------------------------
+		// (Desc-Height-Sort.) Sort by descending height (`obj.h`).
+		// => num
+		{ return b.h-a.h },
+
+		SFIT: function(/*{w,h...}*/b,/*{w,h...}*/s)
+		//----------------------------------
+		// (Static-Fit.) Whether the box `b` fits in the space `s`.
+		// => 1 | 0
+		{ return +(b.w <= s.w && b.h <= s.h) },
+
+		RFIT: function(/*{w,h...}*/b,/*{w,h...}*/s,  w,h)
+		//----------------------------------
+		// (Rotational-Fit.) Whether the box `b` fits in the space `s`,
+		// including the option of swapping w<->h
+		// => +1 [OK] | 0 [KO] | -1 [OK-ROT]
+		{ return (w=b.w), (h=b.h), (+(w <= s.w && h <= s.h)||-(h <= s.w && w <= s.h)) },
+		
+		ALGO: function(/*{wTot,hTot,fill...}&*/q,/*num>0*/area,/*num>0*/wMax,/*bool=0*/CAN_ROT,/*{w,h,...}[]&*/boxes,  S,F,W,H,bx,sp,t,z,i)
+		//----------------------------------
+		// (Generic-algorithm.) `boxes` already sorted.
+		// this :: ~
+		// => ]0,1] [=q.fill]  |  0 [KO]
+		{
+			t = Math.ceil(Math.sqrt( 1.05*area ));                    // "Aim for a squarish canvas, slightly adjusted for sub-100% space utilization."
+			S = [{ x: 0, y: 0, w: t < wMax ? wMax : t, h: 1/0 }];     // "Start with a single empty space, unbounded at the bottom."
+
+			F = CAN_ROT ? this.RFIT : this.SFIT;
+			for( W=H=0, z=-1 ; ++z < boxes.length ; )
+			{
+				bx = boxes[z];
+
+				for( i=S.length ; i-- && !(t=F(bx,sp=S[i])) ; );      // "Look through S backwards so we check smaller spaces first."
+				if( i < 0 ) return 0;                                 // Shouldn't happen (by design.)
+				0 > t && (bx.rot=1, t=bx.w, bx.w=bx.h, bx.h=t);       // Conditionally apply 90° rotation.
+
+				// Having a space container, let's place the box!
+				// ---
+				bx.x = t = sp.x;
+				W < (t+=bx.w) && (W=t);                              // Increase total width if needed.
+				bx.y = t = sp.y;
+				H < (t+=bx.h) && (H=t);                              // Increase total height if needed.
+
+				// Update the space(s) accordingly.
+				// ---
+				if( bx.h === sp.h )                                 // Box height matching space height?
+				{
+					(t=bx.w) === sp.w
+					? ( S.splice(i,1) )                               // Exact match -> remove the space.
+					: ( sp.x += t, sp.w -= t );                     // Otherwise -> horizontal shift and redux.
+				}
+				else
+				{
+					(t=bx.w) !== sp.w &&                            // Non-matching widths -> add NEW space to the right.
+					( S[S.length] = { x:sp.x+t, y:sp.y, w:sp.w-t, h:bx.h } );
+					
+					sp.y += bx.h, sp.h -= bx.h;                   // In any case: vertical shift and redux.
+				}
+			}
+
+			// Container width, height, space utilization.
+			// ---
+			q.wTot = W;
+			q.hTot = H;
+			return (q.fill=(area/(W*H))||0);
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+	
+	[PUBLIC]
+	
+	({
+		// A number between 0 and 1 (exclusive) that determines the minimum
+		// `fill` ratio for a satisfying result. Default is .85, meaning 85%.
+		// Most packings won't reach that ratio. Anyway, it is used to decide
+		// whether the rotational variant of the algorithm should be tried.
+		// In case SatisfyingFill is met straight from the primary algorithm,
+		// this saves performance. Use a lower ratio to make the rotational
+		// variant be processed only in the worst cases (i.e, very 'unsats-
+		// fying' results.)
+		SatisfyingFill: .85,
+
+		pack: function pack_Â_b_Õ$false$(/*{w,h,...}[]&*/boxes,/*bool=0*/ALLOW_ROT,  µ,$$,I,area,wMax,xMin,yMin,box,score,q,z,t,q2,a,o)
+		//----------------------------------
+		// Quickly pack the incoming boxes by adding x,y coordinates to each.
+		// Every `boxes[i]` element:
+		// (1) MUST provide positive `w` (width) and `h` (height) properties.
+		//     It is highly encouraged to use uint values for best performance.
+		// (2) MAY provide `x` and `y` initial coordinates (optional) that
+		//     are used for extracting minima before overwriting.
+		// (3) MAY provide additional properties (e.g `id`, `name`...) that
+		//     won't be altered.
+		// The method returns an informational object { wTot, hTot, fill, xMin, yMin }
+		// indicating the total width/height of the resulting canvas and the space
+		// utilization in ]0,1]. An ideal packing would result in fill==1. In addition,
+		// if `x`,`y` properties were available before processing, then the initial
+		// minimum coordinates are stored in xMin, yMin.
+		// - If ALLOW_ROT is truthy and the ordinary algorithm is unstatisfying (w.r.t
+		//   µ.StatisfyingFill), then a new attempt is processed that now allows any
+		//   {w,h} box to be positionned with a 90 degree rotation (as if w and h were
+		//   exchanged.) Any box to be rotated will have a `.rot` flag added (=1).
+		//   Note that w,h still reflect the original dimensions. The client script
+		//   is responsible for applying the rotations and updating dims if desired.
+		// [REM] This method will *sort* the incoming array and *change* the x,y
+		// properties, so the client should make a copy if it has reasons to do so.
+		// ---
+		// => new {wTot,hTot,fill,xMin=0,yMin=0} [OK]  |  false [KO]
+		{
+			µ = callee.µ;
+			$$ = $.global[µ.__root__]; // agnostic reference
+			I = µ['~'];
+
+			// Total box area and min/max data.
+			// ---
+			for
+			(
+				area=wMax=0, xMin=yMin=1/0, z=boxes.length ;
+				z-- ;
+				area += (W=(box=boxes[z]).w)*box.h,                   // Update theoretical total area.
+				W > wMax && (wMax=W),                                 // Update max width.
+				(t=(0|box.x)) < xMin && (xMin=t),                     // No problem if box.x and
+				(t=(0|box.y)) < yMin && (yMin=t)                      // box.y are missing.
+			);
+			if( !area ) return false;
+
+			boxes.sort(I.HSRT);                                       // "Sort the boxes for insertion."
+
+			q = { wTot:0, hTot:0, fill:0, xMin:xMin, yMin:yMin };
+			$$.trace( __("%1 > Calling the packing algorithm (no rotation, area:%2, boxes:%3)...",µ,area,boxes.length) );
+			score = I.ALGO(q, area, wMax, false, boxes);              // No rotation.
+			if( !score )
+			{
+				$$.warn( __("%1 > Failed to run the packing algorithm (area:%2, boxes:%3)...",µ,area,boxes.length) );
+				return false;
+			}
+			$$.trace( __("%1 > Score: %2%%.",µ,Math.round(score*100)) );
+
+			if( score < µ.SatisfyingFill && ALLOW_ROT )
+			{
+				$$.trace( __("%1 > New attempt allowing rotations...",µ) );
+				q2 = { wTot:0, hTot:0, fill:0, xMin:xMin, yMin:yMin };
+				for
+				(
+					a=Array(z=boxes.length) ;                         // Create a copy of boxes -> a.
+					z-- ;
+					t=boxes[z], a[z]={ w:t.w, h:t.h }
+				);
+
+				t = I.ALGO(q2, area, wMax, true, a);                  // Retry, allowing rotations.
+				
+				if( t > score )                                       // Got a better solution w/ rotations.
+				{
+					$$.trace( __("%1 > :-) Better score with rotations: %2%% > %3%%",µ,Math.round(t*100),Math.round(score*100)) );
+					q = q2;
+					for
+					(
+						z=a.length ; z-- ;
+						t=a[z], o=boxes[z],
+						o.x=t.x, o.y=t.y,
+						(t.rot && (o.rot=1))
+					);
+				}
+				else
+				{
+					$$.trace( __("%1 > :-( No improvement (%2%%) obtained from allowing rotations.",callee.µ,Math.round(t*100)) );
+				}
+			}
+			return q;
+		},
+	})
+
+
+
+
