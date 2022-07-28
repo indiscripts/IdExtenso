@@ -2,7 +2,7 @@
 // ---
 #include '../$$.jsxinc'
 
-// UniAsc module.
+// RectPack module.
 // ---
 #include '../etc/$$.RectPack.jsxlib'
 
