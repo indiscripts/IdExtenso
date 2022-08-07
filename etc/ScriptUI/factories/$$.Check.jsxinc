@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180909 (YYMMDD)
-		Modified:       220603 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -124,6 +124,7 @@
 		// .onEvent       (?fct)    Any event handler.
 		// ---
 		// .enabled | .visible      States.
+		// .more          (?obj)    Custom options.
 		// ---
 		// => Group[[Check]]   ::   G(C,S)
 		//   .properties       ::   { kind, Ternary, CustomBox }
@@ -140,9 +141,8 @@
 
 			// Create the component.
 			// ---
-			r = ScriptUI.builder
-			(
-				{
+			r = 
+			{
 					// --- Layout.
 					margins:                ops.margins||0,
 					spacing:                ops.spacing,
@@ -189,7 +189,10 @@
 					{
 						properties:         { text:ops.text },
 					},
-				},
+			};
+			r = ScriptUI.builder
+			(
+				ScriptUI.moreOptions(r, ops.more),                         // [ADD220807]
 				parent.add( 'group', void 0, callee.CREA(ops) )
 			);
 
@@ -272,6 +275,8 @@
 				onClickChange: void 0,
 				onRightClick:  void 0,
 				onEvent:       void 0,
+				// ---
+				more:          {},
 			},
 			
 			CREA: function(/*{}*/ops)
