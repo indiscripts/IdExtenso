@@ -1,6 +1,6 @@
 ##### [220807]
    - Added the `moreOptions(resObj&, anyObj)` method to [`ScriptUI/factories`](/etc/ScriptUI/$$.factories.jsxinc). A simple utility for adding extra options to a resource before calling the builder. Will be used in IdExtenso's [`factories`](/etc/ScriptUI/factories/) for handling the option `more`. Do the same with your own factories if needed.
-   - Updated all [existing factory components](/etc/ScriptUI/factories/) so they now support the option `more` when you call the factory. This must be an `Object` having extra properties that you want to append to the resource object before the internal call to `ScriptUI.builder`. From then, you no longer need an external mechanism if you need to load extra properties at construction time. Say you want a Check component to have a custom ID, just add it in a `more` object:
+   - Updated all [existing factory components](/etc/ScriptUI/factories/) so they now support the option `more` when you call the factory. This must be an `Object` having extra properties that you want to append to the resource object before the internal call to `ScriptUI.builder`. From then, you no longer need an external mechanism if you have to load extra properties at construction time. Say you want a Check component to have a custom ID, just add it in a `more` object:
 
    			CheckFactory$MyCheck1:
 			[{
