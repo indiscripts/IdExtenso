@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190314 (YYMMDD)
-		Modified:       210821 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -116,6 +116,7 @@
 		// .onEvent       (?fct)    Any event handler.
 		// ---
 		// .enabled | .visible      States.
+		// .more          (?obj)    Custom options.
 		// ---
 		// [REM] The shortcut $key:<str> is supported too, as specified in CheckFactory.
 		// ---
@@ -170,7 +171,8 @@
 				}
 				else
 				{
-					r.hasOwnProperty(k) || 'columns'==k || 'help'==k || 'checkWidth'==k || 'checkHeight'==k
+					r.hasOwnProperty(k)
+					|| 'columns'==k || 'help'==k || 'checkWidth'==k || 'checkHeight'==k || 'more'==k
 					|| ( r[k]=ops[k] );    // fallback for foreign keys
 				}
 			}
@@ -244,7 +246,7 @@
 			r = ScriptUI.builder.call
 			(
 				this,
-				r,
+				ScriptUI.moreOptions(r, ops.more), // [ADD220807]
 				parent.add( 'group', void 0, { kind:callee.name, ColCount: nc} )
 			);
 
