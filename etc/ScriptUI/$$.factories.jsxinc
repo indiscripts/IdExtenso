@@ -524,7 +524,7 @@
 		// ---
 		// => res&
 		{
-			if( moreObj !== Object(moreObj) ) return;
+			if( moreObj !== Object(moreObj) ) return res;
 			for( k in moreObj ) moreObj.hasOwnProperty(k) && (res[k]=moreObj[k]);
 			return res;
 		};
