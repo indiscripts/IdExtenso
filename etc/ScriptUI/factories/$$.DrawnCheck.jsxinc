@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220603 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -188,8 +188,9 @@
 		// .onRightClick  (?fct)    'rclicked' handler.
 		// .onEvent       (?fct)    Any event handler.
 		// ---
-		// .extra      (any)        Any custom property.
+		// .extra          (any)    Any custom property. [DEPRECATED: Use `more` instead.]
 		// .enabled | .visible      States.
+		// .more          (?obj)    Custom options.
 		// ---
 		// => Group[[DrawnCheck]]  ::   G(C)
 		//   .properties           ::   { kind, IgnoreClick, Locked }
@@ -205,47 +206,50 @@
 
 			// Create the component.
 			// ---
+			r = 
+			{
+				// --- Layout.
+				margins:                ops.margins,
+				spacing:                0,
+				orientation:            'row',
+				alignChildren:          ScriptUI.CC,
+				// --- Watched.
+				value:                  V,
+				icon:                   DRW ? ops.icon : '',
+				helpTip:                ops.helpTip,
+				extra:                  ops.extra, // not watched [DEPRECATED]
+				onClickChange:          void 0,
+				onRightClick:           void 0,
+				onEvent:                void 0,
+				// --- Inner events.
+				_mousedown_mouseup:     ops.ignoreClick ? void 0 : callee.HMOU,
+				// --- Private
+				__mouseDetails__:       '', // [ADD220520]
+				// --- Public methods.
+				setValue:               callee.SETV,
+				getValue:               callee.GETV,
+				getControl:             callee.CTRL, // ret. the main component
+				popup:                  ScriptUI.POPU, // noop if Popup unavailable.
+				// --- Control.
+				CheckBox$0:
+				{
+					properties:         { text:'' },
+					alignment:          ScriptUI.CC,
+					value:              !!V,
+					__iconKey__:        DRW ? ops.icon : '',
+					_mousedown:         ops.ignoreClick ? void 0 : callee.HDWN, // [ADD220520] Only for registering the MouseEvent props
+					onClick:            ops.ignoreClick ? void 0 : callee.HMOU,
+					onDraw:             callee.HDRW,
+					optimalSize:        callee.SIZE,
+					maximumSize:        callee.SIZE,
+					_blur:              callee.HBLU,
+					enabled:            !ops.ignoreClick,
+				},
+			};
+
 			r = ScriptUI.builder
 			(
-				{
-					// --- Layout.
-					margins:                ops.margins,
-					spacing:                0,
-					orientation:            'row',
-					alignChildren:          ScriptUI.CC,
-					// --- Watched.
-					value:                  V,
-					icon:                   DRW ? ops.icon : '',
-					helpTip:                ops.helpTip,
-					extra:                  ops.extra, // not watched
-					onClickChange:          void 0,
-					onRightClick:           void 0,
-					onEvent:                void 0,
-					// --- Inner events.
-					_mousedown_mouseup:     ops.ignoreClick ? void 0 : callee.HMOU,
-					// --- Private
-					__mouseDetails__:       '', // [ADD220520]
-					// --- Public methods.
-					setValue:               callee.SETV,
-					getValue:               callee.GETV,
-					getControl:             callee.CTRL, // ret. the main component
-					popup:                  ScriptUI.POPU, // noop if Popup unavailable.
-					// --- Control.
-					CheckBox$0:
-					{
-						properties:         { text:'' },
-						alignment:          ScriptUI.CC,
-						value:              !!V,
-						__iconKey__:        DRW ? ops.icon : '',
-						_mousedown:         ops.ignoreClick ? void 0 : callee.HDWN, // [ADD220520] Only for registering the MouseEvent props
-						onClick:            ops.ignoreClick ? void 0 : callee.HMOU,
-						onDraw:             callee.HDRW,
-						optimalSize:        callee.SIZE,
-						maximumSize:        callee.SIZE,
-						_blur:              callee.HBLU,
-						enabled:            !ops.ignoreClick,
-					},
-				},
+				ScriptUI.moreOptions(r, ops.more),                         // [ADD220807]
 				parent.add( 'group', void 0, callee.CREA(ops) )
 			);
 
@@ -349,6 +353,8 @@
 				onClickChange: void 0,
 				onRightClick:  void 0,
 				onEvent:       void 0,
+				// ---
+				more:         {},
 			},
 			
 			CREA: function(/*{}*/ops)
