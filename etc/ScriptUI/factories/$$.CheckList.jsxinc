@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -244,6 +244,7 @@
 		// .onEvent       (?fct)     Any event handler.
 		// ---
 		// .enabled | .visible      States.
+		// .more          (?obj)    Custom options.
 		// ---
 		// => Group[[CheckList]]  ::   G( L|D )
 		//   .properties          ::   { kind, MinLines, MaxLines }
@@ -322,7 +323,8 @@
 			};
 
 			r = ScriptUI.builder
-			(	r,
+			(
+				ScriptUI.moreOptions(r, ops.more),          // [ADD220807]
 				parent.add( 'group', void 0, callee.CREA(ops) )
 			);
 
@@ -365,6 +367,8 @@
 				onValueChange: void 0,
 				onRightClick:  void 0,
 				onEvent:       void 0,
+				// ---
+				more:         {},
 			},
 			
 			CREA: function(/*{}*/ops)
