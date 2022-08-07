@@ -7,8 +7,9 @@
 $$.load(0);
 
 // =============================================================================
-// TestSideMenu [210814]
+// TestSideMenu [220807]
 // SideMenuFactory tester. (Also using a Popup.)
+// Added custom property though the `more` option.
 // =============================================================================
 try
 {
@@ -47,6 +48,11 @@ try
 					onClickChange:     function onClickChange()
 					{
 						this.popup( __("You are now entering Feature #%1 area.",1+this.value), 1, 1.5 );
+					},
+					more:
+					{
+						someCustomProp: "Hello World!",
+						_layout: function(){ alert("Before we show you the dialog, here is the custom prop:\r" + this.someCustomProp) },
 					},
 				}],
 
