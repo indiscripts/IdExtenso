@@ -7,7 +7,7 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Snippet (including module)
-		API:  ScriptUI. factoryOptions() setWatcher() dispatch()
+		API:  ScriptUI. factoryOptions() moreOptions() setWatcher() dispatch()
 		                customEventHandler()
 		                LINE measureMulti() POPU() NOOP()
 		      ScriptUIGraphics.prototype.draw()
@@ -15,7 +15,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        210128 (YYMMDD)
-		Modified:       220603 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -509,6 +509,24 @@
 			for( k in ini ) ini.hasOwnProperty(k) && (!r.hasOwnProperty(k)) && (r[k]=ini[k]);
 			
 			return r;
+		};
+
+		ScriptUI.moreOptions = function moreOptions(/*obj&*/res,/*?obj*/moreObj,  k)
+		//----------------------------------
+		// [ADD220807] Simple utility for adding extra options to a factory resource
+		// before calling the builder. (In the sample factories, the `moreObj` is
+		// attached to the option `more`. Best is to keep that convention.)
+		// [REM] The purpose of the `more` option is to let the client code easily
+		// add extra options to the resource, in addition to those which are explicitly
+		// controlled and interpreted by the factory. However, the client is responsible
+		// for not supplying extra options that may mistakenly override existing ones.
+		// NO FILTERING IS APPLIED HERE.
+		// ---
+		// => res&
+		{
+			if( moreObj !== Object(moreObj) ) return;
+			for( k in moreObj ) moreObj.hasOwnProperty(k) && (res[k]=moreObj[k]);
+			return res;
 		};
 
 		ScriptUI.setWatcher = function setWatcher(/*Widget*/wg,/*str|str[]*/keys,/*fct|0*/watchFct,/*?{}|any*/ops,/*bool=0*/SKIP_DEFINED,  i,t,k)
