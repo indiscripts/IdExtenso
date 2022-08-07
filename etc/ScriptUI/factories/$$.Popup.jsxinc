@@ -13,7 +13,7 @@
 		Todo:           Pressing [Esc] while a persistent Popup is shown
 		                freezes the component. Looking for a workaround...
 		Created:        190303 (YYMMDD)
-		Modified:       210825 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -126,13 +126,15 @@
 		// .xOffset    (uint=2)     Horizontal offset (in px) relative to the left edge.
 		// .yOffset    (uint=4)     Vertical offset (in px) relative to the bottom edge.
 		// ---
+		// .more          (?obj)    Custom options.
+		// ---
 		// => Group[[Popup]]    ::  G(E,E) [CC]  |  G(G,S) [CS]
 		//   .properties        ::  { kind, }
 		{
 			// Normalize options.
 			// ---
 			'number' == typeof ops && (ops={auto:ops>>>0});
-			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS); // defaults
 
 			// In CC the lineChars setting (10..100) needs some
 			// reduction--about 70%--to get similar results in CS-CC.
@@ -221,7 +223,7 @@
 
 			r = ScriptUI.builder
 			(
-				r,
+				ScriptUI.moreOptions(r, ops.more), // [ADD220807]
 				parent.add( 'group',void 0,
 				{
 					kind:                    callee.name,
@@ -270,6 +272,8 @@
 				margins:       8,
 				xOffset:       2,
 				yOffset:       4,
+				// ---
+				more:          {},
 			},
 
 			CACH: function __cache__(/*-1|?0|+1*/task,/*?str*/msg,/*?0|1|2*/color,  t)
@@ -300,7 +304,11 @@
 			// this    :: Group[[Popup]]
 			// ev      :: type:'mouseup'[Win] | 'mousedown'[Mac]
 			{
-				this.visible && this.update();
+				if( this.visible )
+				{
+					this.update();
+					ScriptUI.dispatch(this,'popoff');       // [ADD220711] Notify 'popoff'
+				}
 			},
 		})
 		.setup
@@ -349,7 +357,7 @@
 				BACK_NAME: '__back__',
 			}),
 
-			UPDT: function update(/*?Widget*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r,re,tx)
+			UPDT: function update(/*?Widget|{left,top}*/proxy,/*?str*/msg,/*?0|1|2=0*/color,/*0..10*/seconds,  r,wb,re,tx)
 			//----------------------------------
 			// Update method. Pass in a falsy `proxy` and/or a falsy `msg` to hide the popup.
 			// [ADD210819] Internal cache is used to avoid re-processing same message/color
@@ -362,9 +370,12 @@
 			{
 				// Checkpoint.
 				// ---
-				r = (msg=String(msg||'')).length
-				&& ScriptUI.isWidget(proxy)
-				&& !proxy.__state__;
+				r = (msg=String(msg||'')).length &&
+				(
+					ScriptUI.isWidget(proxy)
+					? ( !proxy.__state__ && (wb=proxy.windowBounds) )
+					: ( proxy===Object(proxy) && 'number'==typeof(proxy.left) && 'number'==typeof(proxy.top) && (wb=proxy) )
+				);
 
 				r && ( 1 < (color>>>=0) && (color=2) );                    // [CHG210818] Normalize color right now.
 
@@ -390,7 +401,7 @@
 
 				// Positioning => color and show.
 				// ---
-				if( r=callee.POSN(this,proxy) )
+				if( r=callee.POSN(this,wb) )
 				{
 					callee.COLR(this, color);
 					this.visible = true;
@@ -486,6 +497,8 @@
 						w < t && (w=t);
 						h < a[1] && (h=a[1]);
 					}
+					
+					if( !wg.size ) return callee.Q;                   // [FIX211223] Prevents errors if the UI is not visible yet.
 
 					// Inner size (incl. inset) and location.
 					// ---
@@ -533,13 +546,15 @@
 					},
 				}),
 				
-				POSN: function(/*Popup*/me,/*Widget*/proxy,  wb,pp,x,y,mx,my)
+				POSN: function(/*Popup*/me,/*{left,top,?height}*/wb,  win,pp,x,y,mx,my)
 				//----------------------------------
 				// Position the sized Popup relative to `proxy`.
+				// [CHG220603] `wb` arg, any virtual {left,top,?height} obj is allowed,
+				// assumed in windowBounds space.
 				// => true [OK] | false [KO]
 				{
-					if( !(wb=proxy.windowBounds) ) return false;
-					
+					if( !wb ) return false;
+
 					// SUI Scaling fixer is required on:
 					// - wb.left|top            ; [REM] wb.right|bottom are IRRELEVANT
 					// - any Window metrics     ; [REM] all in screen coordinates
@@ -547,19 +562,20 @@
 					const KX = callee.X_SCALE;
 					const KY = callee.Y_SCALE;
 
+					win = me.window;
 					pp = me.properties;
 
 					x = wb.left/KX + pp.XOffset;
-					mx = proxy.window.windowBounds.right/KX - me.size[0] - 10;  // Maximum x
-					x > mx && (x=mx);                                           // Shift to the left as necessary.
+					mx = win.windowBounds.right/KX - me.size[0] - 10;  // Maximum x
+					x > mx && (x=mx);                                  // Shift to the left as necessary.
 					// ---
-					y = wb.top/KY + wb.height + pp.YOffset;                     // Do not use wb.bottom!
-					my = proxy.window.windowBounds.bottom/KY - me.size[1];      // Maximum y
-					y > my && (y=wb.top/KY - me.size[1] - pp.YOffset);          // Go to the top edge instead.
+					y = wb.top/KY + (0|wb.height) + pp.YOffset;        // Do not use wb.bottom!
+					my = win.windowBounds.bottom/KY - me.size[1];      // Maximum y
+					y > my && (y=wb.top/KY - me.size[1] - pp.YOffset); // Go to the top edge instead.
 
 					// Translate (x,y) in me.parent coordinates.
 					// ---
-					if( me.parent !== me.window )
+					if( me.parent !== win )
 					{
 						wb = me.parent.windowBounds;
 						x -= wb.left/KX;
@@ -568,7 +584,7 @@
 					
 					// Expecting SUI coordinates.
 					// ---
-					me.location = [ Math.round(x), Math.round(y) ];             // [REM] x,y can be float at this point.
+					me.location = [ Math.round(x), Math.round(y) ];             // [REM] Because x,y could be float at this point.
 					return true;
 				}
 				.setup
@@ -629,4 +645,24 @@
 			return ev;
 		};
 
+		//==========================================================================
+		// [220603] ScriptUI.getPopup()
+		//==========================================================================
+
+		ScriptUI.getPopup = function(/*Widget*/wg,  r,s)
+		//----------------------------------
+		// Get the Popup component, if any, surrounding wg.
+		{
+			s = ScriptUI.PopupFactory.HPOP.FIXED_NAME;
+			for
+			(
+				r=false ;
+				ScriptUI.isWidget(wg)
+				&& !(r=wg.children[s])
+				&& !(wg instanceof Window) ;
+				wg=wg.parent
+			);
+
+			return r && 'Popup'==(r.properties||0).kind && r;
+		};
 	}
