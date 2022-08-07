@@ -1,5 +1,17 @@
 ##### [220807]
    - Added the `moreOptions(resObj&, anyObj)` method to [`ScriptUI/factories`](/etc/ScriptUI/$$.factories.jsxinc). A simple utility for adding extra options to a resource before calling the builder. Will be used in IdExtenso's [`factories`](/etc/ScriptUI/factories/) for handling the option `more`. Do the same with your own factories if needed.
+   - Updated all [existing factory components](/etc/ScriptUI/factories/) so they now support the option `more` when you call the factory. This must be an `Object` having extra properties that you want to append to the resource object before the internal call to `ScriptUI.builder`. From then, you no longer need an external mechanism if you need to load extra properties at construction time. Say you want a Check component to have a custom ID, just add it in a `more` object:
+
+   			CheckFactory$MyCheck1:
+			[{
+				text:                   __("Binary Check (with custom box)"),
+				value:                  0,
+				ternary:                false,
+				help:                   __("Right-click the control to change its label..."),
+				more:                   { myID:123 },
+			}],
+
+Note. — This way, all IdExtenso components can be constructed with their own, unfiltered properties, as you would do very similarly with `ScriptUI.builder(myResourceObj)`. The only difference is the requirement to use the `more` key (a sub-object) in your options object.
 
 ##### [220728]
    - Added the [`RectPack`](/etc/$$.RectPack.jsxlib) module, a fast and simple rectangle-packing algorithm that you can use for various layout-optimization projects. Goto [tests/RectPackTest](https://github.com/indiscripts/IdExtenso/tree/master/tests#rectpacktestjsx) for a basic InDesign demo script.
