@@ -9,9 +9,9 @@
 		Kind:           Snippet
 		API:            ScriptUI.SideMenuFactory()
 		DOM-access:     NO
-		Todo:           getTarget()
+		Todo:           ---
 		Created:        190124 (YYMMDD)
-		Modified:       210814 (YYMMDD)
+		Modified:       220807 (YYMMDD)
 
 *******************************************************************************/
 
@@ -132,7 +132,9 @@
 		// ---
 		// .value      (int=-1|str)    Index of the selected item.
 		//                             Supports title (string) too.
-		// .autoFocus  (bool=false)    Whether menu items must activate their respective target.
+		// .autoFocus  (bool=false)    Whether menu items must *activate* their respective target,
+		//                             that is, set the focus on the first available child. By
+		//                             default, the target is just made visible.
 		// .optWidth   (uint=150)      Optimal width of each menu item title (in px.)
 		// .spacing    (uint=8)        Inner space (in px.)
 		// .barColor   (uint=0x46A0F5) Bar color (if /colors included)
@@ -142,6 +144,8 @@
 		// .onClickChange (?fct)       'clicked' handler.
 		// .onRightClick  (?fct)       'rclicked' handler.
 		// .onEvent       (?fct)       Any event handler.
+		// ---
+		// .more          (?obj)       Custom options.
 		// ---
 		// => Group[[SideMenu]]    ::   G( G(G,S), G(G,S) ...)
 		//   .properties           ::   { kind, AutoFocus }
@@ -225,7 +229,7 @@
 			// ---
 			r = ScriptUI.builder
 			(
-				r,
+				ScriptUI.moreOptions(r, ops.more), // [ADD220807]
 				parent.add( 'group', void 0, callee.CREA(ops) )
 			);
 
@@ -256,6 +260,8 @@
 				onClickChange:void 0,
 				onRightClick: void 0,
 				onEvent:      void 0,
+				// ---
+				more:         {},
 			},
 
 			CREA: function(/*{}*/ops)
@@ -273,7 +279,7 @@
 			SHWT: function __showTarget__(/*uint=value*/nv,  w,a,i,t,tg)
 			//----------------------------------
 			// Private method.
-			// this :: ScriptUI.SideMenuFactory
+			// this :: Group[[SideMenu]]
 			// => undef
 			{
 				'undefined' == typeof nv && (nv=this.value);
