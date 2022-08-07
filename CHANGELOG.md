@@ -1,3 +1,6 @@
+##### [220807]
+   - Added the `moreOptions(resObj&, anyObj)` method to [`ScriptUI/factories`](/etc/ScriptUI/$$.factories.jsxinc). A simple utility for adding extra options to a resource before calling the builder. Will be used in IdExtenso's [`factories`](/etc/ScriptUI/factories/) for handling the option `more`. Do the same with your own factories if needed.
+
 ##### [220728]
    - Added the [`RectPack`](/etc/$$.RectPack.jsxlib) module, a fast and simple rectangle-packing algorithm that you can use for various layout-optimization projects. Goto [tests/RectPackTest](https://github.com/indiscripts/IdExtenso/tree/master/tests#rectpacktestjsx) for a basic InDesign demo script.
 
