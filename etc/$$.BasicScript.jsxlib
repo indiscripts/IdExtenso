@@ -13,7 +13,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        180307 (YYMMDD)
-		Modified:       210405 (YYMMDD)
+		Modified:       220816 (YYMMDD)
 
 *******************************************************************************/
 
@@ -22,7 +22,7 @@
 #include '$$.Dom.Dialog.jsxlib'
 
 ;if( $$.ModalScript ){ alert(__("%1 cannot work with the %2 module.",'BasicScript','ModalScript')); exit(); }
-;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 210405, 'run'))
+;$$.hasOwnProperty('BasicScript') || eval(__(MODULE, $$, 'BasicScript', 220816, 'run'))
 
 	//==========================================================================
 	// NOTICE
@@ -274,3 +274,13 @@
 
 ;$$.BasicScript.hasOwnProperty('Server') || eval(__(MODULE, $$.BasicScript.toSource(), 'Server', 210405))
 	#include 'AnyScript/$$.server.jsxinc'
+
+	//==========================================================================
+	// [ADD220816] ALIASES --> $$.Context ; $$.UserInterface ; $$.Server
+	//==========================================================================
+
+;if( $$.isBooting() )
+{
+	$.global.µ = $$.BasicScript;
+	$$.setup({ Context:µ.Context, UserInterface:µ.UserInterface, Server:µ.Server });
+}
