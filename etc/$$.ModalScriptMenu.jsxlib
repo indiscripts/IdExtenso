@@ -12,14 +12,14 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        210324 (YYMMDD)
-		Modified:       210413 (YYMMDD)
+		Modified:       220816 (YYMMDD)
 
 *******************************************************************************/
 
 #include '$$.ModalScript.jsxlib'
 #include '$$.Dom.Menu.jsxlib'
 
-;$$.ModalScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.ModalScript.toSource(), 'MenuExtension', 210413, 'callingEvent'))
+;$$.ModalScript.hasOwnProperty('MenuExtension') || eval(__(MODULE, $$.ModalScript.toSource(), 'MenuExtension', 220816, 'callingEvent'))
 	#include 'AnyScript/$$.menu_extension.jsxinc'
 
 ;if( $$.isBooting() )
@@ -34,5 +34,11 @@
 			return callee.µ.MenuExtension['~']._GO_(runMode,callee.µ);
 		},
 	})
+	
+	//==========================================================================
+	// [ADD220816] ALIAS --> $$.MenuExtension
+	//==========================================================================
+
+	;$$.MenuExtension = µ.MenuExtension;
 }
 
