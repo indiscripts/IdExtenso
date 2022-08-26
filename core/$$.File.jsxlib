@@ -16,11 +16,11 @@
 		DOM-access:     NO
 		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       210407 (YYMMDD)
+		Modified:       220826 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 210407, 'toFile'))
+;eval(__(MODULE, $$, 'File', 220826, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -674,7 +674,7 @@
 				//     <similarAliasName> ---->  <anyFile>
 				//     <anyAliasName>     ---->  ff | <similarFile>
 				// ---
-				s1 = String(checkName||File(aliasName).nudeName()).toLowerCase();
+				s1 = String(checkName||(new File(aliasName)).nudeName()).toLowerCase();
 				s2 = String(checkName||ff.nudeName()).toLowerCase();
 				for( a=fd.getFiles() ; t=a.pop() ; )
 				{
@@ -685,7 +685,9 @@
 					if( 0 <= t.nudeName().toLowerCase().indexOf(s1) ){ t.remove(); continue; }
 
 					// --- SimilarDestinationName ; [REM] the dest might be `ff` itself.
-					if( !(tt=t.resolve()) ) continue;
+					if( !(tt=t.resolve()) ) continue;      // [WRN220826] myFile.resolve() may result in a Folder!
+					if( !(tt instanceof File) ) continue;  // [FIX220826] `tt.nudeName()` would fail otherwise.
+
 					if( 0 <= tt.nudeName().toLowerCase().indexOf(s2) ){ t.remove(); continue; }
 				}
 			}
