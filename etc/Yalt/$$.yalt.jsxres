@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       220403 (YYMMDD)
+		Modified:       220910 (YYMMDD)
 
 *******************************************************************************/
 
@@ -222,7 +222,7 @@
 	Properties # Propriétés # Eigenschaften # Propiedades # Proprietà # Свойства
 	Query # Requête # Abfrage # Consulta # Interrogazione # Запрос
 	Sample # Echantillon # Beispiel # Muestra # Esempio # Образец
-	Scope # Etendue # Bereich # Ámbito # Validità # Диапазон
+	Scope # Étendue # Bereich # Ámbito # Validità # Диапазон
 	Script # Script # Skript # Script # Script # Сценарий
 	Scripts # Scripts # Skripte # Scripts # Script # Сценарии
 	Selected Text # Texte sélectionné # Ausgewählter Text # Texto seleccionado # Testo selezionato # Выделенный текст
@@ -282,6 +282,41 @@
 	Sample text # Exemple # Beispieltext # Texto de ejemplo # Esempio # Образец текста
 	Login # Connexion # Login # Inicio de sesión # Login # Вход
 	Logout # Déconnexion # Logout # Cerrar sesión # Disconnessione # Выход
+
+	Enter an integer between %1 and %2.
+	# Saisissez un nombre entier compris entre %1 et %2.
+	# Gib eine ganze Zahl zwischen %1 und %2 ein.
+	# Introduzca un número entero entre %1 y %2.
+	# Inserisci un numero intero compreso tra %1 e %2.
+	# Введите целое число от %1 до %2.
+
+	The value must be an integer between %1 and %2.
+	# La valeur doit être un entier compris entre %1 et %2.
+	# Bei dem Wert muss es sich um eine ganze Zahl zwischen %1 und %2 handeln.
+	# El valor deber ser un número entero entre %1 y %2.
+	# Il valore deve essere un numero intero compreso tra %1 e %2.
+	# Значение должно быть целым числом от %1 до %2.
+
+	The value must be %1 or greater.
+	# La valeur doit être supérieure ou égale à %1.
+	# Der Wert muss %1 oder größer sein.
+	# El valor debe ser %1 o superior.
+	# Il valore deve essere pari o superiore a %1.
+	# Значение должно быть положительным или равно %1.
+
+	The value must be between %1 and %2.
+	# La valeur doit être comprise entre %1 et %2.
+	# Der Wert muss zwischen %1 und %2 liegen.
+	# El valor debe estar comprendido entre %1 y %2.
+	# Il valore deve essere compreso tra %1 e %2.
+	# Значение должно быть задано в диапазоне от %1 до %2.
+
+	The value must be between %1%% and %2%%.
+	# La valeur doit être comprise entre %1%% et %2%%.
+	# Der Wert muss zwischen %1 %% und %2 %% liegen.
+	# El valor debe estar comprendido entre %1%% y %2%%.
+	# Il valore deve essere compreso tra %1%% e %2%%.
+	# Значение должно быть задано в диапазоне от %1%% до %2%%.
 
 	Please Wait... # Veuillez patienter... # Bitte warten... # Espere... # Attendete... # Подождите...
 	Waiting... # En attente... # Warten... # Esperando... # In attesa... # Подождите...
