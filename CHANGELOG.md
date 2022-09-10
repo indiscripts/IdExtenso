@@ -1,3 +1,6 @@
+##### [220910]
+   - [Yalt (res)](/etc/Yalt/$$.yalt.jsxres): Added a few L10N strings relative to number validation. (Might be used in UI factories, etc.)
+
 ##### [220826]
    - [`File`](/core/$$.File.jsxlib): fixed the `startupAlias` method. It could produce a runtime error _“tt.nudeName is not a function”_ because `File.prototype.resolve()` can sometimes result in a `Folder` object (!)
 
