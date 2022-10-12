@@ -11,11 +11,11 @@
 		DOM-access:     YES (if https involved.)
 		Todo:           make `wantText` smart if not supplied ; timeout issues...
 		Created:        170403 (YYMMDD)
-		Modified:       210922 (YYMMDD)
+		Modified:       221012 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 210922, 'get'))
+;$$.hasOwnProperty('Web') || eval(__(MODULE, $$, 'Web', 221012, 'get'))
 
 	//==========================================================================
 	// NOTICE
@@ -45,6 +45,8 @@
 	[210203] Rewritten `HttpSecure.Win` (safer and more compact) ;
 	         now addresses `wantText`.
 	[210922] Bypasses the issue resulting from empty status messages (HTTP2.)
+	[221012] Fixes issue #7 -- cf github.com/indiscripts/IdExtenso/issues/7
+	         related to http->https redirection.
 
 	*/
 
@@ -222,8 +224,12 @@
 						code = -3;
 						break;
 					}
-					
-					if( !(ret.headers||0).Location )
+
+					// [FIX221012] Depending on the HttpSecure routine and the OS, `ret.headers`
+					// might set either `Location` (titlecase) or `location` (lowercase.)
+					// Cf github.com/indiscripts/IdExtenso/issues/7
+					// ---
+					if( !(ret.headers||0).Location && !(ret.headers||0).location )
 					{
 						ret.error = "Missing location during redirection";
 						code = -3;
@@ -263,7 +269,7 @@
 			// ---
 			if( 301==code )
 			{
-				uri = ret.headers.Location;
+				uri = ret.headers.Location || ret.headers.location; // [FIX221012]
 				$$.warn( __("%1 > HTTP 301 Redirection to %2.",µ, uri) );
 				VOLATILE || $$.kill(ret);
 				ret = callee(uri,wantText,timeOut,VOLATILE,--R301);
