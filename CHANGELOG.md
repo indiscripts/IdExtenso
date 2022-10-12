@@ -1,3 +1,6 @@
+##### [221012]
+   - [Web](/etc/$$.Web.jsxlib): Fixed [issue #7 - “Missing location during redirection”](https://github.com/indiscripts/IdExtenso/issues/7).
+
 ##### [220910]
    - [Yalt (res)](/etc/Yalt/$$.yalt.jsxres): Added a few L10N strings relative to number validation. (Might be used in UI factories, etc.)
 
