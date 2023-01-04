@@ -1,3 +1,6 @@
+##### [230104]
+   - [Yalt](/etc/$$.Yalt.jsxlib): Now fully supports optional punctuation terminators (`...`, `:`, `.`, `!`) _after_ a mute terminator (`\x01`, `\x02`, `\x03`, `\x04`). This feature was already functional while translating the key into another language (e.g `"Advanced\x01:"` → `"Avancée :"`), but there was a bug for the default (English) language: the control character `\x01` wasn't removed from `"Advanced\x01:"`. Fixed.
+
 ##### [221012]
    - [Web](/etc/$$.Web.jsxlib): Fixed [issue #7 - “Missing location during redirection”](https://github.com/indiscripts/IdExtenso/issues/7).
 
