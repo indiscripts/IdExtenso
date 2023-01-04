@@ -12,11 +12,11 @@
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       220403 (YYMMDD)
+		Modified:       230104 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 220403, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 230104, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -299,7 +299,7 @@
 			}
 		},
 
-		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  u,o,k,z,c)
+		YALT : $.global['__'] = function YALT(/*str*/s,x1,x2,x3,x4,x5,x6,x7,x8,x9,  u,o,k,z,c,m)
 		//----------------------------------
 		// (Localization routine.) A reference to this function is assigned
 		// to `$.global.__` at including stage (as shown above) so the localization
@@ -334,13 +334,16 @@
 			// ---
 			while( 1 )
 			{
-				// [CHG210901] Support of *mute terminators* (\x01, \x02, \x03 or \x04)
-				// for English variants.
-				// ---
 				o = callee.µ['~'].L10N;
+
+				// [FIX230104] Support of *mute terminators* (\x01, \x02, \x03 or \x04)
+				// for English variants, incl. when followed by punctuation terminator,
+				// e.g `Advanced\x01:`
+				// ---
 				if( !o.__count__ )
 				{
-					callee.RE_END_CTRL.test(s) && (s=s.slice(0,-1));
+					//callee.RE_END_CTRL.test(s) && (s=s.slice(0,-1)); [DEL230104]
+					(m=s.match(callee.RE_END_CTRL)) && (m=m[0], s=s.slice(0,-m.length)+m.slice(1)); // [FIX230104]
 					break;
 				}
 				
@@ -414,8 +417,9 @@
 		.setup
 		({
 			// [ADD210901] Mute terminators.
+			// [FIX230104] Added optional punctuation terminators: `...` `:` `.` `!`
 			// ---
-			RE_END_CTRL: /[\x01\x02\x03\x04]$/,
+			RE_END_CTRL: /[\x01\x02\x03\x04](?:\.\.\.|[:.!])?$/,
 		}),
 		
 		HASK : function(/*str*/s,/*0|1*/useL10N)
