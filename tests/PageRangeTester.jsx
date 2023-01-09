@@ -11,7 +11,7 @@
 $$.load();
 
 // =============================================================================
-// PageRangeTester [210817]
+// PageRangeTester [210817] [230109]
 // Parse, format and normalize page ranges.
 // ---
 // Demonstrates:
@@ -21,6 +21,9 @@ $$.load();
 
 try
 {
+	const prefElision = 'Chicago';      // [ADD230109]
+	const prefMinRange = 1;             // [ADD230109]
+
 	ScriptUI.builder
 	({
 		properties:                     { type:'dialog', text:"PageRange Tester", },
@@ -95,13 +98,13 @@ try
 					r = PR.normalize(w.Input.text);
 					if( !r ){ w.Info.text = "No result."; return; }
 					w.Info.text = "Normalized form:\r" + r
-						+ "\r\r\rCustom reformat (minRange:2, Oxford elision, etc):\r"
+						+ "\r\r\rCustom reformat (minRange:"+prefMinRange+", "+prefElision+" elision, etc):\r"
 						+ PR.format(PR.parse(r),
 						{
 							separator:  ' ; ',
 							joiner:     '\u2014',
-							minRange:   2,
-							elision:    'Oxford', // None|FinalThreeDigits|FinalTwoDigits|Oxford|FewestFigures
+							minRange:   prefMinRange,
+							elision:    prefElision, // None|FinalThreeDigits|FinalTwoDigits|Chicago|Oxford|FewestFigures
 						});
 				},
 			},
