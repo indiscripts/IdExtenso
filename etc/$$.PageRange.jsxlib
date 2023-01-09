@@ -11,11 +11,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180429 (YYMMDD)
-		Modified:       220610 (YYMMDD)
+		Modified:       230109 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 220610, 'format'))
+;$$.hasOwnProperty('PageRange') || eval(__(MODULE, $$, 'PageRange', 230109, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -25,13 +25,14 @@
 
 	Range elision:
 
-	'None'             10-12  42-45  100-102  132-136  210-211  352-365  1021-1023  1491-1560
-	'FinalThreeDigits' 10-12  42-45  100-102  132-136  210-211  352-365  1021-1023* 1491-560
-	'FinalTwoDigits'   10-12  42-45  100-102* 132-36   210-11   352-65   1021-23    1491-560
-	'Oxford'           10-12  42-5   100-2    132-6    210-11   352-65   1021-3     1491-560
-	'FewestFigures'    10-2   42-5   100-2    132-6    210-1    352-65   1021-3     1491-560
+	'None'             10-12  42-45  100-102  103-109  132-136  210-211  352-365  1021-1023  1491-1560
+	'FinalThreeDigits' 10-12  42-45  100-102  103-109  132-136  210-211  352-365  1021-1023* 1491-560
+	'FinalTwoDigits'   10-12  42-45  100-102* 103-109* 132-36   210-11   352-65   1021-23    1491-560
+	'Chicago'          10-12  42-45  100-102  103-9    132-36   210-11   352-65   1021-23    1491-560    [ADD230109]
+	'Oxford'           10-12  42-5   100-2    103-9    132-6    210-11   352-65   1021-3     1491-560
+	'FewestFigures'    10-2   42-5   100-2    103-9    132-6    210-1    352-65   1021-3     1491-560
 	
-	* The suffix cannot start with '0'.
+	* The suffix part cannot start with '0'.
 
 	[REF] WADDINGHAM - "New Hart's Rules - The Oxford Style Guide" (2014, p. 189)
 	
@@ -63,8 +64,23 @@
 	“(W)here (it) is impossible (to provide exact page extents,) print 51 f. if the
 	reference extends only to page 52, but 51 ff. if the reference is to more than
 	one following page.”
-	
-	
+
+	[REF] UNIVERSITY OF CHICAGO - "Chicago Manual Of Style" (2010, p. 816)
+
+    FIRST NUMBER                SECOND NUMBER                 EXAMPLES
+	-------------------------------------------------------------------------------
+	Less than 100               Use all digits                3-10, 71-72, 96-117
+	-------------------------------------------------------------------------------
+	100 or multiples of 100     Use all digits                100-104, 1100-1113
+	-------------------------------------------------------------------------------
+	101 through 109,            Use changed part only         101-8, 808-33, 1103-4
+	201 through 209, etc.
+	-------------------------------------------------------------------------------
+    110 through 199,            Use two digits unless         321-28, 498-532,
+    210 through 299, etc.       more are needed to include    1087-89, 1496-500
+                                all changed parts             11564-615, 12991-3001
+	-------------------------------------------------------------------------------
+
 	[REF] WELLISCH - "Indexing from A to Z" (1995, p. 278)
 	
 	“More or less elaborate schemes have been proposed, such as not to abbreviate any
@@ -187,7 +203,7 @@
 			return s;
 		},
 		
-		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,/*str|falsy*/sgl,/*str*/sty,/*str*/pfx,/*?{pair:str,more:str}*/rdx,  L,R,M,SFX,e0,e1,a,z,i,iMax,x0,x1,nx,t)
+		FRMT: function(/*str*/s,/*{}*/q,/*int*/dx,/*uint>=1*/mn,/*uint>=1*/gp,/*str*/sp,/*str*/jn,/*str*/eli,/*str|falsy*/sgl,/*str*/sty,/*str*/pfx,/*?{pair:str,more:str}*/rdx,  L,R,M,SFX,e0,e1,e2,a,z,i,iMax,x0,x1,nx,t)
 		//----------------------------------
 		// (Format.) Formats the ranges {start=>end} in `q` with respect to
 		// start locators in `s` and additional options. See µ.format() for
@@ -201,6 +217,9 @@
 		// elems (`rdx.more`) that `mn` prevents from forming a range. Hence,
 		// `mn` should be set accordingly: at least 2 to use `rdx.pair`,
 		// at least 3 to use `rdx.more`, which then operates up to (mn-1).
+		// [REM230109] `eli` must contain one of the valid `ELI_...` keys, i.e.
+		// ELI_FINALTHREEDIGITS | ELI_FINALTWODIGITS | ELI_OXFORD | ELI_CHICAGO
+		// | ELI_FEWESTFIGURES
 		// ---
 		// => str
 		{
@@ -213,12 +232,14 @@
 			if( callee.hasOwnProperty(t='ELI_'+eli) && callee.CAN_ELIDE.test(R.name) )
 			{
 				t = callee[t];
-				e0 = t[0];
-				e1 = t[1];
+				e0 = t[0];           // 1|2|3 ; `MIN` arg of the `ELI` routine.
+				e1 = t[1];           // 0|1   ; `NO_TENS` arg of the `ELI` routine (Oxford flag.)
+				e2 = t[2];           // 0|1   ; `NO_HUND` arg of the `ELI` routine (Chicago flag.)
 				R = callee.ELI;
 			}
 			
 			// [ADD220609] Redux suffixes.
+			// ---
 			SFX = false;
 			if( rdx && mn > 1 )
 			{
@@ -248,7 +269,7 @@
 				// Add x0..x1 value(s).
 				// ---
 				if( x1-x0 >= mn )
-					a[z++] = pfx + L(t=dx+x0) + jn + R(dx+x1,t,e0,e1);        // Range `x0-x1` [dx]
+					a[z++] = pfx + L(t=dx+x0) + jn + R(dx+x1,t,e0,e1,e2);     // Range `x0-x1` [dx] ; [CHG230109] Added `e2`.
 				else if( (!SFX) || x0===x1 )
 					for(; x0 <= x1 ; (q[x0]&&(a[z++]=pfx+M(dx+x0))),++x0 );   // Split non-range elems into `x0, etc, x1` [dx]
 				else
@@ -279,20 +300,45 @@
 			// ---
 			CAN_ELIDE: /^String|ONEZ|TWOZ|THRZ$/,
 
-			ELI: function(/*uint*/y,/*uint*/x,/*uint*/MIN,/*bool=0*/NO_TENS,  n,z,i)
+			ELI: function(/*uint_last*/y,/*uint_first*/x,/*uint*/MIN,/*bool*/NO_TENS,/*bool*/NO_HUND,  n,t,z,i)
 			//----------------------------------
+			// [ADD230109] Added Chicago rules (MIN==2 && NO_HUND==1), that is:
+			// #1  x < 100                       -->  keep all digits (hence MIN==2)  ; e.g  3-10, 71-72, 96-117
+			// #2  x ends with '00'              -->  keep all digits                 ; e.g  100-104, 1100-1113
+			// #3  x :: 101..109, 201..209, etc  -->  drop *all* common digits        ; e.g  101-8, 808-33, 1103-4
+			// #4  x :: 110..199, 210..299, etc  -->  keep at least two digits        ; e.g  321-28, 498-532, 1087-89, 1496-500, 12991-3001
 			{
+				// Initial step: coerce y and x to strings and compare their lengths.
+				// If lengths are different (e.g '106' vs. '31') , returns `y` as is ('106').
+				// (Note: by design y is always greater than x, numerically.)
+				// If the length `n` is <= MIN, returns `y` as is.
+				// ---
 				if( (x=''+x).length != (n=(y=''+y).length) || n <= MIN ) return y;
-				for( z=n-MIN, i=-1 ; ++i < z && x.charCodeAt(i)==y.charCodeAt(i) ; );  //  0 <= i <= z
-				for( ; 0 <= i && 0x30 == y.charCodeAt(i) ; i-- );                      //  Prevents '0' as suffix starter
-				NO_TENS && 0 < i && i==n-1 && 0x31==y.charCodeAt(i-1) && --i;          //  Prevents elision of ###10-###19
+
+				// ---
+				// From then, `y` and `x` (as strings) have the same length n and n > MIN.
+				// ---
+
+				if( NO_HUND )                                                          // [ADD230109] Chicago Manual of Style rules #2-#4.
+				{
+					if( '00'===(t=x.slice(-2)) ) return y;                             //  #2  Do not drop digits if x has the form '...00'.
+					0x30===t.charCodeAt(0) && (MIN=1);                                 //  #3  Special redux of 101..109, 201..209 allowed,
+					                                                                   //  #4  otherwise the default algo w/ MIN=2 is OK.
+				}
+
+				for( z=n-MIN, i=-1 ; ++i < z && x.charCodeAt(i)==y.charCodeAt(i) ; );  //  0 <= i <= z                         ;  i is the 'change digit' index in y, w.r.t to MIN.
+				for( ; 0 <= i && 0x30 == y.charCodeAt(i) ; i-- );                      //  Always prevents '0' as starter      ;  y[i] is now guaranteed to be non-0.
+				NO_TENS && 0 < i && i==n-1 && 0x31==y.charCodeAt(i-1) && --i;          //  Prevents elision within ###10-###19 (Oxford). Note: the issue cannot occur in Chicago since MIN=1 -> x ends with '0#'
+
 				return 0 < i ? y.slice(i) : y;
 			},
 
-			ELI_FINALTHREEDIGITS: [3,0],
-			ELI_FINALTWODIGITS:   [2,0],
-			ELI_OXFORD:           [1,1],
-			ELI_FEWESTFIGURES:    [1,0],
+			//                     MIN   NO_TENS  NO_HUND
+			ELI_FINALTHREEDIGITS: [ 3,      0,      0 ],
+			ELI_FINALTWODIGITS:   [ 2,      0,      0 ],
+			ELI_OXFORD:           [ 1,      1,      0 ],
+			ELI_CHICAGO:          [ 2,      0,      1 ],  // [ADD230109] Note: MIN=2 is the default setting; it can dynamically reduce to 1 in special case.
+			ELI_FEWESTFIGURES:    [ 1,      0,      0 ],
 
 			STY_ONEZ: function ONEZ(/*uint>0*/z)
 			//----------------------------------
@@ -496,7 +542,6 @@
 		// .minRange   (uint) Minimum distance (>=1) between the 1st and the last
 		//             value in a range. Default: 1 if !reduxPair ; 2 if reduxPair
 		//             AND !reduxMore ; 3 if reduxPair AND reduxMore.
-		//             3 if reduxMore.
 		//             E.g   µ([1,2,4,5,6,8,9,10,11], {minRange:1})
 		//                   => "1-2, 4-6, 8-11"
 		//                   µ([1,2,4,5,6,8,9,10,11], {minRange:2})
@@ -514,7 +559,7 @@
 		//                   betic sequences (a, b, c...) The client code is res-
 		//                   ponsible for adjusting the redux string accordingly.
 		// reduxMore   (str) Special suffix for formatting N consecutive numbers
-		//                   from N=3 to N=minRange-1, provided that reduxPair is
+		//                   from N=3 to N=minRange, provided that reduxPair is
 		//                   defined. (`minRange` is set to 3 if not supplied.)
 		//             E.g   µ([1,2,4,5,6,10,11,15], {reduxPair:"f.", reduxMore:"ff."})
 		//                   => "1f., 4ff., 10f., 15" ; implied minRange=3
@@ -536,6 +581,8 @@
 		//                                      E.g  10-12, 42-45, 100-102, 1021-1023*, 1491-560, 10150-302
 		//                   'FinalTwoDigits'   Preserve at least two final digits:
 		//                                      E.g  10-12, 42-45, 100-102*, 132-36, 210-11, 352-65, 1021-23, 1491-560
+		//                   'Chicago'          [ADD230109] Applies the 'Chicago Manual of Style' rules.
+		//                                      E.g  10-12, 42-45, 100-102, 103-8, 132-36, 210-11, 352-65, 1021-23, 1491-560
 		//                   'Oxford'           Minimal form, except if final digits range in 10..19.
 		//                                      E.g  10-12, 42-5, 100-2, 132-6, 210-11, 352-65, 1021-3, 1491-560
 		//                   'FewestFigures'    Strictly minimal form:
@@ -729,7 +776,6 @@
 			'function' == typeof map
 			|| ( map===Object(map) && (callee.MAPF.Q=map, map=callee.MAPF) )
 			|| ( map=callee.IDEN );
-
 
 			const U32 = callee.µ['~'].UI32;
 			x1 = (x0=U32(a[0])) + (0|a['_'+x0]);  // [x0=x1] | [x0..x1]
