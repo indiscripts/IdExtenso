@@ -1,3 +1,8 @@
+##### [230109]
+   - [PageRange](/etc/$$.PageRange.jsxlib): Added the value `"Chicago"` for the `.elision` option. It implements the specific rules of the _Chicago Manual of Style_, as specified in the 2010 edition, p. 816:
+
+![image](https://user-images.githubusercontent.com/6134238/211263667-c441669a-3260-44ea-a030-0b4a29c1d9a8.png)
+
 ##### [230104]
    - [Yalt](/etc/$$.Yalt.jsxlib): Now fully supports optional punctuation terminators (`...`, `:`, `.`, `!`) _after_ a mute terminator (`\x01`, `\x02`, `\x03`, `\x04`). This feature was already functional while translating the key into another language (e.g `"Advanced\x01:"` → `"Avancée :"`), but there was a bug for the default (English) language: the control character `\x01` wasn't removed from `"Advanced\x01:"`. Fixed.
 
