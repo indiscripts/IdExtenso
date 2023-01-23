@@ -12,7 +12,7 @@
 
 * Would you like to trace your debug messages in a log file the easy way?
 
-* Are you concerned with localizing your scripts in many languages?
+* Are you concerned with localizing your scripts in other languages?
 
 * …and always making sure that the environment (OS, InDesign version, locale, script engine) is properly identified and managed?
 
