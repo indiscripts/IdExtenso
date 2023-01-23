@@ -1,4 +1,4 @@
-# *IdExtenso*  2.20507  (core: 202KB)
+# *IdExtenso*  2.30123  (core: 203KB)
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -18,7 +18,7 @@
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will get you started, and a huge set of additional modules will help you implement more complex scripts and features.
 
-The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `17.x` (CC 2022) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
+The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `18.x` (CC 2023) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
 
 * `myString.toSource()` can save 30% of the original result length.
 
@@ -56,7 +56,7 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 
 - Growing collection of powerful, fine-tuned and flexible ScriptUI components ([CheckGroup](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc), [CheckList](/etc/ScriptUI/factories/$$.CheckList.jsxinc), [Popup](/etc/ScriptUI/factories/$$.Popup.jsxinc), [SideMenu](/etc/ScriptUI/factories/$$.SideMenu.jsxinc), [DrawnCheck](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc)...) easy to integrate in your own UI.
 
-> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice script based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module.
+> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice script based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module. And the most recent example of ***IdExtenso***-based product is the huge [IndexMatic³](https://indiscripts.com/category/projects/IndexMatic) program, which would not have existed without the present framework.
 
 ## Getting Started
 
