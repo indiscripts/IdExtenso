@@ -1,3 +1,12 @@
+## 2.30123
+Minor update (January 23, 2023.) Global re-generation of the core structure, including last fixes and additions.
+   - [`File`](/core/$$.File.jsxlib): `startupAlias` fix. Solves the _“tt.nudeName is not a function”_ error.
+   - [Ext/file](/core/Ext/$$.file.jsxinc): `nudeName` fix.
+   - Added the method `File.prototype.fresh()` (returning a non-existing File instance based on the present File object).
+   - [`Env`](/core/$$.Env.jsxlib): added the `isHighContrast` property (bool) in addition to `isDark`.
+
+_(The most important changes do not affect the core branch. See previous log entries for detail on updated extra modules.)_
+
 ##### [230109]
    - [PageRange](/etc/$$.PageRange.jsxlib): Added the value `"Chicago"` for the `.elision` option. It implements the specific rules of the _Chicago Manual of Style_, as specified in the 2010 edition, p. 816:
 
