@@ -20,7 +20,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       230210 (YYMMDD)
 
 *******************************************************************************/
 
@@ -196,7 +196,7 @@
 	// => str
 	{
 		CHR = String.fromCharCode;
-		'string' == typeof s || (s=CHR.apply(0,x));
+		'string' == typeof s || (s=CHR.apply(0,s)); // [FIX230210]
 
 		for
 		(
