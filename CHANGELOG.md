@@ -1,3 +1,6 @@
+##### [230210]
+   - [Ext/string](/core/Ext/$$.string.jsxinc): Found a bug in `String.fromBase64()`. The function wasn't supporting 1st argument supplied as an array of uint8. Fixed.
+
 ## 2.30123
 Minor update (January 23, 2023.) Global re-generation of the core structure, including last fixes and additions.
    - [`File`](/core/$$.File.jsxlib): `startupAlias` fix. Solves the _“tt.nudeName is not a function”_ error.
