@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       200117 (YYMMDD)
+		Modified:       230311 (YYMMDD)
 
 *******************************************************************************/
 
@@ -138,7 +138,7 @@
 			},
 		}),
 
-		MSSG : function(/*str*/txt,/*str|false*/title,/*uint|false*/msec,/*0|1*/failing,/*?Window*/win,  ui,w)
+		MSSG : function(/*str*/txt,/*str|false*/title,/*uint|false*/msec,/*0|1*/failing,/*?Window*/win,  ui,w,i,k)
 		//----------------------------------
 		// (Generic-Message.)
 		// [REM] Palettes usually show up on $.screens[0] whatever app screen.
@@ -171,10 +171,13 @@
 				// [REM] Do not use hide() on a 'dialog'.
 				// ---
 				w.hide();
+				return;
 			}
+
+			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
 		},
 
-		EDIT : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w)
+		EDIT : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w,i,k)
 		//----------------------------------
 		// (Editable-Message-Box.) [CHG180531]
 		// => undef
@@ -188,9 +191,10 @@
 			// ---
 			$.global[callee.µ.__root__].centerWindow(w,win);
 			w.show();
+			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
 		},
 
-		YSNO : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w)
+		YSNO : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w,r,i,k)
 		//----------------------------------
 		// (Yes-No-Box.) [180531]
 		// => 1 [OK]  |  0 [KO]
@@ -203,7 +207,10 @@
 			// Position and show.
 			// ---
 			$.global[callee.µ.__root__].centerWindow(w,win);
-			return 1==w.show() ? 1 : 0;
+
+			r = 1==w.show() ? 1 : 0;
+			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
+			return r;
 		},
 
 		WINP: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*str*/caption,/*str*/defVal,/*str[]|0*/ops,/*str*/ok,/*str*/ko,/*0|Window*/w,  q,o,i,a)
@@ -303,7 +310,7 @@
 			},
 		}),
 
-		INPT: function(/*str*/caption,/*str*/defVal,/*str|false*/title,/*str[]|0*/ops,/*?Window*/win,  ui,w)
+		INPT: function(/*str*/caption,/*str*/defVal,/*str|false*/title,/*str[]|0*/ops,/*?Window*/win,  ui,w,r,i,k)
 		//----------------------------------
 		// (Input-Box.) [191228]
 		// => str [OK]  |  false [KO]
@@ -316,7 +323,11 @@
 			// Position and show.
 			// ---
 			$.global[callee.µ.__root__].centerWindow(w,win);
-			return 1==w.show() ? w.ed.text : false;
+			r = 1==w.show() ? w.ed.text : false;
+
+			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
+			
+			return r;
 		},
 
 	})
