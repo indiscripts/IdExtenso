@@ -7,7 +7,7 @@ ScriptUI CS is known for having weird issues in _garbage-collecting_ `Window` co
 	$.gc();                                                 // Garbage collector.
 
   - This snippet is now added at different strategic points, in [Root/messaging](/core/Root/$$.messaging.jsxinc)'s functions and in [ModalScript::UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). This slight fix is harmless in InDesign CC.
-
+  - [SUI/mini](/core/SUI/$$.mini.jsxinc) now defines `ScriptUI.NoCharWidth = ScriptUI.measureWidth("\x01")`, which indicates the width of the no-character glyph (usually an empty square). This information should help us decide whether a Unicode character is _probably_ missing in ScriptUI default font. The idea is to compare `ScriptUI.measureWidth(someCandidateCharacter)` with `NoCharWidth` -- although this is not a 100% reliable test. When the two measurements coincide you may have reason to assume that the candidate glyph is missing. Of course there can be regular glyphs whose width is exactly that of `NoCharWidth`. But if other properties are known elsewhere, this sometimes allows a decision to be made.
 
 ##### [230210]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Found a bug in `String.fromBase64()`. The function wasn't supporting 1st argument supplied as an array of uint8. Fixed.
