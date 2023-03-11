@@ -6,7 +6,7 @@ ScriptUI CS is known for having weird issues in _garbage-collecting_ `Window` co
 	for( k in myWin ) delete myWin[k];                      // Clear custom win props.
 	$.gc();                                                 // Garbage collector.
 
-  - This snippet is now added at different strategic points, in [Root/messaging](/core/root/$$.messaging.jsxinc)'s functions and in [ModalScript::UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). This slight fix is harmless in InDesign CC.
+  - This snippet is now added at different strategic points, in [Root/messaging](/core/Root/$$.messaging.jsxinc)'s functions and in [ModalScript::UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). This slight fix is harmless in InDesign CC.
 
 
 ##### [230210]
