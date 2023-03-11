@@ -12,12 +12,12 @@
 		DOM-access:     YES
 		Todo:           ---
 		Created:        180601 (YYMMDD)
-		Modified:       200127 (YYMMDD)
+		Modified:       230311 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.ModalScript ){ alert(__("%1 requires the %2 module.",'UserInterface','ModalScript')); exit(); }
-;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 200127))
+;$$.ModalScript.hasOwnProperty('UserInterface') || eval(__(MODULE, $$.ModalScript.toSource(), 'UserInterface', 230311))
 
 	//==========================================================================
 	// HOOKS
@@ -73,7 +73,7 @@
 		//----------------------------------
 		// (Dialog-to-Settings-Keys.) Update settings from Dialog keys.
 		// [ADD190317] Added `getString` test.
-		// [ADD200127] Returns a Change flag (might be used in some hacks...)
+		// [ADD200127] Returns a change flag (might be used in some hacks...)
 		// => true [SOME CHANGE]  |  false [NO CHANGE]
 		{
 			// Manages smart list strings.
@@ -83,9 +83,9 @@
 			for( CHG=false, i=a.length ; i-- ; )
 			{
 				k = a[i];
-				v = SLIG && 'string'==typeof ss[k] && ((dlg[k]||0).hasOwnProperty('items') || 'function'==typeof (dlg[k]||0).getString) ?
-					dlg.getStringKey( k ) :  // List item as a string.
-					dlg.getValueKey ( k );   // Raw ui value.
+				v = SLIG && 'string'==typeof ss[k] && ( (dlg[k]||0).hasOwnProperty('items') || 'function'==typeof (dlg[k]||0).getString )
+				? dlg.getStringKey( k )    // List item as a string.
+				: dlg.getValueKey ( k );   // Raw ui value.
 
 				CHG || (CHG=ss[k]!=v);       // [ADD200127]
 				ss[k] = v;
@@ -94,7 +94,7 @@
 			return CHG;
 		},
 
-		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,µ,ss,dlg,q,k,pfx,r)
+		_GO_: function(/*int*/runMode,/*ParentModule*/PM,  $$,µ,ss,dlg,q,k,pfx,r,i)
 		//----------------------------------
 		// (Go.) Build and show the dialog (if any) with applied settings ;
 		// call the `beforeShow` and `onClose` hooks if available.
@@ -142,7 +142,7 @@
 			// `beforeShow` hook.
 			// ---
 			'function' == typeof µ.beforeShow && µ.beforeShow(dlg,ss,runMode);
-			
+
 			// Show the dialog.
 			// ( If not canceled, dlg -> ss keys. )
 			// [FIX190317] Supports µ.CancelValue (default:2.)
@@ -152,9 +152,11 @@
 
 			// onClose hook?
 			// ---
-			return 'function' == typeof µ.onClose ?
-				µ.onClose(r,dlg,ss,runMode) :
-				r;
+			'function' == typeof µ.onClose && (r=µ.onClose(r,dlg,ss,runMode));
+
+			for(i=dlg.children.length;i--;dlg.remove(i));for(k in dlg)delete dlg[k];$.gc(); // [FIX230311] CLEANER IN CS
+
+			return r;
 		},
 
 	})
