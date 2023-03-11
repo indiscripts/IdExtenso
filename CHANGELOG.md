@@ -8,6 +8,22 @@ ScriptUI CS is known for having weird issues in _garbage-collecting_ `Window` co
 
   - This snippet is now added at different strategic points, in [Root/messaging](/core/Root/$$.messaging.jsxinc)'s functions and in [ModalScript::UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). This slight fix is harmless in InDesign CC.
   - [SUI/mini](/core/SUI/$$.mini.jsxinc) now defines `ScriptUI.NoCharWidth = ScriptUI.measureWidth("\x01")`, which indicates the width of the no-character glyph (usually an empty square). This information should help us decide whether a Unicode character is _probably_ missing in ScriptUI default font. The idea is to compare `ScriptUI.measureWidth(someCandidateCharacter)` with `NoCharWidth` -- although this is not a 100% reliable test. When the two measurements coincide you may have reason to assume that the candidate glyph is missing. Of course there can be regular glyphs whose width is exactly that of `NoCharWidth`. But if other properties are known elsewhere, this sometimes allows a decision to be made.
+  - [`CheckList(Factory)`](/etc/ScriptUI/factories/$$.CheckList.jsxinc): Some users reported that the CheckList component does not display properly because the underlying characters ◻ (U+25FB), ◼ (U+25FC), ⬓ (U+2B13), ※ (U+203B) are not supported in their system (that is, they're not available in the default ScriptUI font). This typically occurs in Windows7 environments with the font “Segoe UI” (v5.x) which, in newer Windows versions, was completed with “Segoe UI-Emoji”. A workaround is now proposed: `CheckListFactory` tries to detect whether U+2B13 is supported (using `ScriptUI.NoCharWidth`); if the test fails, fallback characters are used and the checklist will look like this:
+
+    ![image](https://user-images.githubusercontent.com/6134238/224503322-b27c70d1-944a-4d01-b835-8954d5747f28.png)
+
+    based on the correspondance
+   
+    ◻ (U+25FB) → `[ ]`
+   
+    ◼ (U+25FC) → `[•]`
+   
+    ⬓ (U+2B13) → `[~]`
+   
+    ※ (U+203B) → `[#]`
+	
+	For testing this component: https://github.com/indiscripts/IdExtenso/blob/master/tests/SuiFactories/TestCheckList.jsx
+
 
 ##### [230210]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Found a bug in `String.fromBase64()`. The function wasn't supporting 1st argument supplied as an array of uint8. Fixed.
