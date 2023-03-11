@@ -1,3 +1,14 @@
+##### [230311]
+
+ScriptUI CS is known for having weird issues in _garbage-collecting_ `Window` controls that are no longer used. By exploring the `$.list()` report it can be shown that many internal addresses of ScriptUI objects are lost (Refs=0) while still polluting the memory. This typically happens with modal `dialog` windows. Such a `Window` instance may be properly closed -- after `myWin.show()` -- and its local identifier removed from the scope, there are still empty pointers in memory. The issue gets critical in persistent-engine scripts based on `#targetengine...` and having rich UI components. The memory stack then grows unstoppably and leads InDesign to crash after a dozen successive execs of your script within the session. At each step the interface is getting slower and slower to display. I don't know of a definitive way to clean up memory properly once the damage is done, short of giving up all the benefits of a persistent script altogether. However, it seems that removing manually the Window widgets and calling `$.gc()` right before returning your UI function almost completely solves the problem:
+
+    for( i=myWin.children.length ; i-- ; myWin.remove(i) ); // Remove win components.
+	for( k in myWin ) delete myWin[k];                      // Clear custom win props.
+	$.gc();                                                 // Garbage collector.
+
+  - This snippet is now added at different strategic points, in [Root/messaging](/core/root/$$.messaging.jsxinc)'s functions and in [ModalScript::UserInterface](/etc/ModalScript/$$.UserInterface.jsxlib). This slight fix is harmless in InDesign CC.
+
+
 ##### [230210]
    - [Ext/string](/core/Ext/$$.string.jsxinc): Found a bug in `String.fromBase64()`. The function wasn't supporting 1st argument supplied as an array of uint8. Fixed.
 
