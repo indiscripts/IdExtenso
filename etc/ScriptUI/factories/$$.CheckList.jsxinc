@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        201231 (YYMMDD)
-		Modified:       220807 (YYMMDD)
+		Modified:       230311 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,7 +32,7 @@
 	[ADD211207] In addition, some *terminal* nodes can be declared
 	'locked' and have then a special state:
 
-	       ⏺ (U+23FA)   This item is locked, meaning that its
+	       ※ (U+203B)   This item is locked, meaning that its
 	                     state cannot be unchecked.
 
 	      +----------------------+
@@ -43,7 +43,7 @@
 	      ¦ |-----◻ ItemAA1----| ¦
 	      ¦ |-----◼ ItemAA2----| ¦
 	      ¦ |-◼ BranchB--------| ¦
-	      ¦ |---⏺ ItemB1---<---|-¦----  locked node
+	      ¦ |---※ ItemB1---<---|-¦----  locked node
 	      ¦ |---◼ ItemB2-------| ¦
 	      ¦ +==================+ ¦
 	      +----------------------+
@@ -547,7 +547,14 @@
 			}
 			.setup
 			({
-				CHKS: ['\u25FB ','\u25FC ', '\u2B13 ', '\u23FA '], // [ADD211206] LOCKED state.
+				// [CHG220808] Changed LOCKED symbol for better cross-platform rendering. Old: \u23FA
+				//        EMPTY     FULL      PARTIAL     LOCKED
+				//     [ '\u25FB ','\u25FC ', '\u2B13 ', '\u203B '],
+				
+				CHKS: ScriptUI.NoCharWidth !== ScriptUI.measureWidth('\u2B13')
+					? [ '\u25FB ','\u25FC ', '\u2B13 ', '\u203B ' ]            // Normal glyphs
+					: [ '[ ] ','[\u2022] ', '[~] ', '[#] '],                   // [FIX230311] Fallback
+
 				SPCE: '   ', // Indent by 3 spaces
 			}),
 
