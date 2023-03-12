@@ -14,7 +14,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       230311 (YYMMDD)
+		Modified:       230312 (YYMMDD)
 
 *******************************************************************************/
 
@@ -419,5 +419,6 @@
 	});
 	
 	// [ADD230311] Helps detect unavailable characters (in default ScriptUI font).
+	// [FIX230312] U+FFFE seems a better candidate (U+0001 wasn't reliable everywhere).
 	// ---
-	;ScriptUI.NoCharWidth = ScriptUI.measureWidth("\x01");
+	;ScriptUI.NoCharWidth = ScriptUI.measureWidth("\uFFFE");
