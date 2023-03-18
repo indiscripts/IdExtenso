@@ -1,3 +1,7 @@
+##### [230318]
+
+  - [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc): Found that a popup component may fail to show up when a timer is set on it. The issue seems to occur especially when the script is launched from an InDesign menu (!?) Calling `Window.update()` happens to solve the problem.
+
 ##### [230312]
 
   - [SUI/mini](/core/SUI/$$.mini.jsxinc): U+FFFE seems a better candidate for computing `ScriptUI.NoCharWidth`. (U+0001 wasn't reliable in some environments.) The trick remains highly experimental though!
