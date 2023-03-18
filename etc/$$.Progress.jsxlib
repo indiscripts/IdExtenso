@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =hit() title() message() hide() close()
 		DOM-access:     NO
-		Todo:           Message pattern ; Mac El Capitan... etc
+		Todo:           Message pattern
 		Created:        181022 (YYMMDD)
-		Modified:       200103 (YYMMDD)
+		Modified:       230318 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Progress') || eval(__(MODULE, $$, 'Progress', 200103, 'hit'))
+;$$.hasOwnProperty('Progress') || eval(__(MODULE, $$, 'Progress', 230318, 'hit'))
 
 	//==========================================================================
 	// NOTICE
@@ -87,7 +87,8 @@
 			{
 				case 'T':
 					w.text = v;
-					return;
+					break; // [CHG230318] `break` instead of `return`, so `update()` is called --> more responsive.
+
 				case 'P':
 					o = w.P;
 					if( 0 > v )
@@ -102,11 +103,13 @@
 					}
 					if( 'string' != typeof s ) break;
 					v = s;
+
 				default:
 					o = w.M;
 					v.length && (o.location=[(o.size[0]-o.graphics.measureString(v)[0])>>1, o.location[1]]);
 					o.text = v;
 			}
+
 			w.update();
 		},
 		
@@ -123,7 +126,7 @@
 
 			s = u ? callee.LAST_SRC : (callee.LAST_SRC=String(s));
 
-			return __(pn, s, '','','','','','','', false===v ? '' : String(v));
+			return __(pn, s, '','','','','','','', false===v ? '' : String(Math.round(v)));
 		}
 		.setup({ PTN:"%1 (%9%%)", LAST_SRC:'' }),
 
@@ -132,6 +135,18 @@
 	[PUBLIC]
 	
 	({
+		setPattern: function setPattern_s$false$_(/*?str|false*/pn,  FM,t)
+		//----------------------------------
+		// false  -> remove the default pattern (internally it becomes `%1`)
+		// undef  -> reset the default pattern `%1 (%9%%)`
+		// string -> uses this pattern [NOT IMPLEMENTED]
+		{
+			FM = callee.µ['~'].FRMT;
+			if( false === pn ){ FM.PTN="%1"; return; }
+			t = typeof pn;
+			if( 'undefined' == t ){ FM.PTN="%1 (%9%%)"; return; }
+			if( 'string' == t ){ FM.PTN = pn; return; } // TODO
+		},
 
 		title: function title_s_S(/*?str*/s,  I)
 		//----------------------------------
