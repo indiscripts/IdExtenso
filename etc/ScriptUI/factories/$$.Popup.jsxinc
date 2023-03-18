@@ -13,7 +13,7 @@
 		Todo:           Pressing [Esc] while a persistent Popup is shown
 		                freezes the component. Looking for a workaround...
 		Created:        190303 (YYMMDD)
-		Modified:       220807 (YYMMDD)
+		Modified:       230318 (YYMMDD)
 
 *******************************************************************************/
 
@@ -412,6 +412,7 @@
 				if( r && 0 < (seconds|=0) )
 				{
 					10 < seconds && (seconds=10);
+					this.window.update();                                  // [ADD230318] Timed popup works better with update().
 					callee.WAIT(1e3*seconds,this);
 					this.visible = false;
 					r = 0;                                                 // [CHG210818] Sounds much more consistent!
