@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           WIP: Do we need to expose and include $$.UniSet (?)
 		Created:        170428 (YYMMDD)
-		Modified:       220505 (YYMMDD)
+		Modified:       230329 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Unicode') || eval(__(MODULE, $$, 'Unicode', 220505, 'toString'))
+;$$.hasOwnProperty('Unicode') || eval(__(MODULE, $$, 'Unicode', 230329, 'toString'))
 
 	[PRIVATE]
 	
@@ -94,23 +94,31 @@
 			return p ? false : ( GET_ARR ? (-1===GET_ARR ? r : r.concat()) : r[2] );
 		},
 		
-		getCategory: function getCategory_S_Õ$false$(/*str*/categoryCode)
+		getCategory: function getCategory_S_Õ$false$(/*str*/categoryCode,  k)
 		//----------------------------------
 		// Return the volatile object { name:str, bmp:str, bmpEsc:false,
 		// ext:false|str[] } associated to `categoryCode`. Cf ~.CATG.
 		// Supported codes:
 		// - C | Cc | Cf | Cs | Co | Cn            ; Other
-		// - L | LC | Lu | Ll | Lt | Lm | Lo       ; Letter  (LC is an alias Lu|Ll|Lt)
+		// - L | LC | Lu | Ll | Lt | Lm | Lo       ; Letter  (LC is an alias of Lu|Ll|Lt)
 		// - M | Mn | Mc | Me                      ; Mark
 		// - N | Nd | Nl | No                      ; Number
 		// - P | Pc | Pd | Ps | Pe | Pi | Pf | Po  ; Punctuation
 		// - S | Sm | Sc | Sk | So                 ; Symbol
 		// - Z | Zs | Zl | Zp                      ; Separator
+		// [REM230329] Supports lowercase forms of `categoryCode` (as in GREP).
 		// ---
 		// => obj& [OK] | false [KO]
 		{
-			('string' == typeof categoryCode) || error(__("Invalid categoryCode argument (%1). Should be a string.", typeof categoryCode),callee.µ);
-			return callee.µ['~'].CATG[categoryCode] || false;
+			('string' == typeof (k=categoryCode))
+			|| error(__("Invalid categoryCode argument (%1). Should be a string.", typeof categoryCode),callee.µ);
+			
+			// [CHG230329] Force titlecase formatting
+			// ---
+			k.length && (k=k.charAt(0).toUpperCase()+k.slice(1).toLowerCase());
+			'Lc'==k && (k='LC'); // Special rewriting rule
+
+			return callee.µ['~'].CATG[k] || false;
 		},
 
 		getScript: function getScript_S_Õ$false$(/*str*/scriptName)
