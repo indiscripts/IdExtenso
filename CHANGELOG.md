@@ -1,3 +1,6 @@
+##### [230329]
+   - [Unicode](/etc/$$.Unicode.jsxlib): Adjusted the `getCategory()` method so it supports case-insensitive argument, e.g `"lu"` instead of `"Lu"`. (Of course the internal `~.CATG` map remains case-sensitive.)
+
 ##### [230318]
 
   - [`Popup(Factory)`](/etc/ScriptUI/factories/$$.Popup.jsxinc): Found that a popup component may fail to show up when a timer is set on it. The issue seems to occur especially when the script is launched from an InDesign menu (!?) Calling `Window.update()` happens to solve the problem.
