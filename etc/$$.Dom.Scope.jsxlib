@@ -16,11 +16,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       220517 (YYMMDD)
+		Modified:       230403 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 220517, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 230403, 'select'))
 
 
 	//==========================================================================
@@ -551,8 +551,15 @@
 	[PUBLIC]
 
 	({
-		// Ignore the (No Style) paragraph style?
+		// Whether to ignore the (No Style) paragraph style.
 		IgnoreNoParaStyle: 1,
+		
+		// Custom parastyle (resp. charstyle) label to be ignored.
+		// E.g `µ.IgnoreParaStyleWithLabel='myLabel'` will skip
+		// any para-style whose label property is "myLabel".
+		// ---
+		IgnoreParaStyleWithLabel: '',
+		IgnoreCharStyleWithLabel: '',
 
 		onLoad: function onLoad_()
 		//----------------------------------
@@ -764,15 +771,16 @@
 			return 0; // Shouldn't happen
 		},
 		
-		list: function list_s_ASB(/*?'active'|'all'|'book'*/TREE_SEL,  µ,r,I,t,GH,BK,req)
+		list: function list_s_ASB(/*?'active'|'all'|'book'|'bookall'*/TREE_SEL,  µ,r,I,t,GH,BK,req)
 		//----------------------------------
 		// Get the full list, or tree list, of document names.
 		// If TREE_SEL is defined, the list is returned as a 'tree list', e.g
 		// ["- [Visible documents]","-- doc1", "-- doc2", "- [Book chapters]", "-- chap1", etc ]
 		// with some documents preselected ("++ myDocSelected") depending on TREE_SEL:
-		//   'active' <-> Preselect the active document (if any.)
-		//   'all'    <-> Preselect all visible documents.
-		//   'book'   <-> Preselect all book documents if any, active document otherwise.
+		//   'active'  <-> Preselect the active document (if any.)
+		//   'all'     <-> Preselect all visible documents.
+		//   'book'    <-> Preselect all book documents if any, active document otherwise.
+		//   'bookall' <-> Preselect all book documents if any, all visible documents otherwise. [ADD230403]
 		// [REM] Tree list form is used in ScriptUI.CheckListFactory.
 		// [REM] - All book chapters have an invisible suffix character added to their name
 		//         as defined by ~.BOOK.HIDDEN_SUFFIX.
@@ -793,15 +801,21 @@
 
 			if( TREE_SEL )
 			{
-				// intent :: -1 [BOOK]  |  0 [ACTIVE]  |  +1 [ALL-VISIBLE]
+				// [CHG230403] Added 'bookall' option.
+				// intent :: -2 [BOOK-OR-ALL]  |  -1 [BOOK-OR-ACTIVE]  |  0 [ACTIVE]  |  +1 [ALL-VISIBLE]
 				// ---
-				t = 'string'==typeof TREE_SEL? TREE_SEL.toLowerCase() : (0|t);
-				('book'==t && (t=-1)) || ('all'==t && (t=1));
+				t = 'string'==typeof TREE_SEL ? TREE_SEL.toLowerCase() : (0|t);
+				switch( t )
+				{
+					case 'bookall': t=-2; break;
+					case 'book':    t=-1; break;
+					case 'all':     t=+1; break;
+					default:        'string'==typeof t && (t=0);
+				}
 				
 				GH = µ.hasGhost();
 				BK = µ.hasBook();
-				BK || (0 > t&&(t=0));
-
+				
 				const PTN = "- [%1]";
 
 				if( BK )
@@ -809,12 +823,17 @@
 					req = { };
 					req.__PREFIX__ =
 					{
-						def: -1==t ? '++ ' : '-- ',
+						def: 0 > t ? '++ ' : '-- ',
 						hasError:'-- ' + WRN,
 					};
 
 					r[r.length] = __( PTN, µ.bookName() );
 					r.push.apply(r, I.BOOK(req));
+				}
+				else
+				{
+					// [CHG230403] -2 --> +1 (all-visible)  ;  -1 --> 0 (active)
+					0 > t && t=-(1+t);
 				}
 
 				if( µ.hasVisible() )
@@ -1119,10 +1138,16 @@
 				// Styles                                                     PSTY ; CSTY
 				// ---
 				callee.µ.IgnoreNoParaStyle && (callee.STYL.EXID = doc.paragraphStyles[0].id); // [CHG220118] Exclude [No Paragraph Style] if µ.IgnoreNoParaStyle
-				PS[k] = callee.STYL('paragraph', '', PS, z+'_', doc, '').slice(1); // psPath1<X1>psPath2<X1>...
+				(t=callee.µ.IgnoreParaStyleWithLabel) && (callee.STYL.EXLB = t);              // [ADD220810] Option to exclude parastyle by label.
+				PS[k] = callee.STYL('paragraph', '', PS, z+'_', doc, '').slice(1);            // psPath1<X1>psPath2<X1>...
 
-				delete callee.STYL.EXID;                                           // [CHG220114] Remove EXID filter.
-				CS[k] = callee.STYL('character', '', CS, z+'_', doc, '').slice(1); // csPath1<X1>csPath2<X1>...
+				delete callee.STYL.EXID;                                                      // [CHG220114] Remove EXID filter.
+				delete callee.STYL.EXLB;                                                      // [ADD220810] Remove EXLB filter.
+
+				(t=callee.µ.IgnoreCharStyleWithLabel) && (callee.STYL.EXLB = t);              // [ADD220810] Option to exclude charstyle by label.
+				CS[k] = callee.STYL('character', '', CS, z+'_', doc, '').slice(1);            // csPath1<X1>csPath2<X1>...
+
+				delete callee.STYL.EXLB;                                                      // [ADD220810] Remove EXLB filter.
 			}
 			
 			// Finalize smart-ordered keys.
@@ -1169,24 +1194,28 @@
 			CSTY: {},   // { refKey => `csPath1<X1>csPath2<X1>...` ; _csPath => `domIndex1_csid1`|`domIndex2_csid2`... }
 			            // where each csPath_i has the form `name(<X2>name)*`
 			// ---
-			STYL: function(/*'character'|'paragraph'*/cp,/*str&*/seq,/*obj&*/S,/*`<uint>_`*/docIni,/*Doc|StyleGp*/parent,/*str*/prefix,  exid,t,a,b,i,s,p,k)
+			STYL: function(/*'character'|'paragraph'*/cp,/*str&*/seq,/*obj&*/S,/*`<uint>_`*/docIni,/*Doc|StyleGp*/parent,/*str*/prefix,  exid,exlb,t,a,b,c,i,s,p,k)
 			//----------------------------------
 			// Load styles (recursive.)
 			// [REM] A style group can be empty.
 			// [CHG210831] Paths are now decomposed using <X2> separator rather than `[Gp1] [Gp2] ...` form.
 			// [CHG220114] Ignore callee.EXID id if defined.
+			// [ADD220810] Option for ignoring specific labels thru callee.EXLB.
 			// ---
 			// => `<X1>path1<X1>path2<X1>...<X1>pathN`
 			//     where each path_i has the form `name(<X2>name)*`
 			{
 				exid = callee.EXID||-1;
+				exlb = callee.EXLB||false;
 
 				if( (t=parent[cp+'Styles'].everyItem()).isValid )
 				for
 				(
-					a=t.name, b=t.id, i=-1 ;
+					a=t.name, b=t.id, (c=exlb&&t.label), i=-1 ;
 					++i < a.length ;
-					b[i] !== exid && ( (seq+='\x01'+(p=prefix+a[i])), ((t=S[k='_'+p]||'')&&(t+='|')), (S[k]=t+docIni+b[i]) )
+					b[i] !== exid
+					&& ( (!exlb) || c[i] !== exlb )
+					&& ( (seq+='\x01'+(p=prefix+a[i])), ((t=S[k='_'+p]||'')&&(t+='|')), (S[k]=t+docIni+b[i]) )
 				);
 
 				if( (t=parent[cp+'StyleGroups'].everyItem()).isValid )
