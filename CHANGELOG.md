@@ -1,3 +1,6 @@
+##### [230403]
+   - [Settings](/etc/$$.Settings.jsxlib): There were some embarrassing typos in `activate()`, `reset()` and `backup()` methods. Fixed.
+
 ##### [230329]
    - [Unicode](/etc/$$.Unicode.jsxlib): Adjusted the `getCategory()` method so it supports case-insensitive argument, e.g `"lu"` instead of `"Lu"`. (Of course the internal `~.CATG` map remains case-sensitive.)
 
