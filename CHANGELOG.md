@@ -1,5 +1,6 @@
 ##### [230403]
    - [Settings](/etc/$$.Settings.jsxlib): There were some embarrassing typos in `activate()`, `reset()` and `backup()` methods. Fixed.
+   - [Dom.Scope](/etc/$$.Dom.Scope.jsxlib): The `TREE_SEL` argument of the `list()` method now supports a 4th case, `"bookall"`, which instructs the module to _Preselect all book documents if any, all visible documents otherwise_. (By contrast, using `"book"` means _Preselect all book documents if any, active document otherwise._)
 
 ##### [230329]
    - [Unicode](/etc/$$.Unicode.jsxlib): Adjusted the `getCategory()` method so it supports case-insensitive argument, e.g `"lu"` instead of `"Lu"`. (Of course the internal `~.CATG` map remains case-sensitive.)
