@@ -14,11 +14,11 @@
 		DOM-access:     extractLabel() insertLabel()
 		Todo:           documentation.
 		Created:        150630 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       230403 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 220504, 'access'))
+;$$.hasOwnProperty('Settings') || eval(__(MODULE, $$, 'Settings', 230403, 'access'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -901,7 +901,7 @@
 				$$.error( __("Settings must be declared before activation."), callee );
 			}
 
-			'string'==typeof str && ( (t={})[s]=src, src=t );
+			'string'==typeof src && ( (t={})[s]=src, src=t ); // [FIX230403] Typo: str -> src
 
 			(+$$.trace) && $$.trace(__("%1 > Activating keys (uid: %2.) Host: %3."
 				, callee.µ
@@ -936,7 +936,7 @@
 				$$.error( __("Settings must be declared before calling reset."), callee )
 			}
 
-			'string'==typeof str && ( (t={})[s]=src, src=t );
+			'string'==typeof src && ( (t={})[s]=src, src=t ); // [FIX230403] Typo: str -> src
 
 			(+$$.trace) && $$.trace(__("%1 > Resetting %2 keys to their defaults (uid: %3.) Host: %4."
 				, callee.µ
@@ -983,10 +983,13 @@
 
 			// [CHG180605] Calling doScript/autoUndo prevents the backup stage from being undone.
 			// [CHG190206] JsxBlind safe.
+			// [CHG230403] JsxBlind safer.
 			// ---
-			callee.ARG = dst;
-			app.doScript("I.BCKP(callee.ARG)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
-			delete callee.ARG;
+			callee.ARG1 = I;
+			callee.ARG2 = dst;
+			app.doScript("callee.ARG1.BCKP(callee.ARG2)", +ScriptLanguage.javascript, void 0, +UndoModes.autoUndo);
+			delete callee.ARG1;
+			delete callee.ARG2;
 		},
 
 		addLive : function addLive_Õ_Õ(/*any{}*/oLiveKeys,  I,k)
