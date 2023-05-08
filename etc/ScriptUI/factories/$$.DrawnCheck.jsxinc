@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220131 (YYMMDD)
-		Modified:       220807 (YYMMDD)
+		Modified:       230508 (YYMMDD)
 
 *******************************************************************************/
 
@@ -385,8 +385,15 @@
 				if( (!this.visible) || !(gx=this.graphics) ) return;
 				me = this.parent; // DrawnCheck component.
 				v = this.value?1:0;
-				k = me.enabled ? ((DS.mouseOver ? 'X':'C') + (DS.hasFocus ? 'FOC':('VL'+v))) : 'CDSB';
 				
+				// [CHG230508] Added dynamic __mouseOver__ and __hasFocus__ properties.
+				// ---
+				delete me.__mouseOver__;
+				delete me.__hasFocus__;
+				k = me.enabled
+				? ( ((me.__mouseOver__=DS.mouseOver) ? 'X':'C') + ((me.__hasFocus__=DS.hasFocus) ? 'FOC':('VL'+v)) )
+				: 'CDSB';
+
 				a = callee[k];
 				p = gx.newPen(0,a,1);
 				b = gx.newBrush(0,a);
