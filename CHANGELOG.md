@@ -1,3 +1,6 @@
+##### [230508]
+  - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc): Added dynamic boolean `__mouseOver__` and `__hasFocus__` properties (assumed private and read-only), can be used in your `ScriptUI.DrawnCheckFactory.Icons.<MyIcon>` function to customize further the appearance of the icon depending on `this.__mouseOver__` and/or `this.__hasFocus__` states.
+
 ##### [230403]
    - [Settings](/etc/$$.Settings.jsxlib): There were some embarrassing typos in `activate()`, `reset()` and `backup()` methods. Fixed.
    - [Dom.Scope](/etc/$$.Dom.Scope.jsxlib): The `TREE_SEL` argument of the `list()` method now supports a 4th case, `"bookall"`, which instructs the module to _Preselect all book documents if any, all visible documents otherwise_. (By contrast, using `"book"` means _Preselect all book documents if any, active document otherwise._)
