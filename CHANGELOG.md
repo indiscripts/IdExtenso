@@ -1,3 +1,6 @@
+##### [230513]
+  - [Root/messaging](/core/Root/$$.messaging.jsxinc): Added `$$.dual(msg, captionA, captionB, title)`, just a variant of `$$.yesNo(...)` that supports custom captions instead. Two options are offered anyway: answer _A_ returns `1`, answer _B_ returns `0`.
+
 ##### [230508]
   - [`DrawnCheck(Factory)`](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc): Added dynamic boolean `__mouseOver__` and `__hasFocus__` properties (assumed private and read-only), can be used in your `ScriptUI.DrawnCheckFactory.Icons.<MyIcon>` function to customize further the appearance of the icon depending on `this.__mouseOver__` and/or `this.__hasFocus__` states.
 
