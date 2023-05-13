@@ -447,7 +447,7 @@
 		//              -1 => remove the title bar.
 		// `relWin`   :: Optional, related Window.
 		// ---
-		// E.g  $$.yesNo("Are you sure you want to do this?");
+		// E.g  if( $$.dual("The file already exists.", "Merge", "Create") ){ etc }
 		// => 1 [CHOICE_A]  |  0 [CHOICE_B]
 		{
 			msg = String(msg);
