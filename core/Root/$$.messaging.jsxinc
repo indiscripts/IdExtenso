@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Root module.
-		API:            success() failure() edit() yesNo() input()
+		API:            success() failure() edit() yesNo() dual() input()
 		DOM-access:     ---
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       230311 (YYMMDD)
+		Modified:       230513 (YYMMDD)
 
 *******************************************************************************/
 
@@ -194,14 +194,14 @@
 			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
 		},
 
-		YSNO : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w,r,i,k)
+		DUAL : function(/*str*/txt,/*str*/opt1,/*str*/opt2,/*str|false*/title,/*?Window*/win,  ui,w,r,i,k)
 		//----------------------------------
-		// (Yes-No-Box.) [180531]
-		// => 1 [OK]  |  0 [KO]
+		// (Two-Options-Box.) [ADD230513]
+		// => 1 [OPT1]  |  0 [OPT2]
 		{
 			// Build the UI.
 			// ---
-			ui = this.WMSG('dialog', title||'', +(false!==title), 0, txt, __("Yes"), __("No"), win||0);
+			ui = this.WMSG('dialog', title||'', +(false!==title), 0, txt, opt1, opt2, win||0);
 			w = ScriptUI.builder.call(this,ui);
 
 			// Position and show.
@@ -211,6 +211,15 @@
 			r = 1==w.show() ? 1 : 0;
 			for(i=w.children.length;i--;w.remove(i));for(k in w)delete w[k];$.gc(); // [FIX230311] CLEANER IN CS
 			return r;
+		},
+
+		YSNO : function(/*str*/txt,/*str|false*/title,/*?Window*/win,  ui,w,r,i,k)
+		//----------------------------------
+		// (Yes-No-Box.) [CHG230513] Simply invokes ~.DUAL.
+		// this :: ~
+		// => 1 [OK]  |  0 [KO]
+		{
+			return this.DUAL(txt, __("Yes"), __("No"), title, win);
 		},
 
 		WINP: function(/*'dialog'|'palette'|'window'*/tpe,/*str*/title,/*0|1*/border,/*str*/caption,/*str*/defVal,/*str[]|0*/ops,/*str*/ok,/*str*/ko,/*0|Window*/w,  q,o,i,a)
@@ -424,6 +433,28 @@
 			( relWin && relWin instanceof Window ) || (relWin=void 0);
 			
 			return callee.µ['~'].YSNO(msg, title, relWin);
+		},
+
+		dual: function dual_S_S_S_s_$Window$_B(/*str*/msg,/*str*/captionA,/*str*/captionB,/*-1|str=auto*/title,/*?Window*/relWin)
+		//----------------------------------
+		// [ADD230513] Displays a message and two buttons `captionA` / `captionB`
+		// (captionA being the default) and return the user choice (1 for A, 0 for B).
+		// Behaves like a yes/no box with custom button texts.
+		// `msg`      :: Message to be prompted.
+		// `captionA` :: Text of button A (required)
+		// `captionB` :: Text of button B (required)
+		// `title`    :: Title of the box ; default is __("Choose")
+		//              -1 => remove the title bar.
+		// `relWin`   :: Optional, related Window.
+		// ---
+		// E.g  $$.yesNo("Are you sure you want to do this?");
+		// => 1 [CHOICE_A]  |  0 [CHOICE_B]
+		{
+			msg = String(msg);
+			title = -1===title ? false : ( title ? String(title) : __("Choose") );
+			( relWin && relWin instanceof Window ) || (relWin=void 0);
+			
+			return callee.µ['~'].DUAL(msg, captionA, captionB, title, relWin);
 		},
 
 		input: function input_S_s_$Window$_(/*str*/caption,/*str=""*/defVal,/*-1|str="IdExtenso"*/title,/*?str[]*/options,/*?Window*/relWin)
