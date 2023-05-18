@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =lave() eval()
 		DOM-access:     ---
-		Todo:           ---
+		Todo:           How do we deal with incoming Collections and plural specs?
 		Created:        170306 (YYMMDD)
-		Modified:       210410 (YYMMDD)
+		Modified:       230518 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 210410, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 230518, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -48,6 +48,7 @@
 	2. Any access to app.scriptPreferences.properties causes InDesign
 	   to freeze (infinite loop?) so we must prevent JSON() from expanding
 	   the specifier path "/@script-preferences".
+	   [REM230518] Might be related to the huge `scriptArgs` array (?)
 
 
 	3. In CS4/CS5, some locales like RU may lead to invalid name-based
@@ -61,8 +62,6 @@
 	   `resolve(...)` string would fail when evaluated. Furthermore, any
 	   attempt to access `obj.properties` would cause a runtime "Invalid
 	   object" error.
-
-	   
 
 	*/
 
@@ -134,18 +133,14 @@
 		BRKN : function(/*str*/s)
 		//----------------------------------
 		// Whether s is a 'broken' spec path.
+		// [FIX230518] Bugfix (missing parentheses in logical condition!)
 		// => 1 [BROKEN] | 0 [NOT-BROKEN]
 		{
-			return +(
-				0 < s.indexOf('script-preferences')
-				||
-				(callee.Q||(callee.Q=/@(find|change).+shadow-settings$/)).test(s)
-				||
-				0 < s.indexOf('[@name="') && callee.DBQT(s)
-			);
+			return +( 0 < s.indexOf('script-preferences') || callee.REBK.test(s) || (0 < s.indexOf('[@name="') && callee.DBQT(s)) );
 		}
 		.setup
 		({
+			REBK: RegExp('(?:find|change).+(?:shadow-settings)'),
 			DBQT: function(/*str*/s)
 			//----------------------------------
 			// [ADD210410] Whether the spec contains inner double quotes in
@@ -227,8 +222,9 @@
 		// [CHG171125] Entirely rewritten to take care of KDOM < 0.
 		// => <nonEmptyString> [done]  |  <emptyString> [pending]
 		{
-			if( (q=callee.Q).hasOwnProperty(k=o.toSpecifier()) ) return q[k];
-			
+			k = o.toSpecifier();
+			if( (q=callee.Q).hasOwnProperty(k) ) return q[k];
+
 			// The json `resolve("<spec>")` is allowed only if KDOM > 0.
 			// Otherwise we take "<spec>" alone--which evals to a string.
 			// ---
@@ -240,7 +236,7 @@
 			// which allows a root DOM object to explore its own properties.
 			// => 'ignored' | 'broken' | 'no-prop' | FALSE
 			// ---
-			t = ( 0 > this.KDOM && this.INLP && 'ignored')
+			t = ( 0 > this.KDOM && this.INLP && 'ignored' )
 				||
 				( this.BRKN(k) && 'broken' )
 				||
@@ -547,12 +543,13 @@
 			if( this.KARR==this.OTOS(x) || (x instanceof Array) ) return this['\x01Array'](x);
 
 			// Special DOM object case.
+			// [ADD230518] Safer: make sure `toSpecifier` is a method.
 			// ---
-			if( x.hasOwnProperty('toSpecifier') )
+			if( x.hasOwnProperty('toSpecifier') && 'function'==typeof x.toSpecifier )
 			{
-				return this['\x01DomObj'](x)
+				return this['\x01DomObj'](x);
 			}
-			
+
 			// [ADD170608] Special IdExtenso-based object hook.
 			// If the SPACED mode is off, look whether x's constructor name matches
 			// an IdExtenso class registered here as a `\x02...` key (hook.) If so,
@@ -675,7 +672,7 @@
 	[PUBLIC]
 
 	({
-		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,t,ns,nt)
+		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,bkPP,ns,nt)
 		//----------------------------------
 		// [ADD171125] Allows DOM_ACCESS == -1 (i.e, do not even browse DOM object properties.)
 		// [ADD171116] Added FORCE_OBJ param.
@@ -709,7 +706,7 @@
 		// => uneval-string
 		{
 			I = callee.µ['~'];
-			t = XML.prettyPrinting;
+			bkPP = XML.prettyPrinting;
 
 			// [ADD170418] Normalize SPACED ; set I.RDCD.
 			// Warning: (undefined < 0) is TRUE in ExtendScript (!)
@@ -774,7 +771,7 @@
 			I.REFS.Q.length = 0;
 			I.ODEL(I.DOMS.Q);
 
-			XML.prettyPrinting = t;
+			XML.prettyPrinting = bkPP;
 			return x;
 		},
 		
