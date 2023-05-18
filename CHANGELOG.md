@@ -1,3 +1,6 @@
+##### [250318]
+  - [JSON](/core/$$.JSON.jsxlib): Fixed a serious bug that made main **InDesign DOM components** unparseable through `$$.JSON(someIndesignObject, 1, 1)`. A typo made the `~.BRKN` filter completely transparent (for almost two years!), which resulted in an InDesign crash whenever you had to stringify `app` or `Document` objects :-/ (Reminder: The reason for this filter is to prevent browsing of buggy DOM properties like `app.scriptPreferences` or `.find<...>ShadowSettings`.)
+
 ##### [230513]
   - [Root/messaging](/core/Root/$$.messaging.jsxinc): Added `$$.dual(msg, captionA, captionB, title)`, just a variant of `$$.yesNo(...)` that supports custom captions instead. Two options are offered anyway: answer _A_ returns `1`, answer _B_ returns `0`.
 
