@@ -9,9 +9,9 @@
 		Kind:           Entry point.
 		API:            ---
 		DOM-access:     ---
-		Todo:           Check that $.gc() does not cause issues.
+		Todo:           ---
 		Created:        160731 (YYMMDD)
-		Modified:       230123 (YYMMDD)
+		Modified:       230518 (YYMMDD)
 
 *******************************************************************************/
 
