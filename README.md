@@ -1,4 +1,4 @@
-# *IdExtenso*  2.30123  (core: 203KB)
+# *IdExtenso*  2.30518  (core: 205KB)
 
 ###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
