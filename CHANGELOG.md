@@ -1,5 +1,11 @@
-##### [250318]
-  - [JSON](/core/$$.JSON.jsxlib): Fixed a serious bug that made main **InDesign DOM components** unparseable through `$$.JSON(someIndesignObject, 1, 1)`. A typo made the `~.BRKN` filter completely transparent (for almost two years!), which resulted in an InDesign crash whenever you had to stringify `app` or `Document` objects :-/ (Reminder: The reason for this filter is to prevent browsing of buggy DOM properties like `app.scriptPreferences` or `.find<...>ShadowSettings`.)
+## 2.30518
+Important update (May 18, 2023.) Global re-generation of the core structure, including last fixes and additions.
+   - [JSON](/core/$$.JSON.jsxlib) v2.30518 aka `$$.JSON(...)`: Fixed a serious bug that made main **InDesign DOM components** unparseable through `$$.JSON(someIndesignObject, 1, 1)`. A typo made the `~.BRKN` filter completely transparent (for almost two years!), which resulted in an InDesign crash whenever you had to stringify `app` or `Document` objects :-/ (Reminder: The reason for this filter is to prevent browsing of buggy DOM properties like `app.scriptPreferences` or `.find<...>ShadowSettings`.)
+   - [Root/messaging](/core/Root/$$.messaging.jsxinc): Safer memory cleanup: the method discussed in [230311](#230311) should also significantly enhance garbage collection in `$$.ModalScript`-based scripts and similar UI-intensive projects. Added the helper `$$.dual(msg, captionA, captionB, title)` for supporting custom A/B choices in a Yes/No box.
+   - [Ext/string](/core/Ext/$$.string.jsxinc): Fixed a bug in `String.fromBase64()`.
+   - [SUI/mini](/core/SUI/$$.mini.jsxinc): Added the property (uint) `ScriptUI.NoCharWidth` returning the probable width of the no-character glyph.
+
+_(Other interesting changes do not affect the core branch. See previous log entries regarding updated extra modules.)_
 
 ##### [230513]
   - [Root/messaging](/core/Root/$$.messaging.jsxinc): Added `$$.dual(msg, captionA, captionB, title)`, just a variant of `$$.yesNo(...)` that supports custom captions instead. Two options are offered anyway: answer _A_ returns `1`, answer _B_ returns `0`.
