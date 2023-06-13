@@ -90,7 +90,7 @@ This basic snippet illustrates how to use some core features, namely **Log**, **
 
     // ---
     // Additional includes are possible here.
-    // e.g: #include 'path/to/etc/Yalt.jsxlib'
+    // e.g: #include 'path/to/etc/$$.Yalt.jsxlib'
     // ---
 
     // Load the framework.
