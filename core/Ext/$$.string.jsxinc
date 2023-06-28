@@ -10,7 +10,8 @@
 		API:  static:   SourceEscapes fromCodePoint() fromUTF8() fromBase64()
 		                random() levenDist() levenFilter()
 		       proto:   codePointAt() toUTF8() toBase64() toSource()
-		                split() [CS4] lastIndexOf() [CS4] charAt()
+		                split() [CS4] indexOf() [CS4] lastIndexOf() [CS4]
+		                charAt()
 		                subReplace()
 		                asPath() toPath() relativePath()
 		                trim() ltrim() rtrim() rtrunc() ltrunc() trunc()
@@ -20,7 +21,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       230210 (YYMMDD)
+		Modified:       230628 (YYMMDD)
 
 *******************************************************************************/
 
@@ -574,6 +575,61 @@
 
 		})({})
 	});
+
+
+	//==========================================================================
+	// [ADD230628] String.prototype.indexOf [CS4 patch.]
+	//==========================================================================
+
+	if( -1 == "\0AB\0".indexOf("AB") && 1 == "\0AB\0".lastIndexOf("AB") )
+	//  (----there is a problem----)    (-----there is a solution-----)
+	//
+	// In CS4 (and maybe CS5) `indexOf(search)` does not work when `this`
+	// contains U+0000 before the match and `search` has more than 1 char.
+	// According to my tests, `lastIndexOf()` does work anyway, so we can
+	// fix the original method as follows.
+	{
+		String.prototype.__indexOf__ = String.prototype.indexOf;
+		
+		String.prototype.indexOf = function indexOf(/*str*/search,/*?uint=0*/pos,  t,z,s,r)
+		//----------------------------------
+		// E.g  "\0\0ABC\0XX".indexOf("B")       => 3
+		// E.g  "\0\0ABC\0XX".indexOf("ABC")     => 2
+		// E.g  "\0\0ABC\0XX".indexOf("ABC",3)   => -1
+		// E.g  "\0\0ABC\0ABC".indexOf("ABC",3)  => 6
+		{
+			// undefined | null => -1 ; '' => 0
+			// ---
+			if( null===search || 'undefined' == (t=typeof search) ) return -1;
+			
+			// Coerce `search` to a string.
+			// ---
+			'string' == t || (search=search.toString());
+			
+			// Shortcuts:
+			// (a) The original method works if search has 0 or 1 character.
+			// (b) It also works if `this` doesn't contain U+0000.
+			// ---
+			if( 2 > (z=search.length) || -1==this.__indexOf__('\0') ) return this.__indexOf__(search,pos);
+
+			// Workaround. (`this` contains one or more U+0000 characters.)
+			// [REM] String.prototype.lastIndexOf()
+			// "If `search` appears as a substring (...) at one or more positions
+			// that are SMALLER than or equal to `position`, then the index of the
+			// GREATEST such position is returned; otherwise, ‑1 is returned.
+			// If `position` is undefined, the length of the String value is
+			// assumed, so as to search all of the String." [ECMA]
+			// ---
+			pos >>>= 0;
+			for
+			(
+				s=this.valueOf(), t=1/0, r=-1 ;
+				t >= z && pos <= (t=s.lastIndexOf(search,t-z)) ;
+				r = t
+			);
+			return r;
+		};
+	}
 
 	//==========================================================================
 	// String.prototype.split [CS4 patch.]
