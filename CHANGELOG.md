@@ -1,3 +1,6 @@
+##### [230628]
+  - [Ext/string](/core/Ext/$$.string.jsxinc). An incredible bug was detected in ExtendScript CS4. In that version, the native `String.prototype.indexOf(...)` method is no longer reliable if the host string contains `"\u0000"` (i.e, the U+0000 character) and if the searched string has more than one character. Fortunately, it happens that `String.prototype.lastIndexOf(...)` still works fine in such a context, and we were able to use this fact to patch `indexOf` in a way that restores the expected behavior. _(This fix does not affect later versions of ExtendScript.)_
+
 ## 2.30518
 Important update (May 18, 2023.) Global re-generation of the core structure, including last fixes and additions.
    - [JSON](/core/$$.JSON.jsxlib) v2.30518 aka `$$.JSON(...)`: Fixed a serious bug that made main **InDesign DOM components** unparseable through `$$.JSON(someIndesignObject, 1, 1)`. A typo made the `~.BRKN` filter completely transparent (for almost two years!), which resulted in an InDesign crash whenever you had to stringify `app` or `Document` objects :-/ (Reminder: The reason for this filter is to prevent browsing of buggy DOM properties like `app.scriptPreferences` or `.find<...>ShadowSettings`.)
