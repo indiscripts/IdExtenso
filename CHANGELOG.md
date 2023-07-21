@@ -1,3 +1,6 @@
+##### [230721]
+   - [JSON](/core/$$.JSON.jsxlib). An unusual situation arises when `Array.prototype` has been augmented from the client code: `myArr.__count__` then mistakenly increases by `Array.prototype.__count__` (natively 0), which led `$$.JSON` to produce a useless _[rich array](#200613)_ representation. We've fixed that by double-checking the actual count of extra properties. If still zero, the usual array representation is preserved.
+
 ##### [230628]
   - [Ext/string](/core/Ext/$$.string.jsxinc). An incredible bug was detected in ExtendScript CS4. In that version, the native `String.prototype.indexOf(...)` method is no longer reliable if the host string contains `"\u0000"` (i.e, the U+0000 character) and if the searched string has more than one character. Fortunately, it happens that `String.prototype.lastIndexOf(...)` still works fine in such a context, and we were able to use this fact to patch `indexOf` in a way that restores the expected behavior. _(This fix does not affect later versions of ExtendScript.)_
 
