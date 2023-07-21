@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           How do we deal with incoming Collections and plural specs?
 		Created:        170306 (YYMMDD)
-		Modified:       230518 (YYMMDD)
+		Modified:       230721 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 230518, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 230721, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -624,6 +624,10 @@
 			// [FIX200613] In this particular case, a regular Array is created and extra
 			// keys are added from within an auto-executed function. JSON output looks like
 			// `(function(a,o...){...})([...],{...})`
+			// [FIX230721] An unusual situation arises when Array.prototype was augmented:
+			// x.__count__ then mistakenly increases by Array.prototype.__count__ (which is
+			// natively 0). Thus an additional test has been added on `o.__count__` (see below)
+			// to prevent useless outgrowths from popping up.
 			// ---
 			if( x.__count__ > x.length )
 			{
@@ -633,14 +637,19 @@
 				for( k in x ) x.hasOwnProperty(k) && k !== ''+parseInt(k,10) && (o[k]=x[k]);
 				
 				// Extend the output so a rich array is returned.
+				// [FIX230721] Condition added to prevent issues with fake 'Rich Arrays'
+				// that result from extended `Array.prototype` or similar exception.
 				// ---
-				k = this.SPCE ? this.NEWL + dq : '';
-				s = "(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})"
-				  + k + '(' + k
-				  + s
-				  + k + ',' + k
-				  + this['\x01Object'](o)
-				  + k + ')';
+				if( o.__count__ )
+				{
+					k = this.SPCE ? this.NEWL + dq : '';
+					s = "(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})"
+					  + k + '(' + k
+					  + s
+					  + k + ',' + k
+					  + this['\x01Object'](o)
+					  + k + ')';
+				}
 			}
 
 			return (a.length=0),(this.INDT=q),s;
