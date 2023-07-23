@@ -1,0 +1,3899 @@
+/*******************************************************************************
+
+		Name:           TextParcels
+		Desc:           Explore Text containers in a Document.
+		Path:           /etc/$$.Dom.TextParcels.jsxlib
+		Require:        $$.Dom ; $$.MultiStream auto-included ;
+		                the file etc/Linguist/$$.LNGS.jsxres must be includable
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class.
+		API:            =create() setStreamContextLength()
+		     [PROTO]    clear() setBasicOptions()
+		                updateContainers() updateCells()
+		                updateFootnotes() endnoteFrameIds()
+		                updateLocations() updateAuto() ready() pageCount()
+		                hasPageDups() sectionPrefix() pageSectionMatch()
+		                pageMatch() targetPages() targetLayers()
+		                targetParagraphStyles() targetCharacterStyles()
+		                consolidate() getSamples() getMultiStream() getStats()
+		DOM-access:     YES [READ-ONLY]
+		Todo:           ---
+		Created:        201110 (YYMMDD)
+		Modified:       230723 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230723, 'create'))
+
+	//==========================================================================
+	// BACKGROUND
+	//==========================================================================
+
+	/*
+
+	0. OVERVIEW
+	
+	The class TextParcels captures visible text units in an InDesign document.
+	Its main purpose is to provide handy tools for scanning and reporting text
+	contents of particular kinds (footnotes, cells, etc) and/or available at
+	particular locations (e.g. specific pages or layers.)
+	
+	These text units are often scattered throughout the DOM hierarchy, while
+	many InDesign scripts just seek to answer questions like "What texts appear
+	on page 12?", "What data do the tables contain in that document?", etc.
+	
+	The main issue with text-related structures (frames, stories, text paths,
+	tables/cells, footnotes/endnotes, parent pages, layers) is, they rely on
+	complex interconnections between visible items and more abstract objects.
+	Parsing those entities in a consistent and optimal way is a true challenge,
+	especially when the target document has many pages and texts.
+	
+	In order to identify or capture text units, scripts usually invoke DOM
+	commands like .findGrep() or .findText() but they have several downsides:
+	- They are resource-intensive and time-consuming;
+	- They assume you already know what *contents* you are looking for and
+	  do not allow you to sort results *by location*;
+	- They do not cache results or keep in memory the locations already
+	  visited (each call restarts from the beginning.)
+
+	TextParcels takes a different approach: it parses the document structure
+	(focusing on text containers) and builds various maps that address text
+	units and keep track of their respective locations. This technique is on
+	average faster, and much more granular, than repeatedly running `find...`
+	methods. This allows the client code to target specific locations and send
+	queries throughout text contents.
+
+	1. CLUSTERS
+
+	A cluster represents any visible text container, on a specific page, in a
+	given document. In most cases the container (e.g. a TextFrame or a TextPath)
+	determines both a target text (`container.texts[0]`) and the corresponding
+	location (`container.parentPage` for frames, `container.parent.parentPage`
+	for textpaths). But two particular cases had to be addressed too:
+	
+	A) TABLE CELLS - Since Table objects can be threaded across multiple frames,
+	   the actual location of a particular cell may differ from the Table container.
+	   In this case we need to invoke the `parentTextFrames` property of the text.
+	   Also, tables can appear in footnotes/endnotes and/or be nested in a cell.
+	   The DOM path to a visible cell, whatever its depth in the hierarchy, can
+	   always be reduced to `page-item[@id=x]/table[@id=y]/cell[@id=z]`, defined by
+	   the three IDs x,y,z. Then the cell text can be retrieved using `/text[0]`.
+	   However, the location of the cell requires an extra frame ID, as
+	   `page-item[@id=x]` does not necessarily determine the actual location.
+	   [REM] The 'universal' command `doc.pageItems.itemByID(<anyObjID>)` does
+	   not work for Table IDs.
+
+	B) FOOTNOTES, ENDNOTES - If parsed, footnotes and endnotes may introduce
+	   additional issues. Most of these components have their text entirely captu-
+	   red by `myNote.texts[0]`, meaning that the footnote/endote ID is sufficient
+	   to determine the text, while the frame (location) results from the
+	   `parentTextFrames[0]` of that text. But if a note is threaded across
+	   multiple frames, `parentTextFrames` will return more than one frame
+	   and we must then 'split' the cluster into mutiple parts, of the form
+	   `myNote.characters.itemByRange(a,b)`.
+
+	In the present implementation, each cluster is encoded by a compact string
+	having at least 4 characters:
+	
+	      <CLUSTER>  ::  `<K><LL><N><C>`
+	                      |________| <------ 4 characters (prefix)
+
+	where
+	             <K> ::  1 character (cluster kind)
+	                     One of 'T'|'P'|'E'|'c'|'d'|'b'|'f'|'e' (see below.)
+	            <LL> ::  2 characters (location-pageitem ID)
+	                     Either `\0\0` (if the location fits the cluster KeyId)
+	                     or <Hi><Lo> encoding of the uint32 ID.
+	             <N> ::  1 character (next flag)
+	                     '+' if the cluster has a continued text,
+	                     '#' if it contains the last character of the story,
+	                         or if it is a cell/footnote/endnote
+	                     '!' if the story overflows here (only for T|P|E.)
+	             <C> ::  0 or more characters (contents)
+	                     Raw contents of the cluster. If no contents is assigned
+	                     yet, the length of the cluster code is 4. Assigned
+	                     *empty* content is encoded \0 (1 char.)
+
+	Then cluster ids (referred to as KeyIDs below) are assigned and managed from
+	the TextParcels instance through its `clusters` property:
+	
+	      .clusters  ::  { <KeyID> => <CLUSTER> }
+	
+	each <KeyId> having one of the following forms depending on the kind <K>:
+	
+	         <KeyID> ::   `_x` | `_x_y_z` | `_x_a_b`
+
+	where x, y, and z denote DOM ids (uint32) while a and b denote character
+	indices. Below is detailed how KeyIDs are built:
+
+		DOM OBJECT  <K>  KEYID    PATH AND <LL>
+		=======================================================================
+		TextFrame    T    _x      text-frame[@id=x]
+		                          <LL> x
+		-----------------------------------------------------------------------
+		TextPath     P    _x      text-path[@id=x]
+		                          <LL> some pageitem X
+		-----------------------------------------------------------------------
+		EndnoteTF    E    _x      endnote-text-frame[@id=x]
+		                          <LL> x
+		-----------------------------------------------------------------------
+		Cell       c|d|b  _x_y_z  page-item[@id=x]/table[@id=y]/cell[@id=z]
+		                          <LL> either x or another frame X (threaded table)
+		                          The `d` (resp. `b`) kind is used to indicate that
+		                          the cell takes place in a footnote (resp. endnote.)
+		-----------------------------------------------------------------------
+		Footnote     f    _x      footnote[@id=x]           if non-threaded
+		                  _x_a_b  footnote[@id=x]/[a]to[b]  if threaded
+		                          <LL> some frame X
+
+	The Endnote kind 'e' is NOT USED in the present implementation, although
+	available in principle:
+
+		Endnote      e    _x      endnote[@id=x]            if non-threaded
+		                  _x_a_b  endnote[@id=x]/[a]to[b]   if threaded
+		                          <LL> some frame X
+	
+	For the time being, endnotes are fully processed as EndnoteTextFrame contents,
+	hence available in 'E' clusters.
+
+	*/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	The present class is one of the building blocks of IndexMatic³, a full-text analyzer
+	and index builder for InDesign. -> https://indiscripts.com/category/projects/IndexMatic
+	
+	For that reason, many internal bricks implemented below may sound crazy or pointless.
+	In particular, the `MultiStream` submodule available in this directory requires a deep
+	understanding of how text matching and query processing was implemented in IndexMatic.
+	It sometimes refers to extra entities (like the `XQuery` class) that are not available
+	in the public release of the /etc/ branch.
+	
+	However, the basic features exposed by `$$.Dom.TextParcels` can still be enjoyed by
+	*experienced* developers who'd need to scan InDesign documents with high efficiency.
+	
+	Since `$$.Dom.TextParcels` is a class (each instance handles a particular Document),
+	you will use the syntax
+	
+	      var myTP = new $$.TextParcels( myDocument, myOptions )
+	
+	to get an instance of the class. The optional `myOptions` argument (object) can be
+	passed in to specify basic settings at construction time. Most options are boolean
+	(some are 'ternary'), they provide 'hints' to the scanner about clusters that can
+	be excluded and similar skippable things:
+
+		tables     (-1|0|1) -1:restrict to tables    ; 0:ignore tables   ; 1:accept tables
+		endnotes   (-1|0|1) -1:restrict to endnotes  ; 0:ignore endnotes ; 1:accept endnotes
+		footnotes  (-1|0|1) -1:restrict to FNs       ; 0:ignore FNs      ; 1:accept footnotes
+		nested        (0|1)  0:ignore nested objects ; 1:accept
+		hidden        (0|1)  0:ignore hidden texts   ; 1:accept
+		wantVars      (0|1)  Whether text variable instances have to be scanned.
+		scanLanguages (0|1)  Whether document languages have to be scanned.
+
+	These options can anyway be changed later using myTP.setBasicOptions(...)
+
+	-> Go into the prototyped `create` method for further detail on ctor options.
+
+	The data structure of TP instance is huge (see the ctor for detail). Here are the more
+	sensible properties:
+
+	      docSpec:   str (doc specifier)
+	      name:      str (doc name)
+	      options:   { tables, endnotes, footnotes, nested, hidden... }
+	      icuBest:   undef|str :: `xx_YY`  (best guess about the iso language)
+	
+	and here are more complex (although quite essential) components:
+
+	      clusters:  { _kid  => `<K><LL>[+#!]<C>` },
+	      threads:   { _kid  => `<nextKid>` },
+	      locations: { _xid  => `<pid>[_$]<yid><X1>?` | '0[_$]0' },
+	      ranges:    { _kid  => `[_=]<zpc0><zpc1>...<zpcN>` | '' },
+	      styles:    { _sid  => idx } [ idx => `_sid` ]
+	      pagesMap:  [ ofs => id ] + { _name => id | `id_id...` } + { $id => <ofs>name }
+	      sections:  [ idx => uniqueName ] + { _uniqueName => idx }
+	      runs:      { _pidOK => `_kidOK1|•kidOK2|...|•kidOKn` }  ; where • denotes [_+]
+	      (etc)
+
+	As you can see, a special, compact 'encoding' is used to represent clusters and related
+	information. (Clusters are introduced in the BACKGROUND section.) You'll need to get
+	familiar with those structures if you expect to explore the features in depth. But
+	you can still access many interesting routines from the public API available in the
+	[PROTO] areas. All methods are quite seriously documented...
+
+	-> See /tests/DomTextParcelsTest.jsx for a basic example.
+
+	*/
+
+	//==========================================================================
+	// TOOLS: PPAV SIGM REPT PGMP IDXS UP32 VRNG VREP RE_MRGE SEGS STMP NRMS SECT VRTP FSEC ISEQ IOBJ
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Whether parentPage is available.
+		// ---
+		PPAV: $$.idVersion(7),
+		
+		SIGM: function(/*uint|uint[]*/count,  r,z)
+		//----------------------------------
+		// Sum the values if `count` is an array, return `count` otherwise.
+		{
+			if( 'number' == typeof count ) return count;
+			if( !count.length ) return 0;
+			r = 0;
+			for each( z in count ) r+=z;
+			return r;
+		},
+		
+		REPT: function(/*(str|uint)[]*/a,/*uint[]|uint*/b,  n,r,i,z)
+		// ---------------------------------
+		// (Repeat.) Repeats each a[i] element b[i] times and returns
+		// the resulting array, each element bing coerced into a string.
+		// E.g  a=['x','y','z'] ; b=[2,0,4] => ['x','x','z','z','z','z']
+		//      a=[1234,56,789] ; b=[1,3,2] => ['1234','56','56','56','789','789']
+		// ---
+		// => str[]
+		{
+			// If `b` is a single number, use `[b]`.
+			// ---
+			'number' == typeof b && (b=[b>>>0]);
+
+			// In case `a.length` != `b.length`, take the min number.
+			// ---
+			(n=a.length) > (z=b.length) && (n=z);
+
+			for( r=[], i=-1 ; ++i < n ; (z=b[i]) && r.push.apply(r,Array(1+z).join('\x01'+a[i]).slice(1).split('\x01')) );
+			return r;
+		},
+		
+		PGMP: function(/*Document*/doc,  PV,r,n,a,dup,i,k,x)
+		//----------------------------------
+		// (Pages-Map.) Create the pages map entity:
+		//  ofs      => pid
+		// _name     => pid | `pid_pid...`
+		// $pid      => <ofs>name
+		// DUP_COUNT => uint
+		// ---
+		// => new [{}]
+		{
+			r = (PV=doc.pages.everyItem()).id;
+			n = r.length;
+			a = PV.name; // May contain duplicates!
+			
+			const CHR = String.fromCharCode;
+			for
+			(
+				dup=0, i=-1 ; ++i < n ;
+				k='_'+a[i], x=r[i],
+				(r[k]=r.hasOwnProperty(k)?(++dup,r[k]+'_'+x):x),
+				r['$'+x]=CHR(i)+k.slice(1)
+			);
+			r.DUP_COUNT = dup;
+			return r;
+		},
+
+		IDXS: function(/*uid_uid...*/s,/*{_uid=>idx}*/q,  a,i,k)
+		//----------------------------------
+		// (Index-String.) Converts `uid_uid...` string to UTF16-index string `<idx><idx>...`
+		// based on the map q :: { _uid => idx <= 0xFFFF }. If a `_uid` is not found in q,
+		// no <idx> character is associated to it.
+		// => str   ; may contain \0
+		{
+			const CHR = String.fromCharCode;
+			
+			for( a=s.split('_'), i=a.length ; i-- ; a[i] = q.hasOwnProperty(k='_'+a[i]) ? CHR(q[k]) : '' );
+			return a.join('');
+		},
+
+		UP32: function(/*str*/s,/*uint*/unitSz,  r,n,i)
+		//----------------------------------
+		// Given a string `s` formatted as `_<x...><x...>...`
+		// where `x` is a U16 char followed by unitSz-1 characters,
+		// returns the corresponding `=<XX...><XX...>...` string
+		// where `XX` is '\0'+x.
+		// => str
+		{
+			for( r='=', n=s.length, i=1 ; i < n ; r=r.concat('\0',s.slice(i,i+=unitSz)) );
+			return r;
+		},
+		
+		VRNG: function(/*`[_=]<Zpc0><Zpc1>...`*/rk,/*[<idxMax>_<newSize>,...,<idxMin>_<newSize>]*/vrep,  U32,n,x,i,di,j,zi,xv,vv,dz,CAN_UP)
+		//----------------------------------
+		// (Adjust-Range-To-Variables.) Adjust the range sizes Z in `rk` to take
+		// care of variable replacements.
+		// If rk[0]=='_' (resp. '='), the Z's are 16bits (resp. 32bits) encoded
+		// Each character at idx specified in vrep has been replaced by either
+		// an empty string (<newSize>=='0') or a string of newSize > 1.
+		// [REM] In the rare case where Z values need to go up from 16 to 32bits
+		// encoding, the returned string is properly updated using ~.UP32.
+		// ---
+		// this :: ~
+		// => str ; adjusted `[_=]<Zpc0><Zpc1>...`  with Z's updated.
+		{
+			const CHR = String.fromCharCode;
+			U32 = +('=' == rk.charAt(0));
+			CAN_UP = !U32;
+
+			n = rk.length;
+			for( x=0, di=3+U32, j=vrep.SIZE, xv=-1, i=1 ; i < n ; i+=di )
+			{
+				// zi :: size of the range, aka <z>.
+				// ---
+				zi = rk.charCodeAt(i);
+				U32 && ( zi=((zi<<16)|rk.charCodeAt(1+i)) >>> 0 );
+
+				// Get xv >= x ; vv :: `<xv>_<newSize>`
+				// ---
+				while( xv < x ) xv = 0 < j ? parseInt((vv=vrep[--j]),10) : 1/0;
+				if( !isFinite(xv) ) break;
+
+				// As long as xv < x=x+zi, accumulate the sizeFix (dz.)
+				// ---
+				for( x+=zi, dz=0 ; xv < x ; xv = 0 < j ? parseInt((vv=vrep[--j]),10) : 1/0 )
+				{
+					dz += -1 + parseInt(vv.slice(1+vv.indexOf('_')),10);
+				}
+				if( !dz ) continue;
+
+				// Update size: zi -> zi+dz
+				// ---
+				zi += dz;
+				if( CAN_UP && 0xFFFF < zi )
+				{
+					// Rewrite rk from 16 to 32bits (so it can receive zi > 0xFFFF.)
+					// ---
+					rk = this.UP32(rk,3);
+					
+					// Update (U32,di,n,i) accordingly.
+					// ---
+					U32 = 1;
+					di = 4;
+					n = rk.length;
+					i = 1 + 4*((i-1)/3);
+					CAN_UP = 0;
+				}
+
+				zi = U32 ? CHR(zi>>>16,(0xFFFF&zi)>>>0) : CHR(zi);
+				rk = rk.slice(0,i).concat(zi, rk.slice(1+U32+i));
+			}
+			
+			return rk;
+		},
+
+		VREP: function(/*str*/tx,/*?str[]&*/vrep,/*str|char*/rp,/*?str[]*/VTX,  r,p,n,x,i,U32,dp,s,z,xp)
+		//----------------------------------
+		// (Variable-Replacement.) Replace variable markers in `tx` by some
+		// corresponding character or result text.
+		// vrep :: If supplied, volatile array of `<idx>_<newSize>` strings
+		//         in *decreasing* indices. Length is stored in vrep.SIZE.
+		// rp   :: Replacement scheme:
+		//         ''   -> Each \x18 in tx is replaced by an empty string
+		//         char -> Each \x18 in tx is replaced by rp
+		//         `[_=]<xkv0><xkv1>...<xkvN>` -> Each variable marker found
+		//                 at index `x` is replaced by VTX[v] ; or by the
+		//                 empty string if the association is missing.
+		// VTX   :: varTexts array ; must be provided if rp.length > 1.
+		// ---
+		// this :: ~
+		// => str ; new tx
+		{
+			vrep||(vrep=0);
+
+			r = tx.split('\x18');
+			p = rp.length;
+			
+			// Single char replacement.
+			// ---
+			if( 1===p ) return (vrep&&(vrep.SIZE=0)), r.join(rp);
+			
+			// Removes all variables.
+			// ---
+			if( 0===p || !(VTX||0).length )
+			{
+				for( n=0, x=tx.length, i=r.length ; i-- ; x-=(1+r[i].length), vrep&&(vrep[n++]=x+'_0') );
+				vrep && (vrep.SIZE=n);
+				return r.join('');
+			}
+			
+			U32 = '=' == rp.charAt(0);
+			dp = U32 ? 4 : 3;
+
+			// Lookup in VTX, removes otherwise.
+			// [REM] r[0] is never read/changed, hence the condition `--i > 0`
+			// ---
+			for( z=n=0, x=tx.length, xp=1/0, i=r.length ; --i > 0 ; z && (r[i]=s.concat(r[i])) )
+			{
+				x -= (1+r[i].length);
+
+				while( p > dp && xp > x )
+				{
+					xp = rp.charCodeAt(p-=dp);
+					U32 && ( xp=((xp<<16)|rp.charCodeAt(1+p)) >>> 0 );
+				}
+				s = ( x===xp && VTX[rp.charCodeAt(p+dp-1)] ) || '';
+				z = s.length;
+				vrep && 1 != z && (vrep[n++] = x + '_' + z);
+			}
+
+			vrep && (vrep.SIZE=n);
+			return r.join('');
+		},
+
+		// Detect a string that is entirely formed of 'blank' characters
+		// and then possibly ignorable when splitting style ranges.
+		// ---
+		RE_MRGE: /^[\u0003\u0007-\u000A\u000D\u0016\u0017\u0020\u001A\u007F-\u009F\u00A0\u00AD\u2000-\u200D\u2028\u2029\u202F\u205F\u2063\u3000\uFEFF\uFFFC\uFFFD]+$/g,
+
+		SEGS: function(/*str*/tx,/*str*/rk,/*0|str*/psi,/*0|str*/csi,/*num*/mxSz,/*uint|0*/mergeSpaces,/*bool*/endNoteFrame,/*char*/XR,/*char|false*/AC,/*?RegExp*/alphaReg,  end,U32,PS,CS,R,z,nk,x,dx,i,zi,out,endSep,t,s,emk)
+		//----------------------------------
+		// (Valid-Style-Segments.) [FIX230604] This new version deals with endnote markers
+		// that must be preserved -- even in OUT segments! -- when endNoteFrame is on.
+		// ---
+		// - rk   :: `[_=]<zpc0><zpc1>...` Range string associated to a cluster.
+		// - psi  :: 0|CHR(i1)+CHR(i2)...
+		// - csi  :: 0|CHR(i1)+CHR(i2)...
+		// - mxSz :: uint|+Infinity If finite, the segments are right-truncated
+		//   so they have at most the length `mxSz`.
+		// - mergeSpaces :: uint|0  Tells how many blank characters can be merged
+		//   to the current style without causing a cut.
+		// - endNoteFrame :: bool  Whether the source cluster is a EndNoteTextFrame [FIX230601]
+		// - XR :: Minimal separator between splitted segments.
+		// - AC :: Character added before and/or after the XR separator depending
+		//   on whether the start/end character of the cut is alphabetic. The re-
+		//   sulting separator <SEP> is either <XR>|<AC><XR>|<XR><AC>| <AC><XR><AC>.
+		// - alphaReg :: If `AC` supplied, regex as specified in µ.getSamples.
+		// ---
+		// Scan the style ranges in `rk` and keep only the segments of tx that
+		// have an allowed style. Returns a string formed of valid segments (merged)
+		// and separators introduced between them if needed.
+		// ---
+		// callee.LAST_CUT contains the lattest right <SEP> (its initial value has
+		// been initialized to XR from the client routine.)
+		// this :: ~
+		// => <ISEP>?<range1><SEP><range2>...<ESEP>?
+		// where <SEP>  :: <XR> | <AC><XR> | <XR><AC> | <AC><XR><AC>
+		//       <ISEP> :: <XR> | <AC> | <XR><AC>
+		//       <ESEP> :: <XR> | <AC><XR>  ===> LAST_CUT
+		{
+			const RE_MG = 0 < mergeSpaces && this.RE_MRGE;
+
+			if( !(end=tx.length) ) return '';                                   // Just in case! (Shouldn't happen.)
+
+			U32 = 0x3D == rk.charCodeAt(0);
+			PS = psi && psi.length;
+			CS = csi && csi.length;
+
+			R = callee.Q || (callee.Q=[]);
+			z = R.SIZE = 0;
+			for( nk=rk.length, x=dx=0, i=1 ; i < nk ; i+=3, dx+=zi )            // [x, x+dx[ represents the current segment.
+			{
+				zi = rk.charCodeAt(i);                                          // zi :: size of the stylerange.
+				U32 && ( zi=((zi<<16)|rk.charCodeAt(++i)) >>> 0 );
+				if( !zi ) continue;                                             // Ignore zero-length range.
+
+				out = ( PS && -1 == psi.indexOf(rk.charAt(1+i)) )               // Is the para-style index <p> disallowed (i.e absent in psi),
+				   || ( CS && -1 == csi.indexOf(rk.charAt(2+i)) );              // or is the char-style index <c> disallowed (i.e absent in csi)?
+				
+				(1&z)==out && ( R[z++]=x, x+=dx, dx=0 );                        // Toggle? ( 1==1 means IN->OUT ; 0==0 means OUT->IN )
+				                                                                // Register the current segment ; R[0] is always 0 and R[1] might be 0
+			}
+
+			( 1&z )                                                             // 1&z means that the unregistered [x,end[ is IN,
+			? ( dx && ( R[z++]=x, R[z++]=x+dx ) )                               // so we register it and we append the last OUT elem at x+dx (=end)
+			: ( R[z++]=x );                                                     // otherwise [x,end[ is an OUT elem.
+
+			// ---
+			// z is necessarily odd :: <O>,<I>,<O>,...,<I>,<O>
+			// ---
+			if( RE_MG || (mxSz < tx.length) )                                   // Might simplify (truncate/merge)
+			for( i=z ; 0 < (i-=2) ; )
+			{
+				x = R[i];
+				dx = R[1+i]-x;                                                  // Size of IN segment
+				if( dx > mxSz )                                                 // Sample truncation needed?
+				{
+					R[1+i] = x + mxSz + 1;                                      // Make the OUT seg start at x+mxSz+1 < x+dx
+				}
+				else
+				{
+					2+i < z
+					&& mergeSpaces >= (zi=R[2+i]-(x+=dx))                       // If the next OUT is small enough
+					&& RE_MG.test(tx.slice(x,x+zi))                             // and spaces are mergeable from (i) to (i+2)
+					&& ( R.splice(1+i,2), z-=2 );                               // then simply remove R[i+1],R[i+2]
+				}
+			}
+
+			// At every moment, endSep represents the 'last cut',
+			// it can be empty, <AC><XR> or <XR>.
+			// ---
+			endSep = 'string'==typeof callee.LAST_CUT ? callee.LAST_CUT : XR;   // endSep :: '' | <XR> | <AC><XR>
+
+			// Compute segments. [REM230602] This loop is *not entered if z==1*.
+			// ---
+			for( i=-1, out=R[0] ; (i+=2) < z ; R[i]=tx.slice(x,out)+endSep )
+			{
+				// Left context -> Stored in R[i-1]
+				// ---
+				zi = (x=R[i])-out;                                              // zi :: size of left OUT segment ; x :: IN index
+				t = zi ? (endSep ? '' : XR) : '';                               //  t :: '' | <XR> ; minimal L-sep (before IN), may be empty.
+				
+				if( zi )
+				{
+					endNoteFrame
+					&& (emk=callee.ENDMARKS(tx,out,x,XR)).length
+					&& ( t=t+emk );                                             // Append (<FEFF><x04><XR>)+
+					AC && callee.TEST(tx,x-1,alphaReg,-1) && (t=t+AC);          // Append <AC> if alpha before.
+				}
+				R[i-1] = t;
+
+				out = R[1+i];
+				t = out < end ? XR : '';
+				if( out < end )
+				{
+					AC && callee.TEST(tx,out,alphaReg,1) && (t=AC+t);           // Prepend <AC> if alpha after.
+				}
+				endSep = t;                                                     // New endSep :: '' | <XR> | <AC><XR>
+			}
+
+			// Deal with the final <OUT> segment at z-1.
+			// (This MUST work if z==1 too.)
+			// ---
+			if( out < end )
+			{
+				// Non-empty final OUT
+				t = endSep ? '' : XR;
+				if( endNoteFrame && (emk=callee.ENDMARKS(tx,out,end,XR)).length )
+				{
+					R[z-1] = t + emk;                                           // <XR>?<FEFF><x04><XR>+
+					endSep = XR;
+				}
+				else
+				{
+					R[z-1] = t;                                                 // Will add <XR> only if missing (i.e. `z==1`)
+					endSep || (endSep=XR);                                      // Make sure endSep has XR (`z==1` case)
+				}
+			}
+			else
+			{
+				// Empty final OUT -> Ignore R[z-1], endSep is OK.
+				z--;
+			}
+
+			callee.LAST_CUT = endSep;
+			return z ? R.slice(0,z).join('') : '';
+		}
+		.setup
+		({
+			LAST_CUT: false, // safer
+
+			TEST: function(/*str*/tx,/*uint*/i,/*RegExp*/re,/*-1|0|+1*/dir,  d,t)
+			//----------------------------------
+			// Whether re matches tx[i].
+			// If dir==-1, consider the possible surrogate pair {i-1,i}
+			// If dir==+1, consider the possible surrogate pair {i,i+1}
+			{
+				if( !dir ) return re.test(tx.charAt(i));
+				
+				d = 1;
+
+				0 > dir 
+				? ( 0 < i && 0xD800 <= (t=tx.charCodeAt(i-1)) && t <= 0xDBFF && (--i,d=2) )
+				: ( 0xD800 <= (t=tx.charCodeAt(i)) && t <= 0xDBFF && d=2 );
+				
+				return re.test(tx.slice(i,i+d))
+			},
+			
+			ENDMARKS: function(/*str*/tx,/*uint*/x0,/*uint*/x1,/*char*/XR,  r,p)
+			//----------------------------------
+			// [ADD230531] Return a sequence of `<FEFF><0004><XR>` markers reflecting how many
+			// occurrences of this sequence appear in the range [x0,x1[ of `tx`.
+			// => '' [KO]  |  (`<FEFF><0004>`)+
+			{
+				const MK_XR = '\uFEFF\x04' + XR;
+				for( r='', tx=tx.slice(x0,x1), p=-1 ; -1 != (p=tx.indexOf('\uFEFF\x04',2+p)) ; r+=MK_XR );
+				return r;
+			},
+		}),
+
+		STMP: function(/*'character'|'paragraph'*/cp,/*{}&*/map,/*Doc|StyleGp*/parent,/*str=''*/prefix,  t,a,b,i)
+		//----------------------------------
+		// (Styles-Map.) Load styles (recursively) in the incoming `map` object,
+		// using the structure { _stylePath => styleId }
+		// Paths that involve group(s) are decomposed using <X2> separator,
+		// so each path has the form `name(<X2>name)*`
+		// ---
+		// => map&
+		{
+			(prefix||0).length || (prefix='');
+
+			if( (t=parent[cp+'Styles'].everyItem()).isValid )
+			for
+			(
+				a=t.name, b=t.id, i=-1 ;
+				++i < a.length ;
+				map[ '_'+prefix+a[i] ] = b[i]
+			);
+
+			if( (t=parent[cp+'StyleGroups'].everyItem()).isValid )
+			for
+			(
+				a=t.getElements(), i=-1 ;
+				++i < a.length ;
+				t=a[i], callee( cp, map, t, prefix+t.name+'\x02' )
+			);
+
+			return map;
+		},
+		
+		NRMS: function(/*any|str|any[]&*/inputStyles,  AS_STRING,a,re,i,s)
+		//----------------------------------
+		// (Normalize-Style-Paths.) If inputStyles is a string or an array,
+		// replace style paths formatted `[G1] [G2] ... name` into the
+		// expected form `G1<X2>G2<X2>...name` (optional space separators
+		// are removed.)
+		// [REM] This routine is invoked from the `target...Styles` methods
+		// to support user-friendly style specifications. The regular
+		// non-ambiguous form of style paths remains `G1<X2>G2<X2>...name`,
+		// since the name of a style (or groupstyle) can contain inner
+		// brackets, as in "my[Style]name". In such case, the <X2>-separated
+		// form is required upstream.
+		// => any | str | inputStyles&
+		{
+			AS_STRING = 'string' == typeof inputStyles;
+
+			a = AS_STRING ? [inputStyles] : inputStyles;
+			if( !(a instanceof Array) ) return inputStyles;
+
+			re = callee.RE_BRACKETS;
+			for
+			(
+				i=a.length ; i-- ; 'string' == typeof(s=a[i])
+				&& 0x5B==s.charCodeAt(0) && (a[i]=s.replace(re,'$1\x02'))
+			);
+			return AS_STRING ? a[0] : a;
+		}
+		.setup
+		({
+			RE_BRACKETS: /\[([^\]]+)\] */g,
+		}),
+
+		SECT: function(/*Document*/doc,  r,o,i,t,k,n,x,z)
+		//----------------------------------
+		// (Sections.) Create the sections entity:
+		// idx => uniqueName
+		// _uniqueName => idx
+		// $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift`
+		// ---
+		// => new [{}]
+		{
+			// [REM] Typical result for section.properties:
+			// { length:3, alternateLayoutLength:3, alternateLayout:"Letter V", name:"", marker:"", 
+			//   continueNumbering:true, pageNumberStart:337,
+			//   pageNumberStyle:<PNS>, includeSectionPrefix:false, sectionPrefix:"",
+			//   pageStart:<Page>, id:236, label:"", parent:<Document>, index:0 }
+			// Note: pageNumberStart is defined even if continueNumbering is true,
+			// but in such case it is READ-ONLY. 1 <= pageNumberStart <= 999999
+			// ---
+			r = doc.sections.everyItem().properties;
+
+			// [FIX230216] WE CANNOT ASSUME THAT SECTIONS ARE ORDERED!!!!
+			// `sections.everyItem()` can deliver sections in arbitrary order, and
+			// sections[i] is not necessarily the (i-1)th visual section in the doc!
+			// So the only way to get reliable offset and meaningful indices is to
+			// reorder `r` according to `pageStart.documentOffset` before further proc.
+			for
+			(
+				i=r.length ;
+				i-- ;
+				(t=r[i]).length && (t=t.pageStart).isValid
+				? (r[i].docOffset=t.documentOffset)  // Store the .docOffset prop (uint).
+				: r.splice(i,1)                      // In passing, remove empty sections!
+			);
+			r.sort(callee.SORT);
+
+			// Store o :: {customName => count}  AND  r[i].temp = customName
+			// [CHG230217] Since `1+t.index` didn't make sense in unordered section set, use `1+i` instead.
+			// ---
+			for
+			(
+				o={}, i=r.length ; i-- ;
+				t=r[i], k='_'+(t.name||t.marker||('['+(1+i)+']')),
+				t.temp = k,
+				o[k] = 1+(0|o[k])
+			);
+
+			// Rewrite the entity.
+			// [CHG230217] Since `1+t.index` didn't make sense in unordered section set, use `1+i` instead.
+			// ---
+			const CHR = String.fromCharCode;
+			const NS2S = callee.NS2S;
+			const ALGO = callee.ALGO;
+			for
+			(
+				x=0, n=r.length, i=-1 ; ++i < n ;
+
+				( 1 < o[k=(t=r[i]).temp] && (k+=' ['+(1+i)+']') ),
+
+				r['$'+i] = CHR(x) + CHR(z=t.length) +
+					(t.includeSectionPrefix ? '+' : '-') +
+					t.sectionPrefix + '\x01' +
+					t.marker + '\x01' +
+					(ALGO[NS2S[+t.pageNumberStyle]]||'NONE') + '\x01' +  // Not found algo is labelled 'NONE'
+					(t.pageNumberStart-x),                               // [ADD220210] Shift (might be < 0 in clinical cases.)
+
+				r[k] = i, r[i] = k.slice(1), x+=z
+			);
+
+			return r;
+		}
+		.setup
+		({
+			NS2S : eval(PageNumberStyle.revSource()),    // {1298231906:"ARABIC", 1296855660:"LOWER_LETTERS", etc}
+			ALGO :
+			{
+				ARABIC:                 'ARAB',       // 1, 2, 3, 4...
+				SINGLE_LEADING_ZEROS:   'ONEZ',       // 01, 02, 03, 04...
+				DOUBLE_LEADING_ZEROS:   'TWOZ',       // 001, 002, 003, 004...
+				TRIPLE_LEADING_ZEROS:   'THRZ',       // 0001, 0002, 0003, 0004...
+				UPPER_ROMAN:            'UROM',       // I, II, III, IV...
+				LOWER_ROMAN:            'LROM',       // i, ii, iii, iv...
+				UPPER_LETTERS:          'ULET',       // A, B, C, D, ... AA, AB...
+				LOWER_LETTERS:          'LLET',       // a, b, c, d, ... aa, ab...
+				// ---
+				ARABIC_ALIF_BA_TAH:     'BATA',       // أ, ب, ت, ث, ج, ح, خ, د, ذ, ر, ز, س, ش, ص, ض, ط, ظ, ع, غ, ف, ق, ك, ل, م, ن, ه, و, ي,  أ أ, ب ب ...
+				                                      // Order: U+06..23,28,2A,2B,2C,2D,2E,2F,30,31,32,33,34,35,36,37,38,39,3A,41,42,43,44,45,46,47,48,4A  (28 chars)
+				ARABIC_ABJAD:           'ABJA',       // أ, ب, ج, د, ه, و, ز, ح, ط, ي, ك, ل, م, ن, س, ع, ف, ص, ق, ر, ش, ت, ث, خ, ذ, ض, غ, ظ,  أ أ, ب ب ...
+				                                      // Order: U+06..23,28,2C,2F,47,48,32,2D,37,4A,43,44,45,46,33,39,41,35,42,31,34,2A,2B,2E,30,36,3A,38  (28 chars)
+				// ---
+				HEBREW_BIBLICAL:        'HBIB',       // 1..999 ; Cf. github.com/chaimleib/hebrew-special-numbers
+				                                      // In InDesign, only '15' and '16' suffixes undergo a special rewriting.
+				HEBREW_NON_STANDARD:    'HNON',       // א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת (22 chars then ULET algo.)
+				// ---
+				KANJI:                  'KANJ',       // Simplified Chinese numerals ; maps `0..9` to '\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D'
+			},
+
+			// [ADD230216] Sort by `.docOffset`
+			// ---
+			SORT: function(/*{docOffset,...}*/a,/*{docOffset,...}*/b){ return a.docOffset-b.docOffset; },
+		}),
+
+		VRTP: function(/*Document*/doc,  t,a,b,q,i,o,k)
+		//----------------------------------
+		// (VariableTypes.) Create the varTypes map { $varName => typeChar}
+		// where typeChar is among:
+		// 'T' = LastPageNumber   ; 'V' = PrevPageNumber ; 'X' = NextPageNumber
+		// 'N' = ActivePageNumber ; 'H' = ChapterNumber  ; 'u' = CustomText
+		// 'l' = FileName         ; 'o' = ModifDate      ; 'D' = OutputDate
+		// 'O' = CreationDate     ; 'Y' = RunningHeaderPara ; 'Z' = RunningHeaderChar
+		// 'v' = OtherVarType
+		// ---
+		// => new {}  ;  { $varName => [TVXNHuloDOYZ]+ }
+		{
+			t = (t=doc.textVariables).length && t.everyItem();
+			if( !t.isValid ) return '';
+			
+			a = t.name;
+			b = t.variableType;
+			
+			if( !(q=callee.MAP) )
+			{
+				o = VariableTypes;
+				t = callee.INI;
+				q = {};
+				for( k in o )
+					o.hasOwnProperty(k) &&
+					t.hasOwnProperty(k) &&
+					q[+o[k]] = t[k];
+			}
+
+			for( t={}, i=-1 ; ++i < a.length ; t['$'+a[i]]=q[+b[i]]||'v' );
+			return t;
+		}
+		.setup
+		({
+			INI:
+			{
+				CUSTOM_TEXT_TYPE:           'u',
+				FILE_NAME_TYPE:             'l',
+				LAST_PAGE_NUMBER_TYPE:      'T',
+				CHAPTER_NUMBER_TYPE:        'H',
+				OUTPUT_DATE_TYPE:           'D',
+				CREATION_DATE_TYPE:         'O',
+				MODIFICATION_DATE_TYPE:     'o',
+				MATCH_CHARACTER_STYLE_TYPE: 'Z',
+				MATCH_PARAGRAPH_STYLE_TYPE: 'Y',
+				XREF_PAGE_NUMBER_TYPE:      'v',
+				XREF_CHAPTER_NUMBER_TYPE:   'v',
+			},
+		}),
+
+		FSEC: function(/*[{...}]*/q,/*str|uint*/secIdentifier,  i,k,s,t,r)
+		//----------------------------------
+		// (Find-Section.) Find in q the 1st section that matches secIdentifier
+		// secIdentifier :: uniqueName|prefix|marker (str) | index (uint)
+		// q             :: [ idx => uniqueName ] + { _uniqueName => idx }
+		//                + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift` }
+		// and returns the section data in a volatile object.
+		// ---
+		// => { uniqueName,index,offset,length,includePrefix,prefix,marker,algo,shift }&  [OK]  |  false [KO]
+		{
+			if( secIdentifier===secIdentifier>>>0 && secIdentifier < q.length )
+			{
+				i = secIdentifier;
+				k = q[i];
+				s = q['$'+i];
+			}
+			else
+			{
+				k = String(secIdentifier);
+				if( q.hasOwnProperty(t='_'+k) )
+				{
+					i = q[t];
+					s = q['$'+i];
+				}
+				else
+				{
+					t = '\x01'+k+'\x01';
+					for( i=q.length ; i-- && -1 == ('\x01'+(s=q['$'+i]).slice(3)).indexOf(t) ; );
+					if( 0 > i ) return false;
+				}
+			}
+
+			// s :: `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift`
+			// ---
+			r = callee.DATA;
+			// ---
+			r.uniqueName = k;
+			r.index = i;
+			r.offset = s.charCodeAt(0);
+			r.length = s.charCodeAt(1);
+			r.includePrefix = 0x2B==s.charCodeAt(2);
+			t = s.slice(3).split(RegExp.X1);
+			r.prefix = t[0]||'';
+			r.marker = t[1]||'';
+			r.algo = t[2]||'';
+			r.shft = parseInt(t[3],10)||0;
+			// ---
+			return r;
+		}
+		.setup
+		({
+			DATA: { uniqueName:'', index:'', offset:0, length:0, includePrefix:false, prefix:'', marker:'', algo:'', shft:0 },
+		}),
+
+		ISEQ: function(/*str|{id=>any}|(Class|str|id)[]|PluralClass*/arg,/*'Page'|'Layer'|etc*/ctor,/*'pages'|'layers'|etc*/coll,/*Document*/doc,/*?{_name=>id[_id...]}*/map,  r,n,t,X,i,a,k)
+		//----------------------------------
+		// (ID-Sequence.) Check the ID sequence `arg`, which can be supplied in various forms:
+		// (a)  Sequence of IDs as a string `id_id...`
+		//      -> in that case `arg` itself is returned.
+		// (b)  Set of IDs in the form { `id`=>bool } or { `_id`=>bool }
+		//      -> only the IDs matching a truthy value are collected.
+		// (c)  Plural DOM object
+		//      -> `arg.id` is then used.
+		// (d1) Array of IDs (uint>0).
+		// (d2) Array of names: IDs are then accessed through `doc[coll].itemByName(...)`
+		//      unless a specific `map` is supplied.
+		//      [CHG210815] If `map` is supplied, it may either contain _name=>id (uint)
+		//      or _name=>'id_id...' (str) mappings. Hence multiple ids are supported for
+		//      a single name. When dealing with page names, it is recommended to supply a
+		//     `map`, since `itemByName(...)` only retrieves the 1st identified page.
+		// (d3) Array of DOM instances whose constructor name is ctor.
+		//      -> all underlying IDs are then collected.
+		// This function returns a string, possibly empty, in the form `id_id_...` If the
+		// returned string is empty, `callee.ERR_MSG` may contain an error message that
+		// tells why the input `arg` is invalid.
+		// ---
+		// => `id_id_...`  [OK]  |  '' [KO] + .ERR_MSG
+		{
+			callee.ERR_MSG = '';
+			const RE_SEQ = /^(?:[1-9]+)|(?:[1-9]+(_\d+)+)$/;
+			r = '';
+
+			if( 'string' == typeof arg )
+			{
+				RE_SEQ.test(arg)
+				? ( r = arg )
+				: ( callee.ERR_MSG = __("Invalid `%1` argument: %2. As a string it should be a sequence of %3 IDs separated by '_'."
+					,coll
+					,arg.ltrunc(300).toSource()
+					,ctor
+					));
+
+				return r;
+			}
+
+			if( ctor == arg.constructor.name )
+			{
+				arg.isValid
+				? ( ((a=arg.id) instanceof Array || (a=[a])), r=a.join('_') )
+				: ( callee.ERR_MSG = __("Invalid `%1` argument: %2.", coll, arg.toSpecifier()) );
+
+				return r;
+			}
+			
+			if( arg instanceof Array )
+			{
+				if( !(n=arg.length) ) return '';
+				
+				t = arg[0];
+				
+				if( !t && '0'!==t )
+				{
+					callee.ERR_MSG = __("Invalid `%1` argument: %2. As an array it should contain either names, IDs or %3 instances."
+						,coll
+						,arg
+						,ctor
+						);
+					return '';
+				}
+				
+				if( 'string' == typeof t )              // Names.
+				{
+					if( map )
+					{
+						for( i=-1, a=[] ; ++i < n ; (t=map['_'+arg[i]]) && a[a.length]=t );
+					}
+					else
+					{
+						X = doc[coll];
+						for( i=-1, a=[] ; ++i < n ; (t=X.itemByName(String(arg[i]))) && t.isValid && (t=t.id) && (a[a.length] = t instanceof Array ? t.join('_') : t) );
+					}
+					
+					a.length
+					? ( r=a.join('_') )
+					: ( callee.ERR_MSG = __("Invalid `%1` argument. None of these %2 names are valid: %3.", coll, ctor, arg) );
+
+					return r;
+				}
+
+				if( ctor == t.constructor.name )        // DOM instances.
+				{
+					for( i=-1, a=[] ; ++i < n ; (t=arg[i]) && t.isValid && a[a.length]=t.id );
+
+					a.length
+					? ( r=a.join('_') )
+					: ( callee.ERR_MSG = __("Invalid `%1` argument. None of these %2 instances are valid: %3.", coll, ctor, arg.toSource()) );
+
+					return r;
+				}
+				
+				RE_SEQ.test(t = arg.join('_'))        // DOM object IDs.
+				? ( r=t )
+				: ( callee.ERR_MSG = __("Invalid `%1` argument: %2. As an array of IDs it should provide positive integers.", coll,arg) );
+				
+				return r;
+			}
+			
+			if( arg !== Object(arg) )
+			{
+				callee.ERR_MSG = __("Invalid `%1` argument: %2. Should be either a string, an array, or an object.", coll, arg);
+				return '';
+			}
+			
+			a = [];
+			for( k in arg )
+			{
+				if( !arg.hasOwnProperty(k) || !arg[k] ) continue;
+				'_' == k.charAt(0) && (k=k.slice(1)); // Supports `_id` rather than `id`
+				(i = parseInt(k,10)) && (a[a.length]=i);
+			}
+			
+			return a.join('_');
+		},
+		
+		IOBJ: function(/*`id_id_...`*/ids,  r,a,i)
+		//----------------------------------
+		// (IDs-to-Obj.) Convert a sequence of IDs to an object.
+		// => new {`_id` => 1} obj
+		{
+			a = ids.split('_');
+			for( r={}, i=a.length ; i-- ; r['_'+a[i]]=1 );
+			return r;
+		},
+	})
+
+	//==========================================================================
+	// BROWSERS: REGS, LNGS, LANG, STOS, TBLS, FNOS, (ENDS,) LTOP, LSUB, LALL, RNGS, VARS, RUNS
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Regular expressions.
+		// ---
+		REGS:
+		{
+			digsBeforeEnds:    /\d+(?=\]\x22\))/g,                               // `1234` followed by `]")`
+			digsBeforeEndsArr: /\d+(?=\]\x22\)\])/g,                             // `1234` followed by `]")]`
+			resolveToId:       /resolve\(\x22.+?=(\d+)\]\x22\)/g,                // `resolve("...=1234]")` -> $1=`1234`
+			resolveSplit:      /\d+\]\x22\x29(?:[, ]+|$)/g,                      // `###]"), `  or  `###]")`  [ADD230501]
+			non_tf:            /[^tf]+/g,
+
+			// Captures details of a nested specifier (used by STOS.)
+			// E.g  `(".../text-path[@id=123]")`  -> $1:text-path ; $2:123
+			// [CS4] /document[@name=\"Sans titre-1\"]//text-frame[@id=268]
+			fullHostAndId:    /\(\x22.+?\/\/([-a-z]+)\[@id=(\d+)\]\x22\)/g,     // `("...//host-class[@id=1234]")` -> $1=host-class, $2=1234
+
+			// Other regexes used by STOS.
+			innerResolve:     /\),\s*resolve\(/g,                               // `), resolve(`
+			initResolve:      /\[ *resolve\(/g,                                 // `[resolve(`
+			endQuoParBrk:     /\x22\)\](,|$)/g,                                 // `")],` or `")]`
+			
+			// Used by LANG.
+			langVendors:      /\/language-with-vendors\[@id=\d+\]/g,            // `/language-with-vendors[@id=1234]`
+
+			// Used by TBLS
+			hostWithId:       /\/\/[-a-z]+\[@id=\d+\]/g,                        // `//host-class[@id=1234]`
+			emptyArray:       /\[\]/g,                                          // `[]`
+
+			// Used by VARS
+			varNames:         /[^\x22\\]+(?=\\\x22\]\x22\))/g,                  // `blabla` followed by `\"]")`
+			
+			// Is there some ASTRAL character?
+			astral:           /[\uD800-\uDBFF]/,
+		},
+		
+		// External resource file [make sure the directory etc/Linguist is present!]
+		// CREATED ONLY IF `icuLocaleName` IS NOT AVAILABLE IN `LanguageWithVendor`,
+		// that is, in CS4.
+		// ---
+		// Structure looks like:
+		//  "[No Language]"      => { icu:"en_US", fks:"/%1" },
+		//  "Arabic"             => { icu:"ar_SA", fks:"/%1" },
+		//  "Bengali (India)"    => { icu:"bn_IN", fks:0 },
+		//  ...
+		//  "Danish"             => { icu:"da_DK", fks:"/%1" },
+		//  "Dutch: 2005 Reform" => { icu:"nl_NL", fks:"/nl_NL_2005" },
+		//  "Dutch: Old Rules"   => { icu:"nl_NL", fks:"/Dutch" },
+		//  "English: Canadian"  => { icu:"en_CA", fks:"/%1" },
+		//  etc
+		// ---
+		LNGS: (!app.languagesWithVendors[0].hasOwnProperty('icuLocaleName')) &&
+		{
+		#include 'Linguist/$$.LNGS.jsxres'
+		},
+		
+		LANG: function(/*TextParcels&*/K,/*PluralStory*/XV,/*uint*/count,  t,RP,q,k,MP,ICU,lg,lgBest,z,zMax,a,i)
+		//----------------------------------
+		// (Quick-Languages-Scan.)
+		// --> K.icuSeq  :: 'xx_YY|xx_YY|...'
+		// --> K.icuBest :: 'xx_YY'
+		// this :: ~
+		// => undef
+		{
+			// Find a better provider if necessary, XV.paragraphs, XV.textStyleRanges.
+			// ---
+			t = 0;
+
+			callee.MIN_STO < count
+			|| callee.MIN_PAR < (t=XV.paragraphs).length
+			|| (t=XV.textStyleRanges).length
+			|| (t=false);
+			
+			if( false===t ) return;
+			t && (XV=t.everyItem());  // Now XV can be a plural Paragraph|TextStyleRange
+
+			// Cleanup REPL data.
+			// ---
+			RP = callee.REPL;
+			if( q=RP.Q )
+			{
+				for( k in q )delete q[k];
+			}
+			else
+			{
+				q = RP.Q = {};
+			}
+
+			// Grab languageWithVendor items -> K.languages
+			// ---
+			XV.appliedLanguage.toSource().replace(this.REGS.langVendors,RP);
+			MP = this.LNGS;  // false (CC/CS6/CS5) | { enName=>{icu,fks} } (CS4)
+			ICU = MP ? callee.ICU_FALLBACK : callee.ICU;
+
+			a = []; // i=>icu  ;  icu=>uint (counter)
+			zMax = 0;
+			lgBest = '';
+			for( k in q )
+			{
+				if( !q.hasOwnProperty(k) ) continue;
+				if( !(lg=resolve(k)).isValid ) continue;  // lg :: LanguageWithVendor
+				if( 0x5B === (lg.name||'\x01').charCodeAt(0) ) continue; // Skip `[No Language]`, `[Aucune langue]` etc
+				if( !(lg=ICU(lg,MP)) ) continue;          // lg :: falsy  |  `xx_YY`
+				
+				z = a.hasOwnProperty(lg)
+				? ( a[lg]+=q[k] )                         // Just increment lg counter if a distinct k had the same lg
+				: ( a[a.length]=lg, a[lg]=q[k] );         // New lg item and counter.
+				
+				z > zMax && (lgBest=lg, zMax=z);
+			}
+			
+			K.icuSeq = a.join('|');
+			K.icuBest = lgBest;
+		}
+		.setup
+		({
+			MIN_STO: 5,
+			MIN_PAR: 5,
+
+			REPL: function($0)
+			//----------------------------------
+			// Each $0 has the form `/language-with-vendors[@id=1234]`
+			// [REM] Since this callback can be invoked *many times*
+			// for a relatively low number of *distinct* language-with-
+			// vendors strings, it's not a good idea to extract the @id
+			// part from within the function. Just keep the count of
+			// distinct keys in callee.Q and refine the keys later on.
+			{
+				callee.Q[$0] = 1+(callee.Q[$0]||0);
+				return '';
+			}
+			.setup({ Q:false }),
+			
+			ICU: function(/*LanguageWithVendor*/lg)
+			//----------------------------------
+			// => `xx_YY`
+			{
+				return lg.icuLocaleName;
+			},
+
+			ICU_FALLBACK: function(/*LanguageWithVendor*/lg,/*{ enName => {icu,fks} }*/MP,  t,k,o,s)
+			//----------------------------------
+			// `xx_YY` [OK]  |  '' [KO]
+			{
+				t = lg.name;
+				if( MP.hasOwnProperty(t) ) return MP[t].icu;
+
+				// Workaround.
+				// ---
+				t = $$.fromLocaleStr(t);
+				if( !t ) return '';
+				for( k in MP )
+				{
+					if( !MP.hasOwnProperty(k) ) continue;
+					o = MP[k];
+					s = __(o.fks,k);
+					if( 0 <= t.indexOf(s) ) return o.icu;
+				}
+
+				return '';
+			},
+		}),
+
+		STOS: function(/*TextParcels&*/K,/*PluralStory*/SV,/*uint*/count,  ovf,exc,s,src,q,k,t,ids,n,i)
+		//----------------------------------
+		// (Story-Containers) Add and link new clusters based on story containers.
+		// Any frame cluster is originally registered as:
+		//     _xx => `[TPE]<LL>[#+!]`
+		// noting that the location <LL> usually represents <xx> itself but needs
+		// further refinement for TextPath instances. So, the <LL> part of textpath
+		// clusters is temporarily encoded '\0\0' and will be resolved later.
+		// [REM] Since SV is based on `doc.stories`, *master* text containers will
+		// appear in the `clusters` set as well as regular (nonmaster) items.
+		// [ADD220415] `count` provides the number of stories reached by SV.
+		// ---
+		// this :: ~
+		// => undef
+		{
+			// [REM] `SV.textContainers` gets all frames (incl. anchored/nested)
+			// of any kind (TextFrame|TextPath|EndnoteTextFrame) including those
+			// that belong to MasterSpreads. The output is an array of arrays of
+			// frames, where non-single arrays indicate threaded frames.
+			// This method supports CS4.
+			
+			// [REM] Empty frames may appear here, either in a single-container
+			// story (empty story or full overset text), or at any point of a
+			// thread (frame too small to display contents.)
+
+			// Take time to grab languages from SV?
+			// ---
+			K.options.scanLanguages && this.LANG(K,SV,count);
+
+			// Temporary members.
+			// ---
+			K.add = callee.ADDF;
+			K.lnk = callee.LNKF;
+			K.PRV = 0;
+
+			// Overflows?
+			// ---
+			ovf = SV.overflows.toSource()                             // `[true|false, true|false...]` | `true` | `false`
+				.replace(this.REGS.non_tf,'');                        // E.g `ttftfft...`
+			
+			// [ADD220618] Excluded story label?
+			// Post-processed by the caller, based on callee.EXCL_STO_IDS.
+			// ---
+			callee.EXCL_STO_IDS = '';
+			if( (exc=callee.µ.ExcludeStoryLabel) && 0 <= (t=SV.label).join('').indexOf(exc) ) // Quick test
+			{
+				ids = SV.id;
+				for( i=t.length ; i-- ; exc===t[i] ? t[i]=ids[i] : t.splice(i,1) );
+				t.length && callee.EXCL_STO_IDS=t.join('_');          // stoId_stoId_..._stoId
+			}
+
+			// If some stories overflow, we need to store
+			// SV.textContainers.toSource() for further processing :-(
+			// ---
+			s = 0 <= ovf.indexOf('t') ? SV.textContainers.toSource() : '';
+
+			// Parse containers.
+			// [FIX220710] Stack overrun may occur from too many nested `...lnk().lnk().lnk()...`
+			// ---
+			src = (s||SV.textContainers.toSource())                   // `[[f], [f,f...], [], [f,f]...]`
+				.slice(1,-1)
+				//.replace(this.REGS.innerResolve, ').lnk(')            // `), resolve(`  ->  `).lnk(`
+				.replace(this.REGS.innerResolve, ');this.lnk(')            // `), resolve(`  ->  `);this.lnk(`
+				.replace(this.REGS.initResolve, 'this.add(')          // `[resolve(`    ->  `this.add(`
+				.replace(this.REGS.endQuoParBrk, '");')               // `")],`         ->  `");`
+				.replace(this.REGS.fullHostAndId,'($2,"$1")');        // `("<spec>")`   ->  `(<id>,"<class>")`
+
+			Function(src).call(K);                                    // Feed K
+			
+			delete K.PRV;
+			delete K.lnk;
+			delete K.add;
+			
+			q = K.clusters;
+
+			// Properly formats non-threaded containers by adding the <N> flag.
+			// ---
+			if( !s )
+			{
+				// No story overflows -> just add the '#' flag.
+				// ---
+				for( k in q ) q.hasOwnProperty(k) && 3==(t=q[k]).length && (q[k]=t+'#');
+				return;
+			}
+			
+			// Some stories overflow (-> `ovf`) so we need to tag some clusters
+			// with '!' rather than '#'.
+			// ---
+			ids = s                                                      // `[[f], [f,f...], [], [f,f]...]`
+				.replace(this.REGS.emptyArray,'[("[0]")]')
+				.match(this.REGS.digsBeforeEndsArr);                     // ids :: `<fid>|0`[n]  ; last-container-IDs
+			n = ovf.length;                                              // Number of stories.
+			if( (!ids) || ids.length != n )                              // Shouldn't happen.
+			{
+				$.global[callee.µ.__root__].warn(__(
+					"%1.STOS > Invalid match count (%2 != %3) while parsing text containers in stories that overflow."
+					,callee.µ
+					,ids.length
+					,n
+					));
+				return;
+			}
+			for( i=n ; i-- ; 0x74===ovf.charCodeAt(i) || ids.splice(i,1) ); // Remove IDs that don't overflow.
+			ids = '_' + ids.join('_') + '_';                               // `_id_id_..._id_`
+
+			// Feed K.clusters.
+			for( k in q )
+			{
+				if( (!q.hasOwnProperty(k)) || 3 < (t=q[k]).length ) continue; // Already fine ('+' flag.)
+				q[k] = t + ( 0 <= ids.indexOf(k+'_') ? '!' : '#' );
+			}
+		}
+		.setup
+		({
+			EXCL_STO_IDS: '',
+
+			ADDF: function(/*uint*/id,/*'endnote-text-frame'|'text-path'|'text-frame'*/k)
+			//----------------------------------
+			// (Add-Frame.)
+			// this :: TextParcels
+			// => this
+			{
+				k = 'e'==k.charAt(0) ? 'E' : ( 'p'==k.charAt(5) ? 'P' : 'T' );
+
+				// [REM] The <N> flag is pending to speed up LNKF.
+				// ---
+				this.clusters[this.PRV='_'+id] = k
+					+ ( 'P'==k ? '\0\0' : String.fromCharCode(0xFFFF&(id>>>16),0xFFFF&id) );
+
+				return this;
+			},
+
+			LNKF: function(/*uint*/id,/*'endnote-text-frame'|'text-path'|'text-frame'*/k,  pv)
+			//----------------------------------
+			// (Link-Frame.)
+			// this :: TextParcels
+			// => this
+			{
+				(pv=this.PRV) && (this.threads[pv]='_'+id, this.clusters[pv] += '+');
+				return this.add(id,k);
+			},
+		}),
+
+		TBLS: function(/*TextParcels&*/K,/*PluralTable*/TV,/*'c'|'d'*/KND,/*?uint*/fID,/*?uint*/hID,  CK,CV,XV,H,tids,tID,cids,nc,h,i,q,t,s,x,a,b,nb,z)
+		//----------------------------------
+		// (Tables-Parser) [RECURSIVE] Add new CELL clusters extracted from tables.
+		// The `fID` (location frame ID) and `hID` (host frame ID) arguments are
+		// used only at recursing stage.
+		// Any cell cluster is then registered as:
+		//     _x_y_z => `[cd]<LL>_<C>`
+		// so that `page-item[@id=x]/table[@id=y]/cell[@id=z]` gets the cell back,
+		// while the <LL> property identifies the actual location (frame ID.)
+		// ---
+		// this :: ~
+		// => undef
+		{
+			// [REM] A `Table` basically belongs to a Text element (Character) so the
+			// `tables` property is available in Text|Character|Word|Line|TextColumn|
+			// Paragraph|TextStyleRange|InsertionPoint classes. In addition:
+			// - Cell.tables captures possible subtables in a cell;
+			// - (Story|XMLStory).tables captures the top tables in a story, that is,
+			//   excluding subtables and footnote's tables;
+			// - (TextFrame|EndnoteTextFrame).tables captures visible tables,
+			//   but since a table can flow through multiple threaded frames,
+			//   only the first frame can actually 'see' such table;
+			// - A TextPath cannot contain a Table;
+			// - All visible tables are resolved into `<doc>//<frameId>/.../<tableId>`,
+			//   while invisible tables (i.e in overset text) are resolved into
+			//   `<doc>//<storyId>/.../<tableId>`, including hidden tables owned by a FN.
+			// - Paths of the form `<doc>//<frameId>/.../<tableId>` can be simplified into
+			//   `<doc>//<frameId>/<tableId>` (no need to specify intermediate links);
+			// - A Cell ID is not unique, it only holds relative to the parent Table.
+
+			// Tables IDs.
+			// ---
+			tids = TV.id;                                             // <tblId>[nbTables]
+
+			// If needed, H :: { _tid => hostId }.
+			// ---
+			if( !hID )
+			{
+				t = TV.getElements().toSource()                       // `[resolve("/<DOC>//<HOST>[@id=1234]/.../table[@id=567]"), ...]`
+					.match(this.REGS.hostWithId);                     // `//<HOST>[@id=1234]`[nbTables]
+					                                                  // where <HOST> :: 'text-frame' | 'endnote-text-frame' | 'story'
+
+				if( (i=t.length) != tids.length )                     // Shouldn't happen.
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.TBLS > Invalid match count (%2 != %3) while parsing table hosts."
+						,callee.µ
+						,i
+						,tids.length
+						));
+					return;
+				}
+
+				for
+				(
+					H={} ; i-- ;
+					// Grabs both 'text-frame' and 'endnote-text-frame', excluding 'story'.
+					// ---
+					H['_'+tids[i]] = 0 <= (x=(s=t[i]).indexOf('text-frame[@id=')) && parseInt(s.slice(x+15))
+				);
+			}
+
+			// ---
+			// WARNING [220430]
+			// 1. Any graphic cell present in a table (T) breaks the
+			//    collection `T.cells.itemByRange(0,-1).texts`. All
+			//    Text entities beyond that graphic cell are lost.
+			// 2. The collection `T.cells.everyItem().texts`, in such
+			//    context, will target less Text entities than the
+			//    actual number of cells. And the array `T.cells.
+			//    everyItem().contents` contains exotic PageItem
+			//    elements among regular strings!
+			// ---
+
+			// Cells.
+			// ---
+			t = (CK=TV.cells).count();                                // <cellCount>[nbTables]
+			tids = this.REPT(tids,t);                                 // <tblId>[nbCells]
+			cids = CK.everyItem().id;                                 // <celId>[nbCells]
+			nc = cids.length;
+
+			// ---
+			// Now go to texts.
+			// ---
+
+			// [REM] The command `cells.itemByRange(0,-1).texts.xyz` is on average
+			// 5X faster than `cells.everyItem().texts.xyz`. But it can be used only
+			// if `cells.itemByRange(0,-1)` is 'exhaustive', which is not always the
+			// case due to cell merging or *graphic cells*. A double-check is
+			// then required to keep using itemByRange() rather that everyItem():
+			// 1) nc==CV.cells.length
+			//    checks whether itemByRange reaches all cells;
+			// 2) nc==I.SIGM(CV.texts.count())
+			//    checks whether no graphic cell breaks the flow.
+			// ---
+			CV = CK.itemByRange(0,-1);
+
+			if( nc==CV.cells.length && nc==this.SIGM((t=CV.texts).count()) )
+			{
+				                                                      // CV :: CK.itemByRange(0,-1)
+				XV = t.everyItem();                                   // XV :: CK.itemByRange(0,-1).texts.everyItem()
+				a = XV.contents;                                      // a  :: <str>[nc]
+				                                                      // Both `a` and `XV` are in-sync and reliable :)
+			}
+			else
+			{
+				CV = CK.everyItem();                                  // CV :: CK.everyItem()                          ; going back to time-consuming op...
+				a = CV.contents;                                      // a :: <str>|<PageItem>|<SpecialCharEnum>[nc]   ; IMPORTANT: based on CV, not XV
+				XV = CV.texts.everyItem();                            // XV :: CK.everyItem().texts.everyItem()
+				                                                      // `a` may contain non-string elems AND `XV` may reach n < nc targets :(
+			}
+
+			if( a.length !== nc )                                     // Shouldn't happen.
+			{
+				$.global[callee.µ.__root__].warn(__(
+					"%1.TBLS > Invalid match count (%2 != %3) while parsing cell contents."
+					,callee.µ
+					,a.length
+					,nc
+					));
+				return;
+			}
+
+			// Actual locations. (A Cell text has either 0 or 1 parentTextFrame.)
+			// [REM] Getting parent frames from `CV.texts.everyItem().parentTextFrames`
+			// is almost equivalent in time (+7%) to focusing on 1st column only,
+			// `TV.columns[0].cells.etc`, which would involve post-processing.
+			// ---
+			b = fID || XV.parentTextFrames.toSource()                 // `[[pf],[pf],[],[pf]...]`
+				.replace(this.REGS.emptyArray,'[("[0]")]')
+				.match(this.REGS.digsBeforeEndsArr) || [];            // b :: `<fid>|0`[n <= nc]
+
+			if( (!fID) && (nb=b.length) < nc )                        // Gonna fix this right now!
+			{
+				if( !nb ) return;                                     // There's nothing to save: all cells are graphic cells!
+
+				// This event only occurs when:
+				// `b` reflects Cells.everyItem().texts.everyItem().parentTextFrames
+				// `a` reflects Cells.everyItem().contents
+				// a[i] has no match in b *iff* a[i] is a <PageItem> (i.e has a `toSpecifier` method.)
+				// We fix that by *inserting* '0' at index `i` in `b`.
+				// ---
+				for( z=0, i=-1  ;  ++i < nc && z < nb  ;  (a[i]||0).hasOwnProperty('toSpecifier') ? (b[z]='0|'+b[z]) : ++z );
+				for( t=''  ;  i < nc && (a[i]||0).hasOwnProperty('toSpecifier')  ;  ++i, (t+='|0') );
+				
+				if( i < nc || nc != (b=(b.join('|')+t).split('|')).length )
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.TBLS > Invalid match count (%2 != %3) while parsing parent text frames."
+						,callee.µ
+						,b.length
+						,nc
+						));
+					return;
+				}
+			}
+
+			// Feed K.
+			// ---
+			const PFX = K.docSpec + '//';
+			const CHR = String.fromCharCode;
+
+			q = K.clusters;
+			for( i=-1 ; ++i < nc ; )
+			{
+				if( !(t=fID||parseInt(b[i],10)) ) continue;           // No location.
+				if( 'string'!=typeof(s=a[i]) || !s.length ) continue; // No serious content.
+
+				tID = tids[i];
+				h = hID || H['_'+tID];
+				if( !h ) continue;                                    // No visible host.
+
+				// Add cell.
+				// ---
+				q['_'.concat(h,'_',tID,'_',cids[i])] = KND.concat(CHR( 0xFFFF&(t>>>16), 0xFFFF&t ),'#',s);
+				// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+
+				if( -1 == s.indexOf('\x16') ) continue;               // Is there subtable(s)?
+				
+				x = PFX.concat('page-item[@id=',h,']/table[@id=',tID,']/cell[@id=',cids[i],']');
+
+				(x=resolve(x)).isValid
+				&& (x=x.tables).length
+				&& callee.call(this, K, x.everyItem(), KND, t, h);    // Recursion.
+			}
+		},
+
+		FNOS: function(/*TextParcels&*/K,/*PluralFootnote*/NV,  ids,nn,XV,a,b,q,NX,i,j,fn,L,C,fid,kid,s,x,y,z,k,t)
+		//----------------------------------
+		// (Footnotes-Parser) Add and link new clusters based on footnotes.
+		// Any cluster is then registered as:
+		//     _x | _x_a_b  =>  `f<LL>(#|+)<C>`
+		// where x refers to the footnote ID and a..b optionally determines the character range.
+		// ---
+		// this :: ~
+		// => undef
+		{
+			const RE_IDS = this.REGS.digsBeforeEndsArr;               // Match digits before `]")]`
+
+			// Footnotes IDs.
+			// ---
+			ids = NV.id;
+			nn = ids.length;
+			
+			// Go to texts et get contents.
+			// ---
+			XV = NV.texts.everyItem();
+			a = XV.contents;                                          // a :: <str>[nn]
+
+			// Actual locations. A Footnote text may have 0, 1 or more parentTextFrames.
+			// E.g
+			// [
+			//  [resolve("<DS>//text-frame[@id=551]")],
+			//  [resolve("<DS>//text-frame[@id=98]"), resolve("<DS>//text-frame[@id=99]")],
+			//  [],
+			//  [resolve("<DS>//text-frame[@id=1235]")],
+			//  . . .
+			// ]
+			// where <DS> represents the document spec.
+			// [BUG] If a footnote `fn` has overset content, `fn.texts[0].parentTextFrames` is
+			// said empty (!) no matter the visible lines of the footnote. So a special test
+			// must be processed in that case. A contrario, whenever the `parentTextFrames`
+			// array is non-empty we can conclude that the footnote has no overset content :-)
+			// ---
+			b = XV.parentTextFrames.toSource()                        // `[[pf],[pf,pf],[],[pf]...]`
+				.replace(this.REGS.resolveToId,'$1');                 // `[[id],[id,id],[],[id]...]`
+			b = eval('('+b+')');                                      //  [[id],[id,id],[],[id]...]
+
+			if( b.length != nn )                                      // Shouldn't happen.
+			{
+				$.global[callee.µ.__root__].warn(__(
+					"%1.FNOS > Invalid match count (%2 != %3) while parsing footnotes."
+					,callee.µ
+					,b.length
+					,nn
+					));
+				return;
+			}
+			
+			// Feed K.
+			// ---
+			const PFX = K.docSpec + '//';
+			const CHR = String.fromCharCode;
+			NX = K.threads;
+			q = K.clusters;
+			
+			for( i=-1 ; ++i < nn ; )
+			{
+				t = b[i];                                             // [] | [fid] | [fid,fid] | ...
+
+				j = t.length;
+				if( 1==j )                                            // Fully visible, non-threaded FN.
+				{
+					fid = t[0];
+					q['_'+ids[i]] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),'#',s=a[i]);
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					continue;
+				}
+				
+				x = ids[i];
+				fn = PFX.concat('footnote[@id=',x,']');               // Go to that FN for further parsing.
+				fn = resolve(fn);
+				
+				// `fn` is partially visible and/or threaded.
+				// Performs a line-by-line parsing.
+				// ---
+				L = fn.lines;
+				if( !L.length ) continue;
+
+				// E.g [[resolve("<DS>//text-frame[@id=246]")], [resolve("<DS>//text-frame[@id=246]")], [], []]
+				// ---
+				t = L.everyItem().parentTextFrames.toSource()         // `[[pf],[pf],[],[]...]`
+					.match(RE_IDS)||0;                                // ['fid','fid']  ; one for each visible line
+
+				if( !(j=t.length) ) continue;                         // No match -> nothing visible.
+
+				z = L[--j].characters[-1].index;                      // Last char (index) of the last visible line.
+				fid = t[j]; // str
+				C = fn.characters;
+
+				if( t[0]==fid )                                       // Single parent frame.
+				{
+					s = C.itemByRange(0,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
+					kid = '_'.concat(x,'_0_',z);
+					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),'#',s);
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					continue;
+				}
+
+				for( k='' ; j-- ; )                                   // Multiple frames (line-by-line.)
+				{
+					if( fid==t[j] ) continue;
+					y = L[1+j].characters[0].index;
+					s = C.itemByRange(y,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
+					
+					kid = '_'.concat(x,'_',y,'_',z);
+					k ? (NX[kid]=k, k='+') : (k='#');
+					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					(k=kid), (z=y-1), fid=t[j];
+				}
+				if( z > 0 )
+				{
+					s = C.itemByRange(0,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
+					kid = '_'.concat(x,'_0_',z);
+					k ? (NX[kid]=k, k='+') : (k='#');
+					fid = +t[0];
+					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+				}
+			}
+		},
+
+		LTOP: function(/*TextParcels&*/K,/*Document*/doc,  locs,PV,pids,X,XV,a,b,c,d,n,i)
+		//----------------------------------
+		// (Top-Locations-Mapper) Get the page ID (pid) and layer ID (yid) of any
+		// top frame (TextFrame and EndnoteTextFrame) found on any *non-master* page
+		// and add the corresponding _fid => `pid_yid` pair in K.locations; the
+		// separator `_` indicates a TOP location. A terminal <X1> character
+		// is added to `pid_yid` if the frame is NOT VISIBLE (CS5-CC.)
+		// Return the number of top frames. This method doesn't involve clusters.
+		// ---
+		// [REM] Regarding top-level items, tests have shown that a command like
+		//   (1) `doc.pages.everyItem().textFrames.everyItem().id`
+		// takes on average the same time than
+		//   (2) `doc.textFrames.everyItem().parentPage`
+		// Since (1) is CS4-compliant and more flexible than (2), we use this
+		// general approach for identifying the location of top-level frames.
+		// However, (1) excludes master pages while (2) would include them.
+		// Hence, some <LL> locations already specified in `K.clusters` due to
+		// ~.STOS won't be declared in `K.locations` now.
+		// ---
+		// this :: ~
+		// => uint
+		{
+			PV = doc.pages.everyItem();                               // [REM] Ignores master pages.
+			if( !(X=PV.textFrames).length ) return 0;                 // [REM] The `textFrames` collection include `endnoteTextFrames`
+
+			locs = K.locations;                                       // _fid => pid_yid   (in the making)
+			pids = PV.id;
+			
+			b = this.REPT(pids,X.count());                            // <pid>[nbFrames]
+			XV = X.everyItem();
+			a = XV.id;                                                // <fid>[nbFrames]
+
+			// [resolve("/document[@id=11]//layer[@id=209]"),...]
+			c = XV.itemLayer.toSource()                               // `resolve("<DS>//layer[@id=209]")`[nbX]
+				.match(this.REGS.digsBeforeEnds);                     // `<yid>`[nbFrames]
+
+			if( !callee.VISI )
+			{
+				// CS4 -> no `visible` property
+				// ---
+				for
+				(
+					n=a.length, i=-1 ;
+					++i < n ;
+					( locs['_'+a[i]] = b[i] + '_' + c[i] )                // _fid => `pid_yid`
+				);
+
+				return n;
+			}
+			
+			// CS5-CC -> `visible` property
+			// ---
+			d = XV.visible;
+			for
+			(
+				n=a.length, i=-1 ;
+				++i < n ;
+				( locs['_'+a[i]] = b[i] + '_' + c[i] + (d[i]?'':'\x01') ) // _fid => `pid_yid<X1>?`
+			);
+
+			return n;
+		}
+		.setup
+		({
+			VISI: $$.domVersion(7) ? 1 : 0,
+		}),
+
+		LSUB: function(/*TextParcels&*/K,/*Document*/doc,/*bool*/canPP,  X,q,z,locs,kid,xid,s,x,k,t,tt)
+		//----------------------------------
+		// (Sub-Locations-Mapper) Browse `this.clusters` and get the page ID (pid)
+		// and/or the layer ID (yid) of any required pageitem not already registered
+		// in `this.locations` --LTOP MUST HAVE BEEN PROCESSED FIRST-- then add
+		// the corresponding _xid => `pid$yid<H>` pair in K.locations; the separator
+		// `$` then indicates a SUB location.
+		// 1. In most cases _xid is the ID of a nested textframe (grouped, anchored, etc)
+		//    but a spline-item may be registered as well (parent of a TextPath.) If so,
+		//    the <LL> part of the TextPath cluster is accordingly reset for encoding
+		//    this <xid> value. Note also that _xid is then distinct from the _kid key.
+		// 2. Sublocations also addresses page items (top or sublevel) that belong to
+		//    a *master page*. In that particular case, the scheme _xid => pid$yid<H>
+		//    is still used, noting that pid is then outside of K.pagesMap.
+		// 3. `canPP` tells whether the `parentPage` property is available (INDD>=7).
+		//    If so, LSUB can process the whole `pid$yid<H>` data in one stage. However,
+		//    in CS4 LSUB only reports the `$yid` component (layer ID) and `LALL` will
+		//    be called separately.
+		// Return the number of added locations.
+		// ---
+		// this :: ~
+		// => uint
+		{
+			X = doc.pageItems;                                        // Used as universal mapper with itemByID.
+			q = K.clusters;                                           // _kid => <K><LL>[#+!]...   (based on stories -> adresses ALL containers.)
+			locs = K.locations;                                       // _xid => pid[_$]yid<X1>?   ($ branch in the making)
+
+			const CHR = String.fromCharCode;
+			z = 0;
+			for( kid in q )
+			{
+				if( !q.hasOwnProperty(kid) ) continue;                // kid :: _x | _x_y_z | _x(_a_b)?
+				s = q[kid];                                           //  s  :: <K><LL>[#+!]<C>?
+				xid = (s.charCodeAt(1)<<16)|s.charCodeAt(2);          // xid :: uint>0 [TEcdef]  |  0 [P]
+				
+				if( !xid )
+				{
+					// Empty <LL> location specified in the cluster
+					// -> text-path case: compute and rewrite <LL>.
+					// ---
+					x = X.itemByID(parseInt(kid.slice(1),10)).parent; //  x  :: SplineItem
+					xid = x.id;                                       // xid :: uint>0
+					q[kid] = CHR(
+						s.charCodeAt(0),
+						0xFFFF&(xid>>>16),
+						0xFFFF&xid
+						)+s.slice(3);                                 // rewrite <LL>
+				}
+				else
+				{
+					// Other cases: pending x.
+					// ---
+					x = 0;                                            //  x  :: 0
+				}
+
+				k = '_' + xid;                                        //  k  :: _<xid>
+				if( locs.hasOwnProperty(k) ) continue;                // Already located <=> top-item on a non-master page.
+
+				// ---
+				// locs[_xid] is not yet declared because the underlying pageitem
+				// was not captured by ~.LTOP. Two possible reasons:
+				// (a) the pageitem is nested and/or (b) it belongs to a MasterSpread
+				// In both cases the location will have the form `<pid>$<yid>`.
+				// ---
+
+				x || (x=X.itemByID(xid));                             // Get the pageitem.
+
+				// [REM230102] ITEMLAYER ISSUE (SUMMARY)
+				// ---
+				// (1) `x.itemLayer` will fail (runtime error) if no parent page is found.
+				//     That's why `x.properties.itemLayer` is required in CS4.
+				// (2) In CS6 (at least 8.0), `x.properties...` may crash InDesign with
+				//     weird nested object so we cannot use `x.properties.itemLayer` !
+				// (3) But in CC 2022, `x.properties.itemLayer` is required (rather than
+				//     x.itemLayer) since x.parentPage can work while x.itemLayer may fail
+				//     (in case of ghost anchored object.)
+				// ---
+				if( canPP )
+				{
+					tt = 0;
+
+					// CC/CS6/CS5 -> Use `parentPage`
+					if( t=(x.parentPage||0).id )                        //  t  :: <pid> | undef
+					{
+						//tt = t && (x.properties.itemLayer||0).id;     // [FIX211220][DEL230102] Safer in CC2022 ...but CS6 may crash!
+						try{ tt=(x.itemLayer||0).id }catch(_){}         // [FIX230102] Don't use `x.properties` anymore (CS6 bug.)
+					}
+
+					t = tt && (t+'$'+tt+(x.visible?'':'\x01'));       // `<pid>$<yid><HID>?`
+
+					// [DEL211220]
+					// t && ( t += '$'+x.itemLayer.id);                  //  t  :: `<pid>$<yid>` | undef
+					// t && (!x.visible) && t += '\x01';                 //  hidden flag?
+				}
+				else
+				{
+					// CS4: Let <pid> pending (delegated to ~.LALL)
+					t = x.isValid && (x.properties.itemLayer||0).id;  //  t  :: <yid> | false | undef
+					t && (t='$'+t);                                   //  t  :: `$<yid>` | false | undef
+				}
+				
+				locs[k] = t || '0$0';
+				++z;
+			}
+			
+			return z;
+		},
+
+		LALL: function(/*TextParcels&*/K,/*Document*/doc,  locs,z,PV,a,b,t,n,i,j,pid,s,k)
+		//----------------------------------
+		// (All-Locations-Mapper) CS4 ONLY. Adds missing <pid> in K.locations.
+		// [ADD220222] Inspect master pages as well.
+		// [TODO] A custom `parentPage` algorithm might be faster if the number
+		// of missing pids is low relative to K.locations.__count__.
+		// ---
+		// this :: ~
+		// => undef
+		{
+			locs = K.locations;
+			
+			for( z=2 ; z-- ; )
+			{
+				PV = (z ? doc : doc.masterSpreads.everyItem()).pages.everyItem();
+
+				// Page IDs <-> allPageItems.
+				// ---
+				b = PV.id;
+				a = PV.allPageItems.toSource()                            // `[[res],[res,res...],[]...]`
+					.replace(this.REGS.resolveToId,"$1");                 // `[[id],[id,id...],[]...]`
+				a = eval('('+a+')');                                      //  [[id],[id,id...],[]...]
+				n = a.length;
+				if( b.length != n )                                       // Shouldn't happen.
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.LALL > Invalid match count (%2 != %3) while parsing allPageItems from pages."
+						,callee.µ
+						,n
+						,b.length
+						));
+					return;
+				}
+
+				for( i=-1 ; ++i < n ; )
+				for
+				(
+					(j=(t=a[i]).length)&&(pid=b[i]) ;
+					j-- ;
+					locs.hasOwnProperty(k='_'+t[j]) && '$'==(s=locs[k]).charAt(0) && (locs[k]=pid+s)
+				);
+			}
+		},
+		
+		RNGS: function(/*[]{}&*/styles,/*{}&*/rngs,/*_kid*/kid,/*uint*/rawLength,/*PluralTextStyleRange*/RV,  a,b,c,n,X0,s,i,j,rx,rs,z,prv,t,ps,cs)
+		//----------------------------------
+		// (Feed-Ranges.) Utility of ~.RUNS. Updates the rich array `styles` and the set `rngs`
+		// according to the TextStyleRanges extracted from a cluster (kid.)
+		// ---
+		// styles    :: { _sid   => idx } [ idx => `_sid` ]
+		// rngs      :: { _kid   => `[_=]<zpc0><zpc1>...<zpcN>` | '' }
+		// kid       :: `_kid`
+		// rawLength :: length of the associated `contents` string
+		// RV        :: <cluster>.texts[0].textStyleRanges.everyItem()
+		// this      :: ~
+		// => undef
+		{
+			const CHR = String.fromCharCode;
+
+			// [REM] About plural TextStyleRange, `RV.properties` is 5X slower
+			// than `RV.someProperty` so it would become efficient if more than
+			// 5 properties were needed.
+			// ---
+			a = RV.index;                                             // [x0,x1...xn]
+			if( !(n=a.length) ) return;
+
+			b = RV.appliedParagraphStyle.toSource()                   // [resolve("DS//paragraph-style[@id=123]"), resolve("DS//paragraph-style[@id=456]")...]
+				.match(this.REGS.digsBeforeEnds);                     // [`psid`,`psid`...]
+
+			c = RV.appliedCharacterStyle.toSource()                   // [resolve("DS//character-style[@id=123]"), resolve("DS//character-style[@id=456]")...]
+				.match(this.REGS.digsBeforeEnds);                     // [`csid`,`csid`...]
+
+			// 1. Merge identical ranges and shift indices by -a[0].
+			// ---
+			for( X0=a[0], rx=[], rs=[], j=0, z=styles.length, prv='', i=-1 ; ++i < n ; )
+			{
+				t = (ps='_'+b[i])+(cs='_'+c[i]);
+				if( t===prv ) continue;
+				
+				prv = t;
+				styles.hasOwnProperty(t=ps) ? (ps=styles[t]) : (ps=z, styles[t]=z, styles[z++]=t);
+				styles.hasOwnProperty(t=cs) ? (cs=styles[t]) : (cs=z, styles[t]=z, styles[z++]=t);
+
+				rx[j] = a[i]-X0;
+				rs[j++] = CHR(ps,cs);
+			}
+
+			// 2. Compute the range string (based on respective range sizes and style indices.)
+			// ---
+			rawLength < (t=rx[j-1]) || (t=rawLength);                 // 1st option shouldn't happen! If so, the last range-size will be zero.
+			rx[j] = t;                                                // Add the (i+1)th position (in principle, rawLength) for computing deltas.
+			if( 0xFFFF > t )
+				for( s='_', i=-1 ; ++i < j ;                          // '_' starter
+				s+=CHR(rx[i+1]-rx[i])+rs[i] );                        // Single U16 encoding    :: <z><p><c>
+			else
+				for( s='=', i=-1 ; ++i < j ;                          // '=' starter
+				t=rx[i+1]-rx[i], s+=CHR(t>>>16,(0xFFFF&t)>>>0)+rs[i] ); // Double U16 encoding  :: <zz><p><c>
+
+			rngs[kid] = s;
+		},
+
+		VARS: function(/*{}*/varTypes,/*[]{}&*/varTexts,/*{}&*/vars,/*_kid*/kid,/*str*/raw,/*PluralTextVariableInstances*/VV,/*Text|TextContainer*/tx,  a,b,bz,msk,c,n,i,t,z,s)
+		//----------------------------------
+		// (Feed-Variables.) Utility of ~.RUNS. Updates the array `varTexts` and the set `vars`
+		// according to the TextVariableInstances extracted from a cluster (kid.)
+		// ---
+		// varTypes  :: { $varName => char }
+		// varTexts  :: [ idx => <resultText> ] + { $resultText => idx }
+		// vars      ::  { _kid   => `[_=]<xkv0><xkv1>...<xkvN>` | '' }
+		// kid       :: `_kid`
+		// raw       :: Associated `contents` string
+		// VV        :: <cluster>.texts[0].textVariableInstances.everyItem()
+		// tx        :: [ADD230501] Text or text container identifying the cluster. Used to filter out
+		//              nested varinstances that do not strictly belong to the present kid.
+		// this      :: ~
+		// => undef
+		{
+			// 0018  <ctrl> CANCEL           VAR   VARIABLES
+			//                                     - AnyVariable            ~v
+			//                                     - AnyPageNumber          ~#
+			//                                     - LastPageNumber         ~T
+			//                                     - PrevPageNumber         ~V
+			//                                     - NextPageNumber         ~X
+			//                                     - ActivePageNumber       ~N
+			//                                     - ChapterNumber          ~H
+			//                                     - CustomText             ~u
+			//                                     - FileName               ~l
+			//                                     - ModificationDate       ~o
+			//                                     - OutputDate             ~D
+			//                                     - CreationDate           ~O
+			//                                     - RunningHeaderPara      ~Y
+			//                                     - RunningHeaderChar      ~Z
+			// [TODO???]
+			// 0004  <ctrl> EOT              VAR   (Footnote|Endnote)Number ~F ~U
+			// 0019  <ctrl> EOM              VAR   SectionMarker            ~x
+
+			const CHR = String.fromCharCode;
+			
+			// Get the indices of the `\x18` markers in `raw`.
+			// ---
+			for( a=[], n=0, i=-1 ; 0 <= (i=raw.indexOf('\x18',++i)) ; a[n++]=i );
+			if( !n ) return;
+			
+			// [FIX230501] <cluster>.texts[0].textVariableInstances.everyItem()
+			// can address more varinstances than those visible in `raw`, because
+			// nested variables (from inner tables, footnotes, AOs) are reported
+			// too, while `raw` only reflects the content (str) of the kid cluster.
+			// So it is needed to filter out VV.storyOffset instances (IPs) that
+			// do not match the current kid.
+
+			// Get the corresponding variable names.
+			// ---
+			b = VV.associatedTextVariable.toSource()                  // E.g `[resolve("DS/text-variable[@name=\"Last Page Number\"]"), resolve("DS/text-variable[@name=\"\x1BTV XRefPageNumber\"]"), resolve("/document[@id=1]/text-variable[@name=\"\x1BTV XRefChapterNumber\"]")]`
+				.match(this.REGS.varNames);                           // [`Last Page Number`,`\x1BTV XRefPageNumber`...]
+
+			if( (bz=(b||0).length) !== n )                            // [REM230501] `bz > n` *may* happen if nested varinstances are referenced!
+			{
+				if( bz < n )                                          // Shouldn't happen!
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.VARS > Invalid matches or match count (%2 != %3) while parsing associatedTextVariable ; tx :: %4"
+						,callee.µ
+						,n
+						,b ? b.length : '<no-match>'
+						,tx.toSpecifier()
+						));
+					return;
+				}
+				
+				// ---
+				// [FIX230501] Special treatment (bz > n).
+				// Need to remove b elements that do not stricly belong to this kid.
+				// E.g [
+				//   OK -> resolve("/document[@id=1]//story[@id=57318]/insertion-point[3071]"),
+				//   OK -> resolve("/document[@id=1]//story[@id=57318]/insertion-point[4094]"),
+				//   KO -> resolve("/document[@id=1]//text-frame[@id=57738]/table[@id=57778]/cell[@id=11]/insertion-point[0]"),
+				//   KO -> resolve("/document[@id=1]//text-frame[@id=57738]/table[@id=57778]/cell[@id=17]/insertion-point[0]"),
+				//   KO -> resolve("/document[@id=1]//footnote[@id=252]/insertion-point[2]")
+				//   ]
+				// ---
+
+				c = VV.storyOffset.toSource()
+					.slice(1,-1)
+					.split(this.REGS.resolveSplit);
+				if( c.length != bz )                                  // Shouldn't happen
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.VARS > Cannot filter out extra variable instances ; c :: %2 ; tx :: %3"
+						,callee.µ
+						,$$.JSON(c)
+						,tx.toSpecifier()
+						));
+					return;
+				}
+				
+				s = tx.insertionPoints[0].getElements()[0]
+					.toSource()
+					.replace(this.REGS.resolveSplit,'');
+
+				// Now elems in c have the form
+				// `resolve("/document[@id=1]//.../insertion-point[`
+				// and each valid item SHOULD exactly match `s`.
+				// ---
+				for( z=0, i=bz ; i-- ; c[i] = s==c[i] ? (++z,'1') : '0' );
+				msk = c.join('');                                     // E.g  msk :: '00011101'
+
+				if( z != n )
+				{
+					$.global[callee.µ.__root__].warn(__(
+						"%1.VARS > Cannot filter out extra variable instances ; z=%2, n=%3, msk=%4 ; tx :: %5"
+						,callee.µ
+						,z
+						,n
+						,msk
+						,tx.toSpecifier()
+						));
+					return;
+				}
+			}
+			else
+			{
+				msk = Array(1+n).join('1');                           // [ADD230501]  msk :: `11111...`  ; every result is valid
+			}
+			
+			// Extract the underlying var-type characters.
+			// [REM] `varTypes['$'+b[i]]` MUST be defined.
+			// [CHG230501] Only considers b[i] if msk[i]=='1', otherwise reset b[i] to true
+			// ---
+			for( i=bz ; i-- && (t=0x31==msk.charCodeAt(i)?varTypes['$'+b[i]]:true) ; b[i]=t );
+			if( !t )
+			{
+				$.global[callee.µ.__root__].warn(__(
+					"%1.VARS > No type registered for the variable %2."
+					,callee.µ
+					,b[i].toSource()
+					));
+				return;
+			}
+			
+			// Get the result texts.
+			// [REM] The prop `resultText` can be empty.
+			// [CHG230501] `b` and `c` must be in sync, but `c` may
+			// still contain irrelevant data c[i] if msk[i]!='1'
+			// ---
+			c = VV.resultText;                                        // [vt0,vt1...vt_bz]
+			if( c.length !== bz )                                      // Shouldn't happen.
+			{
+				$.global[callee.µ.__root__].warn(__(
+					"%1.VARS > Invalid match count (%2 != %3) while parsing resultText."
+					,callee.µ
+					,bz
+					,c.length
+					));
+				return;
+			}
+			
+			// [ADD230501] Remove all invalid c[i] and b[i]
+			// to have `b`,`c` in sync with `a` (length==n).
+			if( bz > n )for( i=bz ; i-- ; 0x31==msk.charCodeAt(i) || (b.splice(i,1),c.splice(i,1)) );
+
+			// Replace c[i] by `varTexts` index (created if needed.)
+			// ---
+			for
+			(
+				z=varTexts.length, i=-1 ;
+				++i < n ;
+				c[i] = varTexts.hasOwnProperty(s='$'+c[i])
+				? varTexts[s]
+				: ( varTexts[s]=z,varTexts[z++]=s.slice(1),(z-1) )
+			);
+
+			// Feed `vars`.
+			// ---
+			if( 0xFFFF > a[-1+n] )
+				for( s='_', i=-1 ; ++i < n ;                                   // '_' starter
+				s += CHR(a[i]).concat(b[i],CHR(c[i])) );                       // Single U16 encoding    :: <i><k><v>
+			else
+				for( s='=', i=-1 ; ++i < n ;                                   // '=' starter
+				t=a[i],s+=CHR(t>>>16,(0xFFFF&t)>>>0).concat(b[i],CHR(c[i])) ); // Double U16 encoding  :: <ii><k><v>
+
+			vars[kid] = s;
+		},
+
+		RUNS: function(/*TextParcels&*/K,/*Document*/doc,/*str*/KEEP,/*bool*/NONS,/*bool*/NORG,/*0|{}*/OKPG,/*0|{}*/OKLY,/*bool*/NOHI,/*bool*/VARS,/*fct*/PROG,  X,q,qi,qp,locs,rngs,runs,vars,NX,PV,xk,kid,knd,noc,nsr,nvr,xid,pid,s,t,x,y,z)
+		//----------------------------------
+		// (Feed-Runs.) Browse clusters based on the `KEEP` filter and (re)build `K.runs`.
+		// ---
+		// KEEP :: [TPEcdef]+
+		// NONS :: 1 [No-Nested]      |  0 [Go-Nested]
+		// NORG :: 1 [No-Ranges]      |  0 [Need-Ranges]
+		// OKPG :: 0 [AllPages]       |  { _pid=>1 }  [OkPageIds]
+		// OKLY :: 0 [AllLayers]      |  { _yid=>1 }  [OkLayerIds]
+		// NOHI :: 0 [KeepHidden]     |  1 [SkipHiddenBlocks]
+		// VARS :: 0 [DontParseVars]  |  1 [ParseVars]
+		// this :: ~
+		// ---
+		// => undef
+		{
+			X = doc.pageItems;
+			q =    K.clusters;                                        // { _kid   => `<K><LL><N><C>` }
+			locs = K.locations;                                       // { _xid   => `<pid>[_$]<yid><H>?` | '0[_$]0' }
+
+			rngs = NORG ? 0 : K.ranges;                               // { _kid   => `[_=]<zpc0><zpc1>...<zpcN>` | '' }  |  0 [NoRangesNeeded]
+			vars = VARS ? K.vars : 0;                                 // { _kid   => `[_=]<ikv0><ikv1>...<ikvN>` | '' }  |  0 [DontParseVars]
+			runs = K.runs;                                            // { _pidOK => `_kidOK1|_kidOK2|...|_kidOKn` }
+			
+			NX = K.threads;                                           // { _kid   => `_nextKid` }   ; already computed
+			PV = {};                                                  // { _kid   => `_prevKid` }   ; dynamic
+
+			// Loop in clusters.
+			// ---
+			const QN = q.__count__;
+			const MROU = Math.round;
+			const PM = K.pagesMap;                                    // PM :: [ ofs => id ] + { _name => id | `id_id...` } + { $id => <ofs>name } + DUP_COUNT
+			qi = qp = 0;
+			for( kid in q )
+			{
+				// Progress.
+				qp < (t=MROU(100*(qi++)/QN)) && PROG(qp=t);
+
+				if( !q.hasOwnProperty(kid) ) continue;                // kid :: `_x` | `_x_y_z` | `_x(_a_b)?`
+
+				s = q[kid];                                           // s   :: `[TPEcdf]<LL>[#+!]<C>?`
+				knd = s.charAt(0);                                    // knd :: [TPEcdf]
+				if( -1 == KEEP.indexOf(knd) ) continue;               // Ignore undesired clusters.
+				noc = 4==s.length;                                    // No determined contents yet?
+				if( (!noc) && 0===s.charCodeAt(4) ) continue;         // [ADD220618] Simply ignore \0 contents (i.e empty clusters!)
+
+				xid = '_' + ((s.charCodeAt(1)<<16)|s.charCodeAt(2));  // xid :: `_ID`
+				t = locs[xid] || '0$0';                               //  t  :: `<pid>[_$]<yid><H>?` | '0[_$]0'
+				if( NONS && 0 <= t.indexOf('$') ) continue;           // Ignore nested clusters?
+				if( !(pid=parseInt(t,10)) ) continue;                 // Skip spread items (out of page.)
+				if( !PM.hasOwnProperty('$'+pid) ) continue;           // Skip master pages [ADD220116]
+				pid = '_'+pid;                                        // pid :: `_ID`
+				if( OKPG && !OKPG[pid] ) continue;                    // Skip KO pages.
+				t = t.slice(pid.length);
+				if( '\x01'==t.slice(-1) )                             // [ADD210121] Manage HIDDEN block flag.
+				{
+					if( NOHI ) continue;
+					t = t.slice(0,-1);
+				}
+				if( OKLY && !OKLY['_'+t] ) continue;                  // Skip KO layers ; _pid.length == index of <yid> in `t`
+
+				nsr = rngs && !rngs.hasOwnProperty(kid);              // Need style ranges?
+				nvr = vars && !vars.hasOwnProperty(kid);              // Need variable parsing?
+				if( noc || nsr || nvr )                               // Is text required for retrieving contents and/or ranges and/or vars?
+				{
+					t = kid.slice(1);                                 //  t  :: `x` | `x_y_z` | `x(_a_b)?`
+					x = X.itemByID(parseInt(t,10));                   // TF | EndnoteTF | TextPath | Footnote | Endnote(?)
+					if( !x.isValid )
+					{
+						$.global[callee.µ.__root__].warn(__(
+							"%1.RUNS > Invalid [%2] item: %3."
+							,callee.µ
+							,knd
+							,x.toSpecifier()
+							));
+						continue;
+					}
+
+					if( 0 < t.indexOf('_') )
+					{
+						t = t.split('_');
+
+						x = 'c' == knd
+						? x.tables.itemByID(+t[1]).cells.itemByID(+t[2])
+						: x.characters.itemByRange(+t[1],+t[2]);
+						
+						x.isValid || (x=false);
+					}
+					
+					// Regarding contents.
+					// ---
+					if( x && (x=x.texts[0]).isValid )
+					{
+						t = noc ? (x.contents||'\0') : s.slice(4);              //  t  ::  str [OK]  |  '\0' [EMPTY-CONTENT]
+						noc && ( q[kid]=s+t );                                  //  update q[kid] if noc :: `[TPEcdef]<LL>[#+!]<C>`
+						// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					}
+					else
+					{
+						t = '\0';                                               //  t  :: '\0' [EMPTY-CONTENT]
+						q[kid] = s.slice(0,4)+'\0';                             //  forcibly update q[kid] :: `[TPEcdef]<LL>[#+!]\0`
+					}
+
+					// Regarding variables and style ranges.
+					// ---
+					if( 0 !== t.charCodeAt(0) )
+					{
+						nvr
+						&& 0 <= t.indexOf('\x18')
+						&& x.textVariableInstances.length
+						&& this.VARS(K.varTypes,K.varTexts,vars,kid,t,x.textVariableInstances.everyItem(),x ); // [ADD230501] txtContainer `x`
+
+						nsr
+						&& (x=x.textStyleRanges.everyItem()).isValid
+						&& this.RNGS(K.styles, rngs, kid, t.length, x);
+					}
+					else
+					{
+						(vars||K.vars)[kid]='';                       // Empty content -> no vars.
+						(rngs||K.ranges)[kid]='';                     // Empty content -> no range.
+					}
+				}
+
+				// Add _kid to `runs[pid]` with respect to thread ordering.
+				// [REM] NX :: { _kid   => `_nextKid` }
+				//       PV :: { _kid   => `_prevKid` }
+				// ---
+				(xk=NX[kid]) && (PV[xk]=kid);                         // xk :: undef | `_nextKid`
+				if( !(t=runs[pid]) )
+				{
+					runs[pid]=kid;                                    // runs[pid] :: `_kid`
+					continue;
+				}
+				t = '|' + t + '|';                                    // t :: `|_k1|•k2|...|•kn|`  where • :: [_+]
+				if( xk && 0 <= (x=t.indexOf('|'+xk+'|')) )            // Is `_nextKid` present in t?
+				{
+					t = t.slice(0,x) + '|'+kid+'|+' + t.slice(2+x);   // `|_k1|•k2|..|_kid|+nx|•..|•kn|`
+					                                                  //             x                 
+
+					while( xk=PV[kid] )                               // `_prevKid` available too?
+					{
+						// Is `•prevKid` also present in t?
+						// ---
+						0 > (y=t.indexOf('|'+xk+'|')) && (y=t.indexOf('|'+(xk='+'+xk.slice(1))+'|'));
+						if( 0 > y ) break;
+						                                              // `|_..|•pv|..|_kid|+nx|•..|_..|•pv|..|`
+						                                              //      y      x            z   y'
+						y += 1+xk.length;                             //      --> y  x            z   --> y'
+						
+						t = y < x
+						? ( t.slice(0,y) + '|+' + t.slice(2+x) + t.slice(1+y,1+x) )
+						: ( (z=t.indexOf('|_',1+x)), t.slice(0,x) + t.slice(z,y) + '|+' + t.slice(2+x,z) + t.slice(y) );
+
+						break;
+					}
+					runs[pid] = t.slice(1,-1);
+					continue;
+				}
+				if( (xk=PV[kid]) && ( 0 <= (y=t.indexOf('|'+xk+'|')) || 0 <= (y=t.indexOf('|'+(xk='+'+xk.slice(1))+'|')) ) )
+				{                                                     // Is `_prevKid` present in t?
+					                                                  // `|_..|•pv|_..|`
+					y += 1+xk.length;                                 //          y
+					t = t.slice(0,y) + '|+' + kid.slice(1) + '|' + t.slice(1+y);
+					runs[pid] = t.slice(1,-1);
+					continue;
+				}
+				runs[pid] = t.slice(1) + kid;
+			}
+		},
+		
+	})
+
+	//==========================================================================
+	// STATIC: onEngine setStreamContextLength
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+
+		// [ADD220618] Global story label that should be 'inhibited'. Any cluster
+		// whose parent-story label matches this string will have its contents
+		// property forcibly set to `\0` (=empty cluster.) This allows to programma-
+		// tically ignore a particular set of stories (index, etc.)
+		// ---
+		ExcludeStoryLabel: '',
+
+		onEngine: function onEngine_(  $$)
+		// ---------------------------------
+		{
+			//$$ = $.global[callee.µ.__root__]; // agnostic reference
+		},
+		
+		setStreamContextLength: function setStreamContextLength_I_(/*uint|0*/befAfterSize)
+		//----------------------------------
+		// [ADD220711] Set the before/after length for MultiStream context grabber
+		// cf `matches`
+		// => undef
+		{
+			(befAfterSize === befAfterSize>>>0) || (befAfterSize=0);
+			callee.µ.MultiStream.prototype.matches.CTXT_LEN = befAfterSize;
+		},
+
+	})
+
+	//==========================================================================
+	// PROTO: CTOR and UPDATERS
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_$Document$_o_(/*Document*/doc,/*?{}*/ini,  $$,I,ds,S,SV,F,FV,dz)
+		// ---------------------------------
+		// Constructor. Instantiate a TextParcels collection from a Document and create
+		// the initial clusters calling `this.updateContainers()`.
+		// ini :: Initial basic options (can be changed later using this.setBasicOptions)
+		//        .tables    (-1|0|1)  -1:restrict to tables   ; 0:ignore tables   ; 1:accept tables
+		//        .endnotes  (-1|0|1)  -1:restrict to endnotes ; 0:ignore endnotes ; 1:accept endnotes
+		//        .footnotes (-1|0|1)  -1:restrict to FNs      ; 0:ignore FNs      ; 1:accept footnotes
+		//        .nested    (0|1)      0:ignore nested objects ; 1:accept
+		//        .hidden    (0|1)      0:ignore hidden texts   ; 1:accept
+		//        .wantVars  (0|1)      Whether text variable instances have to be scanned.
+		//        .scanLanguages (0|1)  Whether document languages have to be scanned into this.languages.
+		// Data structure:
+		//       {
+		//       docSpec:   str,
+		//       name:      <docName> (or custom name from ini)
+		//       state:     { containers, rgCells, fnCells, footnotes, topLocs, subLocs },
+		//       options:   { tables,endnotes,footnotes,nested,hidden,wantVars,pgIds,lyIds,psIds,csIds },
+		//       icuSeq:    undef|str :: `xx_YY|xx_YY|...`
+		//       icuBest:   undef|str :: `xx_YY`
+		//       ---
+		//       clusters:  { _kid  => `<K><LL>[+#!]<C>` },
+		//       threads:   { _kid  => `<nextKid>` },
+		//       locations: { _xid  => `<pid>[_$]<yid><X1>?` | '0[_$]0' },
+		//       ranges:    { _kid  => `[_=]<zpc0><zpc1>...<zpcN>` | '' },
+		//       _kidToEndnoteIds_ : { _kid => `enId_enId_...` } for some EndnoteTextFrame cluster.
+		//       excludedStoryIds: '' | 'stoId_stoId..._stoId'
+		//       styles:    { _sid  => idx } [ idx => `_sid` ] ; not necessarily exhaustive -> depends on ~.RUNS() calls
+		//       ---
+		//       paraStylesMap:  0 | {_psPath => id}  on demand
+		//       charStylesMap:  0 | {_csPath => id}  on demand
+		//       ---
+		//       varTypes:  { $varName => [TVXNHuloDOYZ]+ }
+		//       varTexts:  [ idx => resultStr ] + { $resultStr => idx }
+		//       vars:      { _kid  => `[_=]<xkv0><xkv1>...<xkvN>` | '' },
+		//       ---
+		//       pagesMap:  [ ofs => id ] + { _name => id | `id_id...` } + { $id => <ofs>name } + DUP_COUNT
+		//       sections:  [ idx => uniqueName ] + { _uniqueName => idx }
+		//                  + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>numAlgo<X1>shift` }
+		//                  (where `numAlgo` is made of 4 capital letters and `shift` a int numeral.)
+		//       ---
+		//       runs:      { _pidOK => `_kidOK1|•kidOK2|...|•kidOKn` }  ; where • denotes [_+]
+		//       streams:   new MultiStream()
+		//       }
+		// ---
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			( doc && 'Document'==doc.constructor.name )
+			|| $$.error(__("The constructor %1 expects a Document argument.", callee.µ));
+			
+			// Data structure.
+			// In CS4, doc.toSpecifier() is not reliable so we use `/document[index]`
+			// It is then assumed that doc indices won't change while the script is running.
+			// ---
+			ds = $$.domVersion(7) ? doc.toSpecifier() : ('/document['+doc.index+']');
+			(+$$.trace) && $$.trace(__("%1 > Creating a new TextParcels instance from document `%2`...", callee.µ, ds));
+
+			this.docSpec = ds;
+
+			this.state =
+			{
+				containers:      -1,         // Number of text containers (incl. nested)   kind: 'T'|'P'|'E'
+				rgCells:         -1,         // Number of regular cells (not in notes)     kind: 'c'
+				fnCells:         -1,         // Number of cells in footnotes               kind: 'd'
+				footnotes:       -1,         // Number of footnotes                        kind: 'f'
+				topLocs:         -1,         // Number of top-locations in this.locations
+				subLocs:         -1,         // Number of sub-locations in this.locations
+			};
+
+			// [ADD210123] Let a TextParcels instance have a `name` for informational purpose.
+			// ---
+			this.name = (ini||0).hasOwnProperty('name') ? String(ini.name) : String(doc.properties.name);
+			
+			this.options =
+			{
+				tables:           1,  // default, refined by ini if supplied
+				footnotes:        1,  // default, refined by ini if supplied
+				endnotes:         1,  // default, refined by ini if supplied
+				nested:           1,  // default, refined by ini if supplied
+				hidden:           0,  // default, refined by ini if supplied
+				// ---
+				wantVars:         0,  // default, refined by ini if supplied
+				scanLanguages:    0,  // default, refined by ini if supplied
+				// ---
+				pgIds:            '',  // '' | `pid_pid_ ... _pid`
+				lyIds:            '',  // '' | `yid_yid_ ... _yid`
+				psIds:            '',  // '' | `psid_psid_ ... _psid`
+				csIds:            '',  // '' | `csid_csid_ ... _csid`
+			};
+			ini===Object(ini) && this.setBasicOptions(ini);
+			(+$$.trace) && $$.trace(__("%1[%2] > Current options: %3", callee.µ, this.name, $$.JSON(this.options)));
+
+			this.clusters = {};
+			this.threads = {};
+			this.locations = {};
+			this.ranges = {};
+			
+			// [ADD220618] If some containers are excluded due to µ.ExcludeStoryLabel
+			// this property is set to `stoId_stoId_..._stoId`.
+			// ---
+			this.excludedStoryIds = '';
+			
+			// [ADD220528] Dynamically set only if needed -- made semi-private for that reason.
+			// { _kid => `enId_enId_...` } for some EndnoteTextFrame cluster.
+			this._kidToEndnoteIds_ = {};
+
+			this.styles = [];
+			this.paraStylesMap = 0;
+			this.charStylesMap = 0;
+			
+			// [ADD211030]
+			this.varTypes = I.VRTP(doc); // TextVariable has no ID, so keys are `$<varname>`
+			this.varTexts = [];
+			this.vars = {};
+			
+			// [ADD210815]
+			this.pagesMap = I.PGMP(doc);
+			this.sections = I.SECT(doc);
+			this.runs = {};
+			this.streams = new callee.µ.MultiStream;
+			
+			// Load containers -> this.state.containers
+			// ---
+			this.updateContainers(doc);
+		},
+		
+		clear: function clear_(  $$,o,k)
+		//----------------------------------
+		// Destructor. Clear all data of this TextParcels instance.
+		{
+			$$ = $.global[callee.µ.__root__];
+
+			o=this.state;
+			for( k in o ) o[k]=-1;
+			
+			this.streams.clear();
+			$$.kill(this.runs);
+
+			$$.kill(this.sections);
+			$$.kill(this.pagesMap);
+			
+			$$.kill(this.vars);
+			$$.kill(this.varTexts);
+			$$.kill(this.varTypes);
+
+			this.paraStylesMap && ($$.kill(this.paraStylesMap), (this.paraStylesMap=0));
+			this.charStylesMap && ($$.kill(this.charStylesMap), (this.charStylesMap=0));
+			$$.kill(this.styles);
+			
+			$$.kill(this._kidToEndnoteIds_);
+			this.excludedStoryIds = '';
+
+			$$.kill(this.ranges);
+			$$.kill(this.locations);
+			$$.kill(this.threads);
+			$$.kill(this.clusters);
+		},
+
+		setBasicOptions: function setBasicOptions_O_(/*{}*/ops,  $$,o,z,k,nv,ov)
+		//----------------------------------
+		// Set/reset basic options (excluding pgIds, lyIds, psIds, csIds.)
+		// ops :: { tables:-1|0|1, endnotes:-1|0|1, footnotes:-1|0|1
+		//          nested: 0|1, hidden:0|1, wantVars:0|1, scanLanguages:0|1 }
+		// Returns a nonzero uint if any of the option change may imply
+		// some additional update, that is:
+		// (a) from { nested:0 }    to  { nested:1 }
+		// (b) from { tables:0 }    to  { tables:-1|+1 }
+		// (c) from { footnotes:0 } to  { footnotes:-1|+1 }
+		// (d) from { endnotes:0 }  to  { endnotes:-1|+1 }
+		// [REM] This method doesn't involve DOM process.
+		// ---
+		// => >0 [UPDATE-NEEDED]  |  0 [NO-UPDATE-NEEDED]
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			(+$$.trace) && $$.trace(__("%1[%2] > Setting options to %3.", callee.µ, this.name, $$.JSON(ops)));
+
+			o = this.options;
+			z = 0;
+
+			ops.hasOwnProperty(k='tables')
+			&& ( (nv=0|ops[k])&&(nv=0>nv?-1:1), (nv!==(ov=o[k]) && (o[k]=nv, (ov||++z))) );
+
+			ops.hasOwnProperty(k='footnotes')
+			&& ( (nv=0|ops[k])&&(nv=0>nv?-1:1), (nv!==(ov=o[k]) && (o[k]=nv, (ov||++z))) );
+
+			ops.hasOwnProperty(k='endnotes')
+			&& ( (nv=0|ops[k])&&(nv=0>nv?-1:1), (nv!==(ov=o[k]) && (o[k]=nv, (ov||++z))) );
+
+			ops.hasOwnProperty(k='nested')
+			&& ( (nv=ops[k]?1:0), (nv!==(ov=o[k]) && (o[k]=nv, (ov||++z))) );
+
+			// Transparent options.
+			// ---
+			ops.hasOwnProperty(k='hidden')   && (o[k]=ops[k]?1:0);
+			ops.hasOwnProperty(k='wantVars') && (o[k]=ops[k]?1:0);
+			ops.hasOwnProperty(k='scanLanguages') && (o[k]=ops[k]?1:0);
+
+			return z;
+		},
+
+		updateContainers: function updateContainers_d_(/*?Document*/doc,  I,$$,sta,q,S,t,n,k,z,s,a,b,i,j)
+		//----------------------------------
+		// Identify *all* doc containers (TextFrames, TextPaths, EndnoteTextFrames)
+		// based on stories and register the basic _x => `[TPE]<LL>[+_]` clusters.
+		// Text contents are not read at this stage.
+		// The `doc` arg is optional since it can be rebuilt from `this.docSpec`.
+		// -> Updates this.state.containers :: >0 [OK]  |  0 [EMPTY]
+		// -> Reset this.state.(rgCells|fnCells|footnotes...) to -1.
+		// ---
+		// [REM] This method is automatically called from the contructor and is
+		// independent from `this.options`. In principle, there is no reason to
+		// invoke it from the client script unless document containers have changed.
+		// Fast method on average.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			doc || (doc=resolve(this.docSpec));
+			sta = this.state;
+			q = this.clusters;
+
+			if( 0 < sta.containers )
+			{
+				for( k in q ) q.hasOwnProperty(k) && delete q[k];
+				t=this.threads;   for( k in t ) t.hasOwnProperty(k) && delete t[k];
+				t=this.locations; for( k in t ) t.hasOwnProperty(k) && delete t[k];
+				t=this.ranges;    for( k in t ) t.hasOwnProperty(k) && delete t[k];
+				t=this.styles;    for( k in t ) t.hasOwnProperty(k) && delete t[k];
+				t.length = 0;
+			}
+
+			sta.rgCells = sta.fnCells = -1;
+			sta.footnotes = -1;
+			sta.topLocs = sta.subLocs = -1;
+
+			S = doc.stories;
+			n = S.length;
+			if( !n )
+			{
+				(+$$.warn) && $$.warn(__("%1 > No story found. The TextParcels collection is empty.",callee.µ));
+				sta.containers = 0;
+				return;
+			}
+
+			z = q.__count__;                                          // Should be zero.
+			I.STOS(this, S.everyItem(), n);                           // HOT PROCESS -> this.clusters ; detect ExcludeStoryLabel
+			
+			this.excludedStoryIds = (t=I.STOS.EXCL_STO_IDS);          // [ADD220618] Remember exluded story IDs (based on µ.ExcludeStoryLabel.)
+			if( t )                                                   // [ADD220618] Inhibit excluded stories' containers.
+			{
+				z = 0;
+
+				for( a=t.split('_'), i=a.length ; i-- ; )
+				for
+				(
+					b=S.itemByID(parseInt(a[i],10)).textContainers||[], j=b.length ;
+					j-- ;
+					(s=b[j].id) && q.hasOwnProperty(s='_'+s) && ( q[s]=q[s].slice(0,4)+'\0', ++z )
+				);
+				(+$$.trace) && $$.trace(__( "%1[%2] > %3 inhibited cluster%4 due to ExcludeStoryLabel=%5.", callee.µ, this.name, z, 1<z?"s":"", callee.µ.ExcludeStoryLabel));
+			}
+			
+			// ---
+			// At this point, this.clusters references all STORY
+			// containers, incl. those found on master spreads.
+			// ---
+
+			z = sta.containers = q.__count__ - z;                     // Count.
+			if( z )
+			{
+				(+$$.trace) && $$.trace(__( "%1[%2] > %3 cluster%4 identified from document containers.", callee.µ, this.name, z, 1<z?"s":"" ));
+			}
+			else
+			{
+				(+$$.warn) && $$.warn(__("%1 > No container found. The TextParcels collection is empty.",callee.µ));
+			}
+		},
+
+		updateCells: function updateCells_t_d_(/*-1|0|1=1*/FOOT,/*?Document*/doc,  $$,sta,q,rgc,fnc,enc,t,k,z,SV)
+		//----------------------------------
+		// Based on `doc.stories`, identify
+		// - *all* cells from regular tables    unless FOOT==-1
+		// - *all* cells from footnote tables   if FOOT != 0
+		// and register the corresponding _x_y_z => `[cd]<LL>_<C>` clusters,
+		// including their contents. The `FOOT` arg allow to target regular
+		// and/or footnote cells separately.
+		// The `doc` arg is optional since it can be rebuilt from `this.docSpec`.
+		// -> Updates this.state.rgCells :: >0 [OK]  |  0 [NO-CELL]
+		//    and/or  this.state.fnCells :: >0 [OK]  |  0 [NO-CELL]
+		// ---
+		// [REM] This method is independent from `this.options`. It may be called
+		// typically when `options.tables` and/or `options.footnotes` and/or
+		// `options.endnotes` is turned ON, or if document cells have changed.
+		// This method might be highly time-consuming.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			doc || (doc=resolve(this.docSpec));
+			sta = this.state;
+			q = this.clusters;
+			
+			FOOT = 'undefined' == typeof FOOT ? 1 : (0|FOOT);
+			
+			0 > sta.containers && this.updateContainers(doc);
+
+			// Cleanup?
+			// ---
+			rgc = 0 <= FOOT;
+			if( (rgc && 0 < sta.rgCells ) || ( FOOT && 0 < sta.fnCells ) )
+			{
+				t = (rgc ? 'c' : '') + ( FOOT ? 'd' : '' );
+				for( k in q ) q.hasOwnProperty(k) && 0 <= t.indexOf(q[k].charAt(0)) && delete q[k];
+				rgc  && (sta.rgCells=0);
+				FOOT && (sta.fnCells=0);
+			}
+
+			// Make sure we have a story!
+			// ---
+			z = sta.containers && (t=doc.stories).length;
+			if( !z )
+			{
+				(+$$.warn) && $$.warn(__("%1 > No cell cluster found. The TextParcels collection is empty.", callee.µ));
+				sta.containers = 0;
+				sta.rgCells = sta.fnCells = 0;
+				return;
+			}
+			SV = t.everyItem();
+
+			// Scan cells.
+			// ---
+			if( rgc )
+			{
+				z = q.__count__;
+
+				(t=SV.tables).length
+				&& callee.µ['~'].TBLS(this, t.everyItem(), 'c');      // HOT PROCESS
+
+				z = sta.rgCells = q.__count__ - z;                    // Count.
+				(+$$.trace) && $$.trace(__( "%1[%2] > %3 cell cluster%4 identified from regular stories.", callee.µ, this.name, z||"No", 1<z?"s":""));
+			}
+
+			if( FOOT )
+			{
+				z = q.__count__;
+
+				// [REM] No `tables` property is exposed in Footnote, so we must read fn.texts[0].
+				// ---
+				(t=SV.footnotes).length
+				&& (t=t.everyItem().texts.everyItem().tables).length
+				&& callee.µ['~'].TBLS(this, t.everyItem(), 'd');      // HOT PROCESS
+
+				z = sta.fnCells = q.__count__ - z;                    // Count.
+				(+$$.trace) && $$.trace(__( "%1[%2] > %3 cell cluster%4 identified from footnotes.", callee.µ, this.name, z||"No", 1<z?"s":""));
+			}
+
+		},
+
+		updateFootnotes: function updateFootnotes_d_(/*?Document*/doc,  $$,sta,q,t,k,z,SV)
+		//----------------------------------
+		// Identify *all* footnotes based on stories and register the
+		// corresponding _x(_a_b)? => `f<LL>[+#]<C>` clusters, including
+		// their contents.
+		// The `doc` arg is optional since it can be rebuilt from `this.docSpec`.
+		// -> Updates this.state.footnotes :: >0 [OK]  |  0 [NO-FOOTNOTE]
+		// ---
+		// [REM] This method is independent from `this.options`. It may be called
+		// typically when `options.footnotes` is turned ON, or if document
+		// footnotes have changed.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			doc || (doc=resolve(this.docSpec));
+			sta = this.state;
+			q = this.clusters;
+			
+			0 > sta.containers && this.updateContainers(doc);
+
+			// Cleanup?
+			// ---
+			if( 0 < sta.footnotes )
+			{
+				for( k in q ) q.hasOwnProperty(k) && 'f' == q[k].charAt(0) && delete q[k];
+				sta.footnotes=0;
+			}
+
+			// Make sure we have a story!
+			// ---
+			z = sta.containers && (t=doc.stories).length;
+			if( !z )
+			{
+				(+$$.warn) && $$.warn(__("%1 > No footnote cluster found. The TextParcels collection is empty.", callee.µ));
+				sta.containers = 0;
+				sta.footnotes = 0;
+				return;
+			}
+
+			SV = t.everyItem();
+			z = q.__count__;
+
+			// Scan footnotes.
+			// ---
+			(t=SV.footnotes).length
+			&& callee.µ['~'].FNOS(this, t.everyItem());               // HOT PROCESS
+
+			z = sta.footnotes = q.__count__ - z;                      // Count.
+			(+$$.trace) && $$.trace(__( "%1[%2] > %3 footnote cluster%4 identified from stories.", callee.µ, this.name, z||"No", 1<z?"s":""));
+		},
+
+		endnoteFrameIds: function endnoteFrameIds_S_S(/*`_kid`*/kid,  q,I,tf,ev,t,a,x,z)
+		//----------------------------------
+		// This method is called from the stream callback and returns a
+		// sequence of endnote IDs (enid) if kid determines an EndnoteTextFrame.
+		// (This case should be unfrequent.) The returned 'enid' values are the
+		// IDs of end notes encountered in that particular frame.
+		// [FIX230527] The present implementation guarantees that
+		// 1. The previous ID of a continued endnote that flows in that frame
+		//    WILL BE REPORTED as the first enid in the sequence, preceded by
+		//    a `+` sign. It is the responsibility of the client to merge this
+		//    enid with a previously encountered ID of the same value.
+		// 2. The ID of the next threaded endnote (which was mistakenly showing
+		//    up in the endnoteRanges collection due to a DOM bug) IS NOT
+		//    reported.
+		// With respect to 1., the `+` prefix strictly indicates that the 1st enid
+		// reflects a continued endnote, meaning that the 1st character in that kid
+		// already belongs to the corresponding endnote. When the `+` sign is missing
+		// the 1st enid matches the 1st occurrence of <FFEF><0004> in the text,
+		// which can be at some index > 0 if the EndnoteTextFrame has heading data
+		// before the very first endnote range.
+		// FALSE is returned if
+		// - the cluster is not of kind E, or
+		// - no endnote ID has been found in that frame
+		// [REM] The cache `this._kidToEndnoteIds_` is used to prevent recalc.
+		// ---
+		// => `+?<enid>_<enid>_...` [OK]  |  false [KO]
+		{
+			if( 0x45 != this.clusters[kid].charCodeAt(0) ) return false;
+			
+			q = this._kidToEndnoteIds_;
+			if( q.hasOwnProperty(kid) ) return q[kid];
+			
+			I = callee.µ['~'];
+
+			// [FIX230527] Make sure we only return start endnote IDs within the frame
+			// ---
+			tf = resolve(this.docSpec + '//endnote-text-frame[@id=' + kid.slice(1) + ']'); // tf :: EndnoteTextFrame
+			ev = tf.texts[0].endnoteRanges.everyItem();                                    // ev :: EndnoteRange (plural) ; includes extra note ranges (before/after)
+
+			a = ev.sourceEndnote.toSource()                                                // E.g `[resolve("<DS>//endnote[@id=291]"), resolve("<DS>//endnote[@id=343]")]`
+				.match(I.REGS.digsBeforeEnds)||[];                                         // a :: `<enid>`[]
+			
+			if( a.length )
+			{
+				t = ev.endnoteRangeStartIndex;                                             // t :: uint[]
+				z = t.length;
+
+				x = (x=tf.insertionPoints[0]).isValid ? x.index : 0;                       // x :: first ip index
+				(t[0] < x) && (a[0]='+'+a[0]);
+
+				x = (x=tf.insertionPoints[-1]).isValid ? x.index : 1/0;                    // x :: last ip index
+				x <= t[z-1] && a.pop();                                                    // Fix DOM bug (enid wrongly reported beyond the frame)
+			}
+
+			return (q[kid] = 0 < a.length && a.join('_'));
+		},
+
+		updateLocations: function updateLocations_t_d_(/*-1|0|1=auto*/SUBS,/*?Document*/doc,  $$,I,sta,locs,k,z)
+		//----------------------------------
+		// Find locations and register the corresponding _xid => `pid_yid` data.
+		// - If SUBS == 0   only top locations are updated.
+		// - If SUBS == -1  only sub locations are updated.
+		// - If SUBS == +1  both top and sub locations are updated.
+		// If not supplied, SUBS is set to `this.options.nested`.
+		// The `doc` arg is optional since it can be rebuilt from `this.docSpec`.
+		// -> Updates this.state.topLocs :: >0 [OK]  |  0 [NO-TOPLOC]
+		//    and/or  this.state.subLocs :: >0 [OK]  |  0 [NO-SUBLOC]
+		// ---
+		// [REM] This method is independent from `this.options` unless the SUBS
+		// argument has to be assigned automatically. It should be called
+		// typically when all clusters have been created and `this.options.nested`
+		// is known.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			doc || (doc=resolve(this.docSpec));
+			sta = this.state;
+			locs = this.locations;
+			SUBS = 'undefined' == typeof SUBS ? this.options.nested : (0|SUBS);
+
+			0 > sta.containers && this.updateContainers(doc);
+			
+			// Cleanup?
+			// ---
+			if( 0 <= SUBS && 0 < sta.topLocs )
+			{
+				for( k in locs ) locs.hasOwnProperty(k) && 0 <= locs[k].indexOf('_') && delete locs[k];
+				sta.topLocs = 0;
+			}
+			if( 0 != SUBS && 0 < sta.subLocs )
+			{
+				for( k in locs ) locs.hasOwnProperty(k) && 0 <= locs[k].indexOf('$') && delete locs[k];
+				sta.subLocs = 0;
+			}
+			
+			// TOP LOCATIONS. Get all top frames (TF and EndnoteTF) found
+			// on `doc.pages` and register each _fid => `pid_yid` data
+			// in `this.locations`. Existing keys are simply overridden.
+			// ---
+			if( 0 <= SUBS )
+			{
+				// `z` reflects the reliable, actual count of top items.
+				// ---
+				z = sta.topLocs = I.LTOP(this, doc);                  // HOT PROCESS
+				(+$$.trace) && $$.trace( __("%1[%2] > Top locations: %3.",callee.µ, this.name, z) );
+			}
+
+			// SUB LOCATIONS.
+			// ---
+			if( 0 != SUBS )
+			{
+				z = locs.__count__;
+				I.LSUB(this,doc,I.PPAV) && (I.PPAV||I.LALL(this,doc));// HOT PROCESS
+				z = sta.subLocs = locs.__count__ - z;
+				(+$$.trace) && $$.trace( __("%1[%2] > Sub locations: %3.",callee.µ, this.name, z) );
+			}
+
+		},
+
+		updateAuto: function updateAuto_b_d_B(/*bool=0*/ALL_STEPS,/*?Document*/doc,  ops,sta,tb,fn,ns)
+		//----------------------------------
+		// With respect to current basic options, call automatically the
+		// pending update steps to get ready to consolidate. If `ALL_STEPS`
+		// is truthy, all required updates are processed and 0 is returned.
+		// Otherwise (default), *at most one* time-consuming update step is
+		// performed. Returns 0 if no further check is needed, 1 otherwise.
+		// ---
+		// [REM] This method provides gradual processing stages on a stable
+		// document while adjusting to options changes. It is smart enough
+		// to perform the right task at the right moment depending on the
+		// present options, without recalculating clusters that may have
+		// been already processed. Only basic options are considered, disre-
+		// garding pages/layers/styles targets and variables (runs aren't
+		// involved here.)
+		// ---
+		// => 1 [MAY-NEED-FURTHER-UPDATE]  |  0 [NO-NEED-FURTHER-UPDATE]
+		{
+			ops = this.options;
+			sta = this.state;
+
+			// Options that require any pending state to be defined
+			// will trigger the corresponding update method(s).
+			// ---
+			tb = ops.tables;     // -1|0|+1
+			fn = ops.footnotes;  // -1|0|+1
+			ns = ops.nested;     //  0|1
+
+			if( tb && 0 > sta.rgCells && 0 <= fn )
+			// Regular cells are scanned iff fn >= 0
+			{ doc||(doc=resolve(this.docSpec)); this.updateCells(fn,doc); if( !ALL_STEPS) return 1; }
+
+			if( tb && 0 > sta.fnCells && fn )
+			// 1st step may have scanned FN cells and then updated sta.fnCells
+			{ doc||(doc=resolve(this.docSpec)); this.updateCells(-1,doc); if( !ALL_STEPS) return 1; }
+
+			if( fn && 0 > sta.footnotes )
+			{ doc||(doc=resolve(this.docSpec)); this.updateFootnotes(doc); if( !ALL_STEPS) return 1; }
+
+			if( 0 > sta.topLocs )
+			{ doc||(doc=resolve(this.docSpec)); this.updateLocations(0,doc); if( !ALL_STEPS) return 1; }
+
+			if( ns && 0 > sta.subLocs )
+			{ doc||(doc=resolve(this.docSpec)); this.updateLocations(-1,doc) }
+
+			return 0;
+		},
+		
+		ready: function ready_B(  ops,sta,tb,fn)
+		//----------------------------------
+		// Whether all update steps have been processed
+		// (so consolidate can be called at no extra cost.)
+		// => 1 [OK]  |  0 [KO]
+		{
+			ops = this.options;
+			sta = this.state;
+
+			tb = ops.tables;     // -1|0|+1
+			fn = ops.footnotes;  // -1|0|+1
+
+			if( tb && 0 > sta.rgCells && 0 <= fn ){ return 0; }
+			if( tb && 0 > sta.fnCells && fn ){ return 0; }
+			if( fn && 0 > sta.footnotes ){ return 0; }
+			if( 0 > sta.topLocs ){ return 0; }
+			if( ops.nested && 0 > sta.subLocs ) { return 0; }
+
+			return 1;
+		},
+
+	})
+	
+	//==========================================================================
+	// TARGETTING PAGES/SECTIONS
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		pageCount: function pageCount_I()
+		//----------------------------------
+		// Number of pages in the document.
+		// ---
+		// => uint
+		{
+			return this.pagesMap.length;
+		},
+
+		hasPageDups: function hasPageDups_I()
+		//----------------------------------
+		// Whether the set of page names has duplicates (which leads to
+		// ambiguous identifiers.) If so, the number of dups is returned.
+		// ---
+		// => uint>0  [YES]  |  0 [NO]
+		{
+			return this.pagesMap.DUP_COUNT;
+		},
+
+		sectionPrefix: function sectionPrefix_S_S$false$(/*str|uint*/secIdentifier,/*bool=0*/ON_PAGE,  t)
+		//----------------------------------
+		// Find the 1st section that matches secIdentifier and returns its prefix.
+		// secIdentifier :: uniqueName|prefix|marker (str) | index (uint)
+		// If `ON_PAGE`, returns an empty string if the prefix is not included
+		// on page name.
+		// [REM] This function doesn't deal with ambiguous `secIdentifier`,
+		// if multiple sections matches, the first is returned.
+		// ---
+		// => str|'' [OK]  |  false [KO]
+		{
+			// { uniqueName,index,offset,length,includePrefix,prefix,marker,algo,shft }&
+			// ---
+			t = callee.µ['~'].FSEC(this.sections, secIdentifier);
+			return t && ( ON_PAGE && !t.includePrefix ? '' : t.prefix );
+		},
+		
+		pageSectionMatch: function pageSectionMatch_IS_si_K$false$(/*uint|str*/pageId,/*?str|uint*/secIdentifier,  p,q,k,x,a,i,t)
+		//----------------------------------
+		// Whether a page belongs to a section. `secIdentifier` can be either
+		// a section prefix, marker, unique name or an explicit uint index.
+		// If secIdentifier is missing, return the section key (unique
+		// custom name) that matches that page.
+		// => str [OK]  |  false [KO]
+		{
+			p = 'string' == typeof pageId ? parseInt(pageId,10) : (pageId>>>0);
+			
+			// Validate the page.
+			// ---
+			(q=this.pagesMap).hasOwnProperty(k='$'+p)
+			? (x=q[k].charCodeAt(0))
+			: $.global[callee.µ.__root__].error(__("Invalid `pageId` argument (%1). Should be a valid page ID.", pageId),callee.µ);
+
+			// Find the section that contains offset x.
+			// ---
+			q = this.sections;  // [ idx => uniqueName ] + { _uniqueName => idx } + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>numberStyle` }
+
+			i = -1 + q.length;
+			if( x < q['$'+i].charCodeAt(0) ) // This condition is not required in principle, it prevents infinite loop in case this.sections would be unsafe.
+			for( a=[0,1+i] ; !a.hasOwnProperty('-1') ; )
+			{
+				// Binary search.
+				i = (a[0]+a[1]) >>> 1;
+				p = x - (t=q['$'+i]).charCodeAt(0);
+				a[ +( p < 0 ) || -( p < t.charCodeAt(1) ) ] = i;
+			}
+			
+			// ---
+			// i is now the index of the target section.
+			// ---
+
+			k = q[i]; // k :: unique section key.
+
+			if( 'string' != typeof secIdentifier )
+			{
+				return secIdentifier===secIdentifier>>>0 ? (i==secIdentifier && k) : k;
+			}
+			
+			if( k==secIdentifier ) return k;
+
+			t = 0 <= ('\x01' + q['$'+i].slice(3)).indexOf('\x01'+secIdentifier+'\x01');
+
+			return t && k;
+		},
+
+		pageMatch: function pageMatch_S_b_IS$false$(/*str*/pgIdentifier,/*bool=0*/RET_OFS,  q,t,p,s,k,i,pfx)
+		//----------------------------------
+		// Utility routine that returns the pid(s) of a page identifier.
+		// If `RET_OFS`, returns the document offset(s) -- 0-based -- instead.
+		// Allowed `pgIdentifier` formats:
+		// (a) `name` property of the page (if section.includeSectionPrefix is
+		//      turned on, the prefix is part of the name and MUST be supplied.)
+		//      E.g  `123`, `002`, `iv`, `ANX_12` (prefix `ANX_`), `1.4` (prefix `1.`)
+		// (b) `[<pgPos>]`, absolute position of the page in brackets. Positions
+		//      are 1-based, that is, <pgPos> :: 1 + page.documentOffset.
+		//      E.g  `[1]` (first page), `[43]`, etc
+		// (c) `<secIdentifier>:<pgName>`, e.g "CH2:45". Useful only to resolve
+		//      ambiguous page names. `secIdentifier` can be either a section unique
+		//      name, marker, or even a prefix (but section's index is not allowed here.)
+		//      In this syntax, the section prefix is not required in <pgName>.
+		// [REM] In some cases it may be required to put `pgIdentifier` in double
+		//       quotes (e.g to prevent leading spaces in `secIdentifier` from
+		//       being trimmed by the calling process), so the form `"pgIdentifier"`
+		//       is allowed and properly parsed.
+		// ---
+		// => uint|`pid_pid...`|`ofs_ofs...` [OK]  |  false [KO]
+		{
+			'string' == typeof pgIdentifier
+			|| $.global[callee.µ.__root__].error(__("Invalid `pgIdentifier` argument (%1). Should be a string.", typeof pgIdentifier),callee.µ);
+
+			// Remove double quotes.
+			// ---
+			0x22==pgIdentifier.charCodeAt(0) && '"'==pgIdentifier.slice(-1) && (pgIdentifier=pgIdentifier.slice(1,-1));
+
+			q = this.pagesMap; // [ ofs => pid ] + { _name => pid | `pid_pid...` } + { $pid => <ofs>name } + DUP_COUNT
+
+			// (a) Name parsing.
+			// ---
+			if( q.hasOwnProperty(t='_'+pgIdentifier) )
+			{
+				p = q[t];
+				if( !RET_OFS ) return p;
+
+				if( 'number' == typeof p ) return q['$'+p].charCodeAt(0);
+				t = (''+p).split('_');  // `id`[]
+				for( i=t.length ; i-- ; t[i]=q['$'+t[i]].charCodeAt(0).toString() );
+				return t.join('_');     // -> `ofs_ofs...`
+			}
+			
+			// (b) Special `[<pgPos>]` format, 1-based index.
+			// ---
+			t = pgIdentifier;
+			if( callee.RE_OFS.test(t) )
+			{
+				t = -1 + parseInt(t.slice(1),10);
+				return 0 <= t && t < q.length && (RET_OFS ? t : q[t]);
+			}
+			
+			// (c) Special `<sec>:<name>` format.
+			// ---
+			if( 0 < (p=t.lastIndexOf(':')) )
+			{
+				s = t.slice(0,p);                                             // section identifier
+				t = t.slice(1+p);                                             // page name (maybe without expected prefix!)
+
+				if( !q.hasOwnProperty(k='_'+t) )                              // page not found from `<name>` as such
+				{
+					// If pfx is not false, there is at least one section
+					// that matches `s` (although not necessarily the only
+					// one!) We'll try anyway to get the page by restoring
+					// its possible missing prefix. Give up otherwise.
+					// ---
+					pfx = this.sectionPrefix(s,1);                            // str [PREFIX-IF-INCLUDED]  |  false [KO]
+					
+					if( (!pfx.length) || 0===t.indexOf(pfx) ) return false;   // No prefix or already there -> game over.
+					
+					t = pfx + t;
+					if( !q.hasOwnProperty(k='_'+t) ) return false;            // Page still not found with prefixed name!
+				}
+
+				t = (''+q[k]).split('_');                                     // t :: `pid`[]  ; array of of pid strings.
+				
+				// Now, if multiple pids result from <name>, pick the
+				// 1st page that *belongs* to a section identified by `s`.
+				// [REM] `s` may still be ambiguous at this stage, this
+				// explains why `pageSectionMatch` is invoked.
+				// ---
+				for( i=t.length ; i-- && false===this.pageSectionMatch(p=t[i],s) ; );
+				
+				return 0 <= i && (RET_OFS ? q['$'+p].charCodeAt(0) : +p);
+			}
+			
+			return false;
+		}
+		.setup
+		({
+			RE_OFS: /^\[\d+\]$/,
+		}),
+		
+		targetPages: function targetPages_soa_d_I(/*?str|{pid=>any}|(Page|str|pid)[]|PluralPage*/pages,/*?Document*/doc,  $$,ops,ov,nv,I,s)
+		//----------------------------------
+		// Update `this.options.pgIds`. If some runs were available, re-consolidate
+		// (since the requested runs depend on target pages.)
+		// Returns the number of target pages.
+		// [REM] This routine is independent from update processes as long as it doesn't
+		// lead to reconsolidation. Basically, it just redefines the set of target pages.
+		// ---
+		// => uint>0
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			
+			ops = this.options;
+			ov = ops.pgIds||'';
+			nv = '';
+			
+			if( pages )
+			{
+				I = callee.µ['~'];
+				nv = I.ISEQ( pages, 'Page', 'pages', doc||(doc=resolve(this.docSpec)), this.pagesMap );
+				(!nv) && (s=I.ISEQ.ERR_MSG) && error(s,callee.µ);
+			}
+			
+			// Is there any change?
+			// ---
+			if( nv !== ov )
+			{
+				// Change option.
+				// ---
+				ops.pgIds = nv;
+				(+$$.trace) && $$.trace( __("%1[%2] > Target page IDs: %3", callee.µ, this.name, nv ? nv.split('_') : '<all>') );
+				
+				// If some runs were already available, must re-consolidate.
+				// ---
+				this.runs.__count__ && this.consolidate();
+			}
+			
+			return nv.length ? nv.split('_').length : this.pageCount();
+		},
+	})
+
+	//==========================================================================
+	// TARGETTING STYLES OR LAYERS
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		targetLayers: function targetLayers_soa_d_(/*?str|{pid=>any}|(Layer|str|pid)[]|PluralLayer*/layers,/*?Document*/doc,  $$,ops,ov,nv,I,s)
+		//----------------------------------
+		// Update `this.options.lyIds`. If some runs were available, re-consolidate
+		// (since the requested runs depend on target layers.)
+		// [REM] This routine is independent from update processes as long as it doesn't
+		// lead to reconsolidation. Basically, it just redefines the set of target layers.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			ops = this.options;
+			ov = ops.lyIds||'';
+			nv = '';
+			
+			if( layers )
+			{
+				I = callee.µ['~'];
+				nv = I.ISEQ( layers, 'Layer', 'layers', doc||(doc=resolve(this.docSpec)) );
+				(!nv) && (s=I.ISEQ.ERR_MSG) && $$.error(s,callee.µ);
+			}
+			
+			// No change?
+			// ---
+			if( nv === ov ) return;
+
+			// Change option.
+			// ---
+			ops.lyIds = nv;
+			(+$$.trace) && $$.trace( __("%1[%2] > Target layer IDs: %3", callee.µ, this.name, nv.length ? nv.split('_') : '<all>') );
+
+			// If some runs were already available, must re-consolidate.
+			// ---
+			this.runs.__count__ && this.consolidate();
+		},
+
+		targetParagraphStyles: function targetParagraphStyles_soa_d_(/*?str|{pid=>any}|(ParagraphStyle|str|pid)[]|PluralParagraphStyle*/pStyles,/*?Document*/doc,  $$,I,ops,ov,nv,q,s)
+		//----------------------------------
+		// Update `this.options.psIds`. If some runs were available, only re-consolidate *if
+		// ranges were unprocessed* [indeed, style conditions do not impact the target runs,
+		// they just indicate whether the exhaustive `ranges` structure has to be added to the
+		// parcels --`_kid` keys-- which do not depend on the requested runs.]
+		// `pStyles` item(s) can be provided in various forms (DOM specifier, style ID, or
+		// string). When a style is given as a string and belongs to a group, the whole
+		// path must be specified in either "[Group1] [Subgroup] [etc] styleName" form,
+		// or using `\x02` separators: "Group1\x02Subgroup\x02etc\x02styleName".
+		// E.g.  µ.targetParagraphStyles(["MyStyle1","[MyGroup] MyStyleInGroup",...]).
+		// [REM] This routine is independent from update processes as long as it doesn't
+		// lead to reconsolidation. Basically, it just redefines the set of target par-styles.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			ops = this.options;
+			ov = ops.psIds||'';
+			nv = '';
+
+			if( pStyles )
+			{
+				doc || (doc=resolve(this.docSpec));
+				
+				// [ADD211102] Normalize pStyles if submitted as a string or Array.
+				// All `[G1] [G2] name` strings are converted into th <X2> separated
+				// syntax `G1<X2>G2<X2>name`.
+				// ---
+				pStyles = I.NRMS(pStyles);
+
+				// [REM210902] The map q is required only if pStyles is an array.
+				// q :: { _psPath => id }  ; where psPath is based on <X2> separator.
+				// ---
+				q = ( pStyles instanceof Array )
+				&& (this.paraStylesMap || (this.paraStylesMap=I.STMP('paragraph',{},doc)));
+
+				nv = I.ISEQ( pStyles, 'ParagraphStyle', 'paragraphStyles', doc, q );
+				(!nv) && (s=I.ISEQ.ERR_MSG) && $$.error(s,callee.µ);
+			}
+			
+			// No change?
+			// ---
+			if( nv === ov ) return;
+
+			// Change option.
+			// ---
+			ops.psIds = nv;
+			(+$$.trace) && $$.trace( __("%1[%2] > Target paragraph style IDs: %3", callee.µ, this.name, nv.length ? nv.split('_') : '<all>') );
+
+			// If some runs were available AND no ranges AND nv != ''
+			// must re-consolidate.
+			// ---
+			nv && this.runs.__count__ && (!this.ranges.__count__) && this.consolidate();
+		},
+
+		targetCharacterStyles: function targetCharacterStyles_soa_d_(/*?str|{pid=>any}|(CharacterStyle|str|pid)[]|PluralCharacterStyle*/cStyles,/*?Document*/doc,  $$,I,ops,ov,nv,q,s)
+		//----------------------------------
+		// Update `this.options.csIds`. If some runs were available, only re-consolidate *if
+		// ranges were unprocessed* [indeed, style conditions do not impact the target runs,
+		// they just indicate whether the exhaustive `ranges` structure has to be added to the
+		// parcels --`_kid` keys-- which do not depend on the requested runs.]
+		// `cStyles` item(s) can be provided in various forms (DOM specifier, style ID, or
+		// string). When a style is given as a string and belongs to a group, the whole
+		// path must be specified in either "[Group1] [Subgroup] [etc] styleName" form,
+		// or using `\x02` separators: "Group1\x02Subgroup\x02etc\x02styleName".
+		// E.g.  µ.targetCharacterStyles(["MyStyle1","[MyGroup] MyStyleInGroup",...]).
+		// [REM] This routine is independent from update processes as long as it doesn't
+		// lead to reconsolidation. Basically, it just redefines the set of target char-styles.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			ops = this.options;
+			ov = ops.csIds||'';
+			nv = '';
+			
+			if( cStyles )
+			{
+				doc || (doc=resolve(this.docSpec));
+
+				// [ADD211102] Normalize cStyles if submitted as a string or Array.
+				// All `[G1] [G2] name` strings are converted into th <X2> separated
+				// syntax `G1<X2>G2<X2>name`.
+				// ---
+				cStyles = I.NRMS(cStyles);
+
+				// [REM210902] The map q is required only if pStyles is an array.
+				// q :: { _psPath => id }  ; where psPath is based on <X2> separator.
+				// ---
+				q = ( cStyles instanceof Array )
+				&& (this.charStylesMap || (this.charStylesMap=I.STMP('character',{},doc)));
+
+				nv = I.ISEQ( cStyles, 'CharacterStyle', 'characterStyles', doc, q );
+				(!nv) && (s=I.ISEQ.ERR_MSG) && $$.error(s,callee.µ);
+			}
+			
+			// No change?
+			// ---
+			if( nv === ov ) return;
+
+			// Change option.
+			// ---
+			ops.csIds = nv;
+			(+$$.trace) && $$.trace( __("%1[%2] > Target character style IDs: %3", callee.µ, this.name, nv.length ? nv.split('_') : '<all>') );
+
+			// If some runs were available AND no ranges AND nv != ''
+			// must re-consolidate.
+			// ---
+			nv && this.runs.__count__ && (!this.ranges.__count__) && this.consolidate();
+		},
+
+	})
+	
+	//==========================================================================
+	// CONSOLIDATION (-> runs) & INFORMATIONAL ROUTINES
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		consolidate: function consolidate_d_f_(/*?Document*/doc,/*?fct*/progress,  $$,I,ops,tb,fn,en,ns,hi,keep,needRanges,needVars,t,k)
+		//----------------------------------
+		// Finalize stable data (clusters, ranges, etc) and feed runs
+		// with respect to the current options.
+		// -> Triggers any pending update stage.
+		// -> Adds missing and required text contents (<C>) in clusters.
+		//    (Existing strings are not removed.)
+		// -> Adds missing and required ranges of the form { _kid =>
+		//    `[_=]<zpc0><zpc1>...<zpcN>` | '' } while updating styles
+		//    accordingly. (Existing keys are not removed.)
+		// -> Resets and feeds runs { _pidOK => `_kidOK1|[_+]kidOK2...|[_+]kidOKn` }
+		// ---
+		// If supplied, `progress` is a callback function that
+		// accepts uint in 0..100.
+		// ---
+		// [REM] This method might be heavily time-consuming if stable data
+		// haven't been processed earlier through gradual updates. Ideally,
+		// `consolidate` should be called when target locations and/or style
+		// constraints are known from the client side. It then creates a set
+		// of `runs` which maps page IDs to a sequence of 'ok' clusters, that
+		// is, clusters that both fit your options and filters. If needed the
+		// `ranges` map is updated as well (without reconstructing known data.)
+		// Ranges are useful when you need to extract style-filtered contents,
+		// for example, texts having a particular character style.
+		// ---
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+			doc || (doc=resolve(this.docSpec));
+			'function' != typeof progress && (progress=callee.NOOP);
+			ops = this.options;
+
+			// Trigger any pending update.
+			// ---
+			this.updateAuto(1,doc);
+
+			// Keep filter.
+			// ---
+			tb = ops.tables;     // -1|0|+1
+			fn = ops.footnotes;  // -1|0|+1
+			en = ops.endnotes;   // -1|0|+1
+			ns = ops.nested;     //  0|1
+			hi = ops.hidden;     //  0|1   [ADD210121]
+			// ---
+			keep = ( 0 > tb || 0 > fn || 0 > en ) ? '' : ( 'T' + (ns?'P':'') );
+			tb && ( keep += 'c' + (fn?'d':'') );
+			fn && ( keep += 'f' );
+			en && ( keep += 'E');
+
+			// Cleanup runs.
+			// ---
+			if( (t=this.runs).__count__ )for( k in t ) t.hasOwnProperty(k) && delete t[k];
+
+			// Style ranges needed?
+			// ---
+			needRanges = (ops.psIds || ops.csIds) ? 1 : 0;
+
+			// Variable parsing needed?
+			// ---
+			needVars = ops.wantVars ? 1 : 0;
+
+			// Feed runs.
+			// ---
+			(+$$.trace) && $$.trace(__("%1[%2] > Consolidating text runs [%3] %4 nested clusters, %5 style ranges, and %6 text variables..."
+				,callee.µ
+				,this.name
+				,keep
+				,ns ? "including" : "excluding"
+				,needRanges ? "considering" : "ignoring"
+				,needVars ? "parsing" : "ignoring"
+			));
+
+			I.RUNS( this, doc, keep, ns?0:1, needRanges?0:1, (t=ops.pgIds) && I.IOBJ(t), (t=ops.lyIds) && I.IOBJ(t), !hi, needVars, progress );
+			
+			// In case var-texts would contain astral characters...
+			// ---
+			// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+			// 0 > AST.variables && needVars && (t=this.varTexts).length && I.REGS.astral.test(t.join('')) && (AST.variables=1);
+
+			needVars && (+$$.trace)
+			&& $$.trace( __("%1[%2] > Variables. Types: %3. First instances:\r%4", callee.µ, this.name, $$.JSON(this.varTypes), this.varTexts.slice(0,50).toSource()) );
+			
+			(+$$.trace)
+			&& $$.trace( __("%1[%2] > Consolidation done. Stats:\r%3", callee.µ, this.name, this.getStats()) );
+		}
+		.setup
+		({
+			NOOP: function(){},
+		}),
+
+		getSamples: function getSamples_o_f_A(/*?obj*/txtOptions,/*fct=auto*/RET,  I,mxNb,mxSz,vm,ms,ac,acre,vs,ops,CLU,NEX,PSI,CSI,VRS,VTX,RGS,pid,seqs,vrep,rk,q,z,k,a,ini,nxt,i,j,sz,tx,t)
+		//----------------------------------
+		// Extract strings from this TextParcels instance with respect to its current
+		// targets. If consolidation hasn't been processed yet, invokes µ.consolidate()
+		// first ; `txtOptions` (optional) specifies the following parameters:
+		// - maxCount      (uint)     Maximum number of units (=runs) to be sampled.
+		//                            By default, all runs are visited.
+		// - maxSampleSize (uint)     Maximum size of a sample. By default, samples
+		//                            are returned in full size.
+		// - varMode    (-1|0|+1|+2)  Treatment of the TextVariable code (\x18):
+		//                            -1 <-> removes (empty string)
+		//                             0 <-> leaves the \x18 code as is.
+		//                            +1 <-> replaces by ZWNJ (\u200C)
+		//                            +2 <-> replaces by the resultText if available,
+		//                                   ZWNJ otherwise. (If this.options.wantVars
+		//                                   is falsy, resultText aren't available.)
+		// - mergeSpaces  (uint=0)    If >0, do not split style ranges along invisible
+		//                            characters (at most mergeSpaces characters allowed.)
+		// - alphaCut   (char!=\x01)  Special character added at the beginning of any
+		//                            separate segment whose previous character matches
+		//                            alphaReg. Cannot be <X1>.
+		// - alphaReg     (?RegExp)   If supplied, detect characters considered alphabetic
+		//                            (word codepoints.) Needed if .alphaCut is defined.
+		//                            MUST be of the form /[...]/ in non-astral mode,
+		//                            or /(?:[Hi][Lo]|...|[BMP])/ in ASTRAL mode, so
+		//                            a two-character string can pass the test.
+		// If supplied, the `RET` argument is a function that accepts either a single string
+		// or an array of strings. `RET(input,pid,iniKid,nxtKid)` is invoked for each input
+		// (str or str[]) that has to be processed, with pid::`_currentPidOK`,
+		// iniKid::`_initialKid`, and nxtKid::`_nextNonEmptyKid`, `this` being set to the
+		// current TP instance. If the subroutine `RET.getData()` exists, its result is returned.
+		// If custom, RET is expected to increase its `SIZE` property accordingly.
+		// ---
+		// => new str[] [AUTO]  |  any [if RET.getData()]  |  undef [OTHERWISE]
+		{
+			I = callee.µ['~'];
+			const XR = '\x01';                                                  // Temporary separator between disconnected style-ranges, not present in the output.
+
+			// Need consolidation?
+			// ---
+			this.runs.__count__ || this.consolidate();
+
+			// RET function callback.
+			// ---
+			'function' == typeof RET
+			? ( NEX=this.threads )
+			: ( RET=callee.AUTO, nxt=NEX=0 );
+			RET.SIZE = 0;
+
+			// Normalize txtOptions.
+			// ---
+			txtOptions===Object(txtOptions) || (txtOptions={});
+			mxNb = (txtOptions.maxCount >>> 0) || 1/0;
+			mxSz = (txtOptions.maxSampleSize >>> 0) || 1/0;
+			vm   = 0|(txtOptions.varMode);
+			ms   = (txtOptions.mergeSpaces >>> 0);
+
+			// Alpha cut? -> (ac,acre)
+			// ---
+			if( ('function' != typeof(acre=txtOptions.alphaReg)) || ('RegExp' != acre.__class__) || ('string' != typeof(ac=txtOptions.alphaCut)) )
+			{
+				ac = acre = false;
+			}
+
+			// Get maps.
+			// CLU :: { _kid  => `<K><LL>[#+!]<C>` }          ; clusters
+			// PSI :: 0 | CHR(index1)+CHR(index2)...          ; para-style indices from ops.psIds
+			// CSI :: 0 | CHR(index1)+CHR(index2)...          ; char-style indices from ops.csIds
+			// RGS :: 0 | { _kid => `[_=]<zpc0><zpc1>...` }   ; ranges (if PSI||CSI)
+			// ---
+			CLU = this.clusters;
+			ops = this.options;
+
+			// [REM211221] Important optimization rule: `this.styles` only references
+			// styles that *have been encountered* during ~.RNGS() -- via ~.RUNS().
+			// Hence, for instance, if nothing more than TABLE cells have been inspected
+			// so far, then this.styles only knows the styles that appear in cells,
+			// which is sufficient for processing a style-driven extraction from tables.
+			// As a result, if ops.psIds (resp. ops.csIds) specifies a set of style IDs
+			// which are totally unknown from this.styles, then ~.IDXS(<ids>,this.styles)
+			// might simply return an empty string! If such event occurs, we can instantly
+			// conclude that no sample is available at all, that is, no cell can provide
+			// the expected style(s).
+			// ---
+			RGS = 0;
+			if( PSI=ops.psIds )
+			{
+				PSI=I.IDXS(PSI, this.styles);
+				if( !PSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+				RGS = this.ranges;
+			}
+			if( CSI=ops.csIds )
+			{
+				CSI=I.IDXS(CSI, this.styles);
+				if( !CSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+				RGS || (RGS=this.ranges);
+			}
+
+			// Variables management.
+			// VRS :: 0 | { _kid  => `[_=]<xkv0><xkv1>...<xkvN>` | '' }
+			// VTX :: 0 | str[]  ;  maps VRS[_kid][i].v to a string.
+			// ---
+			if( 1 < vm )
+			{
+				VRS = ops.wantVars && this.vars.__count__ ? this.vars : 0;
+				VTX = VRS && this.varTexts.length && this.varTexts;
+				vs = '\u200C';
+			}
+			else
+			{
+				VRS = VTX = 0;
+				vs = 0 > vm ? '' : (vm ? '\u200C' : '\x18');
+			}
+
+			// If mxNb is finite, randomize access to runs.
+			// q :: { _pidOK => `_kidOK1|•kidOK2|...|•kidOKn` },
+			// ---
+			q = this.runs;
+			isFinite(mxNb) && (q=callee.SHUF(q,mxNb,Math.round,Math.random));
+
+			// Process.
+			// ---
+			(+$$.trace) && $$.trace(__("%1[%2] > Extracting %3 samples from the targets..."
+				,callee.µ
+				,this.name
+				,isFinite(mxNb) ? __("at most %1",mxNb) : __("all")
+			));
+			const PUSH = [].push;
+			const RE_SEQS = /\|_/g;
+
+			// Main loop in { _pidOK => `_kidOK|[+_]kidOK...` }.
+			// ---
+			const KRC = RET.KEEP_RANGE_CUTS||0;
+			(vrep=RGS&&Array())&&(vrep.SIZE=0);
+			for( pid in q )
+			{
+				// pid :: `_pidOk`
+
+				if( RET.SIZE >= mxNb ) break;                                   // Max number of samples reached.
+				if( !q.hasOwnProperty(pid) ) continue;
+
+				// [REM] A `kid` can contain INTERNAL '_'s.
+				// ---
+				seqs = q[pid].slice(1).split(RE_SEQS);                          // seqs :: (`kidOK`|`kidOK|+kidOK...|+kidOK`)[]
+				                                                                // where `kidOK` :: `x` | `x_y_z` | `x_a_b`
+				
+				z = seqs.length;                                                // z > 0
+				(RET.SIZE + z > mxNb) && (z=mxNb-RET.SIZE);                     // Reduce z if necessary.
+
+				for( i=-1 ; ++i < z && RET.SIZE <= mxNb ; )                     // Loop in seqs of kidOK+kidOK...
+				{
+					a = seqs[i].split('|+');                                    // [kidOK,kidOK...]  ; contiguous texts
+
+					ini = '_' + a[0];                                           // `_kidIni`
+					I.SEGS.LAST_CUT = XR;                                       // Reset last cut to XR (start of the thread.)
+
+					// If wanted and available, get the next threaded _kid
+					// (skipping empty clusters) after the final key in seqs.
+					// ---
+					if( NEX && (nxt=NEX['_' + a[a.length-1]]||0) )              // NEX :: 0 | { _kid => _nextKid }
+					while( 0===CLU[nxt].charCodeAt(4) && (nxt=NEX[nxt]||0) );   // Skip empty clusters ; nxt :: 0 | _nextKid
+
+					for( j=-1 ; ++j < a.length ; a[j]=tx )
+					{
+						k = '_'+a[j];                                           // `_kid`
+						
+						tx = (CLU[k]||'').slice(4);                             // Full text of the cluster: str!=''  | '\0' [EMPTY]
+						if( (!tx.length) || 0===tx.charCodeAt(0) )              // [REM] The empty string case (=undetermined contents)
+						{                                                       // shouldn't occur here since all a's elems are kidOK.
+							tx='';                                              // Empty cluster -> no range cut (allow merging.)
+							continue;
+						}
+
+						// Variables?
+						// ---
+						vm && 0 <= tx.indexOf('\x18')
+						? ( tx=I.VREP(tx, vrep, (VRS&&VRS[k])||vs, VTX) )       // vrep :: [<idxMax>_<newSize>,...,<idxMin>_<newSize>]
+						: ( vrep&&(vrep.SIZE=0) );                              // (length stored in vrep.SIZE.)
+						if( !tx.length ) continue;                              // VREP leads to '' -> no range cut (allow merging.)
+
+						// Ranges?
+						// ---
+						if( !RGS ) continue;
+						if( RGS.hasOwnProperty(k) && (rk=RGS[k]) )              // rk :: `[_=]<zpc0><zpc1>...`
+						{
+							vrep.SIZE && (rk=I.VRNG(rk,vrep));                  // Adjust rk to VREP shifts.
+							tx = I.SEGS(tx,rk,PSI,CSI,mxSz,ms,0x45==CLU[k].charCodeAt(0),XR,ac,acre);      // tx :: <SEP>?<range1><SEP><range2>...<SEP>?
+						}
+						else
+						{
+							$$.warn( __("%1 > No ranges defined for cluster %2. This shouldn't happen!", callee.µ, k) );
+							tx = XR;
+						}
+					}
+
+					tx = a.join('');
+					if( !tx.length ) continue;
+
+					if( (!RGS) || -1 == tx.indexOf(XR) )
+					{
+						// Single string to add.
+						tx.length > mxSz && (tx=tx.slice(0,mxSz));
+						RET.call(this,tx,pid,ini,nxt);
+						continue;
+					}
+					
+					// Ranges.
+					// [REM] If KRC (KEEP_RANGE_CUTS) the empty elems
+					// are kept so the callback function can determine
+					// initial and end cuts based on `a.join(<CUT_CHAR>)`.
+					// ---
+					a = tx.split(XR);
+					if( KRC && !isFinite(mxSz) ) // Speed up if mxSz == +Infinity
+					{
+						RET.call(this,a,pid,ini,nxt);
+						continue;
+					}
+					for
+					(
+						j=a.length ; j-- ; (t=(tx=a[j]).length)
+						? ( a[j] = t > mxSz ? tx.slice(0,mxSz) : tx )
+						: ( KRC || a.splice(j,1) )
+					);
+					RET.call(this,a,pid,ini,nxt);
+				}
+			}
+
+			RET.SIZE > mxNb && (RET.SIZE=mxNb);
+
+			// End.
+			// ---
+			(+$$.trace) && $$.trace(__("%1[%2] > Extraction done: %3 results."
+				,callee.µ
+				,this.name
+				,RET.SIZE
+			));
+
+			return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+		}
+		.setup
+		({
+			AUTO: function(/*str|str[]*/input,  i)
+			//----------------------------------
+			// Default `RET` function
+			// => undef
+			{
+				if( 'string' == typeof input )
+				{
+					callee.DATA[callee.SIZE++] = input;
+					return;
+				}
+				for( i=-1 ; ++i < input.length ; callee.DATA[callee.SIZE++] = input[i] );
+			}
+			.setup
+			({
+				SIZE: 0,
+				DATA: [],
+				getData: function(){ return this.DATA.slice(0,this.SIZE) }, // this === AUTO
+			}),
+
+			SHUF: function(/*str{}*/q,/*uint*/mxNb,/*fct*/MROU,/*fct*/MRAN,  r,a,n,k,i,i0,z)
+			//----------------------------------
+			// Shuffle the keys of `q` into a new object having at most `mxNb` keys.
+			// => new str{}
+			{
+				r = {};
+				a = [];
+
+				n = 0;
+				for( k in q ) q.hasOwnProperty(k) && (a[n++]=k);
+
+				i = i0 = MROU(n*MRAN());
+				z = 0;
+				do{ r[a[i]]=q[a[i]] } while( ++z < mxNb && i0 != (i=(i+997)%n) );
+
+				return r;
+			},
+		}),
+		
+		getMultiStream: function getMultiStream_(/*?obj*/txtOptions,  MS,F,t,q)
+		//----------------------------------
+		// Extract and merge strings from this TextParcels instance with respect to
+		// its current targets. If consolidation hasn't been processed yet, invokes
+		// µ.consolidate() first. Return the initialized MultiStream, aka `this.streams`.
+		// `txtOptions` (optional) specifies the following parameters:
+		// - maxCount      (uint)     Maximum number of units (=runs) to be sampled.
+		//                            By default, all runs are visited.
+		// - maxSampleSize (uint)     Maximum size of a sample. By default, samples
+		//                            are returned in full size.
+		// - grabContext   (uint=0)   Size of before/after context.
+		// - varMode    (-1|0|+1|+2)  Treatment of the TextVariable code (\x18):
+		//                            -1 <-> removes (empty string)
+		//                             0 <-> leaves the \x18 code as is.
+		//                            +1 <-> replaces by ZWNJ (\u200C)
+		//                            +2 <-> replaces by the resultText if available,
+		//                                   ZWNJ otherwise. (If this.options.wantVars
+		//                                   is falsy, resultText aren't available.)
+		// - mergeSpaces  (uint=0)    If >0, do not split style ranges along invisible
+		//                            characters (at most mergeSpaces characters allowed.)
+		// - rangeCut   (str='\x01')  Special character used for splitting ranges. Make sure
+		//                            it cannot occur in a sample.
+		// - cutAlong   (?RegExp)     If supplied, create artificial range splits along the
+		//                            substrings that match cutAlong. Typical use: `/\r/g`
+		//                            will replace any CR break by a rangeCut before appending
+		//                            data to the stream.
+		// - cleaner          (?fct)  If supplied, function that preprocesses stream data.
+		//                            Useful to replace/remove special characters upstream.
+		//                            [REM] Called from MS.append()
+		// - alphaCut   (char!=\x01)  Special character added at the beginning of any
+		//                            separate segment whose previous character matches
+		//                            alphaReg. Cannot be <X1>.
+		// - alphaReg     (?RegExp)   If supplied, detect characters considered alphabetic
+		//                            (word codepoints.) Needed if .alphaCut is defined.
+		//                            MUST be of the form /[...]/ in non-astral mode,
+		//                            or /(?:[Hi][Lo]|...|[BMP])/ in ASTRAL mode, so
+		//                            a two-character string can pass the test.
+		// ---
+		// => MultiStream&
+		{
+			// Initialize the MultiStream instance.
+			// ---
+			(MS=this.streams).reset();
+
+			// Configure the callback (callee.STRM.)
+			// ---
+			(F = callee.STRM).SIZE = 0;
+			Object(txtOptions)===txtOptions || (txtOptions={});
+			callee.µ.setStreamContextLength(txtOptions.grabContext);
+			F.XCUT = 'string'==typeof(t=txtOptions.rangeCut) ? t : '\x01';
+			F.CUT_ALONG = 'function' == typeof(t=txtOptions.cutAlong) && 'RegExp'==t.__class__ && t;
+			// ---
+			q = callee.µ.MultiStream;
+			q.Prolog = F.XCUT;
+			q.Epilog = F.XCUT;
+			q.CleanCallback = 'function' == typeof(t=txtOptions.cleaner) && t;
+
+			// Extract samples thru callee.STRM.
+			// ---
+			this.getSamples(txtOptions,F);
+			
+			(+$$.trace) && $$.trace(__("%1[%2] > Compacting streams..."
+				,callee.µ
+				,this.name
+			));
+
+			// Rewrite keys in the form { _kid => `idx|...|idx` }
+			// ---
+			MS.redux();
+
+			(+$$.trace) && $$.trace(__("%1[%2] > %3 streams available based on %4 clusters."
+				,callee.µ
+				,this.name
+				,MS.keyCount
+				,MS.size
+			));
+
+			return MS;
+		}
+		.setup
+		({
+			STRM: function(/*str|str[]*/input,/*`_pid`*/pid,/*`_kid`*/iniKid,/*0|`_kid`*/nxtKid,  re,enids)
+			//----------------------------------
+			// Stream callback. `input` is either a single range that can be linked
+			// upstream and/or downstream (provided it hasn't been truncated), or
+			// an array of splitted ranges within the same pid. In the latter case,
+			// - `input[0]` may be empty to indicate an *initial* cut,
+			// - `input[input.length-1]` may be empty to indicate a *final* cut.
+			// `iniKid` is the entering _kid from which the input has been entirely
+			// merged within that particular pid (other inner kids don't appear.)
+			// `nxtKid`, if nonzero, points out to the next *nonempty* cluster
+			// outside the current pid: this can be either a 'OK' kid that will
+			// appear in the map, or a 'KO' kid.
+			// ---
+			// this :: TextParcels instance
+			// => undef
+			{
+				( input instanceof Array ) && (input=input.join(callee.XCUT));
+
+				(re=callee.CUT_ALONG) && (input=input.replace(re,callee.XCUT)); // [ADD220412] Typically, create cuts for \r
+				
+				// EndnoteTextFrame case? Non-false value should be unfrequent.
+				// ---
+				enids = this.endnoteFrameIds(iniKid);
+
+				callee.SIZE = this.streams.append(input,pid,iniKid,nxtKid,enids);
+			}
+			.setup
+			({
+				KEEP_RANGE_CUTS: 1,     // DO NOT CHANGE (read by getSamples.)
+				XCUT: '\x01',
+				CUT_ALONG: false,       // false | RegExp
+				SIZE: 0,
+			}),
+		}),
+		
+		getStats: function getStats_O(  r,ops,sta,nRanges,nVars,nRuns,t,k,s,z)
+		//----------------------------------
+		// Return statistical data on this TextParcels. The returned object
+		// provides the following members:
+		// .TotalClusters   (uint)      Total number of clusters of any kind: text
+		//                              frames, text paths, cells, footnotes, endnotes.
+		// .TextContainers  (uint)      Number of pure text containers (excluding
+		//                              cells and footnotes.)
+		// .TotalCells      (uint)      Total number of table cells (if tables are
+		//                              inspected.)
+		// .RegularCells    (uint)      Number of 'regular' cells (excluding those
+		//                              that may appear in notes.)
+		// .FootnoteCells   (uint)      Number of cells found in footnotes
+		//                              (assuming tables and footnotes are inspected.)
+		// .Footnotes       (uint)      Number of footnotes (if FNs are inspected.)
+		// .TotalLocations  (uint)      Total number of registered 'locations'; a
+		//                              location determines the (page,layer) position
+		//                              of a visible page item in the document 
+		// .TopLocations    (uint)      Number of locations associated to 'top-level'
+		//                              containers, that is, items which are direct
+		//                              children of a spread.
+		// .SubLocations    (uint)      Number of locations associated to nested or
+		//                              anchored containers (which are not direct
+		//                              children of a spread), assuming they have
+		//                              been inspected.
+		// .ThreadedFrames  (uint)      Number of threads, that is, clusters whose
+		//                              text is continued on another cluster.
+		// .KnownRanges     (uint|-1)   If paragraph/character styles are targeted,
+		//                              number of text style ranges, -1 otherwise.
+		// .KnownStyles     (uint|-1)   If paragraph/character styles are targeted,
+		//                              total number of styles, -1 otherwise.
+		// .VariableInstances (uint|-1) If variables are scanned (options.wantVars),
+		//                              number of instances found, -1 otherwise.
+		// .Runs            (uint|-1)   If consolidation have been processed, number
+		//                              of 'runs' available, -1 otherwise.
+		// .toString(useTab) => str     Custom toString() method that formats the
+		//                              report in a multiline string (\r separator.)
+		// ---
+		// => new {}
+		{
+			ops = this.options;
+			sta= this.state;
+
+			nRanges = 0;
+			t=this.ranges;
+			for( k in t ) t.hasOwnProperty(k) && (z=(s=t[k]).length) && (nRanges+=(z-1)/(3+('='==s.charAt(0))));
+
+			nVars = 0;
+			t=this.vars;
+			for( k in t ) t.hasOwnProperty(k) && (z=(s=t[k]).length) && (nVars+=(z-1)/(3+('='==s.charAt(0))));
+			
+			nRuns = 0;
+			t=this.runs;
+			for( k in t ) t.hasOwnProperty(k) && (z=(s=t[k]).length) && (nRuns+=s.split('|').length);
+
+			r =
+			{
+				"TotalClusters":        this.clusters.__count__,
+				"TextContainers":       sta.containers,
+				// ---
+				"TotalCells":           (0<sta.rgCells && sta.rgCells)+(0<sta.fnCells && sta.fnCells),
+				"RegularCells":        +(0<sta.rgCells && sta.rgCells),
+				"FootnoteCells":       +(0<sta.fnCells && sta.fnCells),
+				// ---
+				"Footnotes":           +(0<sta.footnotes && sta.footnotes),
+				// ---
+				"TotalLocations":       this.locations.__count__,
+				"TopLocations":         sta.topLocs,
+				"SubLocations":         sta.subLocs,
+				// ---
+				"ThreadedFrames":       this.threads.__count__,
+				"KnownRanges":          this.ranges.__count__ ? nRanges : -1,
+				"KnownStyles":          this.styles.length || -1,
+				"VariableInstances":    this.vars.__count__ ? nVars : -1,
+				"Runs":                 this.runs.__count__ ? nRuns : -1,
+			};
+			
+			r.toString = callee.TO_S;
+			return r;
+		}
+		.setup
+		({
+			TO_S: function toString(/*bool=0*/USE_TABS,  a,re,k,t)
+			//----------------------------------
+			{
+				a = [];
+				re = /(.)([A-Z])/g;
+				for( k in this )
+				{
+					if( (!this.hasOwnProperty(k)) || 'function'==typeof(t=this[k]) ) continue;
+					k = k.replace(re,'$1 $2');
+					a[a.length] = (USE_TABS ? (k + ':\t') : (k+':').rpad(22)) + t;
+				}
+				return a.join('\r');
+			},
+		}),
+	})
+
+	#include 'Dom.TextParcels/$$.MultiStream.jsxlib'
