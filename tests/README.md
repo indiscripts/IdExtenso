@@ -76,6 +76,20 @@ _Demonstrates:_
 
 ---
 
+##### [`DomTextParcelsTest.jsx`](DomTextParcelsTest.jsx)
+
+Lifts the veil on the intimidating [$$.Dom.TextParcels](../etc/$$.Dom.TextParcels) class.
+
+_Demonstrates:_
+   
+* Calling the `error()` function.
+* Using a simple progress bar (via `$$.Progress`).
+* Creating a `TextParcels` (in short _TP_) instance with default options.
+* Running `TP.consolidate()`, then `TP.getSamples()` handled by a custom function.
+* Using the Log to collect data (`Log.push`).
+
+---
+
 ##### [`EnvSummary.jsx`](EnvSummary.jsx) vs. [`EnvSummary.bin.jsx`](EnvSummary.bin.jsx)
 
 Report scripting context from the Env module.
