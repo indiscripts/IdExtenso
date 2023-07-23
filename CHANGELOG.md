@@ -1,5 +1,5 @@
 ##### [230723]
-  - [Root/help](/core/Root/$$.help.jsxinc). Ability to _preselect_ a module while showing IdExtenso's API: just call `$$.help(<someModule>)` (first argument added), e.g. `$$.help($$.JSON)`. By default `$$.help()` still preselect the `$$` item (first of the list).
+  - [Root/help](/core/Root/$$.help.jsxinc). Ability to _preselect_ a module while showing IdExtenso's API: just call `$$.help(<someModule>)` (first argument added), e.g. `$$.help($$.JSON)`. By default `$$.help()` still preselects the `$$` item (first of the list).
 
 ##### [230721]
    - [JSON](/core/$$.JSON.jsxlib). An unusual situation arises when `Array.prototype` has been augmented from the client code: `myArr.__count__` then mistakenly increases by `Array.prototype.__count__` (natively 0), which led `$$.JSON` to produce a useless _[rich array](#200613)_ representation. We've fixed that by double-checking the actual count of extra properties. If still zero, the usual array representation is preserved.
