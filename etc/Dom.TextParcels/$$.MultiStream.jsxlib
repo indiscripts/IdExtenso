@@ -1,0 +1,499 @@
+/*******************************************************************************
+
+		Name:           MultiStream
+		Desc:           Manages the streams of a TextParcels instance
+		Path:           /etc/Dom.TextParcels/$$.MultiStream.jsxlib
+		Require:        $$.Dom.TextParcels
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class (within $$.Dom.TextParcels.)
+		API:   [proto]  =create() clear() reset() append() redux()
+		                start() next() matches()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        211112 (YYMMDD)
+		Modified:       230723 (YYMMDD)
+
+*******************************************************************************/
+
+;if( !$$.Dom.TextParcels ){ alert(__("%1 requires the %2 module.",'MultiStream','Dom.TextParcels')); exit(); }
+;$$.Dom.TextParcels.hasOwnProperty('MultiStream') || eval(__(CLASS, $$.Dom.TextParcels.toSource(), 'MultiStream', 230723, 'create'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	The present class encapsulates the `streams` property of a TextParcels.
+
+	*/
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+		// Static strings automatically added at the start/end of a stream.
+		// Useful if some special characters must be found at the bounds.
+		// ---
+		Prolog: '',
+		Epilog: '',
+		CleanCallback: false,
+	})
+
+	[PROTO]
+	
+	({
+		create: function create_()
+		//----------------------------------
+		// Constructor. Create a MultiStream instance.
+		// Public structure: { size:uint, data:str[], pids:str[], kmap:str{}, keyCount:uint, keys:str[] }
+		{
+			this.size = 0;        // Number of elems in .data (and .pids.)
+			this.keyCount = 0;    // Number of final keys
+			this.data = Array();  // idx  => str
+			this.pids = Array();  // idx  => `pid`  ; pids stored without prefix
+			this.enids = Array(); // idx  => false | `pos_enid|pos_enid|...`
+			                      // where each `pos` is the index of the corres-
+			                      // ponding endnote in data[idx], incl. continued
+			                      // note of a thread, so usually the 1st <pos> is 0.
+			                      // [REM] enids are dynamically merged in _eds_
+			                      // based on final text indices.
+			this.kmap = {};       // BEFORE REDUX :: _kid => `idx_nxtKid` | `idx`
+			                      // AFTER REDUX  :: _kid => `idx|idx...|idx`
+			this.keys = Array();  // Keys of kmap (allows iteration.) Cf redux().
+			
+			// Private (used while iterating.)
+			// ---
+			this._ik_ = -1;       // Iterator index (represent the current key.)
+			                      // Each _ik_ determines a sequence of N indices
+			                      // in `this.data` (strings) and `this.pids`
+			this._str_ = '';      // Current string associated to _ik_, formed
+			                      // by joining the data strings of this sequence.
+			this._idx_ = Array(); // uint[N+1] Array of increasing indices in _str_,
+			                      // _idx_[seq] is the starting index of the
+			                      // NEXT sequence (i.e 1+seq) and _idx_[N] is +∞.
+			                      // _str_ : `<Seq0><Seq1><Seq2>...<LastSeq> ∞
+			                      // _idx_ :        [0]   [1]...  [N-1]     [N]
+			this._pds_ = Array(); // str[N+1] Array of `pid` strings associated to
+			                      // the current sequence.
+			this._eds_ = Array(); // str[] Array of `upto_enid` strings associated
+			                      // to the current sequence. The size of _eds_
+			                      // is independent from N. Each (upto,enid) pair
+			                      // reads:
+			                      //   while( x >= upto ) goto next elem
+			                      //   if( x < upto ) treat enid as endnote container
+			                      //                  unless enid is zero ('0')
+			                      // The null sequence is encoded [`MAXINTEGER_0`]
+			                      // The first elem can be of the form [`123_0`],
+			                      // meaning "as long as x < 123, no endnote container"
+			                      // The element ['0_enid'] is allowed (although it
+			                      // just force to go to the next elem.)
+			                      // The last elem MUST be of the form [`MAXINTEGER_enid`]
+			this._iniKid_ = '';   // Initial `_kid` of the current key. -> INFO.
+		},
+
+		clear: function clear_()
+		//----------------------------------
+		// Destructor. (Free up all references.)
+		// => undef
+		{
+			this.reset();
+
+			this.data.length = 0;
+			this.pids.length = 0;
+			this.enids.length = 0;
+			this.keys.length = 0;
+
+			this._idx_.length = 0;
+			this._pds_.length = 0;
+			this._eds_.length = 0;
+
+			this.data = this.pids = this.enids = this.kmap = this.keys = false;
+		},
+
+		reset: function reset_(  mp,k)
+		//----------------------------------
+		// Initializer. Reset the size to 0 and delete `this.kmap`.
+		// [REM] `this.data` and `this.pids` aren't cleared to save perfs.
+		// => undef
+		{
+			this._ik_ = -1;
+			this.size = this.keyCount = 0;
+			mp = this.kmap;
+			for( k in mp ) mp.hasOwnProperty(k) && delete mp[k];
+		},
+
+		append: function append_S_S_K_S$0$_s_I(/*str*/input,/*`_pid`*/pid,/*`_kid`*/iniKid,/*0|`_kid`*/nxtKid,/*false|`+?id_id_etc`*/enids,  z,f,a,cont,b,p,i)
+		//----------------------------------
+		// Register in the MultiStream a new page/data pair (pid/input) associated
+		// to the key `iniKid`. If `nxtKid` is nonzero, it is interpreted as the
+		// next thread, which can be either a valid final key, or out-of-scope.
+		// [ADD220528] [FIX230604] If enids is a string, it reflects the sequence of
+		// endnote IDs encountered in this EndnoteTextFrame cluster (E), as
+		// specified in `Textparcels.endnoteFrameIds()` ; if present, the `+` prefix
+		// indicates that the 1st reported ID reflects a continued endnote that started
+		// in a previous threaded frame.
+		// [REM] The redux method must be executed after all data have been loaded.
+		// => uint  ; new size
+		{
+			z = this.size;
+			
+			if( 'string' == typeof enids )                  // Should be decently unfrequent.
+			{
+				// Each new endnote IS ASSUMED TO START at `\uFEFF\x04`
+				// E.g. "Endnotes\r\uFEFF\x04\tFirst endnote\uFEFF\r\uFEFF\x04\tSecond endnote\uFEFF\r\uFEFF\x04\tEtc.\uFEFF"
+				// Note: the last character might be \uFEFF, but it cannot be \x04,
+				// so the last split encountered in `a` (below) cannot be empty.
+				// ---
+				input = input.split('\uFEFF\x04').join('\uFFFF\uFEFF\x04');     // Append <FFFF> temporary marker
+				(f=callee.µ.CleanCallback) && (input=f(input));                 // Cleanup ;  WARNING: <FFFF> MUST SURVIVE
+				
+				a = input.split('\uFFFF');                                      // [ 'xxx'|'' , 'yyy', 'zzz', ... ]  ; the last string cannot be empty, the first can.
+				cont = 0x2B == enids.charCodeAt(0);                             // Continued endnote for 1st ID?
+				b = (cont ? enids.slice(1) : enids).split('_');                 // [ <ID>, <ID>, ... ]
+				
+				cont && a.unshift('');                                          // Make cont and NOT-cont identical cases.
+
+				for
+				(
+					p=0, i=-1 ; ++i < b.length ;                                // [REM] b.length < a.length, so the
+					( p += a[i].length ),                                       //       last a.length is not used in fact.
+					( b[i] = p + '_' + b[i] )                                   // `b[i]` always exist now :)
+				);
+
+				this.enids[z] = b.join('|');                                    // Most enids now have the form `0_id0|pos1_id1|pos2_id2...`
+				this.data[z] = a.join('');
+			}
+			else
+			{
+				this.enids[z] = false;
+				this.data[z] = (f=callee.µ.CleanCallback) ? f(input) : input;
+			}
+
+			this.pids[z] = pid.slice(1); // pids are stored without prefix
+			this.kmap[iniKid] = z + (nxtKid || '');
+			
+			return (this.size=++z);
+		},
+
+		redux: function redux_I(  mp,k,s,nx,v,p,z,a)
+		//----------------------------------
+		// Reduce the `kmap` map by identifying _kid -> _nxtKid chains,
+		// and initialize the `keys` array accordingly. Return
+		// the number of final keys.
+		// E.g { _5:`94_7`, _2:`93_5`, _7:`99_9`, ... }
+		//     --> { _2:`93|94|99`, ... }
+		// All indexes reached from an initial _kid are joined by
+		// `|` and the corresponding _kid keys are removed.
+		// [REM] Out-of-scope keys are finally ignored.
+		// ---
+		// => uint 
+		{
+			mp = this.kmap;
+			for( k in mp )
+			{
+				for( s='', nx=k ; nx && mp.hasOwnProperty(nx) ; )
+				{
+					p = (v=mp[nx]).indexOf('_');
+					s.length && (delete mp[nx]);    // (s.length) faster than (k!=nx)
+					0 > p
+					? ( nx='', s+='|'+v )
+					: ( nx=v.slice(p), s+= '|'+v.slice(0,p) );
+				}
+				s.length && (mp[k]=s.slice(1));
+			}
+			
+			// Update `this.keys`.
+			// ---
+			z = 0;
+			a = this.keys;
+			for( k in mp ) mp.hasOwnProperty(k) && (a[z++]=k);
+			return (this.keyCount=z);
+		},
+
+		start: function start_B()
+		//----------------------------------
+		// Initialize the iterator. Typical scheme:
+		// for( this.start() ; this.next() ; this.<someProcess>() );
+		// ---
+		// => true [CAN_START]  ;  false [NO_KEY]
+		{
+			this._ik_ = -1;
+			return 0 < this.keyCount;
+		},
+
+		next: function next_B(  i,k,a,n,X,Y,Z,D,P,E,x,z,t,idx)
+		//----------------------------------
+		// Target a new sequence of strings. As long as `this.next()` returns
+		// true, you can call `this.matches(...)` on the new sequence.
+		// => true [OK]  ;  false [KO]
+		{
+			const INI = String(callee.µ.Prolog||'');
+			const END = String(callee.µ.Epilog||'');
+			
+			i = 1 + this._ik_;
+			if( 0 > i || i >= this.keyCount ) return false;
+			
+			k = this._iniKid_ = this.keys[this._ik_=i];
+			a = this.kmap[k].split('|');
+			n = a.length;
+
+			X = this._idx_;
+			Y = this._pds_;
+			(Z = this._eds_).LAST = 0;
+			for
+			(
+				D=this.data, P=this.pids, E=this.enids , x=0, z=0, i=-1 ;
+				++i < n ;
+				Y[i] = P[idx=a[i]],
+				(t=E[idx]) && (z=callee.XEDS(Z,z,t,0===i?INI.length:x)),
+				X[i] = x += ( a[i] = 0===i?(INI+D[idx]):D[idx] ).length
+			);
+			X[n] = 1/0;
+			Y[n] = '';
+			Z[z] = Number.MAX_SAFE_INTEGER + '_' + Z.LAST;
+
+			(x=END.length) && n && (X[n-1]+=x);
+			this._str_ = x ? (a.join('')+END) : a.join('');
+
+			return true;
+		}
+		.setup
+		({
+			XEDS: function(/*upto_enid[]&*/Z,/*uint*/z,/*pos_enid|pos_enid|...*/enids,/*uint*/DX,  i,t,x)
+			//----------------------------------
+			// (AddEndnoteRanges.)
+			// z     :: current size of Z
+			// enids :: set of static pos_enid (0-based) disregarding offset
+			// DX    :: current offset to apply
+			// ---
+			// => uint  [new size]
+			{
+				enids = enids.split('|');
+				for( i=-1 ; ++i < enids.length ; Z.LAST=t[1] )
+				{
+					t = enids[i].split('_');           // t :: [ pos, enid ] ; usually the 1st pos of an enids seq is 0.
+					x = DX + parseInt(t[0],10);
+					Z[z++] = x + '_' + Z.LAST;         // [REM230527] Here Z_LAST may just repeat the previous ID, that's not a problem.
+				}
+				return z;
+			},
+		}),
+
+		matches: function matches_$RegExp$S_F_x_I(/*RegExp|str|XQuery*/query,/*fct*/callback,/*obj*/cx,  re,INFO,SHFT,X,Y,EDS,CTX,x,seq,sz,z,m,mlen,p,dx,zm,s,dw,n,cc,pid,t)
+		//----------------------------------
+		// Call a `callback` function, in context cx, for each match captured by
+		// the query within the current sequence. If `query` is a string, use the
+		// basic `indexOf()` method. If `query` is a regex, it MUST be global.
+		// If `query` is a XQuery, use its _key_ property.
+		// [CHG211226] WholeWord effect is internally managed: m[0] contains
+		// the final match skipping the 1st character.
+		// ---
+		// `callback` will receive the following args:
+		// 1. match (arr) `match[0]` contains the entire match,
+		//    `match[1]` the submatch in 1st capturing parenthesis, etc
+		//    - If defined, the string m.crossPid indicates that the
+		//      match m[0], at some index X, reaches a new pid. The
+		//      crossPid property is then formatted CHR(X)+<NEW_PID>.
+		// 2. pid (str) `pid` (without prefix) associated to the 1st char
+		//    of match[0].
+		// 3. query (RegExp|str|XQuery) Current query being executed.
+		// 4. q (0..1) Relative position of the match within the stream.
+		// 5. z (>0) Current match count.
+		// 6. info :: { streamLength:uint, iniKid: `_kid`, index:uint, ...} ; volatile info struct.
+		// You can set callback.STOP to a truthy value to stop the process.
+		// ---
+		// Returns the number of calls.
+		// ---
+		// => uint>0 [OK]  ;  0 [KO]
+		{
+			if( !query ) return false;
+			re = query.hasOwnProperty('_key_') ? query._key_ : query;
+			if( !re ) return false;
+
+			cx || (cx=0);
+			
+			INFO = callee.INFO;
+			sz = INFO.streamLength = this._str_.length;
+			INFO.iniKid = this._iniKid_;
+			delete INFO.kind; // This property can be updated from the callback when _iniKid_ changes.
+
+			// ---
+			// _str_ : `<Seq0><Seq1><Seq2>...<LastSeq> ∞
+			// _idx_ :        [0]   [1]...  [N-1]     [N]
+			// ---
+			
+			X = this._idx_;  // uint[N+1] Array of increasing indices in _str_, X[seq] is the starting index of the NEXT sequence (i.e 1+seq) and X[N] is +∞.
+			Y = this._pds_;  // str[N+1] Array `pid` strings associated to the current sequence.
+
+			EDS = this._eds_;  // `upto_enid`[] Array of `upto_enid` strings ending with `MAXINTEGER_enid` (where `enid` is possibly '0'.)
+			if( 0===EDS.LAST ) // [REM] Do not use EDS.length to conclude anything. Instead, consider EDS.LAST===0.
+			{
+				EDS = false;
+			}
+			else
+			{
+				callee.ENID.INDX = -1;
+				callee.ENID.UPTO = 0;
+			}
+			delete INFO.enid;
+
+			x = X[seq=0];
+			z = 0;
+			
+			// [ADD220711] Context grabber.
+			// ---
+			delete INFO.cxBef;
+			delete INFO.cxAft;
+			CTX = callee.CTXT_LEN||0;
+
+			// [ADD220813] Keep track of what is happening...
+			// ---
+			if( +$$.trace )
+			{
+				callee.LASTQ===(t=re.toSource())
+				? ( t="previous query" )
+				: ( callee.LASTQ=t, t="query "+t );
+
+				$$.trace(__("%1 > Sending %2%3to cluster %4 (size:%5.)"
+					,callee.µ
+					,t
+					,50 < t.length ? '\r         ' : ' '
+					,this._str_.rtrunc(100).toSource()
+					,this._str_.length
+				));
+			}
+
+			if( 'function' == typeof re )
+			{
+				SHFT = re.shiftIni ? 1 : 0;
+				for( dw=0, re.lastIndex=0 ; (!callback.STOP) && (m=re.exec(this._str_)) ; )
+				{
+					// <Seq0 ><Seq1     ><Seq2  ><Seq3  >     <SeqN-1    ><SeqN  >
+					// -------X[0]-------X[1]----X[2]---...   X[N-2]------X[N-1]--X[N] = ∞
+					//               p < x
+					//         m[0]: mmmmmmm
+					// p :: index of the (entire) match in _str_
+					
+					// [FIX211221] In case of quantified alternatives ExtendScript
+					// could match nothing and then cause an infinite loop!
+					// [FIX230118] This also happens when SHFT==1 (i.e pre-captured char due to WW)
+					// in that case `m[0]` may anormaly contain one character only (the WW prefix)
+					// and nothing more. Even if no infinite loop occurs, empty matches could then
+					// be transmitted and lead to various errors. Hence we must also check that zm>SHFT.
+					// ---
+					//if( !(zm=m[0].length) ){ ++re.lastIndex; continue; }
+					if( SHFT >= (zm=m[0].length) ){ zm||++re.lastIndex; continue; }       // [FIX230118] Important, only increment lastIndex if zm==0.
+
+					for( p=m.index ; p >= x ; x=X[++seq] );                               // [REM] Result: p < x
+
+					if( !(pid=Y[seq]) ) break;
+					
+					if( SHFT )
+					{
+						dw = 1 + (0xDC00 <= (cc=(s=m[0]).charCodeAt(1)) && cc <= 0xDFFF);// 1|2
+						m[0] = s.slice(dw);                                              // Shift m[0] by dw.
+					}
+					
+					if( (dx=x-p) < zm )                                                  // Cross-over
+					{
+						// dx is the index at which nextPid is reached in *original* m[0].
+						// ---
+						if( dx <= dw )
+						{
+							if( !(pid=Y[1+seq]) ) break;                                  // [FIX220330] DO NOT INCREMENT `seq`
+						}
+						else
+						{
+							(m.crossPid=String.fromCharCode(dx-dw).concat(Y[1+seq]));     // crossPid :: <index-in-m[0]>`nextPid`
+						}
+					}
+					
+					EDS && callee.ENID(EDS,INFO,p+dw);
+					CTX && callee.CTXT(INFO, this._str_, p+dw, m[0].length, CTX);
+					INFO.index = p;                                                       // [ADD230412] Added the stream index in `INFO`, may be used by some processes...
+					callback.call(cx, m,pid,query,p/sz,++z, INFO);
+				}
+			}
+			else
+			{
+				SHFT = 0x1B==re.charCodeAt(0); // [WARNING] Harcoded value of XCUT.
+				m = [ SHFT ? re.slice(1) : re ];
+				mlen = m[0].length;
+				for( dw=SHFT?1:0, n=re.length-dw, p=-1 ; (!callback.STOP) && 0 <= (p=this._str_.indexOf(re,++p)) ; )
+				{
+					for( p+=dw ; p >= x ; x=X[++seq] );
+
+					if( !(pid=Y[seq]) ) break;
+
+					x < p + n
+					? ( m.crossPid=String.fromCharCode(x-p).concat(Y[1+seq]) )            // crossPid :: <index-in-m[0]>`nextPid`
+					: ( delete m.crossPid );
+
+					EDS && callee.ENID(EDS,INFO,p);
+					CTX && callee.CTXT(INFO, this._str_, p, mlen, CTX);
+					INFO.index = p;                                                       // [ADD230412] Added the stream index in `INFO`, may be used by some processes...
+					callback.call(cx, m,pid,query,p/sz,++z, INFO);
+				}
+			}
+
+			(+$$.trace) && $$.trace(__("%1 > Hit calls: %2.",callee.µ,z));
+			return z;
+		}
+		.setup
+		({
+			INFO:    { streamLength:0, iniKid:'', index:void 0, kind:void 0, enid:void 0, cxBef:void 0, cxAft:void 0 },
+			LASTQ:   '', // For tracing only.
+
+			CTXT_LEN: 0, // [ADD220711]
+
+			CTXT: function(/*{}&*/INFO,/*str*/stream,/*uint*/p,/*uint*/mlen,/*uint*/sz)
+			//----------------------------------
+			// Set INFO.cxBef, INFO.cxAft
+			// => undef
+			{
+				INFO.cxBef = callee.CX_CLEAN( stream.slice(p>sz?p-sz:0, p) );
+				INFO.cxAft = callee.CX_CLEAN( stream.slice(p+mlen, p+mlen+sz) );
+			}
+			.setup
+			({
+				CX_CLEAN: function(/*str*/s,  x,z)
+				//----------------------------------
+				// [FIX230115] Remove partial surrogate from `s` ; replace ctrl characters by a mid-dot U+00B7.
+				// => str
+				{
+					// 1. Remove uncomplete LOW surrogate (DC00..DFFF) at the beginning.
+					// ---
+					0xDC00 <= (x=s.charCodeAt(0)) && x <= 0xDFFF && (s=s.slice(1));
+					
+					// 2. Remove uncomplete HIGH surrogate (D800..DBFF) at the end.
+					// ---
+					0 < (z=s.length) && 0xD800 <= (x=s.charCodeAt(--z)) && x <= 0xDBFF && (s=s.slice(0,z));
+
+					return s.replace(callee.RE_CTRL,'\xB7');
+				}
+				.setup
+				({
+					RE_CTRL: /[\x01-\x1F]/g,
+				}),
+			}),
+			
+			ENID: function(/*upto_enid[]*/EDS,/*{enid:uint,...}&*/INFO,/*uint*/pos,  i,t,p)
+			//----------------------------------
+			// => undef
+			{
+				if( pos < callee.UPTO ) return;
+				
+				for( i=callee.INDX ; pos >= (p=parseInt(t=EDS[++i],10)) ; );
+
+				callee.INDX = i;
+				callee.UPTO = p;
+				INFO.enid = parseInt(t.split('_')[1], 10);
+			},
+		}),
+
+	})
