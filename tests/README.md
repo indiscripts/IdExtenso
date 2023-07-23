@@ -78,7 +78,7 @@ _Demonstrates:_
 
 ##### [`DomTextParcelsTest.jsx`](DomTextParcelsTest.jsx)
 
-Lifts the veil on the intimidating [$$.Dom.TextParcels](../etc/$$.Dom.TextParcels) class.
+Lifts the veil on the intimidating [$$.Dom.TextParcels](../etc/$$.Dom.TextParcels.jsxlib) class.
 
 _Demonstrates:_
    
