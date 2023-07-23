@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           Make listbox sub items optional to allow exotic apps to run $$.help()
 		Created:        171108 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       230723 (YYMMDD)
 
 *******************************************************************************/
 
@@ -41,11 +41,13 @@
 		USHW: function ON_SHOW()
 		//----------------------------------
 		// (UI-OnShow.) <this> :: Window/dialog
+		// [CHG230723] Ability to preselect another index.
 		// => undef
 		{
-			this.modList.selection = 0;
+			this.modList.selection = callee.FIRST||0;
 			this.modList.notify();
-		},
+		}
+		.setup({ FIRST:0 }), // [ADD230723]
 
 		UMCH: function ON_MODULE_CHANGE(  w,s,k)
 		//----------------------------------
@@ -346,11 +348,17 @@
 		HELP: function(  q,o,z,p,k,m,n,isClass)
 		//----------------------------------
 		// (Help-Main-Loop.) Return a volatile rich array
-		// that sends each index to a module path and
-		// each module path to API data.
-		// [i] => (str)modPath  ;  [modPath] => (str)apiData
-		// [REM] For apiData format, see ~.MAPI.
+		// that sends each index to a <ModuleItem> string.
+		// [i] => (str) <ModuleItem> :: `{CORE|XTRA}<name><X2><version>`
+		// Added keys:
+		//     <path>  => <ModuleItem>
+		//     #<name> => (str) Module header info
+		//     §<name> => (str) Module full info
+		//     _<name> => (str) Module API
+		// [REM] Cf ~.MAPI.
 		// [CHG190120] Better presentation of __modf__
+		// this :: ~ (in root)
+		// => str[}&
 		{
 			q = callee.Q || (callee.Q=[]);
 			o = this.__mods__;
@@ -373,6 +381,7 @@
 					String(m.__modf__)[0]+'.'+String(m.__modf__).slice(1)
 					);
 				q[z] = k;
+				q[p] = k; // [ADD230723] Backup path-to-<ModuleItem> matching.
 				
 				// Module header info.
 				// ---
@@ -412,15 +421,25 @@
 	[PUBLIC]
 
 	({
-	
-		help: function help_(  I,a)
+		help: function help_f_(/*?fct*/mod,  I,a,s,i)
 		//----------------------------------
 		// Display all API infos available from the included modules.
+		// [ADD230723] Added the `mod` argument: preset a particular module.
 		// => undefined
 		{
 			I = callee.µ['~'];
-
 			a = I.HELP();
+
+			if( 'function'==typeof mod && callee.µ.isModule(mod) && (s=a[mod.__path__]) )
+			{
+				for( i=a.length ; i-- && s!=a[i] ; );
+				0 <= i && (I.USHW.FIRST=i);
+			}
+			else
+			{
+				I.USHW.FIRST = 0;
+			}
+
 			I.UHLP(a);
 		},
 	})
