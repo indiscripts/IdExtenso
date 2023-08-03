@@ -1,3 +1,6 @@
+##### [230803]
+  - [`Edit(Factory)`](/etc/ScriptUI/factories/$$.Edit.jsxinc) and [`EditInteger(Factory)`](/etc/ScriptUI/factories/$$.EditInteger.jsxinc): These advanced `EditText` factories provide a better control of the native ScriptUI widget, dealing with internal events and validation mechanisms. `EditInteger(Factory)` inherits from `Edit(Factory)`: it overrides the API in order to strictly manage integers (signed or unsigned) in a custom range defined by the client code.
+
 ##### [230723]
   - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): this new class is the perfect tool for efficiently exploring text containers and capturing their contents from any InDesign `Document`. `$$.Dom.TextParcels` is **aimed at experienced developers only**. _(For the record, this code is the “load-bearing wall” that underlies all the power of [IndexMatic3](https://indiscripts.com/category/projects/IndexMatic), so don't tell your friends that you can access it directly in **IdExtenso** ;-)_ Want to run and study a superbasic sample script? Go to [tests/DomTextParcelsTest.jsx](/tests/DomTextParcelsTest.jsx).
   - [Root/help](/core/Root/$$.help.jsxinc). Ability to _preselect_ a module while showing IdExtenso's API: just call `$$.help(<someModule>)` (first argument added), e.g. `$$.help($$.JSON)`. By default `$$.help()` still preselects the `$$` item (first of the list).
