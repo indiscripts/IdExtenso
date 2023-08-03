@@ -1,0 +1,766 @@
+/*******************************************************************************
+
+		Name:           Edit(Factory)
+		Desc:           Advanced EditText control
+		Path:           /etc/ScriptUI/factories/$$.Edit.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI/events ; ScriptUI/PopupFactory [recommended]
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.EditFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        190226 (YYMMDD)
+		Modified:       230803 (YYMMDD)
+
+*******************************************************************************/
+
+	// =============================================================================
+	// BACKGROUND
+	// =============================================================================
+	
+	/*
+
+	1. EDITTEXT OVERVIEW
+	
+	The native mechanism for creating an EditText is based on the following scheme:
+	
+	      <container>.add
+	      (
+	         'edittext',                     // EditText type (fixed.)
+	       ? Bounds,                         // Bounds structure (opt.)
+	         str,                            // => text
+	       ? {                               // Creation properties (opt.):
+	            name:            str,        // Internal name (relative to <container>)
+	            borderless:      bool=false, // When true the control is drawn with no border.
+	            multiline:       bool=false, // When true, the control displays multiple lines.
+	            scrolling:       bool=true,  // Multiline mode only: allow vertical scroll
+	            readonly:        bool=false, // When true, the control does not accept input.
+	            noecho:          bool=false, // When true, the control does not display input.
+	            enterKeySignalsOnChange: bool=false, // (1)
+	            wantReturn:      bool=false,         // (2)
+	         }
+	      ) => EditText
+
+	(1) When false (default), the control signals an onChange() event when both the editable
+	    text is changed AND the control loses the keyboard focus (that is, the user tabs to
+	    another control, clicks outside the control, or types Enter).
+	    When true, the control only signals an onChange() event when the editable text
+	    is changed and the user types Enter; other changes to the keyboard focus do not
+	    signal the event. HOWEVER, THIS DOESN'T SEEM TO WORK IN CC!
+	
+	(2)  [from ScriptUI 6.0] `wantReturn` only applies to multiline controls.
+	     When true, the RETURN/ENTER keystroke is considered as text-input advancing the
+	     cursor to the next line. The default value is false.
+
+	2. IMPORTANT PROPERTIES
+	
+	If nonzero, `characters` (uint) indirectly sets the width of the text field.
+	In CS, all happens as if 'X' were used as the base letter for computing the width.
+	For example, `myEditText.characters=10` will set the field width as large as
+	'XXXXXXXXXX' in the current font. In CC, the base letter seems to be 'x' (?).
+	However, if preferredSize[0] is set and not equal to -1, it always supersedes
+	the `character` property:
+	
+	      myEditText.preferredSize[0] = 60; // (in px)
+	      myEditText.characters = 90;       // (in letters) ; NO EFFECT!
+	                                        // -> Result is 60 px width.
+	
+	The `textselection` property interacts with `text` in a complicate way: “Setting
+	textselection replaces the current text selection and modifies the value of the
+	text property. If there is no current selection, inserts the new value into the
+	text string at the current insertion point. The textselection value is reset to
+	an empty string after it modifies the text value. (...) Setting textselection
+	before the element’s parent Window exists is an undefined operation.”
+	
+	Even when a visible EditText no longer has the focus, it may have a specific
+	selection range (including 0-length insertion point at any location.) There is
+	no direct way to determine that range, since `textselection` only returns the
+	selected substring without further indication.
+	
+	[REM] CS4 doesn't seem to properly *read* `textselection`.
+	[REF] https://forums.adobe.com/thread/527161
+	
+	What is possible is to put the insertion point at some location. For example,
+	to have "ABC¦XYZ", you may use
+	
+	      myEdit.text = "XYZ";          // Reset cursor at start  => `¦XYZ`
+	      myEdit.textselection = "ABC"; // Insert and move cursor => `ABC¦XYZ`
+	
+	but this trick does not work in all environments.
+
+	3. EVENTS
+	
+	In CS the 'change' event occurs BEFORE 'blur';
+	in CC the 'change' event occurs AFTER 'blur' ; 'blur' is dispatched from the
+	parent group too, should it lose the focus (groups are focus/blur sensitive.)
+	
+	Although `cancelable`, neither `change` nor `blur` effects can be actually
+	inhibited by `ev.preventDefault()`.
+
+	*/
+
+	// =============================================================================
+	// NOTICE
+	// =============================================================================
+	
+	/*
+	
+	EditFactory creates an augmented EditText control that solves CS/CC inconsistencies
+	and provides a flexible validation mechanism. The returned widget is of type
+	`edittext`.
+
+	      +==================+
+	      |     edittext     |
+	      +==================+
+
+	[REM] ScriptUI/events and ScriptUI/PopupFactory are recommended (although not
+	      mandatory). If the latter is missing, the Edit component cannot use
+	      the regular Popup messaging system so the popup() method won't have any
+	      effect.
+
+	Example in ScriptUI.builder:
+
+	      ...
+	      EditFactory$MyEdit:
+	      [{
+	          value:      "myString",                // init value
+	          helpTip:    "This is a help message.", // help tip.
+	          textFilter: /[a-z]{1,20}/i,            // allowed characters & length
+	      }],
+	      ...
+
+	The Edit component makes a distinction between `value` and `text` properties:
+	
+	- `text` (string) reflects what is presently displayed in the edit box dis-
+	   regarding validity issues. When the user is typing or changing the text by
+	   any other shortcut a specific 'tchanged' event is fired. The `text` property
+	   may temporarily contain unsupported or unformatted inputs. However, it
+	   cannot contain forbidden characters which are filtered out by the `textFilter`
+	   option. By default, the `text` property is locked (i.e read-only from the
+	   client code standpoint.)
+	
+	- `value` reflects the latest valid input, which can be a string or any other
+	   type. It remains unchanged as long as the user is typing (the component
+	   then has the focus and undergoes 'tchanged' events.) The `value` property
+	   is updated only if the component loses the focus AND the `text` can be parsed
+	   into a valid input: the new value then replaces the old one and a `vchanged`
+	   event is fired. Whenever the component loses the focus, the `text` property
+	   is reformatted so that it properly reflects the current `value`. The client
+	   code is expected to assign a new value when it needs to change the text.
+	   The two properties are somehow linked, based on the custom `textToValue`
+	   and `valueToText` methods (see below.)
+
+	An input string is considered VALID if the method `textToValue(input)` returns
+	anything excluding undefined.
+
+	API
+	=======================================================================
+	properties      obj = { kind:"Edit", MinLines:uint }
+	                Information properties. MinLines is the minimum number
+	                of lines (in a multiline control), 1 by default.
+	-----------------------------------------------------------------------
+	value           any [excl. undefined]
+	                Internal value of the component. Setting this property
+	                triggers a validation mechanism based on the condition
+	                undefined !== this.textToValue(this.valueToText(newVal))
+	                                    <1>                 <2>
+	                If the above condition fails, the value is not changed.
+	                Otherwise, the 'normalized value' <1> is assigned and
+	                the `text` is changed into the 'normalized string' <2>.
+	-----------------------------------------------------------------------
+	text            str=auto  [read-only]
+	                Text visible in the Edit box. Except in special cases,
+	                `myEdit.text = <newText>` has no effect. The property
+	                is managed from change/changing internal event handlers
+	                while the user is typing, or indirectly through `value`
+	                assignment (see above.)
+	-----------------------------------------------------------------------
+	extra           any = ""
+	                Custom property.
+	-----------------------------------------------------------------------
+	helpTip         str = undef
+	                Help message.
+	-----------------------------------------------------------------------
+	textFilter      uint|RegExp|fct|key = /.{1,250}/
+	                Determines a validation pattern for the input string.
+	                (a) Given as a number (uint), defines the maximum
+	                    string length. If the user enters more characters
+	                    than allowed the string is reduced. Use 0 (zero)
+	                    to remove any filtering.
+	                (b) Given as a regex, defines a valid match. As long
+	                    as the input entirely matches the regex it is
+	                    not altered. If the input *partially* matches the
+	                    regex, as in "a12bc3".match(/\d+/g), the string
+	                    is reduced into <matches>[0] if the regex is non-
+	                    global (=> "12"). If the regex is global (/g suffix)
+	                    the string is primarily reduced to
+	                       t = <matches>.join('') => "123"
+	                    but then the regex is applied again (on `t`)
+	                    to produce the final result,
+	                       t = t.match(regex)[0]   (or '' if no match.)
+	                    This mechanism is required to keep control over
+	                    string length after merging multiple matches.
+	                    E.g  .textFilter = /\d{1,6}/g
+	                    will reduce "a12b34c56789" into "123456".
+	                (c) Given as a function, `textFilter` must take the
+	                    input string and return the filtered string, or any
+	                    value that translates into it. This option allows
+	                    you to define a complex filter. The function
+	                    is called with the `this` context set to the Edit
+	                    component.
+	                (d) Given as a key (string), `textFilter` is assumed to
+	                    refer to a particular method or RegExp owned by the
+	                    component. That member is then invoked as described
+	                    in case (b) or (c).
+	=======================================================================
+	onFilter        fct( ev[[filtered]] ) = undef
+	                Called back when the custom 'filtered' event has occured,
+	                meaning that a user attempt to change the text just failed
+	                due to `textFilter`. The event then provides a `junk` pro-
+	                perty containing the invalid string that has been blocked.
+	-----------------------------------------------------------------------
+	onTextChange    fct( ev[[tchanged]] ) = undef
+	                Called back when the custom 'tchanged' event has occured,
+	                meaning that the `text` property has changed due to user
+	                interaction. (This event is not fired when filtering comes
+	                into play and inhibits text change, see `onFilter`.)
+	-----------------------------------------------------------------------
+	onValueChange   fct( ev[[vchanged]] ) = undef
+	                Called back when the custom 'vchanged' event has occured,
+	                meaning that the `value` property has changed due to user
+	                validation (the control has just losed the focus.)
+	                The property `ev.previous` contains the previous valid
+	                value.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured.
+	-----------------------------------------------------------------------
+	onFocus         fct( ev[[getfocus]] ) = undef
+	                Called back when the custom 'getfocus' event has occured,
+	                meaning that the control is getting the focus.
+	-----------------------------------------------------------------------
+	onExit          fct( ev[[exit]] ) = undef
+	                Called back when the custom 'exit' event has occured,
+	                meaning that the control is losing the focus. This event
+	                is independent from `vchanged`. In case both occur,
+	                `exit` is notified *after* `vchanged`.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                filtered | tchanged | vchanged | rclicked | exit
+	=======================================================================
+	setValue(nv)    => any  [excl. undefined]
+	                Equivalent to { this.value=nv; return this.value; }
+	-----------------------------------------------------------------------
+	getValue()      => any  [excl. undefined]
+	                Equivalent to { return this.value; }
+	-----------------------------------------------------------------------
+	getControl()    => EditText
+	                Return the EditText widget (===this).
+	-----------------------------------------------------------------------
+	textToValue(str) => any  [custom]
+	                Translates any string into the associated, 'normalized'
+	                value. If this method returns undefined, the value is
+	                considered invalid.
+	                By default, `textToValue` returns the input arg itself.
+	                The client code can supply a custom function at construc-
+	                tion time (option.)
+	-----------------------------------------------------------------------
+	valueToText(v,I) => str  [custom]
+	                Translates any valid value into the associated, 'norma-
+	                lized' text string. By design, this method should always
+	                return a string whatever the incoming arg. The 2nd arg,
+	                optional, tells whether `valueToText` is invoked INLINE,
+	                that is, in a context where the user is editing the text
+	                (the component has the focus.) In such case, the method
+	                can temporarily relax text formatting and returns a non-
+	                normalized string, subject that `textToValue` supports
+	                non-normalized forms as well.
+	                By default, `valueToText` returns the string
+	                       ( 0===val ? '0' : String(val||'') )
+	                so any falsy value, excluding 0, translates into an
+	                empty string. The client code can supply a custom function
+	                at construction time (option.)
+	-----------------------------------------------------------------------
+	filter(?str)    => str
+	                Filter out unallowed characters or patterns from the
+	                incoming string with respect to `textFilter` (see above.)
+	                If the argument is not provided, this.text is assumed.
+	-----------------------------------------------------------------------
+	popup(s,c,t)    => undef
+	                Shortcut for sending a popup event in automatic mode.
+	                If no Popup component is available, this method has no
+	                effect.
+	-----------------------------------------------------------------------
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.EditFactory = function Edit(/*container*/parent,/*{value,help,...}*/ops,  tx,t,TV,VT,r)
+		//----------------------------------
+		// Options (ops):
+		// .value        (any='')     Initial value.
+		// .text         (str=auto)   Initial text if value is not supplied (ignored otherwise.)
+		// .helpTip|help (str='')     Help tip (`help` can be supplied as an alias.)
+		// ---
+		// .textFilter   (any=auto)   Function, RegExp or uint.
+		// .textToValue  (fct=auto)   Function.
+		// .valueToText  (fct=auto)   Function.
+		// ---
+		// .optWidth     (uint=200)   Optimal width (in px.)
+		// .maxWidth     (uint=400)   Maximum width (in px.)
+		// .borderless   (bool=false) Whether edit borders must be hidden.
+		// .multiline    (bool=false) Whether the edit must support multiple lines.
+		// .minLines     (uint=auto)  Minimum number of lines (multiline mode.)
+		// .scrolling    (bool=false) Whether a scrollbar is required (multiline mode.)
+		// .noecho       (bool=false) Whether the input is masked (password, etc.)
+		// ---
+		// .onFilter       (?fct)     Handler of 'filtered' event.
+		// .onTextChange   (?fct)     Handler of 'tchanged' event.
+		// .onValueChange  (?fct)     Handler of 'vchanged' event.
+		// .onFocus        (?fct)     Handler of 'getfocus' event (i.e custom focus.) [ADD220530]
+		// .onExit         (?fct)     Handler of 'exit' event (i.e custom blur.) [ADD210825]
+		// .onEvent        (?fct)     Any event handler.
+		// ---
+		// .extra         (any)       Any custom property.
+		// .enabled | .visible        States.
+		// .more          (?obj)      Custom options.
+		// ---
+		// => EditText[[Edit]] ::   E
+		//   .properties       ::   { kind, MinLines }
+		{
+			// Normalize options.
+			// ---
+			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			tx = ops && !ops.hasOwnProperty('value') ? ops.text : void 0;  // Backup `ops.text` if the value is not supplied.
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+			ops.minLines > 1
+			? (ops.multiline=true)
+			: (ops.multiline && (ops.minLines=3));
+			
+			'function' == typeof(t=ops.textFilter)
+			|| t === t>>>0
+			|| (ops.textFilter=callee.DEFS.textFilter);
+
+			'function' == typeof(TV=ops.textToValue)
+			|| (TV=callee.DT2V);
+
+			'function' == typeof(VT=ops.valueToText)
+			|| (VT=callee.DV2T);
+
+			// Create the component.
+			// ---
+			r =
+			{
+				// --- Layout.
+				optimalSize:                  1 < (t=ops.minLines) ? { width:ops.optWidth, height:t*ScriptUI.LINE } : { width:ops.optWidth },
+				maximumSize:                  { width: ops.maxWidth },
+				// --- Inner events and private.
+				_changing_change_blur_focus:  callee.HSTA,
+				_mousedown:                   callee.HMOU,
+				__setText__:                  callee.STXT,
+				// --- Watched.
+				value:                        void 0,         // Pending
+				onFilter:                     void 0,         // Pending
+				onTextChange:                 void 0,         // Pending
+				onValueChange:                void 0,         // Pending
+				onFocus:                      void 0,         // Pending
+				onExit:                       void 0,         // Pending
+				onRightClick:                 void 0,         // Pending
+				onEvent:                      void 0,         // Pending
+				// --- Public members.
+				extra:                        ops.extra,      // not watched
+				helpTip:                      ops.helpTip,
+				textFilter:                   ops.textFilter, // RegExp|function|uint
+				filter:                       callee.FILT,
+				textToValue:                  TV,
+				valueToText:                  VT,
+				setValue:                     callee.SETV,
+				getValue:                     callee.GETV,
+				getControl:                   callee.CTRL,    // returns this
+				popup:                        ScriptUI.POPU,  // noop if Popup unavailable.
+			};
+
+			r = ScriptUI.builder
+			(
+				ScriptUI.moreOptions(r, ops.more),
+				parent.add( 'edittext', void 0, '',               // `text` will interact with `value`
+				{
+					kind:                         callee.name,
+					MinLines:                     ops.minLines,
+					borderless:                   ops.borderless,
+					multiline:                    ops.multiline,
+					scrolling:                    ops.scrolling,
+					readonly:                     false,
+					noecho:                       ops.noecho,
+					wantReturn:                   false,
+					enterKeySignalsOnChange:      false,
+				})
+			);
+
+			// Make sure the value is defined before setting the watcher.
+			// ---
+			'undefined' == typeof(ops.value) &&
+			( ops.value = 'string' == typeof tx ? r.textToValue(tx) : '' );
+			
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			( r, ['text', 'value', 'onFilter', 'onTextChange', 'onValueChange', 'onFocus', 'onExit', 'onRightClick', 'onEvent'], callee.WTCH, ops );
+
+			// States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Parameters, private methods.
+		//----------------------------------
+		({
+			DEFS:
+			{
+				value:         void 0,
+				textFilter:    /.{1,250}/,
+				textToValue:   void 0,
+				valueToText:   void 0,
+				// ---
+				borderless:    false,
+				multiline:     false,
+				minLines:      1,
+				scrolling:     false,
+				noecho:        false,
+				// ---
+				optWidth:      200,
+				maxWidth:      400,
+				// ---
+				onFilter:      void 0,
+				onTextChange:  void 0,
+				onValueChange: void 0,
+				onFocus:       void 0,
+				onExit:        void 0,
+				onEvent:       void 0,
+				// ---
+				more:          {},
+			},
+			
+			STXT: function __setText__(/*any*/tt,/*bool=0*/INLINE,  n,t,p)
+			//----------------------------------
+			// (Text-Setter.) Safely change the text.
+			// A particular use of this method is restoring a valid text string (tt)
+			// when filtering out undesired characters temporarily present in this.text.
+			// If INLINE is truthy, the routine tries to reposition the text cursor as
+			// expected ; otherwise it simply resets `this.text`.
+			// this :: EditText[[Edit]]
+			// => undef
+			{
+				tt || (tt='');
+				if( tt === this.text ) return;              // Nothing to do.
+
+				this.µ_text = 1;                            // Bypass the watcher.
+
+				// ---
+				// [REM] The trick (`text=END; textselection=START;`) has undesired
+				// consequences in CS *if the edittext is NO LONGER active* (losing focus):
+				// it then seems to inhibit or break 'blur' dispatching. For that reason it's
+				// necessary to make sure this.active===true before entering the below block.
+				// In addition, there is no guarantee that the textselection trick always
+				// works on macOS.
+				// ---
+
+				if( INLINE && (n=tt.length) && this.active && this.visible && this.enabled )
+				{
+					// Find the 1st index at which `tt` differs from `t`.
+					// ---
+					for
+					(
+						t=this.text||'', p=-1 ;
+						++p < n && t.charCodeAt(p)===tt.charCodeAt(p) ;
+					);
+					this.text = tt.slice(p);
+					this.textselection = tt.slice(0,p);
+				}
+				
+				// Fallback cases.
+				// ---
+				tt === this.text || (this.text=tt);
+
+				delete this.µ_text;                         // Restore the watcher.
+			},
+		})
+		.setup
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		({
+			HSTA: function onStateEvent(/*event*/ev,  k,t,sub,exi,tt,ov,nv)
+			//----------------------------------
+			// Fire the associated sub-event ('filtered','tchanged','vchanged')
+			// when the text wants to change or is transferred to the value.
+			// this   :: EditText[[Edit]]
+			// ev     :: focus | change | changing | blur
+			{
+				t = this.text;
+				sub = 0;
+				k = ev ? ev.type : 'noevent';
+				exi = 'blur'==k;
+
+				// Temporary transparent event type (controlled from the outside.)
+				// ---
+				if( this.hasOwnProperty('µ_'+k) ) return;
+
+				switch( k )
+				{
+					case 'focus':                                     // GETTING FOCUS <-> Use inline form if possible.
+						this.active                                   // Probably needed in CC:
+						|| (this.µ_focus=1, this.active=true, delete this.µ_focus);
+
+						// [FIX230730] In CC we can safely deal with an
+						// INLINE string that differs from the OFFLINE string
+						// and have it still selected. In CS that doesn't
+						// seem feasible due to the focus event cycle. A
+						// nice CS fallback is to deactivate the inline mode
+						// when entering the box. This normally leads to t==tt.
+						// In case this wouldn't, the best option is to apply
+						// __setText__ with a truthy INLINE arg (while CC
+						// definitely wants it to be falsy!). This explains
+						// the below trick:
+
+						tt = this.valueToText(this.value, callee.IN_MODE);
+						if( t !== tt ) this.__setText__(tt, 1-callee.IN_MODE);
+
+						sub = 'getfocus';
+						break;
+
+					case 'change':                                    // The native 'change' event is stopped.
+						ev.stopPropagation();                         // Don't go higher.
+						ev.preventDefault();                          // No effect, but who knows...
+						break;
+
+					case 'changing':                                  // The native 'changing' event is stopped.
+						ev.stopPropagation();                         // Don't go higher.
+						ev.preventDefault();                          // Is this needed?
+
+						// Compare the present text (t)
+						// against the filtered string (tt.)
+
+						if( t !== (tt=this.filter(t)) )               // DISTINCT <-> Invalid characters
+						{
+							this.active                               // Needed in CC:
+							|| (this.µ_focus=1, this.active=true, delete this.µ_focus);
+
+							this.__setText__(tt,1);                   // Reset this.text to tt (INLINE).
+							sub = { type:'filtered', junk:t };        // Notify 'filtered'.
+						}
+						else                                          // EQUAL <-> Validate text change.
+						{
+							sub = 'tchanged';                         // Notify text change.
+						}
+						break;
+					
+					case 'blur':                                      // LOSING FOCUS <-> Validation required.
+						this.active = false;                          // Needed in CC.
+						this.popup();                                 // By default, remove any popup on losing focus.
+
+						ov = this.value;
+						if( t === this.valueToText(ov) ) break;       // Quick test: no text change AND no value change.
+						
+						nv = this.textToValue(t);
+						'undefined' == typeof nv && (nv=ov);          // INVALID -> restore old value.
+
+						tt = this.valueToText(nv);                    // Normalized text associated to value.
+						this.__setText__(tt);                         // Force reformatting (OFFLINE FORM.)
+						if( ov === nv ) break;                        // No value change.
+						
+						this.µ_value = 1;                             // Bypass the watcher.
+						this.value = nv;                              // Update the value.
+						delete this.µ_value;
+						sub = { type:'vchanged', previous:ov };       // Notify value change.
+						break;
+
+					default:;
+				}
+				
+				sub && ScriptUI.dispatch(this, sub);
+				exi && ScriptUI.dispatch(this, {type: 'exit'});
+			}
+			.setup
+			({
+				IN_MODE: $$.inCC ? 1 : 0,
+			}),
+
+			HMOU: function onMouseEvent(/*event*/ev)
+			//----------------------------------
+			// Right-click event.
+			// this   :: EditText[[Edit]]
+			// ev     :: mousedown
+			{
+				if( 2==ev.button )
+				{
+					if( 'function' == typeof(this.onRightClick) )
+					{
+						// Only prevents the default right-click behavior
+						// if the `onRightClick` handler is set.
+						// ---
+						ev.preventDefault();
+						ev.stopPropagation();
+					}
+					ScriptUI.dispatch(this,'rclicked',ev);
+				}
+			},
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*value*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: EditText[[Edit]]
+			//    k   :: text | value
+			//           onFilter | onTextChange | onValueChange | onFocus | onExit | onRightClick | onEvent
+			// [REM] `this.text` is locked (read-only)
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				var t, tt;
+				switch( k )
+				{
+					case 'text':     // str (locked by default.)
+						return ov;
+						break;
+					
+					case 'value':    // any (update text accordingly.)
+						if( 'undefined' == typeof nv ) return ov;     // Initially invalid -> keep ov.
+						
+						t = this.valueToText(nv);                     // Normalized text associated to nv.
+						if( t === this.text ) break;                  // All is fine regarding this.text.
+						
+						if( t !== (tt=this.filter(t)) )               // SPECIAL CASE:
+						{                                             // If `t` doesn't pass the INSIDE filter,
+							nv = this.textToValue(tt);                // - consider the value associated to the filtered string
+							t = this.valueToText(nv)                  // - and re-normalize `t` from that value
+						}
+						else
+						{
+							nv = this.textToValue(t);                 // USUAL CASE
+						}
+
+						if( 'undefined' == typeof nv ) return ov;     // Finally invalid -> keep ov.
+						this.__setText__(t);                          // Update the text.
+						break;
+
+					case 'onFilter':      // fct
+						ScriptUI.callback(this,'filtered',ov,nv);
+						break;
+
+					case 'onTextChange':  // fct
+						ScriptUI.callback(this,'tchanged',ov,nv);
+						break;
+
+					case 'onValueChange': // fct
+						ScriptUI.callback(this,'vchanged',ov,nv);
+						break;
+
+					case 'onFocus': // fct
+						ScriptUI.callback(this,'getfocus',ov,nv);
+						break;
+
+					case 'onExit': // fct
+						ScriptUI.callback(this,'exit',ov,nv);
+						break;
+					
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onEvent':       // fct
+						ScriptUI.callback(this,['filtered','tchanged','vchanged','getfocus','exit','rclicked'],ov,nv);
+						break;
+
+					default:;
+				}
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public methods.
+		//----------------------------------
+		({
+			SETV: function setValue(nv){ return (this.value=nv), this.value },
+			GETV: function getValue(  ){ return this.value },
+			CTRL: function getControl(){ return this },
+
+			DT2V: function textToValue(/*str*/t)
+			//----------------------------------
+			// Default Text-to-Value routine. Can be overridden.
+			// this :: EditText[[Edit]]
+			// => str
+			{
+				return t;
+			},
+			
+			DV2T: function valueToText(/*any*/v)
+			//----------------------------------
+			// Default Value-to-Text routine. Can be overridden.
+			// this :: EditText[[Edit]]
+			// => str
+			{
+				return 0===v ? '0' : String(v||'');
+			},
+
+			FILT: function filter(/*str=auto*/tx,  t,TF,m)
+			//----------------------------------
+			// Filter out unallowed characters from the string `tx`,
+			// defaulted to `this.text`. This method uses this.textFilter.
+			// this :: EditText[[Edit]]
+			// => str
+			{
+				'string' == typeof tx || (tx=this.text||'');
+				if( !tx.length ) return '';
+				
+				t = typeof(TF=this.textFilter);
+				
+				// [ADD210307] Supports .textFilter as a KEY
+				// pointing to a function or regex.
+				// ---
+				if( 'string' == t && 'function' == typeof this[t] )
+				{
+					TF = this[t];
+					t = 'function';
+				}
+
+				// Non-function is interpreted as a max length.
+				// ---
+				if( 'function' != t )
+				{
+					TF |= 0;
+					return 1 <= TF ? tx.slice(0,TF) : tx;
+				}
+				
+				// Non-regex -> function call (from this.)
+				// ---
+				if( !(TF instanceof RegExp) )
+				{
+					0===(tx=TF.call(this, tx)) && (tx='0');
+					return String(tx||'');
+				}
+				
+				// Regex.
+				// ---
+				if( !(m=tx.match(TF)) ) return '';
+				if( 'g' != TF.flags()[0] ) return m[0];
+
+				tx = (m=m.join('').match(TF)) ? m[0] : '';
+				return tx;
+			},
+		});
+	}
