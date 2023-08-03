@@ -1,0 +1,405 @@
+/*******************************************************************************
+
+		Name:           EditInteger(Factory)
+		Desc:           Advanced EditText control for integers
+		Path:           /etc/ScriptUI/factories/$$.EditInteger.jsxinc
+		Require:        ScriptUI/factories/Edit + Popup (recommended).
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.EditIntegerFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        220204 (YYMMDD)
+		Modified:       230803 (YYMMDD)
+
+*******************************************************************************/
+
+	// =============================================================================
+	// NOTICE
+	// =============================================================================
+	
+	/*
+	
+	EditIntegerFactory creates a custom EditFactory component that manages integer
+	values. It deals with minimum/maximum bounds, making sure that the user never
+	inputs out-of-range or invalid numbers. It also provides an easy way of increasing
+	or reducing the value using Up/Down keys (the combination Shift + Up/Down is
+	supported too for processing bigger jumps.) Automatic popups are shown whenever
+	invalid inputs are attempted.
+	
+	      +==================+
+	      |     edittext     |
+	      +==================+
+
+	[REM] This components *inherits* the [[Edit]] API and only overrides methods that
+	require a more specific implementation. For that reason, ScriptUI/factories/Edit
+	must be included before.
+
+	Example in ScriptUI.builder:
+
+	      ...
+	      EditIntegerFactory$MyEdit:
+	      [{
+	          value:      5,                         // init value
+	          minValue:   0,
+	          maxValue:   32,
+	          delta:      1,                         // step by +/-1 on Up/Down
+	          jump:       4,                         // step by +/-4 on Shift + Up/Down
+	          helpTip:    "Enter an integer between 0 and 32.",
+	      }],
+	      ...
+
+	API  --  Most members come from [[Edit]]
+	=======================================================================
+	properties      obj = { kind:"EditInteger", MinLines:1,
+	                        MinValue:int, MaxValue:int, MaxSize:uint,
+	                        Delta:uint, Jump:uint }
+	                Information properties.
+	-----------------------------------------------------------------------
+	value           int32
+	                Internal value of the component. Setting this property
+	                triggers a validation mechanism based on the condition
+	                undefined !== this.textToValue(this.valueToText(newVal))
+	                                    <1>                 <2>
+	                If the above condition fails, the value is not changed.
+	                Otherwise, the 'normalized value' <1> is assigned and
+	                the `text` is changed into the 'normalized string' <2>.
+	-----------------------------------------------------------------------
+	text            str=auto  [read-only]
+	                Text visible in the Edit box. Except in special cases,
+	                `myEditInteger.text = <newText>` has no effect. The
+	                property is managed from change/changing internal event
+	                handlers while the user is typing, or indirectly through
+	                `value` assignment.
+	-----------------------------------------------------------------------
+	helpTip         str = ""
+	                Help message.
+	-----------------------------------------------------------------------
+	textFilter      RegExp  [READ-ONLY]
+	                Automatically determined at construction time.
+	=======================================================================
+	onFilter        fct( ev[[filtered]] )
+	                Called back when the custom 'filtered' event has occured,
+	                meaning that a user attempt to change the text just failed
+	                due to `textFilter`. The event then provides a `junk` pro-
+	                perty containing the invalid string that has been blocked.
+	-----------------------------------------------------------------------
+	onTextChange    fct( ev[[tchanged]] ) = undef
+	                Called back when the custom 'tchanged' event has occured,
+	                meaning that the `text` property has changed due to user
+	                interaction. (This event is not fired when filtering comes
+	                into play and inhibits text change, see `onFilter`.)
+	-----------------------------------------------------------------------
+	onValueChange   fct( ev[[vchanged]] ) = undef
+	                Called back when the custom 'vchanged' event has occured,
+	                meaning that the `value` property has changed due to user
+	                validation (the control has just losed the focus.)
+	                The property `ev.previous` contains the previous valid
+	                value.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured.
+	-----------------------------------------------------------------------
+	onExit          fct( ev[[exit]] ) = undef
+	                Called back when the custom 'exit' event has occured,
+	                meaning that the control is losing the focus. This event
+	                is independent from `vchanged`. In case both occur,
+	                `exit` is notified *after* `vchanged`.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                filtered | tchanged | vchanged | rclicked | exit
+	=======================================================================
+	setValue(nv)    => any  [excl. undefined]
+	                Equivalent to { this.value=nv; return this.value; }
+	-----------------------------------------------------------------------
+	getValue()      => any  [excl. undefined]
+	                Equivalent to { return this.value; }
+	-----------------------------------------------------------------------
+	getControl()    => EditText
+	                Return the EditText widget (===this).
+	-----------------------------------------------------------------------
+	textToValue(str) => int  [ASSUMED READ-ONLY]
+	                Translates any string into the associated, 'normalized'
+	                value. If this method returns undefined, the value is
+	                considered invalid. If `str` is not supplied, this.text
+	                is assumed.
+	-----------------------------------------------------------------------
+	valueToText(v,I) => str  [ASSUMED READ-ONLY]
+	                Translates any valid value into the associated, 'norma-
+	                lized' text string.
+	-----------------------------------------------------------------------
+	filter(?str)    => str   [ASSUMED READ-ONLY]
+	                Filter out unallowed characters or patterns from the
+	                incoming string with respect to `textFilter` (see above.)
+	                If the argument is not provided, this.text is assumed.
+	-----------------------------------------------------------------------
+	popup(s,c,t)    => undef
+	                Shortcut for sending a popup event in automatic mode.
+	                If no Popup component is available, this method has no
+	                effect.
+	-----------------------------------------------------------------------
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		if( 'function' != typeof(ScriptUI.EditFactory) ){ alert(__("%1 requires the %2 factory.",'EditInteger','Edit')); exit(); }
+
+		ScriptUI.EditIntegerFactory = function EditInteger(/*container*/parent,/*{value,help,...}*/ops,  tx,t,mxLen,v,vMin,vMax,r)
+		//----------------------------------
+		// Options (ops):
+		// .value        (int=0)      Initial value (can be negative.)
+		// .minValue     (int=0)      Minimal integer (can be negative.)
+		// .maxValue     (int=auto)   Maximal integer (can be negative.)
+		// .delta        (uint=1)     Offset applied when the user press Up/Down.
+		// .jump         (uint=1)     Offset applied when the user press Shift Up/Down.
+		// .text         (str=auto)   Initial text if value is not supplied (ignored otherwise.)
+		// .helpTip|help (str='')     Help tip (`help` can be supplied as an alias.)
+		// ---
+		// .optWidth     (uint=0)     Optimal width (in px), 0 means auto.
+		// .maxWidth     (uint=0)     Maximum width (in px), 0 means auto.
+		// .borderless   (bool=false) Whether edit borders must be hidden.
+		// .noecho       (bool=false) Whether the input is masked (password, etc.)
+		// ---
+		// .onFilter       (?fct)     Handler of 'filtered' event.
+		// .onTextChange   (?fct)     Handler of 'tchanged' event.
+		// .onValueChange  (?fct)     Handler of 'vchanged' event.
+		// .onExit         (?fct)     Handler of 'exit' event (i.e custom blur.)
+		// .onEvent        (?fct)     Any event handler.
+		// ---
+		// .extra         (any)       Any custom property.
+		// .more          (?obj)      Custom options.
+		// .enabled | .visible        States.
+		// ---
+		// => EditText[[EditInteger]] ::   E
+		//   .properties       ::   { kind, MinLines, MinValue, MaxValue, MaxSize, Delta, Jump }
+		{
+			// Normalize options.
+			// ---
+			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			tx = ops && !ops.hasOwnProperty('value') ? ops.text : void 0;  // Backup `ops.text` if the value is not supplied.
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+			
+			// Integer validation.
+			// ---
+			const ISI = Number.isSafeInteger;
+			vMin = ops.minValue;
+			ISI(vMin) || ISI(vMin=parseInt(vMin,10)) || (vMin=0);
+			vMax = ops.maxValue;
+			ISI(vMax) || ISI(vMax=parseInt(vMax,10)) || (vMax=Number.MAX_SAFE_INTEGER);
+			vMin < vMax || (t=vMin,vMin=vMax,vMax=t);
+			v = ops.value;
+			ISI(v) || ISI(v=parseInt('undefined'==typeof tx ? v : tx, 10)) || (v=vMin);
+			vMin <= v || (v=vMin);
+			v <= vMax || (v=vMax);
+			ops.value = v;
+
+			// Optimal width.
+			// ---
+			mxLen = Math.max(vMin.toString().length,vMax.toString().length);
+			20 < (ops.optWidth|=0) || (ops.optWidth=ScriptUI.measureWidth(Array(4+mxLen).join('4')));
+			ops.optWidth < (ops.maxWidth|=0) || (ops.maxWidth=1+ops.optWidth);
+
+			// Forced options for EditFactory.
+			// ---
+			ops.multiline = false;
+			ops.minLines = 1;
+			ops.scrolling = false;
+			ops.textFilter = callee.TXFI;
+			ops.textToValue = callee.TX2V;
+			ops.valueToText = callee.V2TX;
+
+			// We want some additional members to be declared right now (via `more`)
+			(t=ops.more)===Object(t) || (t=ops.more={});
+			// -- Private
+			t.__minVal__ = vMin;
+			t.__maxVal__ = vMax;
+			t.__maxLen__ = mxLen;
+
+			// Create the component.
+			// [REM] EditFactory() may subcall textToValue, valueToText and/or textFilter now.
+			// ---
+			r = ScriptUI.EditFactory(parent, ops);
+
+			// Adjust properties.
+			// ---
+			t = r.properties;
+			t.kind = callee.name;            // Rewrite to 'EditInteger'
+			t.MinValue = vMin;               // For the record
+			t.MaxValue = vMax;               // For the record
+			t.MaxSize = mxLen;               // For the record
+			t.Delta = (0|ops.delta)||1;
+			t.Jump = (0|ops.jump)||1;
+
+			// Native event callbacks.
+			// ---
+			ScriptUI.callback(r,'keydown',0,callee.KEYD);
+			ScriptUI.callback(r,'filtered',0,callee.FLTR);
+			ScriptUI.callback(r,'tchanged',0,callee.TXCH);
+
+			// Custom event handlers?
+			// ---
+			(t=ops.onFilter) && (r.onFilter = t);
+			(t=ops.onTextChange) && (r.onTextChange = t);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Default settings.
+		//----------------------------------
+		({
+			DEFS:
+			{
+				value:         0,
+				minValue:      0,
+				maxValue:      Number.MAX_SAFE_INTEGER,
+				delta:         1,
+				jump:          1,
+				// ---
+				borderless:    false,
+				noecho:        false,
+				// ---
+				optWidth:      0,
+				maxWidth:      0,
+				// ---
+				onFilter:      void 0,
+				onTextChange:  void 0,
+				onValueChange: void 0,
+				onExit:        void 0,
+				onEvent:       void 0,
+			},
+		})
+		.setup
+		//----------------------------------
+		// Additional handlers and events.
+		//----------------------------------
+		({
+			FLTR: function beforeOnFilter(/*filtered*/ev)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// ev   :: 'filtered'
+			{
+				if( !(ev.junk||0).length )
+				{
+					this.popup(false);
+					return;
+				}
+
+				this.popup(__("Enter an integer between %1 and %2."
+					, this.__minVal__
+					, this.__maxVal__)
+					, 2);
+			},
+			
+			TXCH: function beforeOnTextChange(/*tchanged*/ev,  n,mn,mx)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// ev   :: 'tchanged'
+			{
+				this.popup(false);
+
+				n = parseInt(this.text,10);
+				if( isNaN(n) ) return;
+				
+				mn = this.__minVal__;
+				mx = this.__maxVal__;
+
+				( n < mn || n > mx )
+				&& this.popup(__("The value must be between %1 and %2.",mn,mx),2);
+			},
+
+			KEYD: function onKeyDown(/*event*/ev,  t,sgn,x,dx)
+			//----------------------------------
+			// this   :: EditText[[Edit]]
+			// ev     :: keydown
+			{
+				t = ev.keyName;
+
+				sgn = +('Up'==t)||-('Down'==t);
+				if( !sgn ) return;
+
+				ev.preventDefault();
+				ev.stopPropagation();
+				
+				x = this.textToValue();                               // current value
+				if( 'undefined'==typeof x ) return;
+
+				dx = this.properties[ev.shiftKey ? 'Jump' : 'Delta'];
+				if( !dx ) return;
+
+				t = dx*Math[0<sgn?'floor':'ceil']((x+sgn*dx)/dx);     // increase/reduce
+				t < this.__minVal__ && (t=this.__minVal__);
+				t > this.__maxVal__ && (t=this.__maxVal__);
+
+				if( t !== x )
+				{
+					this.__setText__(t.toString(),0);
+
+					// [REM] Doesn't work as expected in CS
+					this.µ_blur = this.µ_focus = 1; // Bypass those inner events
+					ScriptUI.setFocus(this);
+					delete this.µ_blur; delete this.µ_focus;
+
+					ScriptUI.dispatch(this,'tchanged',ev);
+				}
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public methods.
+		//----------------------------------
+		({
+			TXFI: function textFilter(/*str*/s,  re,t)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// => str
+			{
+				re = callee[0 > (this.__minVal__||0) ? 'RE_NEG_VAL' : 'RE_VAL'];
+
+				s = (t=s.match(re)) ? t.join('') : '';
+				s.length && (t=this.__maxLen__) && (s=s.slice(0,t));
+
+				return s;
+			}
+			.setup
+			({
+				RE_VAL:     RegExp.DIGIs,
+				RE_NEG_VAL: /(?:^-\d*)|\d+/g,
+			}),
+
+			TX2V: function textToValue(/*str*/s, v,t)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// => int [OK]  |  undef [KO]
+			{
+				'undefined' == typeof s && (s=this.text);
+				if( !(s||0).length ) return void 0;         // KO
+
+				v = parseInt(s,10);
+				if( isNaN(v) ) return void 0;
+
+				if( v < (t=this.__minVal__) ) return t;
+				if( v > (t=this.__maxVal__) ) return t;
+
+				return v;
+			},
+			
+			V2TX: function valueToText(/*int|any*/v,/*unused*/inline)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// => str
+			{
+				// [REM] If `v` is a finite number, it must be considered safe.
+				// Actual regex & min-max tests are performed from textToValue.
+
+				if( !('number' == typeof v && isFinite(v)) ) return '';
+				return v.toString();
+			},
+		})
+	}
