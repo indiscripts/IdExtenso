@@ -7,11 +7,11 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Part of the Env module.
-		API:            isUnit()->$$ toPoints->$$
+		API:            isUnit()->$$ forceUnit()->$$ toPoints()->$$
 		DOM-access:     ---
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       190202 (YYMMDD)
+		Modified:       230811 (YYMMDD)
 
 *******************************************************************************/
 
@@ -52,7 +52,7 @@
 			return 1===BKP ? ( callee.Q=v ) : ( 1-(callee.Q==v) );
 
 		}
-		.self(µ['~'],1),
+		.self(µ['~'],1), // Auto-backup right now so the info is available.
 
 	})
 
@@ -93,6 +93,54 @@
 
 		}
 		.copy('..'),
+
+		forceUnit:
+		//----------------------------------
+		// [ADD230811] Once `$$` is loaded, you can call $$.Env.forceUnit(<anyMeasurementUnit>)
+		// to process all measurements in the specified unit throughout your script. The original
+		// measurement units will be restored on unload. In CS4, this method provides a fallback
+		// based on viewPreferences. If <anyMeasurementUnit> is missing, POINTS is assumed.
+		(
+			-1 == µ['~'].SCMU()
+			? function forceUnit_i$MeasurementUnitsEnum$_(/*(uint|MeasurementUnit)=POINTS*/mu,  host,F,pp)
+			//----------------------------------
+			// In CS4 `app.scriptPreferences` doesn't provide measurementUnit, so
+			// we backup (activeDoc|app).viewPrefs before we change it. Make sure
+			// your target (=active doc) is OK when you invoke `$$.Env.forceUnit()`.
+			// [REM] The backup info is saved in `µ.onUnload.FORCE_MU_BKP`, so the
+			// original units are restored--if possible!--when $$.Env is unloading.
+			// => undef
+			{
+				mu = (mu && callee.µ.isUnit(mu)) || +MeasurementUnits.POINTS; // Default.
+				host = app.properties.activeDocument||app;
+
+				if( !(F=callee.µ.onUnload).FORCE_MU_BKP )
+				{
+					pp = host.viewPreferences.properties;
+					F.FORCE_MU_BKP =
+					[
+						host.toSpecifier(),
+						+pp.horizontalMeasurementUnits,
+						+pp.verticalMeasurementUnits
+					].join('\x01');
+				}
+				
+				host.viewPreferences.properties = 
+				{
+					horizontalMeasurementUnits: mu,
+					verticalMeasurementUnits: mu,
+				};
+			}
+			: function forceUnit_i$MeasurementUnitsEnum$_(/*(uint|MeasurementUnit)=POINTS*/mu)
+			//----------------------------------
+			// In CC/CS6/CS5, just set app.scriptPreferences.measurementUnit
+			// (it will be automatically restored from `$$.Env.onUnload`)
+			// => undef
+			{
+				mu = (mu && callee.µ.isUnit(mu)) || +MeasurementUnits.POINTS; // Default.
+				app.scriptPreferences.measurementUnit=mu;                     // Done!
+			}
+		).copy('..'),
 
 		toPoints : function toPoints_N_$MeasurementUnitsEnum$_N(/*num*/v,/*MU|undef*/mu)
 		//----------------------------------
