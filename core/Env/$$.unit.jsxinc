@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       230811 (YYMMDD)
+		Modified:       230813 (YYMMDD)
 
 *******************************************************************************/
 
@@ -63,7 +63,6 @@
 	[PUBLIC]
 
 	({
-
 		isUnit : function isUnit_x_I(/*any*/x,  t)
 		//----------------------------------
 		// [ADD180323] Whether the argument is a valid MeasurementUnits enumerator,
@@ -100,45 +99,117 @@
 		// to process all measurements in the specified unit throughout your script. The original
 		// measurement units will be restored on unload. In CS4, this method provides a fallback
 		// based on viewPreferences. If <anyMeasurementUnit> is missing, POINTS is assumed.
+		// - Use forceUnit(false) to restore the original context.
+		// - Use forceUnit(-1) to set CC/CS6/CS5 in AUTO_VALUE mode (no effect in CS4).
 		(
 			-1 == µ['~'].SCMU()
-			? function forceUnit_i$MeasurementUnitsEnum$_(/*(uint|MeasurementUnit)=POINTS*/mu,  host,F,pp)
+			? function forceUnit_ïb$MeasurementUnitsEnum$_(/*(int|false|MeasurementUnit)=POINTS*/mu,  $$,I,host,t,h,v)
 			//----------------------------------
-			// In CS4 `app.scriptPreferences` doesn't provide measurementUnit, so
-			// we backup (activeDoc|app).viewPrefs before we change it. Make sure
-			// your target (=active doc) is OK when you invoke `$$.Env.forceUnit()`.
-			// [REM] The backup info is saved in `µ.onUnload.FORCE_MU_BKP`, so the
-			// original units are restored--if possible!--when $$.Env is unloading.
+			// In CS4 `app.scriptPreferences` doesn't provide measurementUnit, so we
+			// backup (activeDoc|app).viewPrefs before we change it. Make sure your
+			// target (=active doc) is OK when you invoke `$$.Env.forceUnit()`.
+			// [REM] Original unit are automatically restored when $$.Env is unloading
+			// but you can call forceUnit(false) to get them restored when needed.
+			// [CHG230813] Special `mu` values:
+			//   false or 0  ->  restore the original units now.
+			//   -1          ->  don't change anything (transparent arg)
+			// ---
 			// => undef
 			{
-				mu = (mu && callee.µ.isUnit(mu)) || +MeasurementUnits.POINTS; // Default.
-				host = app.properties.activeDocument||app;
+				if( -1 === mu ) return;
 
-				if( !(F=callee.µ.onUnload).FORCE_MU_BKP )
+				if( false===mu || 0===mu )
 				{
-					pp = host.viewPreferences.properties;
-					F.FORCE_MU_BKP =
-					[
-						host.toSpecifier(),
-						+pp.horizontalMeasurementUnits,
-						+pp.verticalMeasurementUnits
-					].join('\x01');
+					host = h = v = 0;
+
+					if( t=callee.FORCE_MU_BKP )
+					{
+						// Restore.
+						t = t.split('\x01');
+						try{ host=resolve(t[0]); }catch(_){}
+						host.isValid && ( h=parseInt(t[1],10), v=parseInt(t[2],10) );
+					}
+					delete callee.FORCE_MU_BKP;
 				}
-				
-				host.viewPreferences.properties = 
+				else
 				{
-					horizontalMeasurementUnits: mu,
-					verticalMeasurementUnits: mu,
-				};
+					mu = callee.µ.isUnit(mu||'POINTS') || +MeasurementUnits.POINTS; // Implied unit is PT.
+
+					host = app.properties.activeDocument||app;
+					h = v = mu;
+
+					if( !callee.FORCE_MU_BKP )
+					{
+						// Backup.
+						t = host.viewPreferences.properties;
+						callee.FORCE_MU_BKP =
+						[
+							host.toSpecifier(),
+							+t.horizontalMeasurementUnits,
+							+t.verticalMeasurementUnits
+						].join('\x01');
+					}
+				}
+
+				if( host )
+				{
+					$$ = $.global[callee.µ.__root__]; // agnostic reference
+					I = callee.µ['~'];
+					(+$$.trace) && $$.trace
+					(
+						__("%1 > %2 measurementUnits to %3."
+						, callee.µ
+						, mu ? "Set" : "Reset"
+						, h==v ? I.MU2S[h] : (I.MU2S[h]+','+I.MU2S[v])
+						)
+					);
+
+					host.viewPreferences.properties = 
+					{
+						horizontalMeasurementUnits: h,
+						verticalMeasurementUnits:   v,
+					};
+				}
 			}
-			: function forceUnit_i$MeasurementUnitsEnum$_(/*(uint|MeasurementUnit)=POINTS*/mu)
+			: function forceUnit_ïb$MeasurementUnitsEnum$_(/*(int|false|MeasurementUnit)=POINTS*/mu,  $$,I,host,nv)
 			//----------------------------------
-			// In CC/CS6/CS5, just set app.scriptPreferences.measurementUnit
-			// (it will be automatically restored from `$$.Env.onUnload`)
+			// In CC/CS6/CS5, set `app.scriptPreferences.measurementUnit` to the
+			// supplied unit (AUTO_VALUE or -1 allowed here).
+			// [REM] Original prefs are automatically restored when $$.Env is unloading
+			// but you can call forceUnit(false) to get them restored when needed.
+			// No actual backup is processed here because we trust `~.SCMU()`.
+			// [CHG230813] Special `mu` values:
+			//   false or 0  ->  restore the original prefs now.
+			//   -1          ->  set the prefs to AUTO_VALUE.
+			// ---
 			// => undef
 			{
-				mu = (mu && callee.µ.isUnit(mu)) || +MeasurementUnits.POINTS; // Default.
-				app.scriptPreferences.measurementUnit=mu;                     // Done!
+				$$ = $.global[callee.µ.__root__]; // agnostic reference
+				I = callee.µ['~'];
+
+				if( false===mu || 0===mu )
+				{
+					nv = I.SCMU();
+				}
+				else
+				{
+					nv = ( -1===mu || 'AUTO_VALUE'==(mu||0).toString() )
+					? +AutoEnum.AUTO_VALUE
+					: (callee.µ.isUnit(mu||'POINTS') || +MeasurementUnits.POINTS);  // Implied unit is PT.
+				}
+
+				if( nv !== +(host=app.scriptPreferences).measurementUnit )
+				{
+					(+$$.trace) && $$.trace
+					(
+						__("%1 > %2 scriptPreferences.measurementUnit to %3."
+						, callee.µ
+						, mu ? "Set" : "Reset"
+						, I.MU2S[nv]
+						)
+					);
+					host.measurementUnit = nv;
+				}
 			}
 		).copy('..'),
 
