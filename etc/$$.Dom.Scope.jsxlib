@@ -16,11 +16,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       230403 (YYMMDD)
+		Modified:       230826 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 230403, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 230826, 'select'))
 
 
 	//==========================================================================
@@ -72,9 +72,9 @@
 		documents.)
 		
 		This module provides informational methods focusing on document identifiers,
-		pages, styles, and layers. It is useful when your script has to consistently
-		inspect or transform a set of documents selected by the user.
-		
+		pages, styles, and layers. It is useful when your script has to
+		consistently inspect or transform a set of documents selected by the user.
+
 		In more advanced projects you can include it as a base component and extend
 		its API using the following scheme:
 		
@@ -82,10 +82,14 @@
 		     || ($.global.µ=$$.MyExtendedScope=$$.Dom.Scope)
 		
 		     [PRIVATE]
+		     ({
 		     // Your additional private methods
+		     })
 		     
 		     [PUBLIC]
+		     ({
 		     // Your additional public methods
+		     })
 
 	*/
 
@@ -373,8 +377,8 @@
 			if( !(req instanceof Array) )
 			{
 				a = [];
-
 				pp = {};                                                        // chapter properties
+
 				px = 'string'==typeof req ? req : (req.__PREFIX__||'');         // str | any
 				const PFX = px===Object(px) && px;                              // false | { def:str, boolKey1:str, boolKey2:str... }
 
@@ -771,7 +775,7 @@
 			return 0; // Shouldn't happen
 		},
 		
-		list: function list_s_ASB(/*?'active'|'all'|'book'|'bookall'*/TREE_SEL,  µ,r,I,t,GH,BK,req)
+		list: function list_s_ASB(/*?'active'|'all'|'book'|'bookall'*/TREE_SEL,  µ,r,I,t,intent,GH,BK,req)
 		//----------------------------------
 		// Get the full list, or tree list, of document names.
 		// If TREE_SEL is defined, the list is returned as a 'tree list', e.g
@@ -799,18 +803,18 @@
 			I = callee.µ['~'];
 			const WRN = I.WARN_STR;
 
-			if( TREE_SEL )
+			if( 'undefined' != (t=typeof TREE_SEL) )
 			{
 				// [CHG230403] Added 'bookall' option.
 				// intent :: -2 [BOOK-OR-ALL]  |  -1 [BOOK-OR-ACTIVE]  |  0 [ACTIVE]  |  +1 [ALL-VISIBLE]
 				// ---
-				t = 'string'==typeof TREE_SEL ? TREE_SEL.toLowerCase() : (0|t);
-				switch( t )
+				intent = 'string'==t ? TREE_SEL.toLowerCase() : (0|TREE_SEL); // [FIX230805]
+				switch( intent )
 				{
-					case 'bookall': t=-2; break;
-					case 'book':    t=-1; break;
-					case 'all':     t=+1; break;
-					default:        'string'==typeof t && (t=0);
+					case 'bookall': intent = -2; break;
+					case 'book':    intent = -1; break;
+					case 'all':     intent = +1; break;
+					default:        'string'==typeof intent && (intent=0);
 				}
 				
 				GH = µ.hasGhost();
@@ -823,7 +827,7 @@
 					req = { };
 					req.__PREFIX__ =
 					{
-						def: 0 > t ? '++ ' : '-- ',
+						def: 0 > intent ? '++ ' : '-- ',
 						hasError:'-- ' + WRN,
 					};
 
@@ -833,7 +837,7 @@
 				else
 				{
 					// [CHG230403] -2 --> +1 (all-visible)  ;  -1 --> 0 (active)
-					0 > t && t=-(1+t);
+					0 > intent && (intent=-(1+intent));
 				}
 
 				if( µ.hasVisible() )
@@ -841,9 +845,9 @@
 					req = { visible:1 };
 					req.__PREFIX__ =
 					{
-						def:        0 >= t ? '-- ' : '++ ',
+						def:        0 >= intent ? '-- ' : '++ ',
 						hasNoText:  '-- ' + WRN,
-						active:     0 > t  ? '-- ' : '++ ',
+						active:     0 > intent  ? '-- ' : '++ ',
 					};
 					r[r.length] = __( PTN, GH ? __("Visible documents") : __("Open documents") );
 					r.push.apply(r, I.DOCS(req));
@@ -1096,7 +1100,7 @@
 			const PS = callee.PSTY;
 			const CS = callee.CSTY;
 
-			(SMOR = callee.SMOR).length=0;
+			(SMOR = callee.SMOR).length=0; // Will receive 'smart-ordered' keys
 			unsv = 0;
 			for( k in R )
 			{
@@ -1262,6 +1266,7 @@
 		getAutoFolder: function getAutoFolder_$Folder$$false$(  µ,ff,i,k)
 		//----------------------------------
 		// Assign and return a default folder to the selected scope.
+		// [CHG230520] Default: Folder.myDocuments
 		// => Folder [OK]  |  false [KO]
 		{
 			µ = callee.µ;
@@ -1276,7 +1281,7 @@
 			
 			if( k && (ff=File(k.slice(1))).exists ) return ff.parent;
 			
-			return (ff=File($.global[µ.__root__].Env.runningScript)).exists && ff.parent;
+			return Folder.myDocuments||false;
 		},
 		
 		selCount: function selCount_I()
