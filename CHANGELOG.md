@@ -1,3 +1,6 @@
+##### [230827]
+  - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): added a `forceSectionPrefix` parameter in the constructor options (`ini` argument). Allows to treat all page names as including their section prefix even if “Include Prefix when Numbering Pages” is disabled in InDesign's section options. The client code can use this option to manage and display page numbers (cf `pagesMap` property) as in the Pages panel. This is also a way to work around duplicate page names. (To be used with caution though, since mapping is no longer aligned with `myDoc.pages.everyItem().name`.)
+
 ##### [230813]
    - [Env](/core/$$.Env.jsxlib): Enhanced the implementation of `forceUnit` ; now supporting `false` as direct argument to get units instantly restored. Also, `$$.forceUnit(-1)` can be used in CC/CS6/CS5 (while remaining transparent in CS4): it turns your script in `AUTO_VALUE` mode, which makes sense if the code is designed to deal with ruler units rather than some preferred script unit. Rem.: The main issue with `app.scriptPreferences.measurementUnit` is that it is session-persistent and could be changed by _another script_ beyond your control. So **IdExtenso** provides a safe “unit policy” in its own scope AND restores the original context when `$$.unload()` is finally invoked.
 
