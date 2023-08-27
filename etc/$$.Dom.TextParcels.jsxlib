@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       230723 (YYMMDD)
+		Modified:       230827 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230723, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230827, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -230,7 +230,7 @@
 	*/
 
 	//==========================================================================
-	// TOOLS: PPAV SIGM REPT PGMP IDXS UP32 VRNG VREP RE_MRGE SEGS STMP NRMS SECT VRTP FSEC ISEQ IOBJ
+	// TOOLS: PPAV SIGM REPT IDXS UP32 VRNG VREP RE_MRGE SEGS STMP NRMS SECT PGMP VRTP FSEC ISEQ IOBJ
 	//==========================================================================
 
 	[PRIVATE]
@@ -272,32 +272,6 @@
 			return r;
 		},
 		
-		PGMP: function(/*Document*/doc,  PV,r,n,a,dup,i,k,x)
-		//----------------------------------
-		// (Pages-Map.) Create the pages map entity:
-		//  ofs      => pid
-		// _name     => pid | `pid_pid...`
-		// $pid      => <ofs>name
-		// DUP_COUNT => uint
-		// ---
-		// => new [{}]
-		{
-			r = (PV=doc.pages.everyItem()).id;
-			n = r.length;
-			a = PV.name; // May contain duplicates!
-			
-			const CHR = String.fromCharCode;
-			for
-			(
-				dup=0, i=-1 ; ++i < n ;
-				k='_'+a[i], x=r[i],
-				(r[k]=r.hasOwnProperty(k)?(++dup,r[k]+'_'+x):x),
-				r['$'+x]=CHR(i)+k.slice(1)
-			);
-			r.DUP_COUNT = dup;
-			return r;
-		},
-
 		IDXS: function(/*uid_uid...*/s,/*{_uid=>idx}*/q,  a,i,k)
 		//----------------------------------
 		// (Index-String.) Converts `uid_uid...` string to UTF16-index string `<idx><idx>...`
@@ -689,6 +663,9 @@
 		// idx => uniqueName
 		// _uniqueName => idx
 		// $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift`
+		// [REM230827] The `includeSectionPrefix` property of a section is not ignored
+		// at this stage, so the prefix flag is set to `+` or `-` depending on it.
+		// However, the flag can be a posteriori forced to `+` from ~.PGMP.
 		// ---
 		// => new [{}]
 		{
@@ -741,7 +718,7 @@
 				( 1 < o[k=(t=r[i]).temp] && (k+=' ['+(1+i)+']') ),
 
 				r['$'+i] = CHR(x) + CHR(z=t.length) +
-					(t.includeSectionPrefix ? '+' : '-') +
+					( t.includeSectionPrefix ? '+' : '-' ) +
 					t.sectionPrefix + '\x01' +
 					t.marker + '\x01' +
 					(ALGO[NS2S[+t.pageNumberStyle]]||'NONE') + '\x01' +  // Not found algo is labelled 'NONE'
@@ -782,6 +759,56 @@
 			// ---
 			SORT: function(/*{docOffset,...}*/a,/*{docOffset,...}*/b){ return a.docOffset-b.docOffset; },
 		}),
+
+		PGMP: function(/*Document*/doc,/*?{}&*/secs,  PV,r,n,a,dup,i,k,x,s,pfx,iSup)
+		//----------------------------------
+		// (Pages-Map.) Create the pages map entity:
+		//  ofs       => pid
+		// _name      => pid | `pid_pid...`
+		// $pid       => <ofs>name
+		// DUP_COUNT  => uint
+		// [CHG230827] If supplied, `secs` forcibly provide section prefixes to page names. The secs
+		// structure is then modified s.t. whenever the `-` flag appears it is changed into `+`.
+		// secs :: [idx => uniqueName] + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift` }&
+		// ---
+		// => new [{}]
+		{
+			r = (PV=doc.pages.everyItem()).id;
+			n = r.length;
+			a = PV.name; // May contain duplicates!
+
+			// [ADD230827] Forcibly prepend section prefix to page names?
+			// ---
+			if( secs )
+			{
+				for( x=-1 ; ++x < secs.length ; )                     // Loop in sections
+				{
+					s = secs[k='$'+x];                                // `<ofs><length>(-|+)prefix<X1>...`
+					if( 0x2B === s.charCodeAt(2) ) continue;          // Nothing to do since section prefix already included in associated page names.
+					secs[k] = s.slice(0,2) + '+' + (pfx=s.slice(3));  // Rewrite the  signature with the `+` flag.
+					pfx = pfx.slice(0, pfx.indexOf('\x01'));          // Extract the prefix.
+					if( !pfx.length ) continue;                       // Empty prefix needn't to be added!
+
+					for                                               // Update page names.
+					(
+						i=-1+s.charCodeAt(0), iSup=i+s.charCodeAt(1) ;
+						++i < iSup ;
+						(s=a[i]||0).length && (a[i]=pfx+s)
+					);
+				}
+			}
+			
+			const CHR = String.fromCharCode;
+			for
+			(
+				dup=0, i=-1 ; ++i < n ;
+				k='_'+a[i], x=r[i],
+				(r[k]=r.hasOwnProperty(k)?(++dup,r[k]+'_'+x):x),
+				r['$'+x]=CHR(i)+k.slice(1)
+			);
+			r.DUP_COUNT = dup;
+			return r;
+		},
 
 		VRTP: function(/*Document*/doc,  t,a,b,q,i,o,k)
 		//----------------------------------
@@ -884,6 +911,7 @@
 		}
 		.setup
 		({
+			// Volatile retObj.
 			DATA: { uniqueName:'', index:'', offset:0, length:0, includePrefix:false, prefix:'', marker:'', algo:'', shft:0 },
 		}),
 
@@ -1584,7 +1612,7 @@
 				{
 					fid = t[0];
 					q['_'+ids[i]] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),'#',s=a[i]);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 					continue;
 				}
 				
@@ -1614,7 +1642,7 @@
 					s = C.itemByRange(0,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
 					kid = '_'.concat(x,'_0_',z);
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),'#',s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 					continue;
 				}
 
@@ -1627,7 +1655,7 @@
 					kid = '_'.concat(x,'_',y,'_',z);
 					k ? (NX[kid]=k, k='+') : (k='#');
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 					(k=kid), (z=y-1), fid=t[j];
 				}
 				if( z > 0 )
@@ -1637,7 +1665,7 @@
 					k ? (NX[kid]=k, k='+') : (k='#');
 					fid = +t[0];
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TOO MUCH TIME
+					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 				}
 			}
 		},
@@ -1791,17 +1819,17 @@
 					tt = 0;
 
 					// CC/CS6/CS5 -> Use `parentPage`
-					if( t=(x.parentPage||0).id )                        //  t  :: <pid> | undef
+					if( t=(x.parentPage||0).id )                      //  t  :: <pid> | undef
 					{
-						//tt = t && (x.properties.itemLayer||0).id;     // [FIX211220][DEL230102] Safer in CC2022 ...but CS6 may crash!
-						try{ tt=(x.itemLayer||0).id }catch(_){}         // [FIX230102] Don't use `x.properties` anymore (CS6 bug.)
+						//tt = t && (x.properties.itemLayer||0).id;   // [FIX211220][DEL230102] Safer in CC2022 ...but CS6 may crash!
+						try{ tt=(x.itemLayer||0).id }catch(_){}       // [FIX230102] Don't use `x.properties` anymore (CS6 bug.)
 					}
 
 					t = tt && (t+'$'+tt+(x.visible?'':'\x01'));       // `<pid>$<yid><HID>?`
 
 					// [DEL211220]
-					// t && ( t += '$'+x.itemLayer.id);                  //  t  :: `<pid>$<yid>` | undef
-					// t && (!x.visible) && t += '\x01';                 //  hidden flag?
+					// t && ( t += '$'+x.itemLayer.id);               //  t  :: `<pid>$<yid>` | undef
+					// t && (!x.visible) && t += '\x01';              //  hidden flag?
 				}
 				else
 				{
@@ -2311,7 +2339,7 @@
 	[PROTO]
 	
 	({
-		create: function create_$Document$_o_(/*Document*/doc,/*?{}*/ini,  $$,I,ds,S,SV,F,FV,dz)
+		create: function create_$Document$_o_(/*Document*/doc,/*?{}*/ini,  $$,I,ds,fsp)
 		// ---------------------------------
 		// Constructor. Instantiate a TextParcels collection from a Document and create
 		// the initial clusters calling `this.updateContainers()`.
@@ -2323,6 +2351,18 @@
 		//        .hidden    (0|1)      0:ignore hidden texts   ; 1:accept
 		//        .wantVars  (0|1)      Whether text variable instances have to be scanned.
 		//        .scanLanguages (0|1)  Whether document languages have to be scanned into this.languages.
+		//        ---
+		//        .forceSectionPrefix (0|1) [ADD230827] Whether page names (cf `.pagesMap`) must *always*
+		//                              include the parent section prefix, even if "Include Prefix when
+		//                              Numbering Pages" is disabled in InDesign. WARNING: use this option
+		//                              with caution, it both impacts `pagesMap` and `sections`:
+		//                              1. In `pagesMap`, the `_name` key and the `$id=><ofs>name` mapping
+		//                                 both include the section prefix in `name` (no matter if the page
+		//                                 name actually has it included.)
+		//                              2. In `sections`, the `$idx=><signature>` mapping forcibly sets a
+		//                                 `+` marker before the `prefix` part, even if the prefix is empty.
+		//                              Unlike other options, `forceSectionPrefix` can only be set at
+		//                              construction time.
 		// Data structure:
 		//       {
 		//       docSpec:   str,
@@ -2351,6 +2391,7 @@
 		//       sections:  [ idx => uniqueName ] + { _uniqueName => idx }
 		//                  + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>numAlgo<X1>shift` }
 		//                  (where `numAlgo` is made of 4 capital letters and `shift` a int numeral.)
+		//                  [REM230827] See also the `forceSectionPrefix` option.
 		//       ---
 		//       runs:      { _pidOK => `_kidOK1|•kidOK2|...|•kidOKn` }  ; where • denotes [_+]
 		//       streams:   new MultiStream()
@@ -2396,13 +2437,18 @@
 				// ---
 				wantVars:         0,  // default, refined by ini if supplied
 				scanLanguages:    0,  // default, refined by ini if supplied
+				forceSectionPrefix: 0, // default, refined by ini if supplied ; assumed read-only [ADD230827]
 				// ---
 				pgIds:            '',  // '' | `pid_pid_ ... _pid`
 				lyIds:            '',  // '' | `yid_yid_ ... _yid`
 				psIds:            '',  // '' | `psid_psid_ ... _psid`
 				csIds:            '',  // '' | `csid_csid_ ... _csid`
 			};
-			ini===Object(ini) && this.setBasicOptions(ini);
+			if( ini===Object(ini) )
+			{
+				this.setBasicOptions(ini);
+				ini.forceSectionPrefix && (this.options.forceSectionPrefix=1); // [ADD230827]
+			}
 			(+$$.trace) && $$.trace(__("%1[%2] > Current options: %3", callee.µ, this.name, $$.JSON(this.options)));
 
 			this.clusters = {};
@@ -2428,9 +2474,9 @@
 			this.varTexts = [];
 			this.vars = {};
 			
-			// [ADD210815]
-			this.pagesMap = I.PGMP(doc);
+			// [CHG230827] Optionally include section prefix, depending on `forceSectionPrefix`.
 			this.sections = I.SECT(doc);
+			this.pagesMap = I.PGMP(doc, this.options.forceSectionPrefix && this.sections); // [CHG230827]
 			this.runs = {};
 			this.streams = new callee.µ.MultiStream;
 			
@@ -2965,13 +3011,16 @@
 		//----------------------------------
 		// Whether a page belongs to a section. `secIdentifier` can be either
 		// a section prefix, marker, unique name or an explicit uint index.
-		// If secIdentifier is missing, return the section key (unique
-		// custom name) that matches that page.
+		// - If secIdentifier is missing, return the section key (unique
+		//   custom name) that matches that page.
+		// - If secIdentifier is supplied (string or uint), return the section
+		//   key iff secIdentifier is matched.
 		// => str [OK]  |  false [KO]
 		{
 			p = 'string' == typeof pageId ? parseInt(pageId,10) : (pageId>>>0);
 			
 			// Validate the page.
+			// x :: <ofs> of the page.
 			// ---
 			(q=this.pagesMap).hasOwnProperty(k='$'+p)
 			? (x=q[k].charCodeAt(0))
