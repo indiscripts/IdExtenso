@@ -9,7 +9,7 @@
 		Core:           NO
 		Kind:           Class.
 		API:            =create() setStreamContextLength()
-		     [PROTO]    clear() setBasicOptions()
+		     [PROTO]    clear() changeSectionPrefixBehavior() setBasicOptions()
 		                updateContainers() updateCells()
 		                updateFootnotes() endnoteFrameIds()
 		                updateLocations() updateAuto() ready() pageCount()
@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       230827 (YYMMDD)
+		Modified:       230830 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230827, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230830, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -663,9 +663,9 @@
 		// idx => uniqueName
 		// _uniqueName => idx
 		// $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift`
-		// [REM230827] The `includeSectionPrefix` property of a section is not ignored
+		// [REM230829] The `includeSectionPrefix` property of a section is not ignored
 		// at this stage, so the prefix flag is set to `+` or `-` depending on it.
-		// However, the flag can be a posteriori forced to `+` from ~.PGMP.
+		// However, the flag can be a posteriori forced to `+` or `-` from ~.PGMP.
 		// ---
 		// => new [{}]
 		{
@@ -760,7 +760,7 @@
 			SORT: function(/*{docOffset,...}*/a,/*{docOffset,...}*/b){ return a.docOffset-b.docOffset; },
 		}),
 
-		PGMP: function(/*Document*/doc,/*?{}&*/secs,  PV,r,n,a,dup,i,k,x,s,pfx,iSup)
+		PGMP: function(/*Document*/doc,/*?{}&*/secs,/*bool=0*/REMOVE_SEC_PREFIX,  PV,r,n,a,dup,i,k,x,s,pfx,iSup,secFlag,cc)
 		//----------------------------------
 		// (Pages-Map.) Create the pages map entity:
 		//  ofs       => pid
@@ -770,6 +770,9 @@
 		// [CHG230827] If supplied, `secs` forcibly provide section prefixes to page names. The secs
 		// structure is then modified s.t. whenever the `-` flag appears it is changed into `+`.
 		// secs :: [idx => uniqueName] + { $idx => `<ofs><length>(-|+)prefix<X1>marker<X1>algo<X1>shift` }&
+		// [ADD230829] If `REMOVE_SEC_PREFIX` is truthy (and secs is provided), section prefixes are
+		// forcibly removed from page names and the secs structure is then modified s.t. whenever the
+		// `+` flag appears it is changed into `-`.
 		// ---
 		// => new [{}]
 		{
@@ -777,19 +780,29 @@
 			n = r.length;
 			a = PV.name; // May contain duplicates!
 
-			// [ADD230827] Forcibly prepend section prefix to page names?
+			// [ADD230827] Forcibly prepend (resp. remove) section prefix to (resp. from) page names?
 			// ---
 			if( secs )
 			{
+				secFlag = REMOVE_SEC_PREFIX ? '-' : '+';
+				cc = secFlag.charCodeAt(0);
+				
 				for( x=-1 ; ++x < secs.length ; )                     // Loop in sections
 				{
 					s = secs[k='$'+x];                                // `<ofs><length>(-|+)prefix<X1>...`
-					if( 0x2B === s.charCodeAt(2) ) continue;          // Nothing to do since section prefix already included in associated page names.
-					secs[k] = s.slice(0,2) + '+' + (pfx=s.slice(3));  // Rewrite the  signature with the `+` flag.
-					pfx = pfx.slice(0, pfx.indexOf('\x01'));          // Extract the prefix.
-					if( !pfx.length ) continue;                       // Empty prefix needn't to be added!
+					if( cc === s.charCodeAt(2) ) continue;            // Nothing to do since the section prefix flag already reflects the desired state.
+					secs[k] = s.slice(0,2) + secFlag + (pfx=s.slice(3));  // Rewrite the  signature with the desired flag (+|-).
 
-					for                                               // Update page names.
+					pfx = pfx.slice(0, pfx.indexOf('\x01'));          // Extract the prefix.
+					if( !pfx.length ) continue;                       // Empty prefix needs neither to be added or removed!
+
+					if( REMOVE_SEC_PREFIX ) for                       // Remove pfx from page names.
+					(
+						i=-1+s.charCodeAt(0), iSup=i+s.charCodeAt(1) ;
+						++i < iSup ;
+						0===(s=a[i]||'').indexOf(pfx) && (a[i]=s.slice(pfx.length))
+					);
+					else for                                          // Prepend pfx to page names.
 					(
 						i=-1+s.charCodeAt(0), iSup=i+s.charCodeAt(1) ;
 						++i < iSup ;
@@ -2158,7 +2171,9 @@
 			// ---
 			const QN = q.__count__;
 			const MROU = Math.round;
+
 			const PM = K.pagesMap;                                    // PM :: [ ofs => id ] + { _name => id | `id_id...` } + { $id => <ofs>name } + DUP_COUNT
+			                                                          // (Only used here to skip mater pages.)
 			qi = qp = 0;
 			for( kid in q )
 			{
@@ -2352,17 +2367,23 @@
 		//        .wantVars  (0|1)      Whether text variable instances have to be scanned.
 		//        .scanLanguages (0|1)  Whether document languages have to be scanned into this.languages.
 		//        ---
-		//        .forceSectionPrefix (0|1) [ADD230827] Whether page names (cf `.pagesMap`) must *always*
-		//                              include the parent section prefix, even if "Include Prefix when
-		//                              Numbering Pages" is disabled in InDesign. WARNING: use this option
-		//                              with caution, it both impacts `pagesMap` and `sections`:
+		//        .forceSectionPrefix (0|1|-1) [CHG230829] Whether page names (cf `.pagesMap`) must *always*
+		//                              include or ignore the parent section prefix, whatever the ID option
+		//                              "Include Prefix when Numbering Pages".
+		//                              0  -> Keep default behavior (actual page names)
+		//                              +1 -> Prepend prefix in all cases
+		//                              -1 -> Remove prefix in all cases
+		//                              WARNING: use this option with caution, it both impacts `pagesMap`
+		//                              and `sections`:
 		//                              1. In `pagesMap`, the `_name` key and the `$id=><ofs>name` mapping
-		//                                 both include the section prefix in `name` (no matter if the page
-		//                                 name actually has it included.)
+		//                                 will reflect your choice (no matter if the page name actually
+		//                                 has the section prefix included.)
 		//                              2. In `sections`, the `$idx=><signature>` mapping forcibly sets a
-		//                                 `+` marker before the `prefix` part, even if the prefix is empty.
-		//                              Unlike other options, `forceSectionPrefix` can only be set at
-		//                              construction time.
+		//                                 `+` or `-` marker before the `prefix` part, even if the prefix
+		//                                 is empty.
+		//                              Unlike other options, `forceSectionPrefix` cannot be changed using
+		//                              `setBasicOptions()`; a special command `changeSectionPrefixBehavior`
+		//                              is now available [ADD230829] for this particular purpose.
 		// Data structure:
 		//       {
 		//       docSpec:   str,
@@ -2447,7 +2468,11 @@
 			if( ini===Object(ini) )
 			{
 				this.setBasicOptions(ini);
-				ini.forceSectionPrefix && (this.options.forceSectionPrefix=1); // [ADD230827]
+				if( fsp=ini.forceSectionPrefix )
+				{
+					fsp|=0;
+					this.options.forceSectionPrefix = 0 > fsp ? -1 : 1; // [CHG230829]
+				}
 			}
 			(+$$.trace) && $$.trace(__("%1[%2] > Current options: %3", callee.µ, this.name, $$.JSON(this.options)));
 
@@ -2474,9 +2499,9 @@
 			this.varTexts = [];
 			this.vars = {};
 			
-			// [CHG230827] Optionally include section prefix, depending on `forceSectionPrefix`.
+			// [CHG230829] Optionally include/remove section prefix, depending on `forceSectionPrefix`.
 			this.sections = I.SECT(doc);
-			this.pagesMap = I.PGMP(doc, this.options.forceSectionPrefix && this.sections); // [CHG230827]
+			this.pagesMap = I.PGMP(doc, (fsp=this.options.forceSectionPrefix) && this.sections, 0 > fsp); // [CHG230829]
 			this.runs = {};
 			this.streams = new callee.µ.MultiStream;
 			
@@ -2485,9 +2510,46 @@
 			this.updateContainers(doc);
 		},
 		
+		changeSectionPrefixBehavior: function changeSectionPrefixBehavior_t_d_B(/*?-1|0|1=auto-switch*/FORCE_SECTION_PREFIX,/*?Document*/doc,  ov,nv,I,$$)
+		//----------------------------------
+		// [ADD230829] Allows to change a posteriori the internal `forceSectionPrefix` option and
+		// recompute `sections` and `pagesMap` accordingly. If `FORCE_SECTION_PREFIX` is missing,
+		// the option will toggle between forced vs. unforced value. Returns true if toggling has
+		// actually been required and done.
+		// ---
+		// => true [SWITCHED]  |  false [NOOP]
+		{
+			ov = this.options.forceSectionPrefix;           // -1|0|+1
+
+			'undefined' == typeof FORCE_SECTION_PREFIX
+			? ( nv = ov ? 0 : 1 )                           // +1 assumed when going from automatic
+			: ( nv = 0|FORCE_SECTION_PREFIX );              // int
+			1 < nv ? (nv=1) : ( -1 > nv && (nv=-1) );       // Normalize: -1|0|+1
+			
+			if( nv===ov ) return false;                     // Nothing to change.
+
+			// Change the option and rebuild related maps.
+			// ---
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			I = callee.µ['~'];
+
+			(+$$.trace) && $$.trace(__("%1[%2] > Changing prefix behavior to: %3", callee.µ, this.name, ['REMOVE','AUTO','FORCED'][1+nv]));
+
+			this.options.forceSectionPrefix = nv;
+			$$.kill(this.sections);
+			$$.kill(this.pagesMap);
+
+			doc || (doc=resolve(this.docSpec));
+			this.sections = I.SECT(doc);
+			this.pagesMap = I.PGMP(doc, nv && this.sections, 0 > nv);
+
+			return true;
+		},
+
 		clear: function clear_(  $$,o,k)
 		//----------------------------------
 		// Destructor. Clear all data of this TextParcels instance.
+		// => undef
 		{
 			$$ = $.global[callee.µ.__root__];
 
