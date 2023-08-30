@@ -1,3 +1,8 @@
+##### [230830]
+  - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): Enhanced `forceSectionPrefix` in two ways:   
+  1. the option now supports three values `0` (auto, default), `+1` (forcibly add the section prefix), `-1` (forcibly remove it).   
+  2. the new method `changeSectionPrefixBehavior(<newFlag>)` allows you to change it _after_ construction.
+
 ##### [230827]
   - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): added a `forceSectionPrefix` parameter in the constructor options (`ini` argument). Allows to treat all page names as including their section prefix even if “Include Prefix when Numbering Pages” is disabled in InDesign's section options. The client code can use this option to manage and display page numbers (cf `pagesMap` property) as in the Pages panel. This is also a way to work around duplicate page names. (To be used with caution though, since mapping is no longer aligned with `myDoc.pages.everyItem().name`.)
 
