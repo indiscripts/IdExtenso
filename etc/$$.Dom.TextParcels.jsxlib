@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       230830 (YYMMDD)
+		Modified:       230903 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230830, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230903, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -2862,7 +2862,7 @@
 		// => `+?<enid>_<enid>_...` [OK]  |  false [KO]
 		{
 			if( 0x45 != this.clusters[kid].charCodeAt(0) ) return false;
-			
+
 			q = this._kidToEndnoteIds_;
 			if( q.hasOwnProperty(kid) ) return q[kid];
 			
@@ -2875,7 +2875,7 @@
 
 			a = ev.sourceEndnote.toSource()                                                // E.g `[resolve("<DS>//endnote[@id=291]"), resolve("<DS>//endnote[@id=343]")]`
 				.match(I.REGS.digsBeforeEnds)||[];                                         // a :: `<enid>`[]
-			
+
 			if( a.length )
 			{
 				t = ev.endnoteRangeStartIndex;                                             // t :: uint[]
