@@ -12,12 +12,12 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        211112 (YYMMDD)
-		Modified:       230723 (YYMMDD)
+		Modified:       230903 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Dom.TextParcels ){ alert(__("%1 requires the %2 module.",'MultiStream','Dom.TextParcels')); exit(); }
-;$$.Dom.TextParcels.hasOwnProperty('MultiStream') || eval(__(CLASS, $$.Dom.TextParcels.toSource(), 'MultiStream', 230723, 'create'))
+;$$.Dom.TextParcels.hasOwnProperty('MultiStream') || eval(__(CLASS, $$.Dom.TextParcels.toSource(), 'MultiStream', 230903, 'create'))
 
 	//==========================================================================
 	// NOTICE
@@ -127,7 +127,7 @@
 			for( k in mp ) mp.hasOwnProperty(k) && delete mp[k];
 		},
 
-		append: function append_S_S_K_S$0$_s_I(/*str*/input,/*`_pid`*/pid,/*`_kid`*/iniKid,/*0|`_kid`*/nxtKid,/*false|`+?id_id_etc`*/enids,  z,f,a,cont,b,p,i)
+		append: function append_S_S_K_S$0$_s_I(/*str*/input,/*`_pid`*/pid,/*`_kid`*/iniKid,/*0|`_kid`*/nxtKid,/*false|`+?id_id_etc`*/enids,  z,f,a,b,cont,p,i,t,tag,ENID)
 		//----------------------------------
 		// Register in the MultiStream a new page/data pair (pid/input) associated
 		// to the key `iniKid`. If `nxtKid` is nonzero, it is interpreted as the
@@ -141,34 +141,60 @@
 		// => uint  ; new size
 		{
 			z = this.size;
-			
-			if( 'string' == typeof enids )                  // Should be decently unfrequent.
+			ENID = 0;
+
+			while( 'string' == typeof enids )                                   // Should be decently unfrequent.
 			{
-				// Each new endnote IS ASSUMED TO START at `\uFEFF\x04`
-				// E.g. "Endnotes\r\uFEFF\x04\tFirst endnote\uFEFF\r\uFEFF\x04\tSecond endnote\uFEFF\r\uFEFF\x04\tEtc.\uFEFF"
+				// [CHG230903] Each new endnote SHOULD start at `\uFEFF\x04`, e.g
+				//  "Endnotes\r\uFEFF\x04\tFirst endnote\uFEFF\r\uFEFF\x04\tSecond endnote\uFEFF\r\uFEFF\x04\tEtc.\uFEFF"
+				// BUT imported endnotes may introduce unexpected characters between
+				// U+FEFF and U+0004 (or even remove the \x04 reference!)
+				// The below `tag` pattern should capture more weird cases
+				// ---
+				tag = callee.RE_TAG||(callee.RE_TAG=/\uFEFF[^\u0004\uFEFF]{0,2}\u0004/g);
+				
 				// Note: the last character might be \uFEFF, but it cannot be \x04,
 				// so the last split encountered in `a` (below) cannot be empty.
 				// ---
-				input = input.split('\uFEFF\x04').join('\uFFFF\uFEFF\x04');     // Append <FFFF> temporary marker
+				input = input.split(tag).join('\uFFFF\uFEFF\x04');              // Append <FFFF> temporary marker
 				(f=callee.µ.CleanCallback) && (input=f(input));                 // Cleanup ;  WARNING: <FFFF> MUST SURVIVE
-				
-				a = input.split('\uFFFF');                                      // [ 'xxx'|'' , 'yyy', 'zzz', ... ]  ; the last string cannot be empty, the first can.
+
+				a = input.split('\uFFFF');                                      // [ 'xxx'|'' , 'yyy', 'zzz', ... ]  ; the last string cannot be empty if a.length > 1, the first can.
 				cont = 0x2B == enids.charCodeAt(0);                             // Continued endnote for 1st ID?
 				b = (cont ? enids.slice(1) : enids).split('_');                 // [ <ID>, <ID>, ... ]
-				
+
 				cont && a.unshift('');                                          // Make cont and NOT-cont identical cases.
 
-				for
-				(
-					p=0, i=-1 ; ++i < b.length ;                                // [REM] b.length < a.length, so the
-					( p += a[i].length ),                                       //       last a.length is not used in fact.
-					( b[i] = p + '_' + b[i] )                                   // `b[i]` always exist now :)
-				);
+				// [FIX230903] Hard fix in case endnote ranges are broken.
+				// This typically happens if there are not enough splits to
+				// match endnote IDs. We should have a.length == 1 + b.length.
+				// ---
+				if( a.length <= b.length )
+				{
+					+(t=$.global[callee.µ.__root__].warn) && t(__("%1.append(kid=%2) > Failed to parse endnote ranges, not enough input elements w.r.t. endnote IDs (%3 <= %4)"
+						,callee.µ
+						,iniKid.slice(1)
+						,a.length
+						,b.length));
+					break;
+				}
 
+				for                                                             // [REM] Since b.length < a.length, the *last* a.length is in fact not used.
+				(
+					p=0, i=-1 ; ++i < b.length ;
+					( p += a[i].length ),
+					( b[i] = p + '_' + b[i] )
+				);
 				this.enids[z] = b.join('|');                                    // Most enids now have the form `0_id0|pos1_id1|pos2_id2...`
 				this.data[z] = a.join('');
+
+				ENID = 1;
+				break;
 			}
-			else
+
+			// Default routine. (Also used when endnote ranges aren't successfully parsed.)
+			// ---
+			if( !ENID )
 			{
 				this.enids[z] = false;
 				this.data[z] = (f=callee.µ.CleanCallback) ? f(input) : input;
