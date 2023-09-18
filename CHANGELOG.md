@@ -1,3 +1,6 @@
+##### [230918]
+  - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): Fixed an issue with continued footnotes when containing spanned tables or similar empty-line structures.
+
 ##### [230903]
   - Improved the [MultiStream](/etc/$$.Dom.TextParcels/$$.MultiStream.jsxlib) class (used by `Dom.TextParcels`): `append` can now digest most _not-well formed_ `EndnoteRanges`, based on a more general detection pattern: `/\uFEFF[^\u0004\uFEFF]{0,2}\u0004/`. This reduces the cases where `Dom.TextParcels` fails to parse document endnotes (in particular, imported notes that tend to alter the regular `U+FEFF` `U+0004` sequence.) Note that the character `U+0004` (endnote reference marker) is still required at the end of the pattern. If the user manually removes note numbers, the algorithm cannot work as expected. In such a case, `append` now provides a safer fallback mechanism that simply ignores endnote IDs: input data is then treated as the text stream of a basic `TextFrame`.
 
