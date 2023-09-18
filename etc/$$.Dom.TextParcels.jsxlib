@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       230903 (YYMMDD)
+		Modified:       230918 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230903, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230918, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1563,6 +1563,8 @@
 		// Any cluster is then registered as:
 		//     _x | _x_a_b  =>  `f<LL>(#|+)<C>`
 		// where x refers to the footnote ID and a..b optionally determines the character range.
+		// [FIX230918] Spanned tables in continued footnotes were causing a fatal error due to
+		// empty lines. Fixed.
 		// ---
 		// this :: ~
 		// => undef
@@ -1630,7 +1632,7 @@
 				}
 				
 				x = ids[i];
-				fn = PFX.concat('footnote[@id=',x,']');               // Go to that FN for further parsing.
+				fn = PFX.concat('footnote[@id=',x,']');               // Go to that FN for deep parsing.
 				fn = resolve(fn);
 				
 				// `fn` is partially visible and/or threaded.
@@ -1646,39 +1648,42 @@
 
 				if( !(j=t.length) ) continue;                         // No match -> nothing visible.
 
-				z = L[--j].characters[-1].index;                      // Last char (index) of the last visible line.
-				fid = t[j]; // str
+				--j;                                                  // Index of the last visible line
+				z = (z=L[j].insertionPoints[-1]).isValid ? (z.index-1) : 0; // [FIX230918] Will still work with empty line.
+				if( z <= 0 ) continue;                                // Safer.
+
+				fid = t[j];                                           // Frame ID (as a str)
 				C = fn.characters;
 
 				if( t[0]==fid )                                       // Single parent frame.
 				{
-					s = C.itemByRange(0,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
+					if( !(s=C.itemByRange(0,z)).isValid ) continue;   // [CHG230918] Safer.
+					s = s.contents.toString();                        // Required since C.itemByRange().contents returns a singleton array
 					kid = '_'.concat(x,'_0_',z);
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),'#',s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 					continue;
 				}
 
 				for( k='' ; j-- ; )                                   // Multiple frames (line-by-line.)
 				{
 					if( fid==t[j] ) continue;
-					y = L[1+j].characters[0].index;
-					s = C.itemByRange(y,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
-					
+					//y = L[1+j].characters[0].index;
+					y = L[1+j].insertionPoints[0].index;
+					if( (y > z) || !(s=C.itemByRange(y,z)).isValid ) continue; // [FIX230918] deal with empty lines.
+					s = s.contents.toString();                        // Required since C.itemByRange().contents returns a singleton array
+
 					kid = '_'.concat(x,'_',y,'_',z);
 					k ? (NX[kid]=k, k='+') : (k='#');
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 					(k=kid), (z=y-1), fid=t[j];
 				}
-				if( z > 0 )
+				if( z > 0 && (s=C.itemByRange(0,z)).isValid )
 				{
-					s = C.itemByRange(0,z).contents.toString();       // Required since C.itemByRange().contents returns a singleton array
+					s = s.contents.toString();                        // Required since C.itemByRange().contents returns a singleton array
 					kid = '_'.concat(x,'_0_',z);
 					k ? (NX[kid]=k, k='+') : (k='#');
 					fid = +t[0];
 					q[kid] = 'f'.concat(CHR( 0xFFFF&(fid>>>16), 0xFFFF&fid ),k,s);
-					// [DEL220413] REMOVED EXTRA-BMP TEST -- TAKES TOO MUCH TIME
 				}
 			}
 		},
