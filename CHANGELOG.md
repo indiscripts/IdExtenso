@@ -1,3 +1,12 @@
+## 2.31008
+Important update (Oct 8, 2023.) Global re-generation of the core structure, including recent fixes and additions.
+   - [Env](/core/$$.Env.jsxlib): Added the `forceUnit()` method (also callable from `$$`), allows a script to work safely in whatever `MeasurementUnits` mode. Supports `false` as direct arg to get units instantly restored. `$$.forceUnit(-1)` can be used in CC/CS6/CS5 (while remaining transparent in CS4): turns your script in `AUTO_VALUE` mode, which makes sense if the code is designed to deal with ruler units rather than some preferred script unit.
+   - [Root/help](/core/Root/$$.help.jsxinc). Ability to _preselect_ a module while showing IdExtenso's API: just call `$$.help(<someModule>)` (first argument added), e.g. `$$.help($$.JSON)`. By default `$$.help()` still preselects the `$$` item (first of the list).
+   - [JSON](/core/$$.JSON.jsxlib). Fixed reported issue with augmented `Array.prototype`.
+   - [Ext/string](/core/Ext/$$.string.jsxinc). Bugfix, makes `String.prototype.indexOf(...)` still reliable when the string contains `"\u0000"`.
+
+_(Other changes do not affect the core branch. See previous log entries regarding updated extra modules.)_
+
 ##### [230918]
   - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): Fixed an issue with continued footnotes when containing spanned tables or similar empty-line structures.
 
