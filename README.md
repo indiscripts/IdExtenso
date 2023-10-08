@@ -1,6 +1,6 @@
-# *IdExtenso*  2.30518  (core: 205KB)
+# *IdExtenso*  2.31008  (core: 207KB)
 
-###### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
+#### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
 ![IdExtenso's API](screenshot.png)
 
@@ -52,9 +52,9 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 
 - Still works fine in your `JSXBIN` exports!
 
-- Growing number of extra modules that you can plug at wish (via `#include`.) Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, **[PageRange](/etc/$$.PageRange.jsxlib)**, etc.
+- Growing number of extra modules that you can plug at wish (via `#include`.) Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, **[PageRange](/etc/$$.PageRange.jsxlib)**, **[TextParcels](/etc/$$.Dom.TextParcels.jsxlib)**, etc.
 
-- Growing collection of powerful, fine-tuned and flexible ScriptUI components ([CheckGroup](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc), [CheckList](/etc/ScriptUI/factories/$$.CheckList.jsxinc), [Popup](/etc/ScriptUI/factories/$$.Popup.jsxinc), [SideMenu](/etc/ScriptUI/factories/$$.SideMenu.jsxinc), [DrawnCheck](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc)...) easy to integrate in your own UI.
+- Growing collection of powerful, fine-tuned and flexible ScriptUI components ([CheckGroup](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc), [CheckList](/etc/ScriptUI/factories/$$.CheckList.jsxinc), [Edit](/etc/ScriptUI/factories/$$.Edit.jsxinc), [Popup](/etc/ScriptUI/factories/$$.Popup.jsxinc), [SideMenu](/etc/ScriptUI/factories/$$.SideMenu.jsxinc), [DrawnCheck](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc)...) easy to integrate in your own UI.
 
 > *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice script based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module. And the most recent example of ***IdExtenso***-based product is the huge [IndexMatic³](https://indiscripts.com/category/projects/IndexMatic) program, which would not have existed without the present framework.
 
@@ -121,4 +121,4 @@ This basic snippet illustrates how to use some core features, namely **Log**, **
 
 > _Note._ — The global identifier `$$` refers to ***IdExtenso***'s root object. You can reach all public functions and members —including those available in the installed modules— from that identifier. For example, use `$$.File.writeUTF8()` to invoke the `writeUTF8` method of the **File** module.
 
-Other [ready-to-use scripts](tests) are available in the `/tests` directory.
+→ Other [ready-to-use scripts](tests) are available in the `/tests` directory.
