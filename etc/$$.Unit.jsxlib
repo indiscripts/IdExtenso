@@ -15,11 +15,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180402 (YYMMDD)
-		Modified:       180514 (YYMMDD)
+		Modified:       231017 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 180514, 'format'))
+;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 231017, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -232,9 +232,9 @@
 	ZApt  0x5A417074  ap   KO  7   AMERICAN_POINTS  .35146 mm  ; CJK only
 	-------------------------------------------------------------------------
 	zind  0x7A696E64  in   KO  8   INCHES_DECIMAL   -> in (affects ruler display)
-	zJU   0x7A4A5520   ?   KO  8   U                .792 pt    ; CJK only
-	zBai  0x7A426169   ?   KO  8   BAI              6.336 pt   ; CJK only
-	zMil  0x7A4D696C   ?   KO  8   MILS             in / 1000  ; see note below
+	zJU   0x7A4A5520   u   KO  8   U                .792 pt    ; CJK only
+	zBai  0x7A426169 bai   KO  8   BAI              6.336 pt   ; CJK only
+	zMil  0x7A4D696C mil   KO  8   MILS             in / 1000  ; see note below
 	-------------------------------------------------------------------------
 	zpix  0x7A706978  px   OK  7   PIXELS           baseless / 1pt
 	Cstm  0x4373746D  pt   KO  8   CUSTOM           -> pt (affects ruler display)
@@ -506,7 +506,7 @@
 		{
 			o = callee.µ.UnitData.getInstances();
 			b = !FILTER;
-			
+
 			if( SORTED )
 			{
 				(r = callee.Q||(callee.Q=[])).length = 0;
@@ -600,7 +600,6 @@
 		{
 			µ = callee.µ;
 			$$ = $.global[µ.__root__]; // agnostic reference
-			
 
 			// Inspect `x`.
 			// [REM] (!x) is required due to the NULL-UnitValue bug.
@@ -767,7 +766,7 @@
 				d = Number.format(12*(v-n),digits,µ.DecimalChar,'');
 				'12'==d.substr(0,2) && ( ++n , (d='0'+d.substr(2)) );
 				r && !n && !parseInt(d.replace(RegExp.NONDs,''),10) && (r='');
-				r += String(n||'') + t.charAt(0) + d;
+				r += String(n||'0') + t.charAt(0) + d; // [FIX231017] 'p3' -> '0p3'
 			}
 			else
 			{
