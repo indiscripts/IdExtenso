@@ -1,3 +1,6 @@
+##### [231017]
+  - [Unit](/etc/$$.Unit.jsxlib): Fixed wrong formatting of zero in `$$.Unit.format()` when 'pc' or 'ci' unit is involved with `UseTypographicNotation` turned on. E.g. `0.5 pc` → `0p6`.
+
 ## 2.31008
 Important update (Oct 8, 2023.) Global re-generation of the core structure, including recent fixes and additions.
    - [Env](/core/$$.Env.jsxlib): Added the `forceUnit()` method (also callable from `$$`), allows a script to work safely in whatever `MeasurementUnits` mode. Supports `false` as direct arg to get units instantly restored. `$$.forceUnit(-1)` can be used in CC/CS6/CS5 (while remaining transparent in CS4): turns your script in `AUTO_VALUE` mode, which makes sense if the code is designed to deal with ruler units rather than some preferred script unit.
