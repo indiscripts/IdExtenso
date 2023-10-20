@@ -1,3 +1,6 @@
+##### [231020]
+  - [Unit](/etc/$$.Unit.jsxlib): The static `$$.Unit.DecimalChar` property is now predefined as `Number.DecimalChar`, which sounds more consistent (you don't have to manually adjust it unless your code forcibly uses a custom locale). Of course it is still possible to explicitly re-assign `$$.Unit.DecimalChar` when your script starts up (or whenever needed.)
+
 ##### [231017]
   - [Unit](/etc/$$.Unit.jsxlib): Fixed wrong formatting of zero in `$$.Unit.format()` when 'pc' or 'ci' unit is involved with `UseTypographicNotation` turned on. E.g. `0.5 pc` → `0p6`.
 
