@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        150509 (YYMMDD)
-		Modified:       220910 (YYMMDD)
+		Modified:       231020 (YYMMDD)
 
 *******************************************************************************/
 
@@ -78,7 +78,7 @@
 	Embed # Incorporer # Einbetten # Incrustar # Incorpora # Встроить
 	Enable # Activer # Aktivieren # Activar # Attiva # Включить
 	Export # Exporter # Exportieren # Exportar # Esporta # Экспорт
-	Find # Rechercher # Suchen # Buscar # Trova # Найти
+	Find # Trouver # Suchen # Buscar # Trova # Найти
 	Fix # Corriger # Lösung # Reparar # Correggi # Исправление
 	Generate # Générer # Generieren # Generar # Genera # Генерировать
 	Get Started # Commencer # Jetzt beginnen # Introducción # Introduzione # Начать
@@ -289,6 +289,13 @@
 	# Introduzca un número entero entre %1 y %2.
 	# Inserisci un numero intero compreso tra %1 e %2.
 	# Введите целое число от %1 до %2.
+	
+	Enter a number between %1 and %2.
+	# Saisissez un nombre entre %1 et %2.
+	# Gib eine Zahl zwischen %1 und %2 ein.
+	# Introduzca un número entre %1 y %2.
+	# Inserisci un numero compreso tra %1 e %2.
+	# Введите число от %1 до %2.
 
 	The value must be an integer between %1 and %2.
 	# La valeur doit être un entier compris entre %1 et %2.
@@ -366,6 +373,7 @@
 	Warnings # Avertissements # Warnungen # Avisos # Avvisi # Предупреждения
 	Invalid name # Nom incorrect # Ungültiger Name # Nombre no válido # Nome non valido # Недопустимое имя
 	Invalid entry # Entrée incorrecte # Ungültige Eingabe # Entrada no válida # Valore specificato non valido # Некорректный вход
+	Invalid numeric value # Valeur numérique incorrecte # Ungültiger numerischer Wert # Valor numérico no válido # Valore numerico non valido # Некорректное числовое значение
 
 	</YALT>*/
 """
