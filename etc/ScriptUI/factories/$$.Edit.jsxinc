@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190226 (YYMMDD)
-		Modified:       230803 (YYMMDD)
+		Modified:       231020 (YYMMDD)
 
 *******************************************************************************/
 
@@ -641,7 +641,7 @@
 						if( 'undefined' == typeof nv ) return ov;     // Initially invalid -> keep ov.
 						
 						t = this.valueToText(nv);                     // Normalized text associated to nv.
-						if( t === this.text ) break;                  // All is fine regarding this.text.
+						if( t === this.text ) return this.textToValue(t); // All is fine regarding this.text -> return the normalized value. [CHG231020]
 						
 						if( t !== (tt=this.filter(t)) )               // SPECIAL CASE:
 						{                                             // If `t` doesn't pass the INSIDE filter,
