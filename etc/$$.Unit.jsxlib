@@ -15,11 +15,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180402 (YYMMDD)
-		Modified:       231017 (YYMMDD)
+		Modified:       231020 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 231017, 'format'))
+;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 231020, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -438,7 +438,8 @@
 			if( m = s.match(callee.RE_D12) )
 			{
 				// Converts ##p## | ##c##  into  ##.##pc | ##.##ci
-				v = (parseInt(m[1],10)||0) + Number.parse(m[3],decPt)/12;
+				v = (parseInt(m[1],10)||0);
+				m[3] && (v+=Number.parse(m[3],decPt)/12);
 				u = 'c'==m[2] ? 'ci' : 'pc';
 			}
 			else
@@ -469,15 +470,15 @@
 	[PUBLIC]
 	
 	({
-		// Delimiters used in `format`. (Could be localized.)
+		// Delimiters used in `format`. (L10N can be refined later.)
 		// ---
-		DecimalChar:           '.',
+		DecimalChar:           Number.DecimalChar, // [CHG231020] Applying *by default* the localized decimal separator sounds more consistent.
 		ThousandsChar:         '',
 		SpacingChar:           ' ',
 		MinusChar:             '-',
 		UseTypographicNotation: 1,  // Use `#p#` and `#c#` notations (as in InDesign)
-		                            // Otherwise, `1p2` becomes `14pc`
-		                            //        and `1c2` becomes `14ci`
+		                            // Otherwise, `1p6` becomes `1.5pc`
+		                            //        and `1c6` becomes `1.5ci`
 
 		onEngine : function onEngine_()
 		//----------------------------------
