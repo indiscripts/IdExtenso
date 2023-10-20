@@ -1,5 +1,5 @@
 ##### [231020]
-  - [Yalt](/etc/$$.Yalt.jsxlib): Added the key `"Invalid numeric value"` in the [resource file](/etc/Yalt/$$.Yalt.jsxres).
+  - [Yalt](/etc/$$.Yalt.jsxlib): Added the key `"Invalid numeric value"` in the [resource file](/etc/Yalt/$$.yalt.jsxres).
   - [Unit](/etc/$$.Unit.jsxlib): The static `$$.Unit.DecimalChar` property is now predefined as `Number.DecimalChar`, which sounds more consistent (you don't have to manually adjust it unless your code forcibly uses a custom locale). Of course it is still possible to explicitly re-assign `$$.Unit.DecimalChar` when your script starts up (or whenever needed.)
 
 ##### [231017]
