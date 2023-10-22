@@ -8,13 +8,14 @@
 		Core:           YES
 		Kind:           Snippet (part of /SUI.)
 		API:            ScriptUI alignments (LT, RT, etc)
+		                ScriptUI.HDI_SCALING :: [xFactor,yFactor]
 		                ScriptUI.isWidget() .getIndex()
 		                ScriptUI.forceRedraw() .setFocus()
 		                ScriptUI.callback() .measureWidth()
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       230312 (YYMMDD)
+		Modified:       231022 (YYMMDD)
 
 *******************************************************************************/
 
@@ -174,13 +175,14 @@
 	//==========================================================================
 	// [181218] ScriptUI.forceRedraw()
 	// [190127] Rewritten; better type checking ; list case.
+	// [231022] Added `TRY_NOTIFY` arg.
 	//==========================================================================
 	
-	ScriptUI.forceRedraw = function(/*Widget*/wg,  a,t)
+	ScriptUI.forceRedraw = function(/*Widget*/wg,/*bool=0*/TRY_NOTIFY,  a,t)
 	//----------------------------------
 	// Force a widget to redraw. The purpose of this routine is to
-	// force the widget to invoke its associated `onDraw` handler, if
-	// defined, which cannot be done by direct call. Use the code
+	// force the widget to invoke its built-in `onDraw` handler, if
+	// available, which cannot be done by direct call. Use the code
 	// `ScriptUI.forceRedraw(myWidget)` when you need an already drawn
 	// widget to call again its `onDraw` handler. If no handler is available
 	// this function has in principle no visible effect.
@@ -194,11 +196,21 @@
 	// image. Indeed the property seems read-only (CS/CC) as soon as it has
 	// been set. Of course `forceRedraw` cannot bypass that particular issue.
 	// ---
+	// [ADD231022] In some environments--mostly CC versions--the command
+	// `myWidget.notify('onDraw')` might work (although not 100% safe.)
+	// The present function will try this method if TRY_NOTIFY is truthy.
+	// When successfull, this may dramatically speed up `forceRedraw`.
+	// ---
 	// => 1 [OK]  |  0 [KO]
 	{
 		// Checkpoint.
 		// ---
 		if( !(t=wg&&wg.type) ) return 0;
+		
+		// [ADD231022] TRY_NOTIFY? It is assumed here that IF `notify('onDraw')`
+		// does not throw any error, THEN the widget has been properly redrawn.
+		// ---
+		if( TRY_NOTIFY && callee.NTFY(wg) ) return 1;
 
 		// [190127] Special case for ListBox and DropDownList
 		// [190217] Introducing specialized methods.
@@ -223,6 +235,17 @@
 	.setup
 	({
 		DT: $$.inCC ? 1 : 0,
+		
+		NTFY: function(/*Widget*/wg,  r)
+		//----------------------------------
+		// [231022] Try wg.notify('onDraw') and returns 1 if no error thrown.
+		// => 1 [OK]  |  0 [KO]
+		{
+			if( 'function' != typeof(wg.notify) ) return 0;
+			r = 0;
+			try{ wg.notify('onDraw'); r=1; }catch(_){}
+			return r;
+		},
 
 		LBOX: function(/*ListBox*/wg,  o,a,i,t)
 		//----------------------------------
