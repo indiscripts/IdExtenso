@@ -1,3 +1,6 @@
+##### [231022]
+   - [SUI/mini](/core/SUI/$$.mini.jsxinc): Added the optional 2nd argument `TRY_NOTIFY` in `ScriptUI.forceRedraw`. In some environments—mostly CC versions—the command `myWidget.notify('onDraw')` might work, although not 100% safe. The `TRY_NOTIFY` flag makes `forceRedraw` try this approach first, using the scheme `try{ wg.notify('onDraw'); retval=1; }catch(_){ retval=0; }`. If it fails, the regular `forceRedraw` strategy is used.
+
 ##### [231020]
   - [`Edit(Factory)`](/etc/ScriptUI/factories/$$.Edit.jsxinc): Slight change in the _watcher_ callback, the `value` key is now re-normalized even if `this.text` already matches `this.valueToText(nv)`. Purpose: make sure that setting a value always results in the expected type in case your custom value-to-text converter also coerces foreign value types (e.g string → number). The `textToValue(…)` method is invoked to forcibly return `nv` in the valid value type.
   - [Yalt](/etc/$$.Yalt.jsxlib): Added the key `"Invalid numeric value"` in the [resource file](/etc/Yalt/$$.yalt.jsxres).
