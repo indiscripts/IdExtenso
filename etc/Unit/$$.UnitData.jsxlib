@@ -7,19 +7,19 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Class (in Unit module.)
-		API:            =create() toString convert
+		API:            =create() toString() convert()
 		    Operators:  ==
 		    Static:     setInstance() getInstances() lock() setDefaultUnit()
 		                getDefaultUnit() setPixelBase() setPercentBase()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180404 (YYMMDD)
-		Modified:       180508 (YYMMDD)
+		Modified:       231101 (YYMMDD)
 
 *******************************************************************************/
 
 ;if( !$$.Unit ){ alert(__("%1 requires the %2 module.",'UnitData','Unit')); exit(); }
-;$$.Unit.hasOwnProperty('UnitData') || eval(__(CLASS, $$.Unit.toSource(), 'UnitData', 180508))
+;$$.Unit.hasOwnProperty('UnitData') || eval(__(CLASS, $$.Unit.toSource(), 'UnitData', 231101))
 
 	//==========================================================================
 	// NOTICE
@@ -140,7 +140,7 @@
 		// Constructor:
 		// abv :: lowercase name of the unit, e.g 'pt' ; 'km' ; 'tpt'
 		// cap :: uppercase plural name formatted as MeasurementUnits key ; e.g 'TRADITIONAL_POINTS'
-		// alt :: if this unit is not supported by UnitValue, provides either a equivalent
+		// alt :: if this unit is not supported by UnitValue, provides either an equivalent
 		//        unit (str), or the number of points (num) in the present unit.
 		// ---
 		// { name:str , uv:1|0 , plural:STR , muid:uint|0 , reg:RegExp, alias:num|str|false|undef, [baseKey:str] }
@@ -240,6 +240,10 @@
 				(t=dst.alias) || $.global[callee.µ.__root__].error(__("Unsupported unit for conversion (%1).",dst.name),callee);
 				x = 'string'==typeof t ? x.as(t) : ( x.as('pt')/t );
 			}
+			
+			// [ADD231101] Micropoints must return integers.
+			// ---
+			'µp' == dst.name && (x=Math.round(x));
 
 			return sgn*x;
 		},
