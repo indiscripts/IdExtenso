@@ -15,11 +15,11 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180402 (YYMMDD)
-		Modified:       231020 (YYMMDD)
+		Modified:       231101 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 231020, 'format'))
+;$$.hasOwnProperty('Unit') || eval(__(MODULE, $$, 'Unit', 231101, 'format'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -337,6 +337,7 @@
 			UD = callee.µ.UnitData;
 			
 			UD.setInstance('pt' , 'POINTS');
+			UD.setInstance('µp' , 'MICRO_POINTS',    1e-6); // [ADD231101] Custom 'micropoints' unit ('µp')
 			UD.setInstance('pc' , 'PICAS');
 			UD.setInstance('in' , 'INCHES');
 			// ---
@@ -418,7 +419,7 @@
 		PRSE : function(/*str*/s,/*str*/decPt,  v,u,k,p,c,m,q)
 		//----------------------------------
 		// (Value-Unit-Parser.) `s` is a value-type string,
-		// e.g "2.5 mm" ; "2p3" ; "-12agates"
+		// e.g "2.5 mm" ; "2p3" ; "-12agates" ; "123456789µp"
 		// Return a volatile object { value:num, type:str|'' }
 		// where `type` can be empty if no UnitData matches.
 		// => obj [OK]  |  false [NON-PARSABLE-NUMBER]
@@ -431,7 +432,7 @@
 			// Sign
 			// ---
 			c = s.charAt(0);
-			( '+'==c || (('-'==c || callee.µ.MinusChar==c) && (k=-1)) ) && (s=s.substr(1));
+			( '+'==c || (('-'==c || callee.µ.MinusChar==c) && (k=-1)) ) && (s=s.slice(1));
 
 			// Parse the <value><type> syntax
 			// ---
@@ -449,6 +450,8 @@
 					v = Number.parse(m[1],decPt),
 					u = this.MTCH(m[2])
 				);
+				
+				isFinite(v) && 'µp'===u && (v=Math.round(v)); // [ADD231101] Micro-points only support integers.
 			}
 
 			return isNaN(v) ?
@@ -519,7 +522,7 @@
 			{
 				r = '';
 				for( k in o ) o.hasOwnProperty(k) && b!==o[k].alias && (r += '|'+k);
-				r.length && (r=r.substr(1));
+				r.length && (r=r.slice(1));
 			}
 
 			return r;
@@ -755,17 +758,21 @@
 			'cstm' == t && (t='pt');
 
 			// Normalize the precision.
+			// [CHG231101] 'µp' forces digits=0
 			// ---
-			digits = 'undefined' == typeof digits ?
-				-( 3 + (1*('in'==t||'cm'==t||'ag'==t||'ind'==t)||2*('m'==t||'ft'==t)||3*('km'==t||'yd'==t||'mi'==t)) ) :
-				(digits|0);
+			digits = +('µp' != t) &&
+			(
+				'undefined' == typeof digits
+				? -( 3 + (1*('in'==t||'cm'==t||'ag'==t||'ind'==t)||2*('m'==t||'ft'==t)||3*('km'==t||'yd'==t||'mi'==t)) )
+				: (digits|0)
+			);
 
 			if( ('pc'==t || 'ci'==t) && µ.UseTypographicNotation )
 			{
 				r = 0 > v ? ((v=-v),µ.MinusChar) : '';
 				n = parseInt(v,10);
 				d = Number.format(12*(v-n),digits,µ.DecimalChar,'');
-				'12'==d.substr(0,2) && ( ++n , (d='0'+d.substr(2)) );
+				'12'==d.slice(0,2) && ( ++n , (d='0'+d.slice(2)) );
 				r && !n && !parseInt(d.replace(RegExp.NONDs,''),10) && (r='');
 				r += String(n||'0') + t.charAt(0) + d; // [FIX231017] 'p3' -> '0p3'
 			}
@@ -773,7 +780,7 @@
 			{
 				r = Number.format(v,digits,µ.DecimalChar,µ.ThousandsChar);
 				r += µ.SpacingChar + t;
-				'-' == r.charAt(0) && µ.MinusChar != '-' && (r=µ.MinusChar+r.substr(1));
+				'-' == r.charAt(0) && µ.MinusChar != '-' && (r=µ.MinusChar+r.slice(1));
 			}
 			
 			return r;
