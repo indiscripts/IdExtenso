@@ -1,3 +1,6 @@
+##### [231101]
+  - [Unit](/etc/$$.Unit.jsxlib) module and [UnitData](/etc/Unit/$$.UnitData.jsxlib) class updated, now supporting a special _MICRO_POINTS_ unit (abbr. `µp`) that represents one millionth of a point: **1 pt == 1,000,000 µp**. This IdExtenso-specific unit is generally _not_ exposed to users, it allows metric quantities to be stored with high precision as pure JS integers, that is, magnitudes between `Number.MIN_SAFE_INTEGER` and `Number.MAX_SAFE_INTEGER` (the maximum absolute value in micropoints is then 9,007,199,254,740,991 — which is more than sufficient to express any valid metric quantity in InDesign.) Managing the measurements/settings of your script primarily in micropoints avoid rounding errors with floating point numbers, while `$$.Unit` can still convert and display those values in any other user-friendly unit.
+
 ##### [231022]
    - [SUI/mini](/core/SUI/$$.mini.jsxinc): Added the optional 2nd argument `TRY_NOTIFY` in `ScriptUI.forceRedraw`. In some environments—mostly CC versions—the command `myWidget.notify('onDraw')` might work, although not 100% safe. The `TRY_NOTIFY` flag makes `forceRedraw` try this approach first, using the scheme `try{ wg.notify('onDraw'); retval=1; }catch(_){ retval=0; }`. If it fails, the regular `forceRedraw` strategy is used.
 
