@@ -15,7 +15,7 @@
 		DOM-access:     NO
 		Todo:           More tests on setFocus()/Mac
 		Created:        170427 (YYMMDD)
-		Modified:       231022 (YYMMDD)
+		Modified:       231104 (YYMMDD)
 
 *******************************************************************************/
 
@@ -176,6 +176,7 @@
 	// [181218] ScriptUI.forceRedraw()
 	// [190127] Rewritten; better type checking ; list case.
 	// [231022] Added `TRY_NOTIFY` arg.
+	// [231104] Special case for empty group.
 	//==========================================================================
 	
 	ScriptUI.forceRedraw = function(/*Widget*/wg,/*bool=0*/TRY_NOTIFY,  a,t)
@@ -206,7 +207,7 @@
 		// Checkpoint.
 		// ---
 		if( !(t=wg&&wg.type) ) return 0;
-		
+
 		// [ADD231022] TRY_NOTIFY? It is assumed here that IF `notify('onDraw')`
 		// does not throw any error, THEN the widget has been properly redrawn.
 		// ---
@@ -217,24 +218,39 @@
 		// ---
 		switch( t )
 		{
-			case 'listbox' :      return callee.LBOX(wg) || callee.LIST(wg);
-			case 'dropdownlist' : return callee.LIST(wg);
+			case 'listbox' :
+				return callee.LBOX(wg) || callee.LIST(wg);
+
+			case 'dropdownlist' :
+				return callee.LIST(wg);
+
+			case 'group':
+				// [ADD231104] An *empty* group can be redrawn using hide/show
+				// without side effects (while size re-assignment won't work.)
+				if( !wg.children.length )
+				{
+					wg.hide();
+					wg.show();
+					return 1;
+				}
+
 			default:;
 		}
-		
+
+		// DEFAULT METHOD: TRY TO RE-ASSIGN THE `size` PROP.
 		// In CC we have to assign a *distinct* size, then reset.
 		// In CS we only have to re-assign the size as such.
 		// ---
 		if( !(a=wg.size) ) return 0;
-		t = callee.DT;
+		t = callee.INCC;
 		wg.size = [t+a[0],t+a[1]];
 		t && (wg.size=[a[0],a[1]]);
-		
+
 		return 1;
 	}
 	.setup
 	({
-		DT: $$.inCC ? 1 : 0,
+		INCC: $$.inCC ? 1 : 0,
 		
 		NTFY: function(/*Widget*/wg,  r)
 		//----------------------------------
