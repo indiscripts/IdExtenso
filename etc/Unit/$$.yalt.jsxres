@@ -1,0 +1,111 @@
+/*******************************************************************************
+
+		Name:           Unit::YALT
+		Desc:           Yalt strings (resource of the Unit module.)
+		Path:           /etc/Unit/$$.yalt.jsxres
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Resource
+		API:            ---
+		DOM-access:     NO
+		Todo:           ---
+		Created:        231112 (YYMMDD)
+		Modified:       231113 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	// Supported locales: <EN> FR DE SP IT RU.
+	// Feel free to correct, or to add new locales, as long as
+	// you don't change the keys (1st column.) Each translation
+	// string must have the following format, in a single line:
+	// key # trL1 # trL2 # etc (placeholders %1 to %9 allowed.)
+
+	//==========================================================================
+	// DATA  (keep the starting and ending triple quotes)
+	//==========================================================================
+
+"""
+	/*<YALT> # FRENCH # GERMAN # SPANISH # ITALIAN # RUSSIAN
+
+	// MISC
+	Measurement Unit # Unité de mesure # Maßeinheit # Unidad de medida # Unità di misura # Единица измерения
+	Pixels per inch # Pixels par pouce # Pixel pro Zoll # Píxeles por pulgada # Pixel per pollice # Пикселов на дюйм
+	Point/Pica Size # Taille en point/pica # Punkt-/Pica-Größe # Tamaño de puntos/picas # Dimensione punti/pica # Размер пункта/пики
+	Traditional (72.27 pts/inch) # Traditionnelle (72,27 pts/po) # Traditionell (72,27 Pt/Zoll) # Tradicional (72,27 puntos/pulg.) # Tradizionale (72,27 pt/pollice) # Традиционный (72,27 ppi)
+	Units # Unités # Einheiten # Unidades # Unità # Единицы измерения
+
+	// POINTS
+	Point # Point # Punkt # Punto # Punto # Пункт
+	Points # Points # Punkt # Puntos # Punti # Пункты
+	%1 pt # %1 pt # %1 Pt # %1 pt # %1 pt # %1 пт
+	%1 pts # %1 pts # %1 Pt # %1 pt # %1 pti # %1 пт
+
+	// INCHES | INCHES_DECIMAL
+	Inch # Pouce # Zoll # Pulgada # Pollice # Дюйм
+	Inches # Pouces # Zoll # Pulgadas # Pollici # Дюймы
+	Inches Decimal # Pouces décimaux # Dezimalzoll # Pulgadas decimales # Pollici decimali # Десятичные дюймы
+	%1 in # %1 po # %1 Z # %1 pulg. # %1" # %1 дюйм
+
+	// PICAS
+	Pica # Pica # Pica # Pica # Pica # Пика
+	Picas # Picas # Pica # Picas # Pica # Пики
+
+	// MILLIMETERS
+	Millimeter # Millimètre # Millimeter # Milímetro # Millimetro # Миллиметр
+	Millimeters # Millimètres # Millimeter # Milímetros # Millimetri # Миллиметры
+	%1 mm # %1 mm # %1 mm # %1 mm # %1 mm # %1 мм
+
+	// CENTIMETERS
+	Centimeter # Centimètre # Zentimeter # Centímetro # Centimetro # Сантиметр
+	Centimeters # Centimètres # Zentimeter # Centímetros # Centimetri # Сантиметры
+	%1 cm # %1 cm # %1 cm # %1 cm # %1 cm # %1 см
+
+	// METERS
+	Meter # Mètre # Meter # Metro # Metro # Метр
+	Meters # Mètres # Meter # Metros # Metri # Метры
+	%1 m # %1 m # %1 m # %1 m # %1 m # %1 м
+
+	// KILOMETERS
+	Kilometer # Kilomètre # Kilometer # Kilómetro # Chilometro # Километр
+	Kilometers # Kilomètres # Kilometer # Kilómetros # Chilometri # Километры
+	%1 km # %1 km # %1 km # %1 km # %1 km # %1 км
+
+	// FEET
+	Foot # Pied # Fuß # Pie # Piede # фута
+	Feet # Pieds # Fuß # Pies # Piedi # футов
+	%1 ft # %1 pieds # %1 Fuß # %1 pies # %1 piedi # %1 фута
+
+	// YARDS
+	Yard # Yard # Yard # Yarda # Yard # ярд
+	Yards # Yards # Yard # Yardas # Yards # ярда
+	%1 yd # %1 yd # %1 yd # %1 yd # %1 yd # %1 ярда
+
+	// MILES
+	Mile # Mile # Meile # Milla # Miglio # миля
+	Miles # Miles # Meilen # Millas # Miglia # мили
+	%1 mi # %1 mi # %1 mi # %1 mi # %1 mi # %1 мили
+	
+	// CICEROS
+	Cicero # Cicéro # Cicero # Cícero # Cicero # Цицеро
+	Ciceros # Cicéros # Cicero # Cíceros # Cicero # Цицеро
+
+	// AGATES
+	Agate # Agate # Agate # Ágata # Agate # Агат
+	Agates # Agates # Agaten # Ágatas # Agates # Агаты
+	%1 ag # %1 ag # %1 ag # %1 ag. # %1 ag # %1 агат
+
+	// PIXELS
+	Pixel # Pixel # Pixel # Píxel # Pixel # Пиксел
+	Pixels # Pixels # Pixel # Píxeles # Pixel # Пикселы
+	%1 px # %1 px # %1 px # %1 px # %1 px # %1 пикс.
+
+	// PERCENT
+	Percent # Pourcentage # Prozent # Porcentaje # Percentuale # Процент
+
+	</YALT>*/
+"""
