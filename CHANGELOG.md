@@ -1,3 +1,6 @@
+##### [231113]
+  - [Unit](/etc/$$.Unit.jsxlib) now conditionally includes a convenient [YALT package](/etc/Unit/$$.yalt.jsxres) covering measurement units (names and abbr.) in six languages.
+
 ##### [231104]
    - [SUI/mini](/core/SUI/$$.mini.jsxinc): `forceRedraw` now invokes the special `hide(); show();` trick when it encounters an _empty_ group. (Works in InDesign CC/CS.)
 
