@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190226 (YYMMDD)
-		Modified:       231020 (YYMMDD)
+		Modified:       231120 (YYMMDD)
 
 *******************************************************************************/
 
@@ -361,6 +361,7 @@
 				optimalSize:                  1 < (t=ops.minLines) ? { width:ops.optWidth, height:t*ScriptUI.LINE } : { width:ops.optWidth },
 				maximumSize:                  { width: ops.maxWidth },
 				// --- Inner events and private.
+				_keydown:                     callee.HKEY,   // [ADD231120] Prevent default [Enter] mechanism when editing.
 				_changing_change_blur_focus:  callee.HSTA,
 				_mousedown:                   callee.HMOU,
 				__setText__:                  callee.STXT,
@@ -500,6 +501,21 @@
 		// Inner events.
 		//----------------------------------
 		({
+			HKEY: function onKeydown(/*event*/ev)
+			//----------------------------------
+			// [ADD231120] Inhibits the default [Enter] mechanism (-> closing dialog)
+			// when the user *is editing* the content of this EditText widget. In that
+			// event, the [Enter] keyboard event is stopped (stopPropagation) and the
+			// focus is forcibly given to this widget.
+			{
+				if( ('Enter'===ev.keyName || 'Enter'===ev.keyIdentifier) && this.text !== this.textselection )
+				{
+					ev.stopPropagation();
+					ev.preventDefault();
+					ScriptUI.setFocus(this);
+				}
+			},
+
 			HSTA: function onStateEvent(/*event*/ev,  k,t,sub,exi,tt,ov,nv)
 			//----------------------------------
 			// Fire the associated sub-event ('filtered','tchanged','vchanged')
@@ -641,17 +657,19 @@
 						if( 'undefined' == typeof nv ) return ov;     // Initially invalid -> keep ov.
 						
 						t = this.valueToText(nv);                     // Normalized text associated to nv.
-						if( t === this.text ) return this.textToValue(t); // All is fine regarding this.text -> return the normalized value. [CHG231020]
-						
+						if( t === this.text ) return this.textToValue(t||''); // All is fine regarding this.text -> return the normalized value. [CHG231020]
+
 						if( t !== (tt=this.filter(t)) )               // SPECIAL CASE:
 						{                                             // If `t` doesn't pass the INSIDE filter,
 							nv = this.textToValue(tt);                // - consider the value associated to the filtered string
-							t = this.valueToText(nv)                  // - and re-normalize `t` from that value
 						}
 						else
 						{
 							nv = this.textToValue(t);                 // USUAL CASE
 						}
+
+						t = this.valueToText(nv);                     // [FIX231120] Re-normalize `t` from `nv (this step is always required
+						                                              // due to possible min/max processing on the value.)
 
 						if( 'undefined' == typeof nv ) return ov;     // Finally invalid -> keep ov.
 						this.__setText__(t);                          // Update the text.
