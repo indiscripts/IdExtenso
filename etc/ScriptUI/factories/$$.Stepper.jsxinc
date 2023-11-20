@@ -1,0 +1,335 @@
+/*******************************************************************************
+
+		Name:           Stepper(Factory)
+		Desc:           Reactive button-like stepper.
+		Path:           /etc/ScriptUI/factories/$$.Stepper.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI.builder ; ScriptUI/events [recommended]
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.StepperFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        231021 (YYMMDD)
+		Modified:       231120 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+	
+	/*
+	
+	StepperFactory provides a custom-sized Up/Down stepper. It is formally
+	based on a single Group object, redrawn thru `onRedraw`. It is designed
+	so it cannot take the focus and then can be associated with some control.
+
+	      +---+
+	      | ^ |
+	      | ˅ |
+	      +---+
+
+	Example in ScriptUI.builder:
+
+	      StepperFactory$MyStepper:
+	      [{
+	      sizeType: 'big',
+	      onValueChange: function(ev){ ... }, // Use this.value (-1|0|+1)
+	      }],
+
+	API
+	=======================================================================
+	properties      obj = { kind: "Stepper" }
+	                Information properties.
+	-----------------------------------------------------------------------
+	value           -1|0|+1 [READ-ONLY]
+	                State of the stepper *during a user click*.
+	-----------------------------------------------------------------------
+	extra           any = undef
+	                Custom property.
+	-----------------------------------------------------------------------
+	helpTip         str = ""
+	                Help message (getter and setter).
+	=======================================================================
+	onValueChange   fct( ev[[vchanged]] ) = undef
+	                Called back when the custom 'vchanged' event has occured.
+	                It is triggered when the value has changed due to user
+	                gesture, usually some click in the widget area.
+	                Typically this callback is used to increase/reduce the
+	                value edited in another component. `this.value` (-1|0|1)
+	                and `ev.shiftKey` determine the signed step to apply.
+	-----------------------------------------------------------------------
+	onRightClick    fct( ev[[rclicked]] ) = undef
+	                Called back when the custom 'rclicked' event (right-click)
+	                has occured.
+	-----------------------------------------------------------------------
+	onEvent         fct(ev) = undef
+	                Called back when any of the following events has occured:
+	                clicked | rclicked
+	=======================================================================
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	// This condition is required for persistent engines.
+	{
+		ScriptUI.StepperFactory = function StepperFactory(/*container*/parent,/*?{help...}*/ops,  r,sz)
+		//----------------------------------
+		// Options (ops):
+		// .helpTip       (str='')  Help tip (`help` can be supplied as an alias.)
+		// .sizeType    (str=auto)  'min'|'small'|'big'|'max'  Desired size type.
+		// ---
+		// .onValueChange (?fct)    'vchanged' handler.
+		// .onRightClick  (?fct)    'rclicked' handler.
+		// .onEvent       (?fct)    Any event handler.
+		// ---
+		// .extra          (any)    Any custom property. [DEPRECATED: Use `more` instead.]
+		// .enabled | .visible      States.
+		// .more          (?obj)    Custom options.
+		// ---
+		// => Group[[Stepper]]     ::   G
+		//   .properties           ::   { kind }
+		{
+			// Normalize options.
+			// ---
+			ops && ops.help && !ops.helpTip && (ops.helpTip=ops.help);     // helpTip alias (help)
+			ops = ScriptUI.factoryOptions(ops,callee.DEFS);                // defaults
+
+			// Size.
+			sz = callee[ 'string' == typeof(sz=ops.sizeType) && callee.hasOwnProperty(sz='SZ_'+sz.toUpperCase()) ? sz : 'SZ_DEF' ];
+
+			// Create the component.
+			// ---
+			r = 
+			{
+				// --- Layout.
+				optimalSize:            sz,
+				// --- Public
+				value:                  0,
+				extra:                  ops.extra, // [DEPRECATED]
+				// --- Watched
+				helpTip:                ops.helpTip,
+				onValueChange:          void 0,
+				onRightClick:           void 0,
+				onEvent:                void 0,
+				// --- Private.
+				__bottom__:             void 0,
+				__cantFocus__:          1,
+				// --- Events.
+				_mousemove_mouseover_mouseout_mousedown_mouseup: callee.HMOU,
+				onDraw:                 callee.HDRW,
+				_blur:                  callee.HBLU,
+			};
+
+			r = ScriptUI.builder
+			(
+				ScriptUI.moreOptions(r, ops.more),
+				parent.add( 'group', void 0, { kind:callee.name } )
+			);
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			(
+				r,
+				[ 'onValueChange', 'onRightClick', 'onEvent' ],
+				callee.WTCH,
+				ops
+			);
+
+			// States.
+			// ---
+			( false===ops.enabled || 0===ops.enabled ) && (r.enabled=false);
+			( false===ops.visible || 0===ops.visible ) && (r.visible=false);
+
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// onLoad (colors)
+		//----------------------------------
+		({
+			onLoad: function onLoad(  F,dk,d,x)
+			//----------------------------------
+			// (Re)set HDRW colors: CDSB, CBKG, CFRM, COVR, CDWN, CPEN
+			// this :: ScriptUI.StepperFactory
+			// => this&
+			{
+				//          CDSB   CBKG  CFRM   COVR  CDWN   CPEN
+				// HIDARK 0  .23    .18   .30    .30   .10    .88
+				// MIDARK 1  .35    .29   .40    .40   .20    .95
+				// MILIGH 2  .69    .75   .55    .82   .65    .15
+				// HILIGH 3  .88    .92   .68    1.0   .75    .20
+
+				F = this.HDRW;
+				dk = $$.isDark;
+				d = dk ? (1-$$.isHighContrast) : (2+$$.isHighContrast); // 0|1|2|3
+
+				F.CDSB = ( (x=[.23,.35,.69,.88][d]), [x,x,x,1] );
+				F.CBKG = ( (x=[.18,.29,.75,.92][d]), [x,x,x,1] );
+				F.CFRM = ( (x=[.30,.40,.55,.68][d]), [x,x,x,1] );
+				F.COVR = ( (x=[.30,.40,.82,1.0][d]), [x,x,x,1] );
+				F.CDWN = ( (x=[.10,.20,.65,.75][d]), [x,x,x,1] );
+				F.CPEN = ( (x=[.88,.95,.15,.20][d]), [x,x,x,1] );
+				return this;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Settings
+		//----------------------------------
+		({
+			SZ_MIN:                [14,18],
+			SZ_SMALL:              [18,22],
+			SZ_BIG:                [20,24],
+			SZ_MAX:                [22,24],
+			// ---
+			SZ_DEF:                ScriptUI.LINE && 15 >= ScriptUI.LINE ? [18,22] : [20,24],
+
+			DEFS:
+			{
+				helpTip:           '',
+				sizeType:          'def',
+				// ---
+				onValueChange:     void 0,
+				onRightClick:      void 0,
+				onEvent:           void 0,
+				// ---
+				more:              {},
+			},
+		})
+		.setup
+		//----------------------------------
+		// Inner events.
+		//----------------------------------
+		({
+			HDRW: function onDrawStepper(/*DrawState*/DS,  gx,enb,w,h,wm,hm,t,x,y,dx,dy,ty)
+			//----------------------------------
+			// onDraw callback of the Stepper.
+			// this  :: Group[[Stepper]]
+			{
+				if( (!this.visible) || !(gx=this.graphics) ) return;
+				enb = this.enabled;
+
+				// Metrics.
+				t = this.size;
+				wm=(w=t[0]-2)>>>1;
+				hm=(h=t[1]-2)>>>1;
+				
+				// Frame.
+				gx.newPath();
+				gx.draw(1,2)(2,1)(w,1)(1+w,2)(1+w,h)(w,1+h)(2,1+h)(1,h);
+				gx.closePath();
+				gx.fillPath  ( gx.newBrush(0,callee[enb?'CBKG':'CDSB']) );
+				gx.strokePath( gx.newPen(0,callee[enb?'CFRM':'CDSB'],1) );
+
+				// Mouseover?
+				if( enb && (DS||0).mouseOver )
+				{
+					gx.newPath();
+					if( !this.__bottom__ )
+						gx.draw(2,2)(w,2)(w,1+hm)(2,1+hm);
+					else
+						gx.draw(2,1+hm)(w,1+hm)(w,h)(2,h);
+					gx.closePath();
+					gx.fillPath( gx.newBrush(0,callee[(DS||0).leftButtonPressed?'CDWN':'COVR']) );
+				}
+				
+				// Arrows.
+				x = 1+wm;
+				y = 1+hm;
+				dx = 3+(11<=hm||(7<=wm&&callee.IN_CC));
+				dy = 3+(11<=hm);
+				gx.newPath();
+				ty=y-dx, gx.draw(x-dx,ty)(x,ty-dy)(x+dx,ty);
+				ty=y+dx, gx.draw(x-dx,ty)(x,ty+dy)(x+dx,ty);
+				// ---
+				t = callee.CPEN;
+				enb || ( (t=t.slice(0,3)).push(.3) );
+				gx.strokePath( gx.newPen(0,t,1) );
+			}
+			.setup
+			({
+				IN_CC: +$$.inCC,
+			}),
+
+			// In CC most widgets have an obscure focus/blur
+			// sequence that may keep them 'active' while losing the focus.
+			// Forcing this.active to false seems to solve the pb.
+			// ---
+			HBLU: $$.inCC && function onBlurStepper(){ this.active=false },
+			
+			HMOU: function onMouse(/*MouseEvent*/ev,  sz,b)
+			//----------------------------------
+			// this   :: Group[[Stepper]]
+			// ev     :: mousemove|mouseover|mouseout|mousedown|mouseup
+			{
+				if( !(sz=this.size) ) return;
+				if( this !== ev.target ) return;
+
+				ev.stopPropagation();                                           // Don't go higher
+
+				this.__bottom__ = +(2*ev.clientY > sz[1]);
+				
+				// [REM231106] Cannot use ScriptUI.forceRedraw() here
+				// because hide/show would invalidate mouse states in CC.
+				// ---
+				callee.INCC
+				? ( this.size=[1+sz[0],1+sz[1]], this.size=sz )
+				: ( this.hide(), this.show() );
+
+				if( 'mousedown' === ev.type )
+				{
+					if( 2===ev.button )                                        // Catch RIGHT button.
+					{
+						ev.preventDefault();                                   // Inhibit.
+						ScriptUI.dispatch(this,'rclicked',ev);                 // Notify 'rclicked' to listeners
+						return;
+					}
+
+					this.value = this.__bottom__ ? -1 : +1;
+					ScriptUI.dispatch(this,'vchanged',ev);
+					this.value = 0;
+				}
+			}
+			.setup
+			({
+				INCC: $$.inCC,
+			}),
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*str*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[Stepper]]
+			//    k   :: onValueChange | onRightClick | onEvent
+			{
+				if( this.hasOwnProperty('µ_'+k) ) return nv; // Temporary transparent key.
+
+				switch( k )
+				{
+					case 'onValueChange': // fct
+						ScriptUI.callback(this,'vchanged',ov,nv);
+						break;
+
+					case 'onRightClick': // fct
+						ScriptUI.callback(this,'rclicked',ov,nv);
+						break;
+
+					case 'onEvent': // fct
+						ScriptUI.callback(this,['vchanged','rclicked'],ov,nv);
+						break;
+
+					default:;
+				}
+				return nv;
+			},
+		});
+		
+		$$.domVersion(7)||ScriptUI.StepperFactory.onLoad(); // CS4 fallback
+	}
