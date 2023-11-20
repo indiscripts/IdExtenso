@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        220204 (YYMMDD)
-		Modified:       230803 (YYMMDD)
+		Modified:       231120 (YYMMDD)
 
 *******************************************************************************/
 
@@ -76,7 +76,7 @@
 	helpTip         str = ""
 	                Help message.
 	-----------------------------------------------------------------------
-	textFilter      RegExp  [READ-ONLY]
+	textFilter      fct  [READ-ONLY]
 	                Automatically determined at construction time.
 	=======================================================================
 	onFilter        fct( ev[[filtered]] )
@@ -140,6 +140,14 @@
 	                Shortcut for sending a popup event in automatic mode.
 	                If no Popup component is available, this method has no
 	                effect.
+	-----------------------------------------------------------------------
+	step(ds,?ev)    => 0|1
+	                Step the value and dispatch 'vchanged'.
+	                ds :: -1 decrease by __delta__ ; -2 decrease by __jump__
+	                      +1 increase by __delta__ ; +2 increase by __jump__
+	                ev :: [opt] source Event
+	                Return 1 if a step has been actually performed,
+	                0 otherwise.
 	-----------------------------------------------------------------------
 
 	*/
@@ -216,7 +224,11 @@
 
 			// We want some additional members to be declared right now (via `more`)
 			(t=ops.more)===Object(t) || (t=ops.more={});
+			// --- Public
+			t.step = callee.STEP; // [ADD231110]
 			// -- Private
+			t.__delta__  = (ops.delta>>>0)||1; // [ADD231110] Made private
+			t.__jump__  =  (ops.jump>>>0)||1;  // [ADD231110] Made private
 			t.__minVal__ = vMin;
 			t.__maxVal__ = vMax;
 			t.__maxLen__ = mxLen;
@@ -233,8 +245,8 @@
 			t.MinValue = vMin;               // For the record
 			t.MaxValue = vMax;               // For the record
 			t.MaxSize = mxLen;               // For the record
-			t.Delta = (0|ops.delta)||1;
-			t.Jump = (0|ops.jump)||1;
+			t.Delta = (ops.delta>>>0)||1;
+			t.Jump = (ops.jump>>>0)||1;
 
 			// Native event callbacks.
 			// ---
@@ -314,7 +326,7 @@
 				&& this.popup(__("The value must be between %1 and %2.",mn,mx),2);
 			},
 
-			KEYD: function onKeyDown(/*event*/ev,  t,sgn,x,dx)
+			KEYD: function onKeyDown(/*event*/ev,  t,sgn)
 			//----------------------------------
 			// this   :: EditText[[Edit]]
 			// ev     :: keydown
@@ -327,27 +339,7 @@
 				ev.preventDefault();
 				ev.stopPropagation();
 				
-				x = this.textToValue();                               // current value
-				if( 'undefined'==typeof x ) return;
-
-				dx = this.properties[ev.shiftKey ? 'Jump' : 'Delta'];
-				if( !dx ) return;
-
-				t = dx*Math[0<sgn?'floor':'ceil']((x+sgn*dx)/dx);     // increase/reduce
-				t < this.__minVal__ && (t=this.__minVal__);
-				t > this.__maxVal__ && (t=this.__maxVal__);
-
-				if( t !== x )
-				{
-					this.__setText__(t.toString(),0);
-
-					// [REM] Doesn't work as expected in CS
-					this.µ_blur = this.µ_focus = 1; // Bypass those inner events
-					ScriptUI.setFocus(this);
-					delete this.µ_blur; delete this.µ_focus;
-
-					ScriptUI.dispatch(this,'tchanged',ev);
-				}
+				this.step( sgn*(ev.shiftKey?2:1), ev );
 			},
 		})
 		.setup
@@ -379,7 +371,7 @@
 			// => int [OK]  |  undef [KO]
 			{
 				'undefined' == typeof s && (s=this.text);
-				if( !(s||0).length ) return void 0;         // KO
+				if( !(s||'').length ) return void 0;         // KO
 
 				v = parseInt(s,10);
 				if( isNaN(v) ) return void 0;
@@ -401,5 +393,135 @@
 				if( !('number' == typeof v && isFinite(v)) ) return '';
 				return v.toString();
 			},
+
+			STEP: function step(/*-2|-1|+1|+2*/ds,/*?Event*/srcEvent,  sgn,x,dx,t)
+			//----------------------------------
+			// this :: EditText[[EditInteger]]
+			// Step the value and dispatch 'vchanged'.
+			// => 1 [OK-STEP]  |  0 [KO-NOOP]
+			{
+				if( (0|ds) !== ds ) return 0;
+
+				x = this.textToValue();                                    // current value
+				if( 'undefined'==typeof x ) return 0;
+
+				sgn = 0 > ds ? -1 : +1;
+				dx = this[ 1 < ds*sgn ? '__jump__' : '__delta__' ];        // e.g dx=0.08333333333333
+				if( !dx ) return 0;
+
+				t = dx*Math[0<sgn?'floor':'ceil']((x+sgn*dx)/dx);     // increase/reduce
+				t < this.__minVal__ && (t=this.__minVal__);
+				t > this.__maxVal__ && (t=this.__maxVal__);
+				
+				if( t===x )
+				{
+					callee.FOCUS.call(this);
+					return 0;
+				}
+
+				this.value = t;
+				callee.FOCUS.call(this);
+				ScriptUI.dispatch(this,'tchanged',srcEvent||void 0);
+				ScriptUI.dispatch(this,'vchanged',srcEvent||void 0);
+
+				return 1;
+			}
+			.setup
+			({
+				FOCUS: function()
+				//----------------------------------
+				// this :: EditText
+				{
+					// [REM] Doesn't work as expected in CS
+					this.µ_blur = this.µ_focus = 1; // Bypass those inner events
+					ScriptUI.setFocus(this);
+					delete this.µ_blur; delete this.µ_focus;
+				},
+			}),
 		})
+		//----------------------------------
+		// Macro (Group with stepper).
+		//----------------------------------
+		.setup
+		({
+			Group: function Group(/*obj*/ops,  r,k,sp,st,hp,enb,vsb)
+			//----------------------------------
+			// [ADD231110] Returns a group descriptor of the form
+			// { 
+			//    orientation: 'row',
+			//    . . .
+			//    StepperFactory$: [{ . . . }],
+			//    EditIntegerFactory$<key>: [{ . . . }],
+			// }
+			// This macro allows you to quickly declare a Group
+			// with the expected Stepper+EditInteger components,
+			// using the syntax:
+			// ` Group$: ScriptUI.EditIntegerFactory.Group(ops), `
+			// The `ops` argument MUST provide the desired EditIntegerFactory
+			// options, plus the following optional keys:
+			//   __key__ :: Key name of the EditInteger component. Must be a
+			//              valid JS identifier. If missing, the key will
+			//              remain anonymous aka `EditIntegerFactory$: [{....}]`
+			//   stepper :: 'before' (def) | 'after' | 'none'
+			//              position of the Stepper component.
+			//   spacing :: uint ; spacing b/w EditInteger and Stepper.
+			//              default is 1.
+			// ---
+			// this :: ScriptUI.EditIntegerFactory
+			// => obj [OK]  |  false [KO]
+			{
+				if( !ops ) return false;
+				
+				sp = ops.hasOwnProperty(k='spacing') && [ops[k],delete ops[k]][0];
+				sp === (sp >>> 0) || (sp=1);
+				
+				st = ops.hasOwnProperty(k='stepper') && [ops[k],delete ops[k]][0];
+				st = 'function' == typeof(ScriptUI.StepperFactory)
+				? ( 'string' == typeof st ? st.toLowerCase() : 'before' )
+				: 'none';
+				st = +('after'===st) || -('none'!==st); // -1 | 0 | +1
+
+				enb = ops.hasOwnProperty(k='enabled') ? !!([ops[k],delete ops[k]][0]) : true;
+				vsb = ops.hasOwnProperty(k='visible') ? !!([ops[k],delete ops[k]][0]) : true;
+
+				r =
+				{
+					orientation:        'row',
+					alignChildren:      ScriptUI.LC,
+					margins:            0,
+					spacing:            sp,
+
+					enabled:            enb,
+					visible:            vsb,
+				};
+
+				// Helptip? -> at the Group level.
+				hp = (ops.hasOwnProperty(k='help')||ops.hasOwnProperty(k='helpTip')) && [ops[k],delete ops[k]][0];
+				'string' == typeof hp && hp.length && (r.helpTip=hp);
+
+				// Stepper before?
+				0 > st && (r['StepperFactory$']=[{ onValueChange:callee.HSTP, more:{__posn__:0} }]);
+				
+				// EditInteger descriptor.
+				k = ops.hasOwnProperty(k='__key__') && [ops[k],delete ops[k]][0];
+				'string' == typeof k || (k='');
+				r[this.name + 'Factory$' + k] = [ops];
+
+				// Stepper after?
+				0 < st && (r['StepperFactory$']=[{ onValueChange:callee.HSTP, more:{__posn__:1} }]);
+
+				return r;
+			}
+			.setup
+			({
+				HSTP: function onValueChange(ev,  v,p)
+				//----------------------------------
+				// this :: Button[[Stepper]] ; ev :: `vchanged` event.
+				{
+					(v=this.value*(1+ev.shiftKey))
+					&& this.parent.children[1-this.__posn__].step(v,ev);
+				},
+			}),
+		})
+
 	}
