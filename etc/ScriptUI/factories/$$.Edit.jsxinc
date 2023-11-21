@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190226 (YYMMDD)
-		Modified:       231120 (YYMMDD)
+		Modified:       231121 (YYMMDD)
 
 *******************************************************************************/
 
@@ -361,7 +361,7 @@
 				optimalSize:                  1 < (t=ops.minLines) ? { width:ops.optWidth, height:t*ScriptUI.LINE } : { width:ops.optWidth },
 				maximumSize:                  { width: ops.maxWidth },
 				// --- Inner events and private.
-				_keydown:                     callee.HKEY,   // [ADD231120] Prevent default [Enter] mechanism when editing.
+				_keydown:                     ops.multiline ? void 0 : callee.HKEY,   // [FIX231121] Prevent default [Enter] mechanism when editing *if not multiline*.
 				_changing_change_blur_focus:  callee.HSTA,
 				_mousedown:                   callee.HMOU,
 				__setText__:                  callee.STXT,
@@ -654,6 +654,8 @@
 						break;
 					
 					case 'value':    // any (update text accordingly.)
+if( this.TRACK )$$.Log.push("\r\r--- Try value: "+[ov,nv].join(' -> '));
+if( this.TRACK )$$.Log.push("        Max: "+this.__maxVal__);
 						if( 'undefined' == typeof nv ) return ov;     // Initially invalid -> keep ov.
 						
 						t = this.valueToText(nv);                     // Normalized text associated to nv.
@@ -670,6 +672,7 @@
 
 						t = this.valueToText(nv);                     // [FIX231120] Re-normalize `t` from `nv (this step is always required
 						                                              // due to possible min/max processing on the value.)
+if( this.TRACK )$$.Log.push("     nv|t = "+[nv,t].join(' | '));
 
 						if( 'undefined' == typeof nv ) return ov;     // Finally invalid -> keep ov.
 						this.__setText__(t);                          // Update the text.
