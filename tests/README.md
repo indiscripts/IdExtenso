@@ -365,6 +365,10 @@ This subfolder provides basic demo scripts showing the behaviors and features of
 
    ![TestDrawnCheck screenshot](SuiFactories/TestDrawnCheck.png)
 
+* [`TestEditAndStepper.jsx`](SuiFactories/TestEditAndStepper.jsx) instantiates various `Edit(Factory)`, `EditInteger(Factory)` and `Stepper(Factory)` components:
+
+   ![TestEditAndStepper screenshot](SuiFactories/TestEditAndStepper.png)
+
 * [`TestPopup.jsx`](SuiFactories/TestPopup.jsx) adds a `Popup(Factory)` component to the window and displays a popup message while the mouse moves over different widgets:
 
    ![TestPopup screenshot](SuiFactories/TestPopup.png)
