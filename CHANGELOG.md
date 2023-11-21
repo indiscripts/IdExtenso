@@ -1,3 +1,7 @@
+##### [231121]
+  - [`Edit(Factory)`](/etc/ScriptUI/factories/$$.Edit.jsxinc): Had to inhibit _Enter_ keydown handling with _multiline_ edits (in order to preserve their legacy behavior).
+  - Go to [TestEditAndStepper.jsx](/tests/SuiFactories/TestEditAndStepper.jsx) for testing various Edit/EditInteger examples.
+
 ##### [231120]
   - [`Edit(Factory)`](/etc/ScriptUI/factories/$$.Edit.jsxinc): Fixed a tiny bug in the _watcher_ callback — see also [231020](#231020) — recalling `this.valueToText(nv)` was required in all cases. Added a `keydown` event handler that inhibits the Enter key when the user is editing the text.
   - [`EditInteger(Factory)`](/etc/ScriptUI/factories/$$.EditInteger.jsxinc): Various improvements. Added a public `step()` method (allows to increase or reduce the value based on the `delta`/`jump` settings). `ScriptUI.EditIntegerFactory` now has a static `Group()` function that can integrate a _stepper_ with the **EditInteger** component. `ScriptUI.StepperFactory` is required then.
