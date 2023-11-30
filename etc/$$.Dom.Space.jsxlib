@@ -7,18 +7,18 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =convert() fromXY() fromUV() fromRL() fromCustom()
+		API:            =convert() fromXY() fromPG() fromUV() fromRL() fromCustom()
 		                           intoXY() intoUV() intoRL()
 		                preScale() matrixValues()
 		                -> MasterSpread.prototype.resolve() [CS4]
 		DOM-access:     YES (Enums ; obj.resolve)
-		Todo:           Page inner box and page CS may not coincide (cf CS&T, Fig. 18)
+		Todo:           ---
 		Created:        180606 (YYMMDD)
-		Modified:       190722 (YYMMDD)
+		Modified:       231130 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 190722, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 231130, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -358,9 +358,10 @@
 			Q: { inner:'csIN', parent:'csPR', page:'csPG', spread:'csSP', board:'csPB' },
 		}),
 		
-		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}*/locs,/*uint*/destSpace,/*'XY'|'UV'|'UV_C'|'IJ'|'RL'*/kind,  re,t,oo,k,x,i,cs,mx,xy,pg)
+		RESO: function(/*uint[2][3]&*/q,/*dom*/obj,/*{zero,right,bottom}&*/locs,/*uint*/destSpace,/*'XY'|'PG'|'UV'|'UV_C'|'IJ'|'RL'*/kind,  re,t,oo,k,x,i,cs,mx,xy,pg)
 		//----------------------------------
 		// (Resolver.) [CHG190721] Improved version intended to fix the bug w/ anchored objects (CS6-CC.)
+		// [ADD231130] Added 'PG' case (obj is necessarily a Page then).
 		// this :: ~
 		// => undef
 		{
@@ -368,6 +369,20 @@
 			// ---
 			if( (re=callee.CTOR).test(obj.constructor.name) || ((t=obj.parent) && (re.test(t.constructor.name))) )
 			{
+				if( 'PG' == kind )
+				{
+					// [ADD231130] Set pending coords in locs, using a unit triangle centered in locs.zero.
+					// locs.zero   :: [ apTL, bVSB, <loc-space> ]
+					// locs.right  :: [ [xPending,yPending], <loc-space> ]
+					// locs.bottom :: [ [xPending,yPending], <locsspace> ]
+					// ---
+					xy = obj.resolve(locs.zero, locs.zero[2])[0]; // Top-left-anchor in <loc-space>.
+					locs.right[0][0]  = 1+xy[0];                  // right.x  = 1+zero.x
+					locs.right[0][1]  =   xy[1];                  // right.y  =   zero.y
+					locs.bottom[0][0] =   xy[0];                  // bottom.x =   zero.x
+					locs.bottom[0][1] = 1+xy[1];                  // bottom.y = 1+zero.y
+				}
+
 				callee.RSLV(q[0], obj, locs.zero,   destSpace);
 				callee.RSLV(q[1], obj, locs.right,  destSpace);
 				callee.RSLV(q[2], obj, locs.bottom, destSpace);
@@ -516,10 +531,11 @@
 			},
 		}),
 
-		INIT: function(/*0:from|1:into*/step,/*'XY'|'UV'|'UV_C'|'IJ'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool|{zero,right,bottom}*/xtra,  locs,a,b)
+		INIT: function(/*0:from|1:into*/step,/*'XY'|'PG'|'UV'|'UV_C'|'IJ'|'RL'*/kind,/*dom*/ref,/*str|uint|false*/space,/*bool|{zero,right,bottom}*/xtra,  locs,a,b)
 		//----------------------------------
 		// (Initializer.)
-		// [ADD190615] Added 'IJ' kind for custom `from` schemes.
+		// [ADD190615] Added 'IJ' kind for custom `from` schemes. See `µ.fromCustom(...)`
+		// [ADD231130] Added 'PG' kind for 'True Page Space' schemes. See `µ.fromPG(...)`
 		// => undef [OK]  |  str [KO-ERR]
 		{
 			if( !this.CHKO(ref) )
@@ -537,6 +553,11 @@
 			{
 				case 'XY':
 					locs.zero[1] = locs.right[1] = locs.bottom[1] = space;
+					break;
+				case 'PG':
+					// [ADD231130] Intended to be a FROM setting only, but would work as well as INTO (?)
+					locs.zero[2] = space;
+					locs.right[1] = locs.bottom[1] = space; // locs(right|bottom)[0] pending!
 					break;
 				case 'UV':
 				case 'UV_C':
@@ -562,13 +583,22 @@
 				right:  [ [1,0], void 0 ],
 				bottom: [ [0,1], void 0 ],
 				},
+			PG: {
+				// [ADD231130] We need the top-left-anchor of the Page
+				// in the perspective of some space (3rd component below).
+				// Then right and bottom are resp. zero+[1,0] and zero+[0,1]
+				// in space coords. See ~.RESO.
+				zero:   [ µ['~'].apTL, µ['~'].bVSB, void 0 ],
+				right:  [ [void 0, void 0], void 0 ],
+				bottom: [ [void 0, void 0], void 0 ],
+				},
 			UV: {
 				zero:   [ µ['~'].apTL, void 0, void 0 ],
 				right:  [ µ['~'].apTR, void 0, void 0 ],
 				bottom: [ µ['~'].apBL, void 0, void 0 ],
 				},
-			// [ADD190427]
 			UV_C: {
+				// [ADD190427] Set origin at bounding box center.
 				zero:   [ µ['~'].apCC, void 0, void 0 ],
 				right:  [ µ['~'].apRC, void 0, void 0 ],
 				bottom: [ µ['~'].apBC, void 0, void 0 ],
@@ -632,7 +662,7 @@
 			mx = callee.MX;
 			r[0] = mx[0]*x + mx[2]*y + mx[4];
 			r[1] = mx[1]*x + mx[3]*y + mx[5];
-			
+
 			return r;
 		}
 		.setup({
@@ -654,11 +684,17 @@
 		//----------------------------------
 		{
 			I = callee.µ['~'];
-			
 			(f=I.MCS4) && (MasterSpread.prototype.resolve = f);
 		},
+		
+		onLoad: function onLoad_()
+		//----------------------------------
+		// [ADD231118] Reset prescale factors do (1,1) whenever the module is (re)loading.
+		{
+			callee.µ.preScale();
+		},
 
-		fromXY: function fromXY_D_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,  s)
+		fromXY: function fromXY_D_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS='inner'*/space,  s)
 		//----------------------------------
 		// Initialize the `convert` method so it takes as input arguments
 		// *coordinate space* coordinates, with respect to the `ref` object.
@@ -672,7 +708,31 @@
 			return callee.µ;
 		},
 
-		fromUV: function fromUV_D_s$CoordSpace$_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,/*bool=0*/centered,  s)
+		fromPG: function fromPG_$Page$_s$CoordSpace$_$this$(/*Page*/pge,/*str|uint|CS='inner'*/space,  s)
+		//----------------------------------
+		// [ADD231130] True Page Coordinates: initialize the `convert` method so it takes as input
+		// arguments actual (x,y) coordinates, in pt, relative to the top-left corner of `pge`
+		// in the perspective of `space`. With space=='inner' (default), this amounts to shift
+		// the origin accordingly (=translation). If a parent space is considered (spread, board)
+		// the page bounding box is taken in that perspective, orientation and scaling, and the
+		// incoming coordinates are then expected to be consistent with that space, relative to
+		// the custom origin.
+		// [REM] Unlike `µ.fromXY(page,...)` this initializer guarantees that the origin of the
+		// coordinate system, i.e [0,0], will coincide with the top-left anchor of the reference
+		// Page, while the usual Page space may have its origin shifted due to resizing.
+		// ---
+		// space :: 'inner' | 'parent' | 'page' | 'spread' | 'board' | <CoordSpaceEnum>
+		// => µ [OK]  |  ERROR [KO]
+		{
+			( (!pge) || 'Page' != pge.constructor.name )
+			&& $.global[callee.µ.__root__].error("Invalid `pge` argument. Should be a Page object.",callee);
+
+			( s=callee.µ['~'].INIT(0, 'PG', pge, space||'inner') )
+			&& $.global[callee.µ.__root__].error(s,callee);
+			return callee.µ;
+		},
+
+		fromUV: function fromUV_D_s$CoordSpace$_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS='inner'*/space,/*bool=0*/visibleBounds,/*bool=0*/centered,  s)
 		//----------------------------------
 		// Initialize the `convert` method so it takes as input arguments
 		// *bounding box* coordinates --[0,0]=top-left; [1,1]=bottom-right--
@@ -702,7 +762,7 @@
 		//                 than current horizontal and vertical units (default.)
 		// [REM] Rulers coordinates depends on both `Document.zeroPoint`,
 		// `ViewPreference.rulerOrigin`, and `DocumentPreference.facingPages`.
-		// [REM] If `ref` is a Spread while rulerOrigin is page dependent, the
+		// [REM] If `ref` is a Spread while rulerOrigin is page-dependent, the
 		// considered page is the one that contains the spread center point.
 		// => µ [OK]  |  ERROR [KO]
 		{
@@ -738,7 +798,7 @@
 			return callee.µ;
 		},
 
-		intoXY: function intoXY_ds$CoordSpace$_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,  I,s)
+		intoXY: function intoXY_ds$CoordSpace$_s$CoordSpace$_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS='inner'*/space,  I,s)
 		//----------------------------------
 		// Initialize the `convert` method so it outputs *coordinate space*
 		// coordinates. If `ref` is provided use it as space provider,
@@ -761,7 +821,7 @@
 			return callee.µ;
 		},
 
-		intoUV: function intoUV_ds$CoordSpace$_s$CoordSpace$b_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS=auto*/space,/*bool=0*/visibleBounds,  I,s)
+		intoUV: function intoUV_ds$CoordSpace$_s$CoordSpace$b_b_$this$(/*PageItem|Image|Spread|Page*/ref,/*str|uint|CS='inner'*/space,/*bool=0*/visibleBounds,  I,s)
 		//----------------------------------
 		// Initialize the `convert` method so it outputs *bounding box*
 		// coordinates--[0,0]=top-left; [1,1]=bottom-right--
@@ -814,7 +874,7 @@
 		
 		convert: function convert_pa_pa_pa$matrix$(/*?pnt|pnt[]&*/xyInput,/*?pnt|pnt[]&*/xyOutput,  I,r)
 		//----------------------------------
-		// Given a point, or an array of points, expressed in 'from' coordinates
+		// [AUTO] Given a point, or an array of points, expressed in 'from' coordinates
 		// --as specified in `from..` methods--, convert each coordinate pair in
 		// 'into' coordinates--as specified in `into..` methods.
 		// `xyInput`  :: Point or array of points (input coordinates.) If no argument is
@@ -868,10 +928,13 @@
 		// during `convert` to every incoming (x,y) coordinates. If `kx` (resp.
 		// `ky`) is zero or not a  number, the default factor (=1) is restored.
 		// This function is useful to premultiply coordinates in `fromUV` scheme.
+		// => µ
 		{
 			F = callee.µ['~'].CONV;
 			F.KX = kx && 'number'==typeof kx ? kx : 1;
 			F.KY = ky && 'number'==typeof ky ? ky : 1;
+			
+			return callee.µ; // [FIX231118]
 		},
 
 	})
