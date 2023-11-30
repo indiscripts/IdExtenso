@@ -1,3 +1,15 @@
+##### [231130]
+   - [Dom.Space](/etc/$$.Dom.Space.jsxlib). Since InDesign CS6, it is no longer guaranteed that the upper left corner of a page coincides with the origin of its coordinate space. In other words `myPage.resolve( [ [0,0], CoordinateSpaces.innerCoordinates ], <someSpace> )[0]` may return coordinates that differ from `myPage.resolve( AnchorPoint.topLeftAnchor, <someSpace> )[0]`. This situation occurs particularly when the dimensions of a page have been modified or, more generally, when a document shares pages of different sizes. This can become an annoying problem if your script has to rely on Page coordinates (assumed to be) relative to the upper left corner, that is, the “top-left anchor point” of the bounding box of the page. To circumvent these inconsistencies, `$$.Dom.Space` now provides a special `fromPG(<pge>, <space>)` initializer that differs from `fromXY(<pge>, <space>)` in the following way
+   
+	Initialize the `convert` method so that it takes as input arguments actual (x,y) coordinates, in pt,
+ 	relative to the upper left corner of `pge` in the perspective of `space`. With space=='inner'
+  	(default), this amounts to shift the origin accordingly (=translation). If a parent space is
+	considered (spread, board) the page bounding box is taken in that perspective, orientation and
+ 	scaling, and the incoming coordinates are then expected to be consistent with that space,
+  	relative to the custom origin.
+  
+  This new method allows you, for example, to safely convert what we may call “true page coordinates” into any other system (rulers, UV, etc) without having to worry about the (X,Y)-shift possibly occurring in the _actual_ Page Coordinate Space. (As a general rule, better is to trust page bounding box rather than page inner space. `$$.Dom.Space` applies that very principle for computing, behind the scenes, the correct matrix.)
+
 ##### [231121]
   - [`Edit(Factory)`](/etc/ScriptUI/factories/$$.Edit.jsxinc): Had to inhibit _Enter_ keydown handling with _multiline_ edits (in order to preserve their legacy behavior).
   - Go to [TestEditAndStepper.jsx](/tests/SuiFactories/TestEditAndStepper.jsx) for testing various Edit/EditInteger examples.
