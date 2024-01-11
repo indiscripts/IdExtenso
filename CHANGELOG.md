@@ -1,3 +1,6 @@
+##### [240111]
+  - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): `getSamples` options now support a boolean property, `unionStyles`, that tells whether target Character Styles and target Paragraph Styles (cf `this.options.csIds` and `this.options.psIds`) must be processed separately (UNION) instead of selecting the ranges they have in common (INTERSECTION). INTERSECTION was and remains the _default_ behavior.
+
 ##### [231130]
    - [Dom.Space](/etc/$$.Dom.Space.jsxlib). Since InDesign CS6, it is no longer guaranteed that the upper left corner of a page coincides with the origin of its coordinate space. In other words `myPage.resolve( [ [0,0], CoordinateSpaces.innerCoordinates ], <someSpace> )[0]` may return coordinates that differ from `myPage.resolve( AnchorPoint.topLeftAnchor, <someSpace> )[0]`. This situation occurs particularly when the dimensions of a page have been modified or, more generally, when a document shares pages of different sizes. This can become an annoying problem if your script has to rely on Page coordinates (assumed to be) relative to the upper left corner, that is, the “top-left anchor point” of the bounding box of the page. To circumvent these inconsistencies, `$$.Dom.Space` now provides a special `fromPG(<pge>, <space>)` initializer that differs from `fromXY(<pge>, <space>)` in the following way
    
