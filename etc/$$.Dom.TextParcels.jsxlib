@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       230918 (YYMMDD)
+		Modified:       240111 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 230918, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 240111, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -424,7 +424,7 @@
 		// ---
 		RE_MRGE: /^[\u0003\u0007-\u000A\u000D\u0016\u0017\u0020\u001A\u007F-\u009F\u00A0\u00AD\u2000-\u200D\u2028\u2029\u202F\u205F\u2063\u3000\uFEFF\uFFFC\uFFFD]+$/g,
 
-		SEGS: function(/*str*/tx,/*str*/rk,/*0|str*/psi,/*0|str*/csi,/*num*/mxSz,/*uint|0*/mergeSpaces,/*bool*/endNoteFrame,/*char*/XR,/*char|false*/AC,/*?RegExp*/alphaReg,  end,U32,PS,CS,R,z,nk,x,dx,i,zi,out,endSep,t,s,emk)
+		SEGS: function(/*str*/tx,/*str*/rk,/*0|str*/psi,/*0|str*/csi,/*num*/mxSz,/*uint|0*/mergeSpaces,/*bool*/endNoteFrame,/*char*/XR,/*char|false*/AC,/*?RegExp*/alphaReg,  end,U32,PS,CS,R,z,nk,x,dx,i,zi,psOut,csOut,out,endSep,t,s,emk)
 		//----------------------------------
 		// (Valid-Style-Segments.) [FIX230604] This new version deals with endnote markers
 		// that must be preserved -- even in OUT segments! -- when endNoteFrame is on.
@@ -456,6 +456,7 @@
 		//       <ESEP> :: <XR> | <AC><XR>  ===> LAST_CUT
 		{
 			const RE_MG = 0 < mergeSpaces && this.RE_MRGE;
+			const USTY = callee.UNION_STYLES;
 
 			if( !(end=tx.length) ) return '';                                   // Just in case! (Shouldn't happen.)
 
@@ -471,9 +472,11 @@
 				U32 && ( zi=((zi<<16)|rk.charCodeAt(++i)) >>> 0 );
 				if( !zi ) continue;                                             // Ignore zero-length range.
 
-				out = ( PS && -1 == psi.indexOf(rk.charAt(1+i)) )               // Is the para-style index <p> disallowed (i.e absent in psi),
-				   || ( CS && -1 == csi.indexOf(rk.charAt(2+i)) );              // or is the char-style index <c> disallowed (i.e absent in csi)?
-				
+				psOut = ( PS && -1 == psi.indexOf(rk.charAt(1+i)) );            // Is the para-style index <p> disallowed (i.e absent in nonempty psi)?
+				csOut = ( CS && -1 == csi.indexOf(rk.charAt(2+i)) );            // Is the char-style index <c> disallowed (i.e absent in nonempty csi)?
+				out = USTY ? (psOut && csOut) : (psOut || csOut);               // [CHG240109] If UNION_STYLES is ON (which only happens if PC && CS),
+				                                                                // then the `out` flag must be set only if both psOut and csOut are true.
+
 				(1&z)==out && ( R[z++]=x, x+=dx, dx=0 );                        // Toggle? ( 1==1 means IN->OUT ; 0==0 means OUT->IN )
 				                                                                // Register the current segment ; R[0] is always 0 and R[1] might be 0
 			}
@@ -565,6 +568,8 @@
 		.setup
 		({
 			LAST_CUT: false, // safer
+			
+			UNION_STYLES: false, // [ADD240109] Whether to perform UNION rather than INTERSECTION on styles.
 
 			TEST: function(/*str*/tx,/*uint*/i,/*RegExp*/re,/*-1|0|+1*/dir,  d,t)
 			//----------------------------------
@@ -3394,8 +3399,8 @@
 				// ---
 				cStyles = I.NRMS(cStyles);
 
-				// [REM210902] The map q is required only if pStyles is an array.
-				// q :: { _psPath => id }  ; where psPath is based on <X2> separator.
+				// [REM210902] The map q is required only if cStyles is an array.
+				// q :: { _csPath => id }  ; where csPath is based on <X2> separator.
 				// ---
 				q = ( cStyles instanceof Array )
 				&& (this.charStylesMap || (this.charStylesMap=I.STMP('character',{},doc)));
@@ -3519,7 +3524,7 @@
 			NOOP: function(){},
 		}),
 
-		getSamples: function getSamples_o_f_A(/*?obj*/txtOptions,/*fct=auto*/RET,  I,mxNb,mxSz,vm,ms,ac,acre,vs,ops,CLU,NEX,PSI,CSI,VRS,VTX,RGS,pid,seqs,vrep,rk,q,z,k,a,ini,nxt,i,j,sz,tx,t)
+		getSamples: function getSamples_o_f_A(/*?obj*/txtOptions,/*fct=auto*/RET,  I,mxNb,mxSz,vm,ms,ac,acre,vs,ops,CLU,NEX,PSI,CSI,VRS,VTX,RGS,pid,seqs,vrep,rk,q,z,k,a,ini,nxt,i,j,sz,tx,t,uniSty)
 		//----------------------------------
 		// Extract strings from this TextParcels instance with respect to its current
 		// targets. If consolidation hasn't been processed yet, invokes µ.consolidate()
@@ -3545,6 +3550,10 @@
 		//                            MUST be of the form /[...]/ in non-astral mode,
 		//                            or /(?:[Hi][Lo]|...|[BMP])/ in ASTRAL mode, so
 		//                            a two-character string can pass the test.
+		// - unionStyles (bool=0)     [ADD240109] When both character and paragraph styles
+		//                            are supplied in `ops.csIds` and `ops.psIds`, makes the
+		//                            combined filter work thru UNION rather than INTERSECTION.
+		// ---
 		// If supplied, the `RET` argument is a function that accepts either a single string
 		// or an array of strings. `RET(input,pid,iniKid,nxtKid)` is invoked for each input
 		// (str or str[]) that has to be processed, with pid::`_currentPidOK`,
@@ -3575,6 +3584,7 @@
 			mxSz = (txtOptions.maxSampleSize >>> 0) || 1/0;
 			vm   = 0|(txtOptions.varMode);
 			ms   = (txtOptions.mergeSpaces >>> 0);
+			uniSty = txtOptions.unionStyles ? 1 : 0;
 
 			// Alpha cut? -> (ac,acre)
 			// ---
@@ -3604,17 +3614,32 @@
 			// the expected style(s).
 			// ---
 			RGS = 0;
-			if( PSI=ops.psIds )
+			if( PSI=ops.psIds ) // Para-style filter
 			{
 				PSI=I.IDXS(PSI, this.styles);
-				if( !PSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+				if( !uniSty && !PSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
 				RGS = this.ranges;
 			}
-			if( CSI=ops.csIds )
+			if( CSI=ops.csIds ) // Char-style filter
 			{
 				CSI=I.IDXS(CSI, this.styles);
-				if( !CSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+				if( !uniSty && !CSI.length ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
 				RGS || (RGS=this.ranges);
+			}
+
+			// [ADD240109] If unionStyles is ON,
+			//    psIds  csIds  RESULT
+			//   ----------------------------------------
+			//     off    off   Ignore ranges (RGS=0)
+			//     ON     off   INTER algo anyway (as before)
+			//     off    ON    INTER algo anyway (as before)
+			//     ON     ON    UNION algo unless RGS==0 -> exit
+			// ---
+			I.SEGS.UNION_STYLES = false;                              // Default.
+			if( uniSty && ops.psIds && ops.csIds )
+			{
+				if( !RGS ) return 'function' == typeof(RET.getData) ? RET.getData() : void 0;
+				I.SEGS.UNION_STYLES = true;
 			}
 
 			// Variables management.
@@ -3835,6 +3860,9 @@
 		//                            MUST be of the form /[...]/ in non-astral mode,
 		//                            or /(?:[Hi][Lo]|...|[BMP])/ in ASTRAL mode, so
 		//                            a two-character string can pass the test.
+		// - unionStyles (bool=0)     [ADD240109] When both character and paragraph styles
+		//                            are supplied in `ops.csIds` and `ops.psIds`, makes the
+		//                            combined filter work thru UNION rather than INTERSECTION.
 		// ---
 		// => MultiStream&
 		{
