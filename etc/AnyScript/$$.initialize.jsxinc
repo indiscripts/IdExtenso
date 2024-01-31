@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        190331 (YYMMDD)
-		Modified:       210405 (YYMMDD)
+		Modified:       240131 (YYMMDD)
 
 *******************************************************************************/
 
@@ -20,21 +20,32 @@
 	({
 		YALT: false,
 
-		DECL: function(  $$,q,v,o)
+		DECL: function(  $$,q,v,o,src,k)
 		//----------------------------------
 		// (Declare-Settings.) Declare and normalize settings.
 		// [REM] Called by `onEngine`. See also `init()`.
-		// Normalized constant settings (the starting `_` is the contant shortcut.)
+		// [FIX240131] Improved the parsing of the incoming settings object.
+		// Since every *constant* setting can be declared in two alternate ways,
+		//   (a) `_MYKEY : ...` (prefixed `_`) in the root branch
+		//   (b) `MYKEY  : ...` (no prefix) in the dedicated CONST branch
+		// it is safer (and necessary!) to explore each option when retrieving
+		// existing settings.
+		// ---
+		// Here are the *normalized* constant settings:
 		// ---------------------------------------------------------------------
-		// _$IDRQ :: (num)  InDesign version required ;  e.g 7.5
-		// _$SUID :: (str)  Unique ID                 ;  e.g "d7d1fbece5d803ed5c9bf50eb68580cd"
+		// •$IDRQ :: (num)  InDesign version required ;  e.g 7.5
+		// •$SUID :: (str)  Unique ID                 ;  e.g "d7d1fbece5d803ed5c9bf50eb68580cd"
 		// ---------------------------------------------------------------------
-		// _$NAME :: (str)  Script name               ;  e.g "MyScript"
-		// _$VSTR :: (str)  Script version            ;  e.g "2.027"
-		// _$TYPE :: (str)  Script type (A,B,F,T,P)   ;  e.g "B"  (for beta.)
-		// _$COPY :: (str)  Copyright line            ;  e.g "© 2018, myserver.com"
-		// _$HEAD :: (str)  Full script title         ;  e.g "MyScript 2.027[beta]"
+		// •$NAME :: (str)  Script name               ;  e.g "MyScript"
+		// •$VSTR :: (str)  Script version            ;  e.g "2.027"
+		// •$TYPE :: (str)  Script type (A,B,F,T,P)   ;  e.g "B"  (for beta.)
+		// •$COPY :: (str)  Copyright line            ;  e.g "© 2018, myserver.com"
+		// •$HEAD :: (str)  Full script title         ;  e.g "MyScript 2.027[beta]"
 		// ---------------------------------------------------------------------
+		// The symbol • represents the fact that those keys are constant, they
+		// can be delivered to $$.Settings.declare() either using the syntactical
+		// `_` prefix in root branch, or without prefix in `CONST` branch. The
+		// initial `_` is never part of the key name anyway.
 		// => undefined
 		{
 			$$ = $.global[callee.µ.__root__]; // agnostic reference
@@ -43,39 +54,42 @@
 			// ---
 			callee.FNME=$$.Env.runningScript;
 
-			// Raw data.
+			// Raw incoming data - cf public.init()
+			// [FIX240131] Added checks in `q.CONST` (if available).
 			// ---
 			q = callee.DATA||(callee.DATA={});
+			( (o=q.CONST) && o===Object(o) ) || (o={});
 
 			// Required ID version ($IDRQ).
 			// ---
-			if( q.hasOwnProperty('_$IDRQ') )
+			if( (src=q).hasOwnProperty(k='_$IDRQ') || (src=o).hasOwnProperty(k=k.slice(1)) )
 			{
-				v = q._$IDRQ;
+				v = src[k];
 				'number' == typeof v || (v=parseFloat(String(v))); // [FIX200112]
 				6 < v && (callee.IDRQ=v);
 			}
 
 			// Script name ($NAME).
 			// ---
-			callee.NAME = q._$NAME || (q._$NAME=File(callee.FNME).nudeName()); // [FIX200112]
+			callee.NAME = q._$NAME || o.$NAME || (q._$NAME=File(callee.FNME).nudeName()); // [FIX200112]
 
 			// Script version ($VSTR). Fallback: "1.0".
 			// ---
-			callee.VSTR = q._$VSTR || (q._$VSTR='1.0');
+			callee.VSTR = q._$VSTR || o.$VSTR || (q._$VSTR='1.0');
 
 			// Script type ($TYPE) among 'A'|'B'|'F'|'T'|'P' or empty.
 			// ---
-			callee.TYPE = {A:' alpha', B:' beta', F:' free', T:' trial', P:' pro'}[q._$TYPE] || '';
+			v = q._$TYPE || o.$TYPE || '';
+			callee.TYPE = {A:' alpha', B:' beta', F:' free', T:' trial', P:' pro'}[v] || '';
 
 			// Copyright line ($COPY). May be empty.
 			// ---
-			callee.COPY = q._$COPY || "";
+			callee.COPY = q._$COPY || o.$COPY || "";
 			
 			// Script head ($HEAD) may be served as title in dialogs etc.
 			// Unless specified, mix of NAME, VSTR, TYPE and COPY.
 			// ---
-			callee.HEAD = q._$HEAD || (q._$HEAD=__("%1 %2%3 %4"
+			callee.HEAD = q._$HEAD || o.$HEAD || (q._$HEAD=__("%1 %2%3 %4"
 				, callee.NAME
 				, callee.VSTR
 				, callee.TYPE
@@ -84,7 +98,8 @@
 
 			// Settings Unique ID ($SUID).
 			// ---
-			callee.SUID = q._$SUID = String(q._$SUID) || ($$.MD5||String)(callee.NAME);
+			v = String( q._$SUID || o.$SUID || '' );
+			callee.SUID = v.length ? v : ( q._$SUID = ($$.MD5||String)(callee.NAME) );
 
 			// Default LIVE keys:
 			// hasDocument ; hasSelection
