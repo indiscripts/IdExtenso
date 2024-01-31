@@ -1,3 +1,9 @@
+##### [240131]
+  - [AnyScript/initialize](/etc/AnyScript/$$.initialize.jsxinc): Improved the parsing of the incoming settings object. Since every *constant* setting (cf [$$.Settings](/etc/$$.Settings.jsxlib) module) can be declared in two alternate ways,
+    - `{ ..., _MYKEY:data, ... }` (key prefix ‘_’) in the root branch
+    - `{ ..., CONST:{ ..., MYKEY:data, ... }, ... }` (no ‘_’ prefix) in the dedicated `CONST` branch   
+	it is safer (and required!) to explore each option when extracting existing settings from the declarator object.
+
 ##### [240111]
   - [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): `getSamples` options now support a boolean property, `unionStyles`, that tells whether target Character Styles and target Paragraph Styles (cf `this.options.csIds` and `this.options.psIds`) must be processed separately (UNION) instead of selecting the ranges they have in common (INTERSECTION). INTERSECTION was and remains the _default_ behavior.
 
