@@ -1,3 +1,6 @@
+##### [240412]
+  - [Dom.Space](/etc/$$.Dom.Space.jsxlib): Bugfix applied to the `convert()` method: the `xyOutput` argument was not considered (due to a typo) and led to a runtime error. Solved.
+
 ##### [240131]
   - [AnyScript/initialize](/etc/AnyScript/$$.initialize.jsxinc): Improved the parsing of the incoming settings object. Since every *constant* setting (cf [$$.Settings](/etc/$$.Settings.jsxlib) module) can be declared in two alternate ways,
     - `{ ..., _MYKEY:data, ... }` (key prefix ‘_’) in the root branch
