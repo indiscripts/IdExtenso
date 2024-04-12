@@ -14,11 +14,11 @@
 		DOM-access:     YES (Enums ; obj.resolve)
 		Todo:           ---
 		Created:        180606 (YYMMDD)
-		Modified:       231130 (YYMMDD)
+		Modified:       240412 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 231130, 'convert'))
+;$$.Dom.hasOwnProperty('Space') || eval(__(MODULE, $$.Dom.toSource(), 'Space', 240412, 'convert'))
 
 	//==========================================================================
 	// NOTICE
@@ -883,6 +883,10 @@
 		//               is missing, output coordinates will be loaded in `xyInput`.
 		// This function returns a reference to the resulting array (xyOutput or xyInput.)
 		// ---
+		// [REM240412] Warning: `xyInput` as an array is *internally modified* if no
+		// `xyOutput` array is supplied. To preserve `xyInput` data, use the syntax:
+		// `µ.convert( xyInput, [] )`
+		// ---
 		// Examples:
 		// µ.fromUV(obj,'inner').intoRL().convert([ [.5,0],[1,.5],[.5,1],[0,.5] ])
 		// -> Return the UV losange points of the inner bounding box in rulers coords.
@@ -898,7 +902,7 @@
 			(xyInput instanceof Array)
 			|| $.global[callee.µ.__root__].error(__("Invalid `xyInput` argument (%1). Should be an Array.", xyInput.__class__),callee);
 			
-			r = ( xyOutput && xyOutput instanceof Array ) ? xyOuput : xyInput;
+			r = ( xyOutput && xyOutput instanceof Array ) ? xyOutput : xyInput;
 
 			if( xyInput[0] && (xyInput[0] instanceof Array) )
 			{
