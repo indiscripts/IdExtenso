@@ -1,0 +1,524 @@
+/*******************************************************************************
+
+		Name:           ColorPaletteFactory
+		Desc:           UIColor Palette.
+		Path:           /etc/ScriptUI/factories/$$.ColorPalette.jsxinc
+		Require:        ScriptUI/factories ; ScriptUI/colors ; ScriptUI/events
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:            ScriptUI.ColorPaletteFactory()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        240502 (YYMMDD)
+		Modified:       240509 (YYMMDD)
+
+*******************************************************************************/
+
+	// =============================================================================
+	// NOTICE
+	// =============================================================================
+	
+	/*
+	
+	ColorPaletteFactory draws a matrix of colored squares that can be shown on demand
+	in the foreground of a *stack*-oriented container. This component is intended to
+	be invoked from one or several 'client(s)' ; each client SHOULD then support two
+	dedicated methods: getColor() and setColor('#RRGGBB').
+	
+	By default, the colors available in the matrix are those defined in InDesign's
+	DOM Enumeration `UIColors`. You can optionally add custom colors to the set using
+	the `addon` option.
+	
+	Also, a single ColorPalette component should be used in your UI. Any client will
+	invoke it using:
+
+	      myColorPalette.showPalette(myClient);
+
+	The ColorPalette then shows up and allows the user to select a color by clicking
+	a matrix square. When a color is selected, the palette is closed and calls
+	`myClient.setColor(<newColor>)`, where <newColor> is the `#RRGGBB` code of
+	the user-selected color. It is the client's responsibility to update accordingly.
+	For example, you might implement `<client>.setColor(...)` in a way that modifies
+	its own background color with respect to the active color.
+	
+	- The user can also discard the palette by leaving its area without clicking any
+	  color. In that case, the palette is closed without calling myClient.setColor().
+	
+	- If *another* client runs the palette while already visible, e.g responding to
+	  an event with `myColorPalette.showPalette(newClient)`, then the palette switches
+	  to this new client and does not inform the previous one.
+
+	IMPORTANT: In CC, the ColorPalette component cannot display correctly above an
+	area containing EditText controls. Take this into consideration when designing
+	the UI structure.
+
+	Example in ScriptUI.builder:
+	      ...
+	      Group$STACK:
+	      {
+	          orientation:  'stack', // IMPORTANT
+
+	          Button$SomeClient:
+	          {
+	             . . .
+	             setColor: function(rgb){ . . . },
+	             getColor: function(){ . . . },
+	             onClick:  function(){ this.window.ThePalette.showPalette(this) },
+	          }
+
+	          ColorPaletteFactory$ThePalette:
+	          [{
+	               size:   12,          // size of each color cell, in px (def:16)
+	               layout: 'square',    // makes the matrix as square as possible
+	               addon:  ['336699'],  // add a custom color to the choices
+	          }],
+	      }
+	      ...
+
+	API
+	=======================================================================
+	properties      obj = { kind: "ColorPalette", Rows:uint, Cols:uint,
+	                        Size:uint }
+	                Information properties.
+	-----------------------------------------------------------------------
+	value           `#RRGGBB`
+	                Hex code of the active color.
+	-----------------------------------------------------------------------
+	colorIndex      uint (def=0)
+	                Index of the active color.
+	=======================================================================
+	showPalette(cli) => undef
+	                Show (cli truthy) or hide (cli falsy) the palette.
+	=======================================================================
+
+	*/
+
+	;if( $$.isBooting() )
+	//----------------------------------
+	{
+		ScriptUI.ColorPaletteFactory = function ColorPalette(/*container*/parent,/*{value...}*/ops,  r,t,colors,pp)
+		//----------------------------------
+		// .value ('#RRGGBB'|uint)   Selected color (index or value.)
+		// .size            (uint)   Cell size (width=height) between 8 and 24      ; Def: 16.
+		// .layout          (str)    'horizontal' | 'vertical' | 'square'           ; Def: 'horizontal'
+		// .addon           (arr)    Array of additional colors in `#RRGGBB` form   ; Def: []
+		// ---
+		// => Group[[ColorPalette]] ::    G(...)
+		//   .properties             ::   { kind:'ColorPalette', Rows:uint, Cols:uint, Size:uint }
+		{
+			// Normalize options.
+			// ---
+			ops===Object(ops) || (ops={});
+			// ---
+			t = (ops.size>>>0) || 16;
+			8 > t ? (t=8) : (24 < t && (t=24));
+			ops.size = t;
+			// ---
+			t = (ops.layout||'').toString().toLowerCase();
+			'vertical'==t || 'square'==t || (t='horizontal');
+			ops.layout = t;
+			// ---
+			((t=ops.addon) && (t instanceof Array)) || (t=false);
+			colors = callee.CLRS(t);
+			
+			r = callee.PLTE(colors, ops);
+			pp =
+			{
+				kind: callee.name,
+				Rows: [r.Rows,delete r.Rows][0],
+				Cols: [r.Cols,delete r.Cols][0],
+				Size: ops.size,
+			};
+			r = ScriptUI.builder( r, parent.add( 'group', void 0, pp ) );
+
+			// Watcher.
+			// ---
+			ScriptUI.setWatcher
+			(
+				r,
+				['value', 'colorIndex'],
+				callee.WTCH,
+				ops
+			);
+
+			r.visible = false;
+			return r;
+		}
+		.setup
+		//----------------------------------
+		// Colors
+		//----------------------------------
+		({
+			// Default UI Colors.
+			ENUM:
+			{
+				LIGHT_BLUE:  '4F99FF',
+				RED:         'FF0000',
+				GREEN:       '4FFF4F',
+				BLUE:        '0000FF',
+				YELLOW:      'FFFF4F',
+				MAGENTA:     'FF4FFF',
+				CYAN:        '00FFFF',
+				GRAY:        '808080',
+				BLACK:       '000000',
+				ORANGE:      'FF6600',
+				DARK_GREEN:  '005400',
+				TEAL:        '009999',
+				TAN:         'CC9966',
+				BROWN:       '993300',
+				VIOLET:      '9933FF',
+				GOLD:        'FF9900',
+				DARK_BLUE:   '000087',
+				PINK:        'FF99CC',
+				LAVENDER:    '9999FF',
+				BRICK_RED:   '990000',
+				OLIVE_GREEN: '666600',
+				PEACH:       'FF9999',
+				BURGUNDY:    '990033',
+				GRASS_GREEN: '99CC00',
+				OCHRE:       '996600',
+				PURPLE:      '660066',
+				LIGHT_GRAY:  'BABABA',
+				CHARCOAL:    'ABA3B5',
+				GRID_BLUE:   '7ABAD9',
+				GRID_ORANGE: 'FFB56B',
+				FIESTA:      'F7596B',
+				LIGHT_OLIVE: '8CA66B',
+				LIPSTICK:    'CF82B5',
+				CUTE_TEAL:   '82CFC2',
+				SULPHUR:     'CFCF82',
+				GRID_GREEN:  '9CDE9C',
+				WHITE:       'FFFFFF',
+			},
+			
+			// Detect '#RRGGBB' or 'RRGGBB'
+			CREG: /^#?[0-9A-F]{6}$/i,
+
+			CLRS: function(/*?`#RRGGBB`[]*/addon,  r,E2C,k,i,rgb,re,j)
+			//----------------------------------
+			// (Colors-Array.)
+			// this :: ScriptUI.ColorPaletteFactory
+			// => `#RRGGBB`[]&  +  { `#RRGGBB`=>idx, <ENUM_KEY>=>`#RRGGBB`, ?`_#RRGGBB`=><ENUM_KEY> }
+			{
+				r = callee.DATA;
+				if( (!addon) && r ) return r;
+				
+				if( !r )
+				{
+					r = callee.DATA = [];
+					E2C = this.ENUM;
+					i = 0;
+					for( k in E2C ) E2C.hasOwnProperty(k) &&
+					( (r[k]=rgb='#'+E2C[k]), r['_'+rgb]=k, r[rgb]=i, r[i]=rgb, ++i );
+				}
+				
+				if( addon )for
+				(
+					re=this.CREG, i=r.length, j=-1 ;
+					++j < addon.length ;
+					re.test(rgb=String(addon[j]).toUpperCase())  // Validate
+					&& !r.hasOwnProperty(rgb='#'+rgb.slice(-6))  // Skip existing / normalize rgb
+					&& ( r[rgb]=i, r[i]=rgb, ++i )
+				);
+
+				return r;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Palette Resource and __setHigh__ method.
+		//----------------------------------
+		({
+			PLTE: function(/*'#RRGGBB'[]*/colors,/*{size:uint,layout:str}*/ops,  sz,n,k,ROWS,COLS,res,idx,j,row,i,cel,rgb,hlp)
+			//----------------------------------
+			// this :: ScriptUI.ColorPaletteFactory
+			// => res   ;  Group of Groups of Buttons :: G↓( G→(B,...), G→(B,...), ...)
+			{
+				sz = ops.size;
+				n = colors.length;
+				k = callee.COEF[ops.layout] || 1;
+				ROWS = Math.ceil(Math.sqrt(n)/k);
+				COLS = Math.ceil(n/ROWS);
+
+				res =
+				{
+					// --- Recovered by the caller:
+					Rows:ROWS,
+					Cols:COLS,
+					// ---
+					margins:            1,
+					spacing:            0,
+					orientation:        'column',
+					alignChildren:      ScriptUI.LC,
+					// --- Watched.
+					value:              void 0,             // #RRGGBB
+					colorIndex:         0,                  // Index of the saved color .
+					// --- Private
+					__colors__:         colors,
+					__highIndex__:      -1,                 // Index of the dynamic cell
+					__setHigh__:        this.HIGH,          // Private HIGH method (set the dynamic cell.)
+					// --- Methods
+					showPalette:        this.SHWP,
+					// --- Events
+					_mouseover_mouseout_mousedown: this.HPAL,
+					background:         0xEEEEEE,
+				};
+
+				for( idx=0, j=-1 ; n > idx && ++j < ROWS ; )
+				{
+					row = res['Group$'+j] =
+					{
+						properties:     { name:'R'+j },
+						margins:        0,
+						spacing:        0,
+						orientation:    'row',
+						alignChildren:  ScriptUI.LC,
+					};
+
+					for( i=-1 ; n > idx && ++i < COLS ; ++idx )
+					{
+						rgb = colors[idx]; // '#RRGGBB'
+						hlp = (hlp=colors['_'+rgb]) ? callee.DISP(hlp) : rgb;
+						cel = row['Group$'+i] =
+						{
+							properties:      { name: 'C'+idx },
+							__cellIndex__:   idx,
+							margins:         0,
+							spacing:         0,
+							orientation:     'stack',
+							alignChildren:   ScriptUI.CC,
+							optimalSize:     { width:sz, height:sz },
+							background:      'EEEEEE|444444',
+							helpTip:         hlp,
+							Group$:
+							{
+								margins:     0,
+								spacing:     0,
+								optimalSize: { width:sz-2, height:sz-2 },
+								background:  rgb.slice(1),
+							},
+						};
+					}
+				}
+				return res;
+			}
+			.setup
+			({
+				COEF:
+				{
+					'horizontal': 1.75,
+					'square':     1,
+					'vertical':   0.57,
+				},
+
+				DISP: function(/*XXX_YYY*/enumKey,  a,i)
+				//----------------------------------
+				// (Display-Enum.) Transform 'XXX_YYY' into 'Xxx Yyy'
+				// => str
+				{
+					a = enumKey.split('_');
+					for( i=a.length ; i-- ; a[i]=a[i].charAt(0)+a[i].slice(1).toLowerCase() );
+					return a.join(' ');
+				}
+			}),
+
+			HIGH: function __setHigh__(/*uint|-1|Group[Cell]*/nv,  COLS,wg,ov)
+			//----------------------------------
+			// Highlight a cell, or nothing.
+			// nv :: Cell widget | color index | -1.
+			// this ::  Group[[ColorPalette]]
+			// => undef
+			{
+				me = this;
+				COLS = me.properties.Cols;
+
+				// wg :: destination cell, or false.
+				// ---
+				nv===(0|nv)
+				? ( wg = 0 <= nv && me.children['R'+~~(nv/COLS)].children['C'+nv] )
+				: ( nv = (wg=nv).__cellIndex__ );
+
+				// Restore previous cell.
+				// ---
+				if( 0 <= (ov=me.__highIndex__) && ov!=nv )
+				{
+					me.children['R'+~~(ov/COLS)].children['C'+ov].enabled = true;
+				}
+
+				wg && (wg.enabled=false);
+				me.__highIndex__ = nv;
+			},
+
+		})
+		.setup
+		//----------------------------------
+		// Inner events
+		//----------------------------------
+		({
+			HPAL: function onMousePalette(/*Event*/ev,  me,tg,cell,idx,pp)
+			//----------------------------------
+			// this   :: Group[[ColorPalette]]   (Group of Groups of Groups)
+			// ev.type :: mouseover | mouseout | mousedown
+			{
+				me = this;
+				tg = ev.target;
+
+				'number' == typeof(idx=(cell=tg).__cellIndex__)
+				|| 'number' == typeof(idx=(cell=cell.parent).__cellIndex__)
+				|| (cell=false, idx=-1);
+
+				switch( (ev||0).type )
+				{
+					case 'mouseover':
+						cell && me.__setHigh__(cell);
+						break;
+					
+					case 'mouseout':
+						me.__setHigh__(-1);
+						if( me !== tg ) break;
+						me.showPalette(false);
+						break;
+					
+					case 'mousedown':
+						ev.stopPropagation();
+						idx = me.__highIndex__;
+						//me.__setHigh__(-1);
+						0 <= idx && (me.colorIndex=idx);
+						me.showPalette(false);
+						break;
+					
+					default:;
+				}
+			},
+		})
+		.setup
+		//----------------------------------
+		// Watcher.
+		//----------------------------------
+		({
+			WTCH: function watcher(/*str*/k,/*any*/ov,/*any*/nv)
+			//----------------------------------
+			// this   :: Group[[ColorPalette]]
+			//    k   :: value | colorIndex
+			{
+				if( this['µ'+k] ) return nv; // Transparent key.
+
+				// `#RRGGBB`[]&  +  { `#RRGGBB`=>idx, <ENUM_KEY>=>`#RRGGBB`, ?`_#RRGGBB`=><ENUM_KEY> }
+				var t = this.__colors__;
+				
+				switch( k )
+				{
+					case 'value': // #RRGGBB (normalized) | <ENUM_KEY> | idx
+
+						if( 'string' == typeof nv )
+						{
+							'#'==nv.charAt(0) || '#'==(nv=t[nv]||'\x01').charAt(0) || (nv=false);
+							
+							nv && t.hasOwnProperty(nv)
+							? ( this.µcolorIndex=1, this.colorIndex=t[nv], delete this.µcolorIndex )
+							: ( nv=ov );
+						}
+						else
+						{
+							nv === (nv>>>0)
+							? ( this.colorIndex=nv, nv=t[this.colorIndex] )
+							: ( nv=ov );
+						}
+
+						break;
+
+					case 'colorIndex':
+						nv===(nv>>>0) && nv < t.length
+						? ( this.µvalue=1, this.value=t[nv], delete this.µvalue )
+						: ( nv=ov );
+						break;
+
+					default:;
+				}
+
+				return nv;
+			},
+		})
+		.setup
+		//----------------------------------
+		// Public methods.
+		//----------------------------------
+		({
+			SHWP: function showPalette(/*?Widget|bool*/cli,  me,vsb,KX,KY,DX,DY,wb,pwb,x,mx,y,my)
+			//----------------------------------
+			// this   :: Group[[ColorPalette]]
+			// => bool
+			{
+				me = this;
+				vsb = me.visible;
+
+				if( 'undefined' == typeof cli ) return vsb;
+
+				if( vsb == !!cli )
+				{
+					if( (!vsb) || me.__client__ === cli ) return vsb;
+					me.hide(); // temporarily
+				}
+
+				if( !cli )
+				{
+					me.hide();
+					vsb = false;
+					
+					(cli=me.__client__) && 'function' == typeof cli.setColor && cli.setColor(me.value);
+					delete me.__client__;
+					return vsb;
+				}
+
+				ScriptUI.isWidget(cli) || (cli=me.parent);
+				me.__client__ = cli;
+
+				wb = cli.windowBounds;
+				pwb = me.parent.windowBounds;
+
+				// SUI Scaling fixer is required on:
+				// - wb.left|top              ; [REM] wb.right|bottom are IRRELEVANT
+				// - any Window metrics       ; [REM] all in screen coordinates
+				// ---
+				KX = callee.X_SCALE;
+				KY = callee.Y_SCALE;
+				
+				DX = cli.size[0]/2;                             // Relative to cli.left
+				DY = -(me.size[1]+cli.size[1])/2;               // Relative to cli.bottom
+
+				x = wb.left/KX + DX;
+				mx = pwb.left/KX + (0|pwb.width) - me.size[0];  // Maximum x ; do not use pwb.right
+				x > mx && (x=mx);                               // Shift to the left as necessary.
+				// ---
+				y = wb.top/KY + (0|wb.height) + DY;             // Do not use wb.bottom!
+				my = pwb.top/KY + (0|pwb.height) - me.size[1];  // Maximum y ; do not use pwb.bottom
+				y > my && (y=my);                               // Shift upwards as necessary.
+
+				// Translate (x,y) in me.parent coordinates.
+				// ---
+				if( me.parent !== me.window )
+				{
+					0 > (x-=pwb.left/KX) && (x=0);
+					0 > (y-=pwb.top/KY)  && (y=0);
+				}
+
+				// Expecting SUI coordinates.
+				// ---
+				me.location = [ Math.round(x), Math.round(y) ];             // [REM] Because x,y could be float at this point.
+				me.show();
+
+				'function' == typeof cli.getColor
+				? ( me.value=cli.getColor(), me.__setHigh__(me.colorIndex) )
+				: ( me.__setHigh__(-1) );
+
+				return true;
+			}
+			.setup
+			({
+				X_SCALE: ScriptUI.HDI_SCALING[0],
+				Y_SCALE: ScriptUI.HDI_SCALING[1],
+			}),
+		})
+
+	}
