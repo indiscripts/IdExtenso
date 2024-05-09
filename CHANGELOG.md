@@ -1,3 +1,6 @@
+##### [240509]
+  - [`ColorPalette(Factory)`](/etc/ScriptUI/factories/$$.ColorPalette.jsxinc): New factory component that automatically shows/hides a color palette over some ‘client’ control and allows the user to select a new color. See [TestColorPalette.jsx](/tests/SuiFactories/TestColorPalette.jsx) for a quick demo.
+
 ##### [240412]
   - [Dom.Space](/etc/$$.Dom.Space.jsxlib): Bugfix applied to the `convert()` method: the `xyOutput` argument was not considered (due to a typo) and led to a runtime error. Solved.
 
