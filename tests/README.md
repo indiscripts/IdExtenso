@@ -361,6 +361,10 @@ This subfolder provides basic demo scripts showing the behaviors and features of
 
    ![TestCheckList screenshot](SuiFactories/TestCheckList.png)
 
+* [`TestColorPalette.jsx`](SuiFactories/TestColorPalette.jsx) instantiates a `ColorPalette(Factory)` (hidden palette in a `stack`-oriented container) and shows how to attach it to client buttons.
+
+   ![TestColorPalette screenshot](SuiFactories/TestColorPalette.png)
+
 * [`TestDrawnCheck.jsx`](SuiFactories/TestDrawnCheck.jsx) instantiates various `DrawnCheck(Factory)` icons.
 
    ![TestDrawnCheck screenshot](SuiFactories/TestDrawnCheck.png)
