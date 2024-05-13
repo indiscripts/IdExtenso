@@ -1,0 +1,237 @@
+/*******************************************************************************
+
+		Name:           UIColor
+		Desc:           Encode and decode UIColors value or [r,g,b] color.
+		Path:           /etc/$$.Dom.UIColor.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =getName() encode() decode()
+		DOM-access:     YES (Enums)
+		Todo:           ---
+		Created:        240513 (YYMMDD)
+		Modified:       240513 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.Dom.hasOwnProperty('UIColor') || eval(__(MODULE, $$.Dom.toSource(), 'UIColor', 240513, 'getName'))
+
+	//==========================================================================
+	// MAPS & TOOLS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		// Makes enumId-to-enumName conversion easier.
+		UC2S: eval(UIColors.revSource()),           // {'1765960811':"BLACK", '1765960821':"BLUE", etc }
+		
+		// Map built-in UIColor names to #RRGGBB.
+		// ENUM_KEY => #RRGGBB
+		// #RRGGBB => ENUM_KEY (cf onEngine)
+		// ---
+		URGB:
+		{
+			LIGHT_BLUE:  '#4F99FF',
+			RED:         '#FF0000',
+			GREEN:       '#4FFF4F',
+			BLUE:        '#0000FF',
+			YELLOW:      '#FFFF4F',
+			MAGENTA:     '#FF4FFF',
+			CYAN:        '#00FFFF',
+			GRAY:        '#808080',
+			BLACK:       '#000000',
+			ORANGE:      '#FF6600',
+			DARK_GREEN:  '#005400',
+			TEAL:        '#009999',
+			TAN:         '#CC9966',
+			BROWN:       '#993300',
+			VIOLET:      '#9933FF',
+			GOLD:        '#FF9900',
+			DARK_BLUE:   '#000087',
+			PINK:        '#FF99CC',
+			LAVENDER:    '#9999FF',
+			BRICK_RED:   '#990000',
+			OLIVE_GREEN: '#666600',
+			PEACH:       '#FF9999',
+			BURGUNDY:    '#990033',
+			GRASS_GREEN: '#99CC00',
+			OCHRE:       '#996600',
+			PURPLE:      '#660066',
+			LIGHT_GRAY:  '#BABABA',
+			CHARCOAL:    '#ABA3B5',
+			GRID_BLUE:   '#7ABAD9',
+			GRID_ORANGE: '#FFB56B',
+			FIESTA:      '#F7596B',
+			LIGHT_OLIVE: '#8CA66B',
+			LIPSTICK:    '#CF82B5',
+			CUTE_TEAL:   '#82CFC2',
+			SULPHUR:     '#CFCF82',
+			GRID_GREEN:  '#9CDE9C',
+			WHITE:       '#FFFFFF',
+		},
+		
+		CREG: /^#?[0-9A-F]{6}$/i, // Detect '#RRGGBB' or 'RRGGBB'
+
+		PRSE: function(/*UIColorsEnum|UIColorsEnumKey|`#RRGGBB`|[r,g,b]*/what,  k,rgb,t,M,q)
+		//----------------------------------
+		// this :: ~
+		// => { rgbKey:`#RRGGBB`, enumKey:str|undef }&  [OK]  |  false [KO]
+		{
+			if( !what ) return false;
+			k = rgb = false;
+
+			switch( typeof what )
+			{
+				case 'string':
+					if( this.CREG.test(what) )
+					{
+						rgb = '#' + what.slice(-6).toUpperCase();
+						break;
+					}
+					k = what;
+					k != k.toUpperCase() && (k=k.replace(/[A-Z]/,'_$&').toUpperCase());
+					break;
+
+				case 'number':
+					if( what !== what>>>0 ) return false;
+					if( !(k=this.UC2S[''+what]) ) return false;
+					break;
+
+				case 'object':
+					if( what instanceof Array )
+					{
+						if( 3 != what.length ) return false;
+						t = (((0xFF&what[0])<<16)|((0xFF&what[1])<<8)|(0xFF&what[2]))>>>0;
+						rgb = '#' + ('000000'+t.toString(16)).slice(-6).toUpperCase();
+						break;
+					}
+					if( 'Enumerator' == what.constructor.name )
+					{
+						t = +what;
+						if( !(k=this.UC2S[''+t]) ) return false;
+					}
+					break;
+
+				default:
+					return false;
+			}
+			
+			M = this.URGB;
+			if( k && !(rgb=M[k]) ) return false;
+			if( !rgb ) return false;
+			
+			q = callee.INFO;
+			q.rgbKey = rgb;
+			q.enumKey = k || M[rgb];
+			return q;
+		}
+		.setup
+		({
+			INFO: { rgbKey:'', enumKey:'' },
+		}),
+		
+		RGBA: function(/*`#RRGGBB`*/rgb,  r,g,b)
+		//----------------------------------
+		// (RGBKey-to-Array.)
+		// => [r,g,b]
+		{
+			rgb = parseInt(rgb.slice(-6), 16);
+			return [ 0xFF&(rgb>>>16), 0xFF&(rgb>>>8), 0xFF&(rgb>>>0) ];
+		},
+	})
+
+	//==========================================================================
+	// API
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		onEngine: function onEngine_(  q,k)
+		//----------------------------------
+		// Complete ~.URGB map.
+		{
+			q = callee.µ['~'].URGB;
+			for( k in q ) q.hasOwnProperty(k) && q[q[k]]=k;
+		},
+
+		getName: function getName_X_b_S(/*UIColorsEnum|#RRGGBB|[r,g,b]*/what,/*bool=0*/DISPLAY_NAME,  info,r,i)
+		//---------------------------------- AUTO
+		// Given a UIColor (enum/uint/key) or a rgb color in either #RRGGBB or
+		// [r,g,b] format (0..255), return the name, i.e the corresponding enum
+		// key (e.g BRICK_RED) or '#RRGGBB' if this is a custom color.
+		// - If DISPLAY_NAME is truthy, return enum key in `Xxx Yyy` form rather
+		//   than `XXX_YYY`
+		// - The prefix '#' is optional when providing `what` in hex form.
+		// E.g.
+		//       µ.getName('#BABABA')           =>  "LIGHT_GRAY"
+		//       µ.getName('#BABABA', 1)        =>  "Light Gray"
+		//       µ.getName('ABA3B5')            =>  "CHARCOAL"
+		//       µ.getName([255,0,0])           =>  "RED"
+		//       µ.getName("336699")            =>  "#336699"
+		//       µ.getName([123,45,67])         =>  "#7B2D43"
+		//       µ.getName(1766289266)          =>  "GRID_ORANGE"
+		//       µ.getName('cuteTeal')          =>  "CUTE_TEAL"
+		//       µ.getName(UIColors.BRICK_RED)  =>  "BRICK_RED"
+		//       µ.getName(+UIColors.BRICK_RED) =>  "BRICK_RED"
+		//       µ.getName("BRICK_RED")         =>  "BRICK_RED"
+		//       µ.getName("UNKNOWN_COLOR")     =>  ""
+		// ---
+		// => str [ENUM_KEY|`#RRGGBB`]  |  '' [KO]
+		{
+			if( !(info=callee.µ['~'].PRSE(what)) ) return '';
+			if( !(r=info.enumKey) ) return info.rgbKey;
+
+			if( DISPLAY_NAME )
+			{
+				r=r.split('_');
+				for( i=r.length ; i-- ; r[i]=r[i].charAt(0)+r[i].slice(1).toLowerCase() );
+				r = r.join(' ');
+			}
+			return r;
+		},
+		
+		encode: function encode_X_ia(/*#RRGGBB|[r,g,b]|UIColorsEnum*/what,  I,info,k)
+		//----------------------------------
+		// Given a rgb color in either #RRGGBB or [r,g,b] format (0..255),
+		// return either a valid UIColor value (uint) or a [r,g,b] array
+		// (custom color). The result can be assigned to DOM properties
+		// that expects UIColor.
+		// - The incoming arg can be supplied as UIColor (enum/uint/key)
+		//   as well.
+		// - The prefix '#' is optional when providing the arg in hex form.
+		// [REM] If the argument can't be parsed, the returned value is
+		// purposely `undefined`, which is safer when you store the result
+		// in a `properties` object.
+		// E.g.
+		//   myDocPrefs.marginGuideColor = µ.encode('#BABABA') ; LIGHT_GRAY
+		//   myPbPrefs.bleedGuideColor = µ.encode('336699')    ; custom color
+		//   myGuide.guideColor = µ.encode('cuteTeal')         ; CUTE_TEAL
+		// ---
+		// => uint|[r,g,b] [OK]  |  undef [KO]
+		{
+			I = callee.µ['~'];
+			if( !(info=I.PRSE(what)) ) return void 0;
+			return (k=info.enumKey) ? +UIColors[k] : I.RGBA(info.rgbKey);
+		},
+
+		decode: function decode_X_S(/*UIColorsEnum|[r,g,b]*/what,  info)
+		//----------------------------------
+		// Given a UI color as UIColorsEnum or [r,g,b], return the
+		// associated hex string in `#RRGGBB` form.
+		// - The incoming arg can be supplied as '#RRGGBB' or 'RRGGBB' as
+		//   well (so `decode` and `encode` can be processed symmetrically.)
+		// [REM] If your goal is to get the *name* of some color, use the
+		// `getName()` method instead.
+		// E.g.
+		//   rgb = µ.decode(myDocPrefs.marginGuideColor);  // => `#RRGGBB`
+		// ---
+		// => `#RRGGBB` [OK]  |  '' [KO]
+		{
+			if( !(info=callee.µ['~'].PRSE(what)) ) return '';
+			return info.rgbKey;
+		},
+	})
+
