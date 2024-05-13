@@ -1,3 +1,6 @@
+##### [240412]
+  - [Dom.UIColor](/etc/$$.Dom.UIColor.jsxlib): New DOM module making easier to address `UIColors` enumerators and alternate `[r,g,b]` colors. Use the `encode`/`decode` methods to manage color assignments and translate data in common `#RRGGBB` form.
+
 ##### [240509]
   - [`ColorPalette(Factory)`](/etc/ScriptUI/factories/$$.ColorPalette.jsxinc): New factory component that automatically shows/hides a color palette over some ‘client’ control and allows the user to select a new color. See [TestColorPalette.jsx](/tests/SuiFactories/TestColorPalette.jsx) for a quick demo.
 
