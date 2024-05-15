@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        240502 (YYMMDD)
-		Modified:       240509 (YYMMDD)
+		Modified:       240515 (YYMMDD)
 
 *******************************************************************************/
 
@@ -323,11 +323,12 @@
 				}
 			}),
 
-			HIGH: function __setHigh__(/*uint|-1|Group[Cell]*/nv,  COLS,wg,ov)
+			HIGH: function __setHigh__(/*uint|-1|Group[Cell]*/nv,  me,COLS,wg,ov)
 			//----------------------------------
 			// Highlight a cell, or nothing.
 			// nv :: Cell widget | color index | -1.
 			// this ::  Group[[ColorPalette]]
+			// [FIX240515] Undeclared `me` argvar added.
 			// => undef
 			{
 				me = this;
@@ -375,6 +376,7 @@
 						break;
 					
 					case 'mouseout':
+						ev.stopPropagation();
 						me.__setHigh__(-1);
 						if( me !== tg ) break;
 						me.showPalette(false);
