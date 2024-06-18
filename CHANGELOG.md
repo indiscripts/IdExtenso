@@ -1,3 +1,6 @@
+##### [240618]
+  - [Yalt](/etc/$$.Yalt.jsxlib): Added the public method `translate(inputArr, CHANGE_IN_PLACE)`. This utility runs Yalt on an entire array (the `inputArr` argument). The Boolean `CHANGE_IN_PLACE` (false by default) decides whether the incoming array is to be internally modified. Useful if you have an array of unlocalized strings and need to get it quickly localized (e.g. to pass in final strings in a UI Listbox, etc.)
+
 ##### [240412]
   - [Dom.UIColor](/etc/$$.Dom.UIColor.jsxlib): New DOM module making easier to address `UIColors` enumerators and alternate `[r,g,b]` colors. Use the `encode`/`decode` methods to manage color assignments and translate data in common `#RRGGBB` form.
 
