@@ -9,14 +9,15 @@
 		Kind:           Module.
 		API:            =addPackage() activate() autoActivate
 		                getLocaleId() isActive() hasKey()
+		                translate()
 		DOM-access:     Locale Enumeration
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       230104 (YYMMDD)
+		Modified:       240618 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 230104, 'addPackage'))
+;$$.hasOwnProperty('Yalt') || eval(__(MODULE, $$, 'Yalt', 240618, 'addPackage'))
 
 	//==========================================================================
 	// NOTICE
@@ -575,6 +576,31 @@
 		// => 0 | 1
 		{
 			return 'string' == typeof keyString && keyString.length ? callee.µ['~'].HASK(keyString,inCurrentLocale?1:0) : 0;
+		},
+		
+		translate : function translate_A_b_a(/*str[]|str[]&*/inputArr,/*bool=0*/CHANGE_IN_PLACE,  r,Y,i)
+		//----------------------------------
+		// [ADD240618] Translate each element of the `inputArr` array.
+		// By default, a new array of strings is created. If CHANGE_IN_PLACE
+		// is truthy, the input array is changed.
+		// Ex.    $$.Yalt.translate( ["Hello", "Thank you", "Cancel"] )
+		//        returns the array `[ __("Hello"), __("Thank you"), __("Cancel") ]`
+		// [REM] If `inputArr` has not the expected type, the method has no effect
+		// and returns undefined.
+		// ---
+		// => new str[]  |  inputArr&  |  undef [KO]
+		{
+			if( !(inputArr && inputArr instanceof Array ) ) return;
+			
+			r = CHANGE_IN_PLACE ? inputArr : Array(inputArr.length);
+			for
+			(
+				Y=callee.µ['~'].YALT, i=r.length ;
+				i-- ;
+				r[i]=Y(inputArr[i])
+			);
+
+			return r;
 		},
 
 	})
