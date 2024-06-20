@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170427 (YYMMDD)
-		Modified:       210711 (YYMMDD)
+		Modified:       240620 (YYMMDD)
 
 *******************************************************************************/
 
@@ -457,6 +457,11 @@
 	         . . .
 	      }
 
+	   [WARNING] In CS4/CS5, *multi-column* listboxes do not support the `items`
+	   property to be set at creation time (this crashes the app!) If you need
+	   to declare a multi-column list in a cross-version script, best is to
+	   create a dedicated factory -- see examples in etc/ScriptUI/factories
+
 	d) Uniform 'stack' manager. In ScriptUI the `orientation` key supports three
 	   string values: "row", "column", and "stack". They control how children are
 	   to be laid out within their container.
@@ -543,6 +548,7 @@
 	[210124] Added the ability to attach *multiple* event keys to
 	         a single handler: `_focus_blur: function onFocusBlur(){...}`
 	[210711] Ability to prevent helpTip inheritance using `helpTip: false`.
+	[240620] Added a disclaimer about multi-column listboxes in the doc.
 
 	*/
 
@@ -563,16 +569,18 @@
 		// ---
 		res===Object(res)
 		|| error(__("%1 > Invalid resource argument (%2). Should be an object.",callee.name,res && typeof res));
-		
+
 		// Init.
 		// ---
-		(q=callee.Q||callee.Q=[]).length=0;                 // Cache for args array.
+		(q=callee.Q||(callee.Q=[])).length=0;                 // Cache for args array.
 
 		// Do we need a new Window?
 		// ---
 		win = host && (host.window||host);
-		( win && (win instanceof Window) )
-		|| ( host=win=callee.WIND(res.properties) );
+		if( (!win) || !(win instanceof Window) )
+		{
+			host=win=callee.WIND(res.properties);
+		}
 
 		// [190120] Uniform 'stack' manager.
 		// ---
@@ -647,7 +655,7 @@
 	({
 		// Properties inspected at creation time.
 		// ---
-		RE_CREA:      RegExp('^(?:' + 'properties|factory' + ')$'),
+		RE_CREA: RegExp( '^(?:' + 'properties|factory' + ')$' ),
 
 		// Reverse 'stack' in Win < CC.
 		// ---
