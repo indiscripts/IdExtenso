@@ -1,3 +1,6 @@
+##### [240622]
+  - [JSON](/core/$$.JSON.jsxlib): Added a custom error detection in `$$.JSON.lave()` (thrown if the argument is not a string, or is empty). This bypasses the meaningless native error message.
+
 ##### [240618]
   - [Yalt](/etc/$$.Yalt.jsxlib): Added the public method `translate(inputArr, CHANGE_IN_PLACE)`. This utility runs Yalt on an entire array (the `inputArr` argument). The Boolean `CHANGE_IN_PLACE` (false by default) decides whether the incoming array is to be internally modified. Useful if you have an array of unlocalized strings and need to get it quickly localized (e.g. to pass in final strings in a UI Listbox, etc.)
 
