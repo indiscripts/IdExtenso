@@ -11,11 +11,11 @@
 		DOM-access:     ---
 		Todo:           How do we deal with incoming Collections and plural specs?
 		Created:        170306 (YYMMDD)
-		Modified:       230721 (YYMMDD)
+		Modified:       240622 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 230721, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 240622, 'lave'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -102,6 +102,8 @@
 	[FIX200606] Support of "rich arrays". See ~.['\x01Array']
 	[CHG200613] Better support of "rich arrays". Now returns a strict
 	Array object, augmented thru `(function(a,o...){...})([...],{...})`
+	
+	[CHG240622] Better error control in µ.eval().
 
 	*/
 
@@ -784,11 +786,21 @@
 			return x;
 		},
 		
-		eval : function eval_S_X(/*str*/src)
+		eval : function eval_S_X(/*str*/src,  G)
 		//----------------------------------
 		// Call eval on a 'laved' source string.
-		// => any
+		// [CHG240622] If src is not a string, or is empty, bypass the meaningless
+		// runtime error and throw an error w/ a clearer message.
+		// ---
+		// => any  |  error [KO]
 		{
-			return callee.µ['~'].GLOB.eval('(' + src + ')');
+			G = callee.µ['~'].GLOB;
+
+			// [ADD240622] Make the ExtendScript error more verbose.
+			// ---
+			( 'string'==typeof src && src.length )
+			|| G[callee.µ.__root__].error(__("Invalid argument: `src` should be a non-empty string!"),callee);
+			
+			return G.eval( '(' + src + ')' );
 		},
 	})
