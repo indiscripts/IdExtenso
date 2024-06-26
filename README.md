@@ -1,4 +1,4 @@
-# *IdExtenso*  2.31008  (core: 207KB)
+# *IdExtenso*  2.40626  (core: 210KB)
 
 #### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -18,7 +18,7 @@
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will get you started, and a huge set of additional modules will help you implement more complex scripts and features.
 
-The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `18.x` (CC 2023) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
+The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `19.x` (CC 2024) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
 
 * `myString.toSource()` can save 30% of the original result length.
 
@@ -52,7 +52,7 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 
 - Still works fine in your `JSXBIN` exports!
 
-- Growing number of extra modules that you can plug at wish (via `#include`.) Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, **[PageRange](/etc/$$.PageRange.jsxlib)**, **[TextParcels](/etc/$$.Dom.TextParcels.jsxlib)**, etc.
+- Growing number of extra modules that you can plug at wish (via `#include`.) Just give a look at the `/etc` branch: **[Yalt](/etc/$$.Yalt.jsxlib)** (L10N engine), **[Web](/etc/$$.Web.jsxlib)** (HTTP getter), **[Settings](/etc/$$.Settings.jsxlib)** (multiscope settings manager), **[Collator](/etc/$$.Collator.jsxlib)** (simplified Unicode collation algorithm), **[DateFormat](/etc/$$.DateFormat.jsxlib)**, **[ByteStream](/etc/$$.ByteStream.jsxlib)**, **[Unit](/etc/$$.Unit.jsxlib)**, **[PageRange](/etc/$$.PageRange.jsxlib)**, **[TextParcels](/etc/$$.Dom.TextParcels.jsxlib)**, and many more!
 
 - Growing collection of powerful, fine-tuned and flexible ScriptUI components ([CheckGroup](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc), [CheckList](/etc/ScriptUI/factories/$$.CheckList.jsxinc), [Edit](/etc/ScriptUI/factories/$$.Edit.jsxinc), [Popup](/etc/ScriptUI/factories/$$.Popup.jsxinc), [SideMenu](/etc/ScriptUI/factories/$$.SideMenu.jsxinc), [DrawnCheck](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc)...) easy to integrate in your own UI.
 
@@ -77,6 +77,8 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 Congratulations! You're now ready to fuel your scripts with ***IdExtenso***!
 
 > *Tip*. — Use `$$.help()` at any point of your code to discover and browse the API of the loaded modules.
+
+> *Want to go further?* → [“Porting your InDesign Script into IdExtenso”](https://indiscripts.com/post/2021/09/porting-your-indesign-script-to-idextenso-1)
 
 ## Quick Example
 
