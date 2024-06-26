@@ -1,3 +1,10 @@
+## 2.40626
+Regular update (June 26, 2024.) Global re-generation of the core structure, including recent fixes and additions.
+   - [SUI/mini](/core/SUI/$$.mini.jsxinc): Improved `forceRedraw` function (now dealing with _empty_ groups.)
+   - [JSON](/core/$$.JSON.jsxlib): Custom error detection in `$$.JSON.lave()`.
+
+_(Other changes do not affect the core branch. See previous log entries regarding updated extra modules.)_
+
 ##### [240622]
   - [JSON](/core/$$.JSON.jsxlib): Added a custom error detection in `$$.JSON.lave()` (thrown if the argument is not a string, or is empty). This bypasses the meaningless native error message.
 
