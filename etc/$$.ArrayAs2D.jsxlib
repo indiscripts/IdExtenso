@@ -1,0 +1,568 @@
+/*******************************************************************************
+
+		Name:           ArrayAs2D
+		Desc:           Temporarily adds 2D operators to `Array.prototype`.
+		Path:           /etc/$$.ArrayAs2D.jsxlib
+		Require:        [[Number]].toDecimal (core)
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =on() off() onUnload() setEpsilon() equalNumbers()
+		   [].prototype `==` `<` `<=` `+` `-` `~` `*` `/`
+		                `>>` `<<` `>>>` `^` `|` `&`
+		DOM-access:     ---
+		Todo:           Not yet implemented: %
+		Created:        240807 (YYMMDD)
+		Modified:       240828 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('ArrayAs2D') || eval(__(MODULE, $$, 'ArrayAs2D', 240828, 'on'))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+	0. OVERVIEW
+	========================================================================
+
+	Taking advantage of ExtendScript's operator overloading, this short
+	module implements special operators in `Array.prototype` so expressions
+	like
+
+	       [1,2] + [0,3]            // Expected: [1,5]
+	or
+	       3*[2,5]                  // Expected: [6,15]
+
+	can be parsed and naturally interpreted. Given a 2D 'point' P (or 'vector')
+	declared as an [x,y] Array instance --e.g `var P=Array(3,4)` or `P=[6,7]`--
+	you can reach the point `P/3` by just expressing it that way, instead of
+	the boring syntax `[ P[0]/3, P[1]/3 ]`. The expression `P/3` automatically
+	yields a new Array with the expected coordinate pair.
+	
+	Similarly, the center point of the [PQ] segment will be expressed `(P+Q)/2`.
+	
+	WARNING. - The operators defined here do not align with `$$.Complex.jsxlib`
+	conventions and semantics. For specific calculations w/ complex numbers,
+	turn to the dedicated CLASS.
+
+	This module provides comparison operators too:
+	
+	       P == Q         // check whether P and Q are *equal* points/vectors
+	       P <= Q         // check whether |P| <= |Q| wrt norms (i.e lengths).
+	       etc.
+	
+	Coordinates and norm comparisons are automatically performed according to
+	an epsilon-machine (default 1e-4). Hence,
+	
+	       [ .9995, 7.12345 ] == [ 1, 7.1235]   // => true :-)
+	
+	returns true, which is useful when your program has to deal with many
+	complex 2D calculations. Use
+	
+	       µ.setEpsilon(myEpsilonDistance)
+
+	to set your own epsilon.
+	
+	A special use of `==`, `<=`, etc, is to compare a point/vector with a positive
+	number: the norm is then taken into account. E.g. `P == 3` checks whether
+	the norm of P is equal to 3 (and this comparison is epsilon-aware.)
+	Example:
+	
+	       [3,4] == 5     // => true, since 3² + 4² = 5² :-)
+
+
+	1. USAGE
+	========================================================================
+
+	Including `$$.ArrayAs2D.jsxlib` in your project *HAS NO EFFECT* until
+	you activate it using
+	
+	       $$.ArrayAs2D.on()    // Turn on array operators.
+
+	or just
+
+	       $$.ArrayAs2D()       // idem (shortcut).
+
+	This is basically an 'on-demand service' for your script. You can turn it
+	off when no longer needed:
+
+	       $$.ArrayAs2D.off()   // Turn off array operators.
+
+	This way you'll prevent other parts of your project from being affected by
+	the extended `Array.prototype` (might cause side effects on regular Array
+	objects.)
+
+	When operators are active, the code only checks for minimal conditions
+	before processing operands. In short, it considers any 2-length Array
+	instance as a valid coordinate pair. Also, a few other types are supported
+	(mostly numbers) to make sense of expressions like 3*[x,y]. It's up
+	to you to verify that Array operands are actual 2D coordinates or comply
+	with the types specified in the corresponding operator.
+	
+	As an example, `[x,y]*5` multiplies the 'vector' components by 5, while
+	`[x1,y1]*[x2,y2]` is interpreted as a DOT product, hence returning
+	the number x1*x2 + y1*y2.
+	
+	Unary operators are supported as well, with particular features:
+	
+		-P  refers to the point [-P[0], -P[1]],
+		    that is, a new Array instance.
+
+		+P  is a special shortcut that yields
+		    the norm of P (a positive number)
+		    i.e Math.sqrt(P[0]*P[0]+P[1]*P[1]).
+		
+		~P  swaps x and y coordinates
+		    -> [ P[1],P[0] ].
+	
+	To get the distance between two points P and Q, just write `+(P-Q)`.
+	To check whether two *vectors* have the same norm (disregarding their
+	coordinates) it is recommended to use this syntax:
+	
+	       P == +Q
+
+	instead of a strict comparison of numbers
+	
+	       +P == +Q
+
+	In the latter case, indeed, Number.prototype['=='] is ultimately involved
+	and its behavior cannot be made epsilon-aware.
+	
+	Example:
+		   var P = [3,4];        // |P| is 5
+		   var Q = [4.999,0];    // |Q| is almost 5.
+		   
+		   alert( +P == +Q );    // => false ; strict number comparison :-(
+		   alert(  P == +Q );    // => true  ; prototyped equality test :-)
+	
+	In case you need to separately compare numbers according the epsilon-machine,
+	you can also use the helper method µ.equalNumbers(a,b).
+
+	Note the (slight) difference between
+	
+	       (P-Q) == 0           // Whether the norm |P-Q| ≈ 0.
+	and
+	       P == Q               // Whether P ≈ Q (in coordinates.)
+
+	Although the propositions ‘P=Q’ and ‘|P-Q|=0’ happen to be mathematically
+	equivalent, the underlying operations are a bit different. Thus, the test
+	`P == Q` is faster because it just compare x and y coordinates wrt to
+	epsilon. By contrast, the test (P-Q) == 0 first computes the vector P-Q
+	(a temporary array is created), then the norm of the resulting vector has
+	to be extracted and compared to zero (wrt to epsilon.)
+
+
+	2. TABLE OF OPERATORS
+	========================================================================
+
+	In the following table,
+	- P and Q denote arrays of two numeric coordinates,
+	- d denotes a positive number,
+	- a denotes any number,
+	- n denotes an integer,
+	- s denotes a string.
+
+	OPERATOR    MEANING                  RETVAL         EXAMPLES
+	----------------------------------------------------------------------------
+	P == Q      EqualCoordinates         Boolean        [3,4] == [2.9999,4.00001]
+	P == d      EqualNorm                Boolean        [3,4] == 5 ; 5 == [3,4]
+	d == P      (i.e equal length)
+	----------------------------------------------------------------------------
+	P < Q       NormLessThan             Boolean        [3,4] < [-6,0]
+	P < d       NormLessThan             Boolean        [3,4] < 6  ;  6 > [3,4]
+	P <= d      NormLessThanOrEqual      Boolean        [3,4] <= 5 ;  5 >= [3,4]
+	---------
+	Note 1: All comparisons are epsilon-aware, that is,
+	        A == B  means  |diff| <= EPSILON
+	        A <= x  means  A < x  OR   |diff| <= EPSILON
+	        A <  x  means  A < x  AND  |diff| > EPSILON  -> "sensibly less than"
+	Note 2: The > and >= operators are implied by symmetry.
+	----------------------------------------------------------------------------
+	+P          Norm (length)            Number>0       +[3,4]        // => 5
+	P + Q       Addition                 Array          [2,0]+[1,4]   // => [3,4]
+	P + a       interpreted P+[a,0]      Array          [2,4]+1       // => [3,4]
+	a + P       interpreted [a,0]+P      Array          1+[2,4]       // => [3,4]
+	P + s       Concatenation            String         [3,4]+"..."   // => "[3,4]..."
+	s + P       <idem>                   String         "res: "+[3,4] // => "res: [3,4]"
+	----------------------------------------------------------------------------
+	-P          Negate                   Array          -[3,4]        // => [-3,-4]
+	P - Q       Subtract                 Array          [5,6]-[2,2]   // => [3,4]
+	P - a       interpreted P-[a,0]      Array          [5,4]-2       // => [3,4]
+	a - P       interpreted [a,0]-P      Array          5-[2,4]       // => [3,-4]
+	----------------------------------------------------------------------------
+	P * a       MultiplyByScalar         Array          [2,4]*5       // => [10,20]
+	a * P       <idem>                   Array          5*[2,4]       // => [10,20]
+	P * Q       DotProduct               Number         [2,-4]*[3,1]  // => 2  ; 2×3 + -4×1
+	----------------------------------------------------------------------------
+	~P          SwapCoordinates          Array          ~[3,4]        // => [4,3]
+	----------------------------------------------------------------------------
+	P / a       DivideByScalar           Array          [2,4]/2       // => [1,2]
+	P / Q       Determinant              Number         [2,4]/[3,5]   // => -2 ; 2×5 - 4×3
+	1 / P       NormalizedVector P/|P|   Array          1/[3,4]       // => [0.6,0.8]  ;  [3,4]/5
+	            hence +(1/P)==1
+	a / P       stands for a*(1/P)       Array          4/[3,4]       // => [2.4,3.2]
+	----------------------------------------------------------------------------
+	P >> a      RotateBy(a) ; a in rad   Array          [3,0]>>(Math.PI/2) // => [0,3] ; ±ε
+	P >> Q      AngleBetween(P,Q)        num (rad)      [1,0]>>[-1,0] // => 3.14159265358979
+	a << P      alias of P >> a
+	Q << P      alias of P >> Q
+	----------------------------------------------------------------------------
+	P >>> n     Round to n decimals      Array          [3.4567,-1.26]>>>1 // => [3.5,-1.3]     ; 0 <= n < 20
+	n >>> P     RoundString              String         2>>>[3.5,-1]       // => "[3.50,-1.00]" ; -20 < n < +20
+	                                                                             cf [[Number]].toDecimal
+	----------------------------------------------------------------------------
+	P ^ 2       Square norm i.e |P|²     num > 0        [3,4]^2       // => 25
+	            faster than (+P)*(+P)
+	P ^ a       pow(|P|,a)               num > 0        [3,4]^3       // => 125
+	P ^ Q       SquareDistance(P,Q)      num > 0        [2,3]^[5,7]   // => 25
+	            faster than (Q-P)^2
+	----------------------------------------------------------------------------
+	P | Q       Distance(P,Q)            num > 0        [4,1]|[-2,1]  // => 6
+	            equiv. +(Q-P)
+	----------------------------------------------------------------------------
+	P & Q       Inject Q in P and yield P               P&[4,3]       // => P&  set to [4,3]
+	            equiv (P[0]=Q[0],P[1]=Q[1],P)
+	Cf indiscripts.com/post/2024/08/extendscript-make-ampersand-behave-as-a-reference-operator
+	----------------------------------------------------------------------------
+	P % Q       <not-implemented-yet>
+
+	*/
+
+	//==========================================================================
+	// `EQUA` and OPERATORS
+	// Rem. All operator keys are of the reserved form `_•_`
+	//      where • represents the actual operator symbol(s).
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Backup native valueOf method.
+		// ---
+		BKVO: Array.prototype.valueOf,
+
+		'VLOF': function valueOf()
+		//----------------------------------
+		// Custom `valueOf` method: returns |this| (norm).
+		// this :: Array
+		// => unum
+		{
+			return 2==this.length ?
+				Math.sqrt(this[0]*this[0]+this[1]*this[1]) :
+				callee.µ['~'].BKVO.call(this);
+		},
+
+		'EQUA': function(/*num*/a,/*num*/b,/*?unum*/e)
+		// --------------------------------- EPSILON-AWARE
+		// (Numeric-Equality-Helper.)
+		// this :: any
+		// => bool
+		{
+			return (e||callee.EPSILON) >= (0>(a=a-b)?-a:a)
+		}
+		.setup
+		({
+			// Default epsilon-machine
+			EPSILON: 1e-4,
+		}),
+		
+		// ---
+		// ALL OP-METHODS HAVE AS CONTEXT (this) A 2-LENGTH ARRAY INSTANCE
+		// In the following, the syntax |Z| represents the Euclidian norm of Z.
+		// ---
+		
+		'_==_' : function(/*num[2]|unum*/A,  f)
+		// --------------------------------- EPSILON-AWARE
+		// (Equality.) If unum supplied, check |T|==A [±E]  i.e abs(|T|-|A|) <= E
+		// => bool
+		{
+			f = callee.µ['~'].EQUA;
+			return (
+				2==(A||0).length ?
+				( f(A[0],this[0]) && f(A[1],this[1]) ) :
+				( 'number'==typeof A && 0 <= A && f(A,Math.sqrt(this[0]*this[0]+this[1]*this[1])) )
+				);
+		},
+
+		'_<_' : function(/*num[2]|unum*/A,/*bool*/rv,  t)
+		// --------------------------------- EPSILON-AWARE
+		// (Strictly-Less-Than.) Norm comparison.
+		// Supports: `T < A`              rv: `A < T`
+		// Meaning:  |T|<|A| && !(_==_)       |A|<|T| && !(_==_)
+		// Optim:    |T|<|A|-E                |A|<|T|-E
+		//           |T|-|A| < -E             |A|-|T| < -E
+		//           |A|-|T| > E              |T|-|A] > E
+		// => bool
+		{
+			A = 2==(A||0).length ? Math.sqrt(A[0]*A[0]+A[1]*A[1]) : ( 'number'==typeof A && 0 <= A && A );
+			if( false===A ) return false;
+			
+			t = Math.sqrt(this[0]*this[0]+this[1]*this[1]);
+			return callee.µ['~'].EQUA.EPSILON < ( rv ? t-A : A-t );
+		},
+
+		'_<=_' : function(/*num[2]|unum*/A,/*bool*/rv)
+		// --------------------------------- EPSILON-AWARE
+		// (Less-Than-Or-Equal.) Norm comparison.
+		// Supports: `T <= A`                    rv: `A <= T`
+		// Meaning:  |T|<=|A| || (_==_)              ...
+		// Optim:    |T|-|A|<=0 || |T|-|A|<=E        ...
+		//           |T|-|A| <= E                    |A|-|T| <= E
+		// => bool
+		{
+			A = 2==(A||0).length ? Math.sqrt(A[0]*A[0]+A[1]*A[1]) : ( 'number'==typeof A && 0 <= A && A );
+			if( false===A ) return false;
+			
+			t = Math.sqrt(this[0]*this[0]+this[1]*this[1]);
+			return callee.µ['~'].EQUA.EPSILON >= ( rv ? A-t : t-A );
+		},
+
+		'_+_'  : function(/*?num[2]|num*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// (UnaryNorm-Or-Addition.)
+		// Supports: `+T`     ;  `T + A` (rv: `A + T`)
+		// Meaning:   |T|     ;  T+[A,0] (rv: [A,0]+T)   if Number(A)
+		//                       Regular point addition  if Array(A)
+		// If nothing matches, use this.toString() to preserve usual behavior.
+		// ---
+		// => new [x,y] [ADDITION]  |  unum [UNARY+]
+		{
+			return 'undefined' == (t=typeof A) ?
+				Math.sqrt(this[0]*this[0]+this[1]*this[1]) :
+				(
+					2==(A||0).length ? [this[0]+A[0],this[1]+A[1]] :
+					(
+						'number'==t ?
+						[ A+this[0],this[1] ] :
+						( rv ? ( A + this.toString() ) : ( this.toString() + A ) )
+					)
+				);
+		},
+
+		'_-_'  : function(/*?num[2]|num*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// (Negation-Or-Subtraction.)
+		// Supports: `-T`  ;  `T - A` (rv: `A - T`)
+		// Meaning:   -T   ;  T-[A,0] (rv: [A,0]-T)     if Number(A)
+		//                    Regular point subtraction if Array(A)
+		//                    Clone `this` otherwise.
+		// ---
+		// => new [x,y]
+		{
+			return 'undefined' == (t=typeof A) ? [ -this[0],-this[1] ] :
+				(
+					2==(A||0).length ?
+					( rv ? [A[0]-this[0],A[1]-this[1]] : [this[0]-A[0],this[1]-A[1]] ) :
+					( 'number'==t ? (rv?[A-this[0],-this[1]]:[this[0]-A,this[1]]) : this.slice() )
+				);
+		},
+
+		'_*_'  : function(/*num[2]|num*/A)
+		// ---------------------------------
+		// (Mult-Or-DotProduct.)
+		// Supports: `T * A` (resp `A * T`)
+		// Meaning:  A*T             if Number(A)
+		//           A·T (resp. T·A) if Array(A)    ;  aka DOT product.
+		//           Clone `this` otherwise.
+		// => new [x,y] [MULT]  |  num [DOT-PRODUCT]
+		{
+			return 2==(A||0).length ?
+				( this[0]*A[0]+this[1]*A[1] ) :
+				( 'number'==typeof A ? [ A*this[0],A*this[1] ] : this.slice() );
+		},
+
+		'_~_'  : function()
+		// ---------------------------------
+		// (Swap.)
+		// Supports: `~T`
+		// Meaning:  swap coordinates  -->  [T[1],T[0]]
+		// => new [x,y]
+		{
+			return [ this[1],this[0] ];
+		},
+
+		'_/_'  : function(/*num[2]|num*/A,/*bool*/rv,  x,y)
+		// ---------------------------------
+		// (Divide-MultNormalize-Or-Determinant.)
+		// Supports: `T/A`       (rv: `A/T`)
+		// Meaning:  (1/A)*T     A.normalize(T)     if Number(A)
+		//                       typically `1/T` yields the 'normalized' vector T/|T|
+		//           det(this,A)  (rv: det(A,this)  if Array(A)
+		// where det(A,B) := A[0]B[1]-A[1]B[0]
+		// Clone `this` otherwise.
+		// ---
+		// => new [x,y] [DIV|NORM]  |  num [DETERMINANT]  |  ERROR [DIV-BY-ZERO]
+		{
+			x = this[0];
+			y = this[1];
+			return 2==(A||0).length ?
+				// => Determinant
+				( rv ? (A[0]*y-A[1]*x) : (x*A[1]-y*A[0]) ) :
+				(
+					'number'==typeof A ?
+					(
+						rv ?
+						// => this.normalize(A) | [0,0]
+						( x && y && isFinite(A/=Math.sqrt(x*x+y*y)) ? [x*A,y*A] : [0,0] ) :
+						// => this/A
+						( A ? [ x/A,y/A ] : error("Division by zero.", callee.µ) )
+					) :
+					this.slice()
+				);
+		},
+		
+		'_>>_': function(/*num[2]|rad*/A,/*bool*/rv,  x,y,c,s)
+		//----------------------------------
+		// (Rotate-Or-AngleBetween.)
+		// Supports: `T>>A`       (rv: `A>>T`)
+		// Meaning:  rot(T,A)      rot(T,-A)    if Number(A)  ; A in radians
+		//           angle(T,A)    angle(A,T)   if Array(A)
+		//           Clone `this` otherwise.
+		// => new [x,y] [ROT]  |  rad [ANGLE]  ; rad may be NaN or infinite
+		{
+			x = this[0];
+			y = this[1];
+			return 2==(A||0).length ?
+				( (rv?-1:1)*Math.atan2( A[1]*x-A[0]*y, x*A[0]+y*A[1] ) ) :
+				(
+					'number'==typeof A ?
+					[ (c=Math.cos(A))*x - (s=Math.sin(rv?-A:A))*y, s*x + c*y ] :
+					this.slice()
+				);
+		},
+
+		'_<<_': function(/*num[2]|rad*/A,/*bool*/rv,  x,y,c,s)
+		//----------------------------------
+		// (Sym-Rot-Or-AngleBetween.) Symmetrical alias.
+		// Supports: `T<<A`       (rv: `A<<T`)
+		// alias of  `A<<T`       (rv: `T>>A`)
+		// => new [x,y] [ROT]  |  rad [ANGLE]
+		{
+			return rv ? (this>>A) : (A>>this);
+		},
+
+		'_>>>_': function(/*int*/d,/*bool*/rv)
+		// ---------------------------------
+		// Supports: `T >>> d`   (rv: `d >>> T`)
+		// Meaning:  round coordinates at d decimals.
+		// - `T >>> d` syntax -> return a point (rounded coords), using |d| decimals.
+		// - `d >>> T` syntax -> return a string representing in brackets the rounded coords, using .toDecimal(d)
+		// In any case, `this` remains unchanged.
+		// => new [x,y] [ROUNDED-COORDS]  |  `[rx, ry]` [ROUNDED-STRING]
+		{
+			( 'number' == typeof d && d===(0|d) && -20 < d && d < 20 )
+			|| error("Type error. The >>> operator requires an integer in interval (-19,+19).", callee.µ);
+			
+			if( rv ) return '[' + this[0].toDecimal(d) + ',' + this[1].toDecimal(d) + ']';
+
+			d = Math.pow( 10, 0>d?-d:d );
+			return [ Math.round(d*this[0])/d, Math.round(d*this[1])/d ];
+		},
+
+		'_^_': function(/*2|num*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// Supports: `T^A`      (rv: NO)
+		// Meaning:  Math.pow(|T|,A)  if Number(A)
+		//           Distance(A,T)²   if Array(A)
+		// (In special case A==2, return the square norm faster.)
+		// => unum
+		{
+			if( 'number' == typeof A )
+			{
+				rv && error("Type error. The ^ operator only supports number argument on its right hand side.", callee.µ);
+				t = this[0]*this[0] + this[1]*this[1];
+				return 2==A ? t : ( A ? Math.pow(t,A/2) : 1);
+			}
+			
+			2==(A||0).length || error("Type error. The ^ operator expects either two 2D arrays, or one 2D array and a number.", callee.µ);
+			
+			return (t=A[0]-this[0])*t + (t=A[1]-this[1])*t;
+		},
+
+		'_|_': function(/*num[2]*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// Supports: `T|A`      (rv: same)
+		// Meaning:  distance(T,A) aka +(T-A)
+		// => unum
+		{
+			( 2 == (A||0).length )
+			|| error("Type error. The | operator expects two points.", callee.µ);
+			
+			return Math.sqrt( (t=A[0]-this[0])*t + (t=A[1]-this[1])*t );
+		},
+
+		'_&_': function(/*num[2]*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// Supports: `T&A`      (rv: NO)
+		// Meaning:  Copy A coords in T and return T&
+		// => this&
+		{
+			( 2 == (A||0).length && !rv )
+			|| error("Type error. The & operator expects two points in the form (destination & source).", callee.µ);
+
+			return (this[0]=A[0], this[1]=A[1]), this;
+		},
+
+	})
+
+	//==========================================================================
+	// MAIN MODULE
+	//==========================================================================
+
+	[PUBLIC]
+	
+	({
+		onUnload: function onUnload_(  I)
+		//----------------------------------
+		// Conditionally turn off.
+		{
+			Array.prototype['==']===callee.µ['~']['_==_']
+			&& callee.µ.off();
+		},
+
+		setEpsilon: function setEpsilon_n_(/*?unum>0=auto*/eps,  e2,I,k,f)
+		//----------------------------------
+		// Set the epsilon-machine used in comparison routines. Default is 1e-4.
+		// => undef
+		{
+			I = callee.µ['~'];
+
+			( 'number' == typeof eps && Math.pow(Number.EPSILON,.5) < eps ) || (eps=1e-4);
+			I.EQUA.EPSILON = eps;
+		},
+		
+		equalNumbers: function equalNumbers_N_N_(/*num*/a,/*num*/b)
+		//----------------------------------
+		// Epsilon-aware utility for comparing numbers.
+		{
+			return callee.µ['~'].EQUA(a,b);
+		},
+		
+		on: function on_(  I,P,k,f)
+		//---------------------------------- AUTO
+		// Turn on Array.prototype extension.
+		// => undef
+		{
+			I = callee.µ['~'];
+			P = Array.prototype;
+			for( k in I ) '_'==k.charAt(0) && 'function'==typeof(f=I[k]) && (P[k.slice(1,-1)]=f);
+
+			P.valueOf = I.VLOF; // Override valueOf so it yields the norm.
+		},
+		
+		off: function off_(  I,P,k,f)
+		//----------------------------------
+		// Turn off Array.prototype extension.
+		// => undef
+		{
+			I = callee.µ['~'];
+
+			P = Array.prototype;
+			P.valueOf = I.BKVO; // Restore native valueOf
+
+			for( k in I ) '_'==k.charAt(0) && 'function'==typeof(f=I[k]) && delete P[k.slice(1,-1)];
+		},
+	})
