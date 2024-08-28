@@ -1,3 +1,6 @@
+##### [240828]
+  - [ArrayAs2D](/etc/$$.ArrayAs2D.jsxlib): This lightweight utility module provides custom operators for 2D arrays: `[x1,y1]+[x2,y2]`, `k*[x,y]`, etc.
+
 ## 2.40626
 Regular update (June 26, 2024.) Global re-generation of the core structure, including recent fixes and additions.
    - [SUI/mini](/core/SUI/$$.mini.jsxinc): Improved `forceRedraw` function (now dealing with _empty_ groups.)
