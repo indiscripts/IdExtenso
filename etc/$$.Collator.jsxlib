@@ -1,4 +1,4 @@
-/*******************************************************************************
+	/*******************************************************************************
 
 		Name:           Collator
 		Desc:           Simplified version of the Unicode Collation Algorithm (UCA)
@@ -13,11 +13,11 @@
 		DOM-access:     NO
 		Todo:           testing tailored languages ; cf www.learnpunjabi.org/pdf/PunjabiSorting.pdf
 		Created:        151228 (YYMMDD)
-		Modified:       220504 (YYMMDD)
+		Modified:       241204 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 220504, 'sort'))
+;$$.hasOwnProperty('Collator') || eval(__(MODULE, $$, 'Collator', 241204, 'sort'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -83,9 +83,9 @@
 	           13+3 bits      7+1 bits  4+2 bits
 	
 	where
-	      L1 (16bits)     reflects a level-1 weight,
-	      L2 (8bits)      reflects a level-2 weight,
-	      L3 (6bits)      reflects a level-3 weight,
+	      L1 (16bits)     reflects a level-1 weight (BASE)
+	      L2 (8bits)      reflects a level-2 weight (DIACRITICS)
+	      L3 (6bits)      reflects a level-3 weight (CASE)
 	      V  (1bit flag)  tells whether the code concerns a 'variable' element
 	                      (see below.)
 
@@ -100,6 +100,18 @@
 
 	which adds L1 and/or L2 extra bits for addressing keys like
 	`Æ`, `æ`, `Ĳ`, `ĳ`, `Œ`, `œ`, `ß`, etc.
+	
+	[NOTE] The Minimal Weight Code (assigned to the TAB character in ~.WMAP)
+	is `b8y1` in base 36, i.e 524809 (decimal), that is b10000000001000001001:
+
+	      0000 0000 0000 1000 0000 0010 0000 1001
+	      └─────────────────┘ └───────┘ └──────┘╰──Variable-Bit
+	              L1             L2        L3
+
+	This number determines:
+	- the minimal L1 16-bit value as b1000 (8)
+	- the minimal L2  8-bit value as b10   (2)
+	- the minimal L3  7-bit value as b100  (4)
 
 
 	3. VARIABLE WEIGHTING
@@ -773,7 +785,7 @@
 			return callee.µ['~'].SPLT(s, UPD_LENGTH);
 		},
 
-		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,TB,k,keys,op,rf,m,i,t,w,b,w1)
+		TMAP: function(/*{key=>rule}|false*/TL,  WRN,TM,TB,k,keys,op,rf,m,i,t,w,b,w1,WZ)
 		//----------------------------------
 		// (Tailor-Map.) Set the tailor map with respect to incoming rules.
 		// This function also updates `~.SPLT.CUR_MTCH` accordingly.
@@ -822,6 +834,7 @@
 			this.SPLT.PREP.SIZE = 0;
 
 			keys = [];
+
 			for( k in TL )
 			{
 				if( !TL.hasOwnProperty(k) ) continue;
@@ -871,39 +884,73 @@
 				w = parseInt(t.pop(),36)>>>0;  // w :: 1111 1111 1111 1xxx 2222 222y 3333 3zzV
 				w1 = 0;                        // uint16, new level1 weight if created.
 
+				// [REM241204] `w` should be interpreted as the TRAILING value of the whole
+				// reference weight m :: [ "w11,w12...", "w21,w22...", ... , < t=[...,<w>] > ]
+				// -- last item was 'popped' from both m and t -- It is then assumed that
+				// increasing w (only) at level N is sufficient to satisfy `>N` operator.
+				// Also, the V flag of `w` will be preserved. If other mechanisms are required
+				// in the future, it is still possible to add new operators...
+				// ---
+				// The minimal weight in WMAP (excl. zero) is "b8y1" :
+				//    wMin :: 0000 0000 0000 1000 0000 0010 0000 1001
+				//    struc   1111 1111 1111 1xxx 2222 222y 3333 3zzV
+				// ---
 				switch( op )
 				{
 					case '>1':
-						// Increase (if possible) the level1 extra bits `xxx` : 000=>001=>010=>etc=>111
-						// and reset to zero the last 16 bits.
+
+						// [FIX241204] L2L3 MINIMUM (last 16bits) : ... 0000 0010 0000 100V (keep V flag)
+						WZ = (1&w) ? 0x209 : 0x208;
+
+						// Increase (if possible) the L1 extra bits `xxx` : 000=>001=>010=>etc=>111
+						// and reset to WZ the last 16 bits.
 						// ---
-						b = w>>>16;
+						b = w>>>16; // 1111 1111 1111 1xxx
 						7 == (7&b) && (WRN[WRN.length] = __("No enough LEVEL1 extra bits for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+
 						w1 = ++b;   // [ADD220405] Store the final uint16 in w1.
 						if( MAX1 <= b ) return __("LEVEL1 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
-						w = b<<16;  // [FIX220405] Removed the duplicated incrementation `++b`, already done above!
+
+						// [REM241204] Make room for L2L3 bits :: `... 2222 222y 3333 3zzV`
+						// ---  L1+    L2L3
+						w = ( (b<<16) | WZ );
 						break;
 
 					case '>2':
+
+						// [FIX241204] L3 MINIMUM (last 8bits) : ... 0000 100V (keep V flag)
+						WZ = (1&w) ? 0x9 : 0x8;
+					
 						// Set (if possible) the level2 extra bit `y`
-						// and reset to zero the last 8 bits
+						// and reset to WZ the last 8 bits
 						// ---
-						b = 0xFF&(w>>>8);
+						b = 0xFF&(w>>>8); // 2222 222y
 						1 == (1&b) && (WRN[WRN.length] = __("The LEVEL2 extra bit is already set for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+
 						++b;
 						if( 0xFF <= b ) return __("LEVEL2 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
-						w = ( (0xFFFF0000&w) | (b<<8) );
+
+						// [REM241204] Make room for L3 bits :: `... 3333 3zzV`
+						// ---      L1           L2+    L3
+						w = ( (0xFFFF0000&w) | (b<<8) | WZ );
 						break;
 
 					case '>3':
+					
+						// [FIX241204] Preserve V flag.
+						WZ = 1&w;
+
 						// Increase (if possible) the level3 extra bits `zz`: 00=>01=>10=>11
-						// and reset to zero the V flag.
+						// and KEEP the V flag.
 						// ---
-						b = 0x7F&(w>>>1);
+						b = 0x7F&(w>>>1); // 3333 3zz   (7 bits, 2 available)
 						3 == (3&b) && (WRN[WRN.length] = __("No enough LEVEL3 extra bits for the key %1. Need anyway to increment that level for tailoring. Make sure that's the expected behavior!", k.toSource()));
+
 						++b;
 						if( 0x7F <= b ) return __("LEVEL3 weight limit reached (%1) for the key %2. Fix your tailoring rules.", b.toHexa('0x'), k.toSource());
-						w = ( (0xFFFFFF00&w) | (b<<1) );
+
+						// ---     L1L2          L3+    V
+						w = ( (0xFFFFFF00&w) | (b<<1) | WZ );
 						break;
 
 					default:
@@ -912,7 +959,9 @@
 				
 				t.push((w>>>0).toString(36));
 				m.push(t.join(','));
-				
+
+				// alert([ "k="+k, "w="+(w>>>0).toString(2), "stored: "+m.join(',') ].join('\r') );
+
 				TM[k] = m.join(',');           // Add k=>WS to the map.
 
 				0 < w1 && (TB[CHR(w1)]=k);     // [ADD220405] Append new level1=>k association
@@ -986,12 +1035,17 @@
 		string comparison.
 		*/
 
-		WG_2: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,  s1,s2,n,i,k,ws,x,t,p)
+		WG_2: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*reserved*/_,/*bool=0*/FILL,  s1,s2,n,i,k,ws,x,t,p)
 		//----------------------------------
 		// (Weight-1-to-2.) Alpha+Diacritics. Get the Weight String associated
 		// to the array of input keys for L1-L2 comparison. Result has the form
-		//          "<S1><0><S2>"
+		//          "<S1><0><S2>" (unless FILL is set)
 		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// ---
+		// [ADD230130] Sometimes you still need a full `<S1><0><S2><0><S3>`
+		// result for consistent formatting, the option `FILL` has been added
+		// for that purpose. It then adds a minimal L3 weight `<0>x02` after
+		// level2 --> `<S1><0><S2><0>\x02`
 		// ---
 		// -> See WG_3 for additional params.
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
@@ -1019,15 +1073,20 @@
 				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 			
-			return s1 + '\0' + s2;
+			return s1 + '\0' + s2 + (FILL?'\0\x02':'');
 		},
 
-		WG_4: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*bool=0*/RV3,  s1,s3,n,i,k,ws,x,t,p)
+		WG_4: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*bool=0*/RV3,/*bool=0*/FILL,  s1,s3,n,i,k,ws,x,t,p)
 		//----------------------------------
 		// (Weight-1-and-3.) [ADD200812] Alpha+Case (special routine that ignores L2 only.)
 		// Get the Weight String associated to the array of input keys for L1+L3 comparison.
-		// Result has the form "<S1><0><S3>"
+		// Result has the form "<S1><0><S3>" (unless FILL is set)
 		// where each <S_i>::(\uHHHH)+  represents the weights at level i.
+		// ---
+		// [ADD230130] Sometimes you still need a full `<S1><0><S2><0><S3>`
+		// result for consistent formatting, the option `FILL` has been added
+		// for that purpose. It then adds a minimal L3 weight `<0>x02` after
+		// level2 --> `<S1><0><S2><0>\x02`
 		// ---
 		// -> See WG_3 for additional params.
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
@@ -1055,13 +1114,18 @@
 				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 			
-			return s1 + '\0' + s3;
+			return s1 + (FILL?'\0\x02':'') + '\0' + s3;
 		},
 
-		WG_1: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,  s1,n,i,k,ws,x,t,p)
+		WG_1: function(/*str[]*/keys,/*obj*/TM,/*bool=0*/IGNORE_VARS,/*?obj*/wRemap,/*reserved*/_,/*bool=0*/FILL,  s1,n,i,k,ws,x,t,p)
 		//----------------------------------
 		// (Weight-1.) Alpha-Only. Get the Weight String associated to the array
-		// of input keys for L1 comparison. Result has the form (\uHHHH)+
+		// of input keys for L1 comparison. Result has the form (\uHHHH)+ unless
+		// FILL is set.
+		// ---
+		// [ADD230130] Sometimes you still need a full "<S1><0>S2<0><S3>" result for consistent formatting,
+		// the option `FILL` has been added for that purpose. It then adds minimal L2/L3 weights after
+		// <S1> --> `<S1><0>\x02<0>\x02`
 		// ---
 		// -> See WG_3 for additional params.
 		// [WARNING] keys.length is not reliable, use keys.SIZE instead.
@@ -1088,7 +1152,7 @@
 				while( 0 < (p=ws.indexOf(',')) && (ws=ws.slice(1+p)).length );
 			}
 
-			return s1;
+			return s1 + (FILL?'\0\x02\0\x02':'');
 		},
 	})
 
@@ -1784,6 +1848,8 @@
 		//   [CHG220409] You can also specifies multiple attractors,
 		//   separated by `_`, e.g. 'LATIN_GREEK'. Each individual key
 		//   must be a valid attractor per se. Unknown keys are ignored.
+		// [ADD220518] Set the `TAILORED_RESULT` flag if a specific tailored
+		// base key was returned.
 		// ---
 		// E.g   µ.baseKey("électeur") => 'E'
 		//       µ.baseKey("ǟxxx")     => 'A'
@@ -1791,8 +1857,10 @@
 		//       µ.setTailor('es_tradi');µ.baseKey("llamar") => 'LL'
 		//       µ.baseKey("ђ...")     => 'Ђ' (Cyrillic)
 		// ---
-		// => char|str [OK]  |  '' [KO]
+		// => char|str [OK]  |  '' [KO]   ;  + `TAILORED_RESULT` flag
 		{
+			callee.TAILORED_RESULT = 0;
+
 			if( 'string' != typeof input || (!input.length) ) return '';
 
 			I = callee.µ['~'];
@@ -1806,7 +1874,7 @@
 			
 			w1 = t.charAt(0);
 
-			( w1Tailored = ((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) )
+			( w1Tailored = callee.TAILORED_RESULT = ((t=I.TMAP.BASE).__count__ && t.hasOwnProperty(w1)) )
 			|| (t=I.W1BA);
 
 			r = (t[w1]||'').toUpperCase();
