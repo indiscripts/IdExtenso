@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       240111 (YYMMDD)
+		Modified:       241215 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 240111, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 241215, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -3130,7 +3130,7 @@
 			return t && k;
 		},
 
-		pageMatch: function pageMatch_S_b_IS$false$(/*str*/pgIdentifier,/*bool=0*/RET_OFS,  q,t,p,s,k,i,pfx)
+		pageMatch: function pageMatch_S_b_IS$false$(/*str*/pgIdentifier,/*bool=0*/RET_OFS,  q,t,p,s,k,i,pfx,o)
 		//----------------------------------
 		// Utility routine that returns the pid(s) of a page identifier.
 		// If `RET_OFS`, returns the document offset(s) -- 0-based -- instead.
@@ -3142,9 +3142,12 @@
 		//      are 1-based, that is, <pgPos> :: 1 + page.documentOffset.
 		//      E.g  `[1]` (first page), `[43]`, etc
 		// (c) `<secIdentifier>:<pgName>`, e.g "CH2:45". Useful only to resolve
-		//      ambiguous page names. `secIdentifier` can be either a section unique
-		//      name, marker, or even a prefix (but section's index is not allowed here.)
-		//      In this syntax, the section prefix is not required in <pgName>.
+		//      ambiguous page names.
+		//      • <secIdentifier> can be either a section unique name, marker, or
+		//         even a prefix (but section's index is not allowed here.)
+		//      • <pgName> can be a valid page name (section prefix not required)
+		//        OR '<' (resp. '>') referring to the 1st (resp. last) page
+		//        of the section, e.g "MySectionIdentifier:<"
 		// [REM] In some cases it may be required to put `pgIdentifier` in double
 		//       quotes (e.g to prevent leading spaces in `secIdentifier` from
 		//       being trimmed by the calling process), so the form `"pgIdentifier"`
@@ -3188,7 +3191,19 @@
 			if( 0 < (p=t.lastIndexOf(':')) )
 			{
 				s = t.slice(0,p);                                             // section identifier
-				t = t.slice(1+p);                                             // page name (maybe without expected prefix!)
+				t = t.slice(1+p);                                             // page name (maybe without expected prefix!) or [><] shortcut
+
+				if( '>' == t || '<' == t )                                    // [ADD241215] Support of shortcuts "<" and ">" used as <name>.
+				{
+					// o :: false | { uniqueName,index,offset,length,includePrefix,prefix,marker,algo,shft }&
+					o = callee.µ['~'].FSEC(this.sections, s);
+					if( !o ) return false;
+					
+					i = '>' == t ? o.length : 0;
+					t = o.offset + ( i && (i-1) );
+
+					return RET_OFS ? t : q[t];
+				}
 
 				if( !q.hasOwnProperty(k='_'+t) )                              // page not found from `<name>` as such
 				{
@@ -3200,7 +3215,7 @@
 					pfx = this.sectionPrefix(s,1);                            // str [PREFIX-IF-INCLUDED]  |  false [KO]
 					
 					if( (!pfx.length) || 0===t.indexOf(pfx) ) return false;   // No prefix or already there -> game over.
-					
+
 					t = pfx + t;
 					if( !q.hasOwnProperty(k='_'+t) ) return false;            // Page still not found with prefixed name!
 				}
