@@ -18,7 +18,7 @@
 
 ***IdExtenso*** addresses these needs, and many more. Its core structure will get you started, and a huge set of additional modules will help you implement more complex scripts and features.
 
-The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `19.x` (CC 2024) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
+The framework supports ExtendScript from version `3.92` to `4.x` and InDesign from `v.6.0` (CS4) to `20.x` (CC 2025) in both macOS and Windows platforms. It fixes, improves and extends many built-in functionalities. Here are a few examples:
 
 * `myString.toSource()` can save 30% of the original result length.
 
