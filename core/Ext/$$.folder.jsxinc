@@ -1,0 +1,40 @@
+/*******************************************************************************
+
+		Name:           folder
+		Desc:           Extends Folder.prototype
+		Path:           /core/Ext/$$.folder.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           YES
+		Kind:           Part of /Ext
+		API:            create() [PATCH]
+		DOM-access:     NO
+		Todo:           ---
+		Created:        250129 (YYMMDD)
+		Modified:       250129 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// [FIX250129] Folder.prototype.create()
+	// Fixes the Folder creation bug in macOS + ID 20.1
+	//==========================================================================
+
+	if( 'Macintosh'==File.fs && 20.1 <= parseFloat(app.version) )
+	//----------------------------------
+	// Provides a patch to the method `Folder.prototype.create` so
+	// that it still creates the folder including all missing parents
+	// at the location given by the path property. Returns true if the
+	// folder was created successfully.
+	{
+		Folder.prototype.__create__ = Folder.prototype.create; // Backup original method.
+		Folder.prototype.create = function create()
+		{
+			return this.exists ||
+			(
+				( null===this.parent || this.parent.create() )
+				&& this.__create__()
+			);
+		};
+	}
+
