@@ -1,3 +1,6 @@
+##### [250129]
+  - [Ext/folder](/core/Ext/$$.folder.jsxinc) provides a patch to `Folder.prototype.create()`, which no longer works as expected on macOS/InDesign 20.1.
+
 ##### [241215]
   - [TextParcels](/etc/$$.Dom.TextParcels.jsxlib): Added a special format in the `pageMatch` method: you can now specify the _first_ (resp. _last_) page of a section using `MySecIdentifier:<` (resp. `MySecIdentifier:>`).
 
