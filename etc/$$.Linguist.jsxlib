@@ -11,11 +11,11 @@
 		DOM-access:     YES (app.languagesWithVendors, app.findKeyStrings)
 		Todo:           isoToLanguage [needed?]
 		Created:        170424 (YYMMDD)
-		Modified:       220415 (YYMMDD)
+		Modified:       250208 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 220415, 'getIso'))
+;$$.hasOwnProperty('Linguist') || eval(__(MODULE, $$, 'Linguist', 250208, 'getIso'))
 
 	//==========================================================================
 	// NOTICE
@@ -24,7 +24,7 @@
 	/*
 	
 		This module is a central place for addressing language and locale data.
-		Its main component (~.LISO) maps ISO639-1 codes to an info structure
+		Its main component (~.LISO) maps ISO639 codes to an info structure
 		that tells which name, scripting system, family... an ISO key is
 		associated to.
 		
@@ -45,7 +45,7 @@
 		#include 'Linguist/$$.yalt.jsxres'
 		),
 
-		// ISO639-1 Subset.
+		// ISO639-1 Subset. May contain ISO639-3 codes if needed.
 		// key ([a-z_]{2,}) => { wp:int, name:str, sc:str4, fm:str3, natv:str, [wk:str,] [alias:str,] }
 		// E.g 'br' => { wp: 3, name: "Breton", sc: "Latn", fm: "INE", natv: "Brezhoneg" }
 		// ---
@@ -331,7 +331,7 @@
 
 			r = (x instanceof Language || x instanceof LanguageWithVendors)
 			? I.IDLG(x)
-			: I.IDLO(x) || I.IDLG(x);
+			: ( I.IDLO(x) || I.IDLG(x) );
 			
 			return r || false;
 		},
