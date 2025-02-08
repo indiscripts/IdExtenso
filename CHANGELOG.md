@@ -1,3 +1,6 @@
+##### [250208]
+  - [Linguist](/etc/$$.Linguist.jsxlib). Slight adjustment of the ISO subset regarding “Norwegian (Bokmål)” (`no`) vs. “Norwegian Bokmål” (`nb`). Since the code `nb` is expected in the InDesign ICU string (“nb_NO”), it is desirable to set it as the default (instead of `no`). Semantically, _Norwegian (Bokmål)_ means “Norwegian language, Bokmål implied”, while _Norwegian Bokmål_ is the explicit name of that very language. Modules like **StopWords** or **Collator** usually display “Norwegian Bokmål” (`nb`) vs. “Norwegian Nynorsk” (`nn`). Then should then invoke the respective ISO codes (and abandon `no`.)
+
 ##### [250129]
   - [Ext/folder](/core/Ext/$$.folder.jsxinc) applies a patch to the native method `Folder.prototype.create()` —which no longer works as expected on macOS/InDesign 20.1.
 
