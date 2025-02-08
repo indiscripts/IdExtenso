@@ -224,7 +224,7 @@
 	'mzn': { wp: 2, name: "Mazanderani",         sc: "Arab", fm: "INE", natv: "\u0645\u0627\u0632\u0646\u062F\u0631\u0627\u0646\u06CC" },
 	// -------------------------------------------------------------------------
 	'na' : { wp: 2, name: "Nauru",               sc: "Latn", fm: "MAP", natv: "Dorerin Naoero" },
-	'nb' : { wp: 0, name: "Norwegian Bokmål",    sc: "Latn", fm: "INE", natv: "Bokmål",                                                  indd:"$ID/Norwegian: Bokmal" },  // [CHG250208] removed alias.
+	'nb' : { wp: 3, name: "Norwegian Bokmål",    sc: "Latn", fm: "INE", natv: "Bokmål",                                                  indd:"$ID/Norwegian: Bokmal" },  // [CHG250208] removed alias.
 	'nan': { wp: 3, name: "Min Nan",             sc: "Hans", fm: "SIT", natv: "\u95A9\u5357\u8A9E",                                      wk: 'zh-min-nan' },
 	'nap': { wp: 2, name: "Neapolitan",          sc: "Latn", fm: "INE", natv: "Napulitano" },
 	'nd' : { wp: 0, name: "Ndebele (North)",     sc: "Latn", fm: "NIC", natv: "Ndebele" },
