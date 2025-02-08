@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170424 (YYMMDD)
-		Modified:       200526 (YYMMDD)
+		Modified:       250208 (YYMMDD)
 
 *******************************************************************************/
 
@@ -192,6 +192,7 @@
 	'lb' : { wp: 2, name: "Luxembourgish",       sc: "Latn", fm: "INE", natv: "Lëtzebuergesch" },
 	'lez': { wp: 2, name: "Lezgian",             sc: "Cyrl", fm: "CCN", natv: "Лезги" },
 	'lg' : { wp: 2, name: "Ganda",               sc: "Latn", fm: "NIC", natv: "Luganda" },
+	'lgg': { wp: 0, name: "Lugbarati",           sc: "Latn", fm: "SSA", natv: "L\u0289gbarati" }, // [ADD230430]
 	'li' : { wp: 2, name: "Limburgish",          sc: "Latn", fm: "INE", natv: "Limburgs" },
 	'lmo': { wp: 2, name: "Lombard",             sc: "Latn", fm: "INE", natv: "Lumbaart" },
 	'ln' : { wp: 2, name: "Lingala",             sc: "Latn", fm: "NIC", natv: "Lingála" },
@@ -223,7 +224,7 @@
 	'mzn': { wp: 2, name: "Mazanderani",         sc: "Arab", fm: "INE", natv: "\u0645\u0627\u0632\u0646\u062F\u0631\u0627\u0646\u06CC" },
 	// -------------------------------------------------------------------------
 	'na' : { wp: 2, name: "Nauru",               sc: "Latn", fm: "MAP", natv: "Dorerin Naoero" },
-	'nb' : { wp: 0, name: "Norwegian Bokmål",    sc: "Latn", fm: "INE", natv: "Bokmål",                                      alias:'no', indd:"$ID/Norwegian: Bokmal" },
+	'nb' : { wp: 0, name: "Norwegian Bokmål",    sc: "Latn", fm: "INE", natv: "Bokmål",                                                  indd:"$ID/Norwegian: Bokmal" },  // [CHG250208] removed alias.
 	'nan': { wp: 3, name: "Min Nan",             sc: "Hans", fm: "SIT", natv: "\u95A9\u5357\u8A9E",                                      wk: 'zh-min-nan' },
 	'nap': { wp: 2, name: "Neapolitan",          sc: "Latn", fm: "INE", natv: "Napulitano" },
 	'nd' : { wp: 0, name: "Ndebele (North)",     sc: "Latn", fm: "NIC", natv: "Ndebele" },
@@ -233,7 +234,7 @@
 	'ng' : { wp: 0, name: "Ndonga",              sc: "Latn", fm: "NIC", natv: "Oshiwambo" },
 	'nl' : { wp: 4, name: "Dutch",               sc: "Latn", fm: "INE", natv: "Nederlands",                                              indd:"$ID/nl_NL_2005" },
 	'nn' : { wp: 3, name: "Norwegian Nynorsk",   sc: "Latn", fm: "INE", natv: "Norsk nynorsk",                                           indd:"$ID/Norwegian: Nynorsk" },
-	'no' : { wp: 3, name: "Norwegian (Bokmål)",  sc: "Latn", fm: "INE", natv: "Bokmål",                                                  indd:"$ID/Norwegian: Bokmal" },
+	'no' : { wp: 3, name: "Norwegian (Bokmål)",  sc: "Latn", fm: "INE", natv: "Bokmål",                                      alias:'nb', indd:"$ID/Norwegian: Bokmal" },   // [CHG250208] Added alias.
 	'nrm': { wp: 2, name: "Norman",              sc: "Latn", fm: "INE", natv: "Normaund" },
 	'nso': { wp: 2, name: "Northern Sotho",      sc: "Latn", fm: "NIC", natv: "Sesotho sa Leboa" },
 	'nr' : { wp: 0, name: "Ndebele (South)",     sc: "Latn", fm: "NIC", natv: "Nrebele" },
