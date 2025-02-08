@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170424 (YYMMDD)
-		Modified:       220403 (YYMMDD)
+		Modified:       250208 (YYMMDD)
 
 *******************************************************************************/
 
@@ -350,6 +350,7 @@
 	Lozi # Lozi # Rotse-Sprache # Lozi # Lozi # Лози
 	Luba-Katanga # Luba-katanga # Luba-Katanga # Luba-katanga # Luba-katanga # Луба-катанга
 	Luba-Lulua # Luba-lulua # Luba-Lulua # Luba-lulua # Luba-lulua # Луба-лулуа
+	Lugbarati # Lugbara # Lugbara # Lugbara # Lugbara # Лугбара
 	Luiseno # Luiseno # Luiseno-Sprache # Luiseño # Luiseno # Луисеньо
 	Lule Sami # Sami de Lule # Lule-Samisch # Sami lule # Sami di Lule # Луле-саамский
 	Lunda # Lunda # Lunda-Sprache # Lunda # Lunda # Лунда
@@ -441,7 +442,8 @@
 	Northern Sami # Sami du Nord # Nordsamisch # Sami septentrional # Sami del nord # Северносаамский
 	Northern Sotho # Sotho du Nord # Nord-Sotho-Sprache # Sotho septentrional # Sotho del nord # Сото северный
 	Norwegian # Norvégien # Norwegisch # Noruego # Norvegese # Норвежский
-	Norwegian (Bokmål) # Norvégien bokmål # Norwegisch Bokmål # Noruego bokmal # Norvegese bokmål # Норвежский букмол
+	Norwegian Bokmål # Norvégien bokmål # Norwegisch Bokmål # Noruego bokmal # Norvegese bokmål # Норвежский букмол
+	Norwegian (Bokmål) # Norvégien (bokmål) # Norwegisch (Bokmål) # Noruego (bokmal) # Norvegese (bokmål) # Норвежский (букмол)
 	Norwegian Nynorsk # Norvégien nynorsk # Norwegisch Nynorsk # Noruego nynorsk # Norvegese nynorsk # Норвежский нюнорск
 	Nuer # Nuer # Nuer # Nuer # Nuer # Нуэр
 	Nuosu # Nuosu # Nuosu-Sprache # Nuosu # Nuosu # Носу
