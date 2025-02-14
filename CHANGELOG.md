@@ -1,3 +1,6 @@
+##### [250214]
+  - Added [Clipboard](/etc/$$.Clipboard.jsxlib), a lightweight module that allows your script to get and set the clipboard (text only). Use `var str = $$.Clipboard.get()` (or just `var str = $$.Clipboard()`) for getting the string, and `$$.Clipboard.set(someString)` to load any string in the cb. Interesting feature: those methods still work in modal state since they do not send _active_ DOM commands to InDesign.
+
 ##### [250208]
   - [Linguist](/etc/$$.Linguist.jsxlib). Slight adjustment of the ISO subset regarding “Norwegian (Bokmål)” (`no`) vs. “Norwegian Bokmål” (`nb`). Since the code `nb` is expected in the InDesign ICU string (“nb_NO”), it is desirable to set it as the default (instead of `no`). Semantically, _Norwegian (Bokmål)_ means “Norwegian language, Bokmål implied”, while _Norwegian Bokmål_ is the explicit name of that very language. Modules like **StopWords** or **Collator** usually display “Norwegian Bokmål” (`nb`) vs. “Norwegian Nynorsk” (`nn`). They should then invoke the respective ISO codes (and abandon `no`.)
   - [MetaCollator](/etc/$$.MetaCollator.jsxlib). Cleaner `$$.LING.yalt.jsxres` output (sorted list.)
