@@ -1,0 +1,91 @@
+/*******************************************************************************
+
+		Name:           Clipboard
+		Desc:           Allows to get/set clipboard text.
+		Path:           /etc/$$.Clipboard.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Module.
+		API:            =get() set()
+		DOM-access:     YES -- app.doScript(...) -- but supported in modal dialogs.
+		Todo:           More tests
+		Created:        250209 (YYMMDD)
+		Modified:       250214 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('Clipboard') || eval(__(MODULE, $$, 'Clipboard', 250214, 'get'))
+
+	[PRIVATE]
+
+	({
+
+		OSLG: +ScriptLanguage[$$.inWin ? 'VISUAL_BASIC' : 'APPLESCRIPT_LANGUAGE'],
+
+		GETC: $$.inWin
+		//----------------------------------
+		// Clipboard getter thru app.doScript.
+		// => str [OK]  |  '' [EMPTY-OR-KO]
+		? function(  sc)
+		{
+			sc = 'returnValue=CreateObject("htmlfile").ParentWindow.ClipboardData.Getdata("text")';
+			return String( app.doScript(sc,this.OSLG) || '' );
+		}
+		: function(  sc)
+		{
+			sc = 'return (the clipboard as text)';
+			return String( app.doScript(sc,this.OSLG) || '' );
+		},
+		
+		SETC: $$.inWin
+		//----------------------------------
+		// Clipboard setter (str only) thru app.doScript.
+		// => 1 [OK]  |  0 [KO]
+		? function(/*str*/s,  $$,ff,sc,err)
+		{
+			$$ = $.global[callee.µ.__root__];                       // agnostic reference
+			if( !(ff=$$.File.temp(s,'txt',0, 'UTF16')) ) return 0;  // IMPORTANT: Windows clipboard expects UTF16.
+			
+			sc = 'returnValue=CreateObject("WScript.Shell").Run("cmd.exe /c type ""' + ff.fsName + '"" | clip",0,True)';
+			err = app.doScript(sc, this.OSLG);
+			
+			$$.File.temp(); // Remove temp.
+			return  err ? 0 : 1;
+		}
+		: function(/*str*/s,  t,sc)
+		{
+			0 <= s.indexOf(t=String.DQ) && (s=s.split(t).join('\\"'));        // Escape Double quotes -> `\\"`
+			
+			// [REM250214] Going through the Finder would lead to security alert.
+			//sc = 'tell application "Finder"\rset the clipboard to "' + s + '"\rend tell';
+
+			sc = 'set the clipboard to "' + s + '"';
+			app.doScript(sc, this.OSLG);
+
+			return 1;
+		},
+
+	})
+
+	[PUBLIC]
+	
+	({
+		get: function get_S(  I)
+		//----------------------------------
+		// Get the clipboard text.
+		// => str [OK]  |  '' [EMPTY-OR-KO]
+		{
+			return callee.µ['~'].GETC();
+		},
+		
+		set: function set_S_B(/*str*/txt,  I,sc,r)
+		//----------------------------------
+		// Set the clipboard text.
+		// => 1 [OK]  |  0 [KO]
+		{
+			'string' != typeof txt && (txt=String(txt||''));
+			return callee.µ['~'].SETC(txt);
+		},
+
+	})
