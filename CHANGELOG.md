@@ -1,3 +1,6 @@
+##### [250223]
+  - Added [TinyInflate](/etc/$$.Clipboard.jsxlib), a lightweight GZIP-inflate (=decompression) module.
+
 ##### [250214]
   - Added [Clipboard](/etc/$$.Clipboard.jsxlib), a lightweight module that allows your script to get and set the clipboard (text only). Use `var str = $$.Clipboard.get()` (or just `var str = $$.Clipboard()`) for getting the string, and `$$.Clipboard.set(someString)` to load any string in the cb. Interesting feature: those methods still work in modal state since they do not send _active_ DOM commands to InDesign.
 
