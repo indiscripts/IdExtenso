@@ -1,3 +1,7 @@
+##### [250226]
+  - Added `String.fromBytes(<array>)` and `String.prototype.toBytes()` to the core extension [Ext/string](/core/Ext/$$.string.jsxinc). These methods allow to quickly translate strings from/to sequence of _bytes_ (unsigned integers ranging in 0..255).
+  - The internal `B2AC` map of the `unaccent` method (`String.prototype.unaccent`) has been moved in a dedicated subdirectory for readability.
+
 ##### [250223]
   - Added [TinyInflate](/etc/$$.TinyInflate.jsxlib), a lightweight GZIP-inflate (=decompression) module.
 
