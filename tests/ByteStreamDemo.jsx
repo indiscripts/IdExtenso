@@ -67,7 +67,7 @@ try
 		"IStream after READ with scheme " + shm.toSource(),
 		"- Internal array: " + iStream.slice(),   // iStream is also an array :)
 		"- Last accessed val: " + iStream,        // Implicit call to valueOf().toString()
-		"- Current index: " + iStream.getIndex()  // Should be 6 now.
+		"- Current index: " + iStream.getIndex()  // Should be 7 now.
 	].join('\r'));
 
 	// Create an OStream (no argument.)
