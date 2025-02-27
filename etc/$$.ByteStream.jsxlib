@@ -7,18 +7,17 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Class.
-		API:            onEngine()
-		       [proto]  create() valueOf() getSource() toString() toSource()
-		                peek() read() jump() write()
+		API:   [proto]  create() valueOf() getSource() getIndex() getBytes()
+		                toString() toSource() peek() read() jump() write()
 		                + Array.prototype
 		DOM-access:     NO
-		Todo:           ---
+		Todo:           Should the HEX tag support Little-Endian?
 		Created:        180927 (YYMMDD)
-		Modified:       200420 (YYMMDD)
+		Modified:       250227 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 200420))
+;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 250227))
 
 	//==========================================================================
 	// NOTICE
@@ -26,18 +25,28 @@
 	
 	/*
 
+	1. PURPOSE
+	____________________________________________________________________________
+
 	The present class makes it easy to read or write a stream of bytes (8-bit
 	codes.) Its main purpose is to handle binary data stored in files.
-	Input streams are supplied in either Array or String form, output
-	streams are managed in Array form--but you can use `this.toString()` to get
-	the corresponding string.
+	Input streams (IStreams) are supplied in either Array or String form,
+	output streams (OStreams) are managed in Array form -- but you can use
+	`this.toString()` to get the corresponding string.
 
-	- To create an input stream, use `new ByteStream(input)`, where `input` is
-	  either an Array of bytes, or a String of byte codes. The stream instance
-	  will then support the `peek()` and `read()` methods.
+	- To create an IStream, use `new ByteStream(input)`, where `input`
+	  is either an Array of bytes, or a String of byte codes. The stream
+	  instance will then support `peek()` and `read()` methods.
 	
-	- To create an output stream, just use `new ByteStream()` with no argument.
+	- To create an OStream, just use `new ByteStream()` with no argument.
 	  The stream instance will then support the `write()` method.
+
+	  STREAM TYPE  |  ACCESS METHODS |             SHARED METHODS
+	---------------|-----------------|-------------------------------------------
+	   IStream     |  peek() read()  |
+	---------------|-----------------|  jump() valueOf() toString() getBytes() etc
+	   OStream     |  write()        |
+	---------------|-----------------|-------------------------------------------
 
 	This module performs conversions between JS values and various byte-encoded
 	structures (signed and unsigned char, short, long, float, etc.), in either
@@ -46,22 +55,25 @@
 	[REM] In big-endian format (BE) the most significant byte is stored
 	      or sent first. This is the default order.
 
+
+	2. SUPPORTED ENCODING TAGS
+	____________________________________________________________________________
+
 	As suggested in <github.com/pgriess/node-jspack>, format strings are used
 	as compact descriptions of the structures to be encoded or decoded. For
-	example, `myInputStream.read("ASC U16 F32", myDestArr)` will load in the
-	destination array three decoded items: one ascii character (1 byte),
-	one unsigned short integer (2 bytes), and one float32 (4 bytes.)
+	example, `myIStream.read("ASC U16 F32", myDestArr)` will load in the des-
+	tination array three decoded items: one ascii character (1 byte), one
+	unsigned short integer (2 bytes), and one float32 (4 bytes.)
 
-	Here are the supported encodings so far:
+	Here are the supported tags so far:
 	
 	  Tag  | Bytes | JS Type   | Description
 	-----------------------------------------------------------------------
 	  STR  |   n   | string(n) | Raw string based on n bytes.
-	-----------------------------------------------------------------------
+	  HEX¹ |   n   | string(2n)| Hex string (2n chars) ; e.g  [0x1F,0x2A] -> "1F2A"
+	  TAG  |   4   | string(4) | OTF or Adobe tag, i.e string of 4 Ascii chars [ADD200420]
 	  ASC  |   1   | string(1) | Ascii character ; char code <= 0x7F
 	  LAT  |   1   | string(1) | Latin character ; char code <= 0xFF
-	  HEX  |   1   | string(2) | Hex string (2 chars) ; e.g  0x1F -> "1F"
-	  TAG  |   4   | string(4) | OTF or Adobe tag, i.e string of 4 Ascii chars  [ADD200420]
 	-----------------------------------------------------------------------
 	  I08  |   1   | number    | Signed byte     [-128, 127 ]
 	  U08  |   1   | number    | Unsigned byte   [   0, 255 ]
@@ -72,12 +84,32 @@
 	  I32  |   4   | number    | Signed long     [-0x80000000, 0x7FFFFFFF ]
 	  U32  |   4   | number    | Unsigned long   [          0, 0xFFFFFFFF ]
 	-----------------------------------------------------------------------
-	  F32  |   4   | number*   | Float  (32bits) ; IEEE754-32
+	  FXP  |   4   | number    | Signed 16.16 Fixed Point    [-32768, 32767.99998474121]
+	  UFX  |   4   | number    | Unsigned 16.16 Fixed Pnt    [     0, 65535.9999847412 ]
+	  F2D  |   2   | number    | 2.14 signed fixed number    [ -2, +1.999938965 ]
+	                           | w/ low 14 bits of frac
+	-----------------------------------------------------------------------
+	  F32² |   4   | number    | Float  (32bits) ; IEEE754-32
 	  F64  |   8   | number    | Double (64bits) ; IEEE754-64
-	
-	* Since JS doesn't natively support 32-bit floats, whenever a float
+
+	¹ About the HEX tag.
+	  • In IStreams, the HEX tag READS 1 byte (e.g 0x3A) from the stream
+	    and produces a 2-character string ("3A"), uppercase, in the output
+	    structure.
+	  • In OStreams, the HEX tag expects a valid 2-character string from
+	    the source (e.g "3a") and WRITES 1 byte (0x3A) in the stream.
+	  • By default HEX consumes one byte (2 hex chars) but it deals
+	    with the `*<COUNT>` syntax (see Section 3.) as the STR tag does,
+	    that is, HEX*3 produces (IStream) or expects (OStream) a single
+	    6-character string rather than 3 separate strings. [CHG250226]
+
+	² Since JS doesn't natively support 32-bit floats, whenever a float
 	  is stored the source number must be rounded. See the IEEE754_32
 	  routines in Ext/$$.number for implementation detail.
+
+
+	3. SYNTAX OF ENCODING SCHEMES
+	____________________________________________________________________________
 
 	A format string specifies a sequence of one or several 'encoding schemes'
 	separated by a space character:
@@ -92,38 +124,52 @@
 	where
 	
 	      <ENC_TAG> is one of the defined encoding tags
-	      ("STR", "ASC", etc.)
+	                ("STR", "ASC", etc.)
 
-	      <ORDER> is either `>` for Big-Endian, `<` for Little-
-	      Endian, or empty (BE is assumed.)
+	      <ORDER>   is either `>` for Big-Endian, `<` for Little-
+	                Endian, or empty (BE is assumed.)
+
+	      <COUNT>   is a sequence of decimal digits that determines
+	                the number of elements to read or write. For
+	                example, `U16*3` indicates that three unsigned
+	                shorts have to be processed.
+	                If <COUNT> is missing, 1 is assumed.
 	      
-	      <COUNT> is a sequence of decimal digits that determines
-	      the number of elements to read or write. For example,
-	      `U16*3` indicates that three unsigned shorts have to
-	      be processed.
-	      
-	      <KEY> is a property name to read from or to write to.
-	      For example, `F64:value` indicates that a double has to
-	      be loaded from the `value` key (while writing the stream),
-	      or loaded in the `value` key (while reading the stream.)
-	
+	      [REM] If <COUNT> is `0`, no element is read/write
+	            from/to the stream.
+
+	      <KEY>     is a property name to read from or to write to.
+	                For example, `F64:value` indicates that a double
+	                has to be loaded from the `value` key (while wri-
+	                ting an OStream), or loaded in the `value` key
+	                (while reading an IStream.)
+	                '0' is allowed as a special <KEY> and has the
+	                following behavior: in IStreams, it 'reads'
+	                the specified element BUT data aren't recorded
+	                in the output structure ; in OStreams, the '0'
+	                <KEY> pushes the corresponding \0 bytes regard-
+	                less of the input structure.
+
+	      [REM] Unless it is '0', no <KEY> can start with a digit
+	            (syntax error).
+
 	When no <KEY> is provided, data are sequentially loaded from/to using
-	automatic indices. Input streams load data in `this` (which behave as
-	an Array) unless a destination object is provided while calling the
-	`peek()` or `read()` methods. Output streams get data from the 2nd
-	argument of the `write()` method.
-	
+	automatic indices. IStreams load data in `this` (which behave as an
+	Array) unless a destination object is provided by the `peek()` or
+	`read()` methods. OStreams get data from the 2nd argument of the
+	`write()` method.
+
 	Examples:
 	
 	      iStream.read("U16 F32*2")
 	      --------------------------------------------------
 	      Read a long and two floats from the byte stream,
-	      then push the 3 values in the `this` array.
+	      then push those 3 values in the `this` array.
 
 	      iStream.read("U16 F32*2", dest)
 	      --------------------------------------------------
 	      Read a long and two floats from the byte stream,
-	      then push the 3 values in `dest`.
+	      then push those 3 values in `dest`.
 
 	      oStream.write("U16 F32*2", source)
 	      --------------------------------------------------
@@ -134,6 +180,12 @@
 	      --------------------------------------------------
 	      Read a long and two floats from the byte stream,
 	      store the long as `this.count`, and push the two
+	      float numbers in the `this` array.
+
+	      iStream.read("U16:0 F32*2")
+	      --------------------------------------------------
+	      Read a long and two floats from the byte stream,
+	      ignore the long number (:0), and push the two
 	      float numbers in the `this` array.
 
 	      iStream.read("U16:count F32*2", dest)
@@ -148,18 +200,25 @@
 	      getting the long from `source.count` and the
 	      float numbers from source[0] and source[1].
 
+	      oStream.write("U16:0 F32*2", source)
+	      --------------------------------------------------
+	      Write a zero long (U16:0) and two floats in the byte
+	      stream, getting the float numbers from source[0] and
+	      source[1] -- source is not intended to deliver the
+	      U16 element.
+
 	The API allows (and assumes) that the destination or source argument
 	is either a simple Array, a key-value Object, or a mixed type
 	combining Array and Object features. However, *pushing* data in the
-	`dest` object can only work as expected if it is an instance of Array.
+	`dest` object can only work as expected if it is an Array instance.
 	If it is not, the keys '0', '1', '2'... will be re-used at each
-	reading stage. Also, while writing an output stream from a source
-	object which is an Array instance, data are processed from index 0
-	at each writing stage.
+	reading stage. Also, while writing an OStream from a source object
+	which is an Array instance, data are (re)processed from index 0 at
+	each new writing stage.
 	
 	[REM] In case the `source` argument is a scalar, the `write` method
 	consider it an array of one element, so `oStream.write("F64", 12.345)`
-	still works fine.
+	still works as expected.
 
 	<COUNT> and <KEY> parameters can be combined. In such case, `obj[key]`
 	is treated as a sub-array for loading data from/to. For example,
@@ -167,12 +226,12 @@
 	      iStream.read("U08*3:rgb", dest)
 	      --------------------------------------------------
 	      Read three integers from the byte stream and
-	      store the values in dest.rgb[0], dest.rgb[1],
+	      store those values in dest.rgb[0], dest.rgb[1],
 	      dest.rgb[2]. If dest.rgb doesn't exist, the
 	      array is created.
 	
-	Note, in the above example, that the values are *not pushed* in
-	`dest.rgb` when the array already exists, the initial index is always
+	Note, in the above example, that the values won't be *pushed* in
+	`dest.rgb` if such array already exists: the start index is always
 	reset to zero.
 
 	Similarly,
@@ -187,29 +246,39 @@
 	as specified, zero bytes (0x00) are sent to the stream.
 	
 
-	SPECIAL CASE: `STR`
+	SPECIAL CASES: `STR` and `HEX` TAGS (strings)
 	
-	The `STR` tag allows to quickly handle fixed length strings. The scheme
-	`STR*nn` is then interpreted so it loads a single string formed of `nn`
-	characters (rather than an array of `nn` single-character strings.)
+	• The `STR` tag allows to quickly handle fixed length strings. The scheme
+	  `STR*nn` is then interpreted s.t. it loads a single string formed of
+	  `nn` characters (rather than an array of `nn` single-character strings.)
+
+	• Similarly, the `HEX` tag interprets the scheme `HEX*nn` s.t. it loads
+	  a single string formed of 2*nn characters (each elementary hex string
+	  having two hexadecimal digits.)
 	
-	`iStream.read("STR*10:name", dest)` will read and load a string
-	of 10 characters in dest.name.
+	`iStream.read("STR*10:name", dest)` will read and load a 10-character
+	string in dest.name.
+
+	`iStream.read("HEX*3:color", dest)` will read and load a 6-character
+	string (3×2) in dest.color, e.g "3A692B".
 	
 	`oStream.write("STR*10", "hello")` will write 10 bytes, five bytes from
 	`hello` and five zero bytes. Note that `write("STR*3", "hello")`
 	would truncate the string to its three fist characters.
+
+	`oStream.write("HEX*3", "3a62")` will write 3 bytes (0x00,0x3A,0x62),
+	as "3a62" is then regarded as "003A62" (left padding.)
 	
-	[REM] When <COUNT> is missing, the `write` method automatically
+	[REM] When `*<COUNT>` is missing, the `write` method automatically
 	considers the actual string length. For example, `write("STR", "hello")`
-	will exactly write 5 bytes. (With an empty string, no write is performed.)
-	By contrast, `read("STR",dest)` just reads a *single character*, as would
-	do "STR*1".
+	will exactly write 5 bytes, and an empty string is transparent (i.e. no
+	write is performed upon the OStream.) By contrast, `read("STR",dest)`
+	just reads a *single character* from the IStream, as would do "STR*1".
 
 	*/
 
 	//==========================================================================
-	// TOOLS
+	// TOOLS: GETA() GETS() BYBE() BYLE()
 	//==========================================================================
 
 	[PRIVATE]
@@ -231,7 +300,7 @@
 		{
 			return 0xFF&s.charCodeAt(p);
 		},
-
+		
 		BYBE: function(/*byte[]&*/q,/*uint*/x,/*2..4*/n,  i)
 		//----------------------------------
 		// (Set-Bytes-Big-Endian.)
@@ -252,39 +321,89 @@
 	})
 
 	//==========================================================================
-	// ENCODERS / DECODERS
+	// BUILT-IN ENCODERS / DECODERS
 	//==========================================================================
 
 	[PRIVATE]
 
 	({
+		SPCS: / +/,
 
 		// Encoding schemes.
 		// [ADD200420] Added `TAG` encoding (OTF tag, i.e ASC*4)
+		// [ADD250224] Added FXP/UFX encodings (fixed-point 16.16, signed/unsigned)
 		// ---
-		ENCS: /(STR|ASC|TAG|LAT|HEX|I08|U08|I16|U16|I24|U24|I32|U32|F32|F64)([><])?(\*\d+)?(\:[^ ]+)?/g,
+		ENCS: /(STR|HEX|TAG|ASC|LAT|I08|U08|I16|U16|I24|U24|I32|U32|FXP|UFX|F2D|F32|F64)([><])?(\*\d+)?(\:[^ ]+)?/g,
+
+		// STR =================================================================
 
 		RSTR: function(/*byte[]|str*/a,/*uint*/p)
 		//----------------------------------
 		// Interprets a[p] and next bytes as raw string codepoints.
-		// `callee.MERGE` (set by the caller) determines the slice.
+		// `callee.COUNT` (set by the caller) determines the length
+		// of the slice. (Rem: If COUNT is zero, returns ''.)
 		// => str
 		{
-			a = a.slice(p, p+callee.MERGE);
+			a = a.slice(p, p+callee.COUNT);
 			return 'string'==typeof a ? a : String.fromCharCode.apply(0,a);
 		}
-		.setup({ SZ:1, MERGE:1 }),
+		.setup({ SZ:1, COUNT:1, ZERO:'' }),
 
 		WSTR: function(/*str*/x,  a,i)
 		//----------------------------------
 		// Given a string of length n, return a sequence of n bytes.
-		// If callee.LENGTH is provided, use it as the result length.
+		// If callee.COUNT is nonzero, use it as the result length
+		// instead of x.length. (Rem: if x is '', returns [].)
 		// => byte[n]
 		{
-			for( a=Array(i=callee.LENGTH||x.length) ; i-- ; a[i]=0xFF&x.charCodeAt(i) );
+			for( a=Array(i=callee.COUNT||x.length) ; i-- ; a[i]=0xFF&x.charCodeAt(i) );
 			return a;
 		}
-		.setup({ LENGTH:0 }),
+		.setup({ COUNT:0 }),
+
+		// HEX =================================================================
+
+		RHEX: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,  n,r,i)
+		//----------------------------------
+		// Converts a[p] and next bytes into 2-char hexadecimal forms
+		// and returns the resulting string (2 chars for each byte).
+		// `callee.COUNT` (set by the caller) determines the number
+		// of bytes (n) so the final string has 2n characters.
+		// (Rem: If COUNT is zero, returns ''.)
+		// E.g. with COUNT==3, [0x3A,0x69,0x1b] => "3A691B"
+		// => str
+		{
+			n = callee.COUNT;
+			r = '';
+			for
+			(
+				i=-1 ; ++i < n ;
+				r += ('0'+(0xFF&f(a,p+i)).toString(16)).slice(-2)
+			);
+			return r.toUpperCase();
+		}
+		.setup({ SZ: 1, COUNT:1, ZERO:'00' }),
+
+		WHEX: function(/*str*/x,  n,a,i)
+		//----------------------------------
+		// Given an 2n-character string formed of hex digits -- i.e ASC
+		// chars in [0-1A-Fa-f] --, return a volatile sequence of n bytes.
+		// E.g "3A693f..." -> [0x3A,0x69,0x3F...]
+		// If callee.COUNT is nonzero, use it as the result length
+		// instead of x.length/2. (Rem: if x is '', returns [].)
+		// => byte[n]
+		{
+			n = callee.COUNT || (Math.ceil(x.length/2));
+			if( !n ) return [];
+			
+			// Make sure the string has at least 2*n characters (left-pad).
+			0 < (i=2*n-x.length) && (x=Array(1+i).join('0')+x);
+			for( a=Array(i=n) ; i-- ; a[i] = 0xFF&parseInt(x.slice(2*i,2+2*i),16) );
+			return a;
+		}
+		.setup({ COUNT:0 }),
+
+		// ASC =================================================================
 
 		RASC: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
@@ -293,7 +412,7 @@
 		{
 			return String.fromCharCode(0x7F&f(a,p));
 		}
-		.setup({ SZ:1 }),
+		.setup({ SZ:1, ZERO:'' }),
 
 		WASC: function(/*char=\x00*/x)
 		//----------------------------------
@@ -304,6 +423,8 @@
 		}
 		.setup({ Q: Array(1) }),
 
+		// TAG =================================================================
+
 		RTAG: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
 		// [ADD200420] Interprets a[p]..a[p+3] as an OTF tag (=ASC*4).
@@ -311,7 +432,7 @@
 		{
 			return String.fromCharCode(0x7F&f(a,p),0x7F&f(a,1+p),0x7F&f(a,2+p),0x7F&f(a,3+p));
 		}
-		.setup({ SZ:4 }),
+		.setup({ SZ:4, ZERO:'' }),
 
 		WTAG: function(/*str=\x00\x00\x00\x00*/x,  q)
 		//----------------------------------
@@ -322,6 +443,8 @@
 		}
 		.setup({ Q: Array(4) }),
 
+		// LAT =================================================================
+
 		RLAT: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
 		// Interprets a[p] as a latin char.
@@ -329,7 +452,7 @@
 		{
 			return String.fromCharCode(0xFF&f(a,p));
 		}
-		.setup({ SZ: 1 }),
+		.setup({ SZ: 1, ZERO:'' }),
 
 		WLAT: function(/*char=\x00*/x)
 		//----------------------------------
@@ -340,23 +463,7 @@
 		}
 		.setup({ Q: Array(1) }),
 
-		RHEX: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
-		//----------------------------------
-		// Interprets a[p] as an hex string of 2 digits.
-		// => str
-		{
-			return ('0'+(0xFF&f(a,p)).toString(16)).substr(-2);
-		}
-		.setup({ SZ: 1 }),
-
-		WHEX: function(/*hex='00'*/x)
-		//----------------------------------
-		// Given an hex of 2 digits, return a volatile sequence of 1 byte.
-		// => byte[1]  [VOLATILE]
-		{
-			return (callee.Q[0]=0xFF&parseInt(x,16)), callee.Q;
-		}
-		.setup({ Q: Array(1) }),
+		// I08 =================================================================
 
 		RI08: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
@@ -374,6 +481,8 @@
 		{
 			return this.WU08( 0 > (x|=0) ? (0x80|x) : x );
 		},
+
+		// U08 =================================================================
 
 		RU08: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f)
 		//----------------------------------
@@ -393,6 +502,8 @@
 		}
 		.setup({ Q: Array(1) }),
 
+		// I16 =================================================================
+
 		RI16: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
 		// Interprets (a[p],a[1+p]) as a signed integer.
@@ -407,8 +518,10 @@
 		// Given a signed int16, return a volatile sequence of 2 bytes.
 		// => byte[2]  [VOLATILE]
 		{
-			return this.WU16( 0 > (x|=0) ? (0x8000|x) : x );
+			return this.WU16( 0 > (x|=0) ? (0x8000|x) : x, LE ); // [FIX250226] `LE` arg wasn't transmitted!
 		},
+
+		// U16 =================================================================
 
 		RU16: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
@@ -430,6 +543,28 @@
 		}
 		.setup({ Q: Array(2) }),
 
+		// F2D [ADD250225] =====================================================
+
+		RF2D: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
+		//----------------------------------
+		// Interprets (a[p],a[1+p]) as a signed 'F2DOT14' (2.14 representation.)
+		// => float in [-2, 1.999938965]
+		{
+			return this.RI16(a,p,f,LE)/0x4000;
+		}
+		.setup({ SZ: 2 }),
+
+		WF2D: function(/*-2..1.999938965*/x,/*bool*/LE)
+		//----------------------------------
+		// Given a signed float in [-2, 1.999938965], return a volatile sequence
+		// of 2 bytes carrying its F2DOT14 (2.14) representation (signed).
+		// => byte[2]  [VOLATILE]
+		{
+			return this.WU16( 0|Math.round(0x4000*(x||0)), LE );
+		},
+
+		// I24 =================================================================
+
 		RI24: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
 		// Interprets (a[p],a[1+p],a[2+p]) as a signed int24.
@@ -444,8 +579,10 @@
 		// Given a signed int24, return a volatile sequence of 3 bytes.
 		// => byte[3]  [VOLATILE]
 		{
-			return this.WU24( 0 > (x|=0) ? (0x800000|x) : x );
+			return this.WU24( 0 > (x|=0) ? (0x800000|x) : x, LE ); // [FIX250226] `LE` arg wasn't transmitted!
 		},
+
+		// U24 =================================================================
 
 		RU24: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
@@ -467,6 +604,8 @@
 		}
 		.setup({ Q: Array(3) }),
 
+		// I32 =================================================================
+
 		RI32: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
 		// Interprets (a[p],a[1+p],a[2+p],a[3+p]) as a signed long.
@@ -483,8 +622,10 @@
 		// Given a signed long, return a volatile sequence of 4 bytes.
 		// => byte[4]  [VOLATILE]
 		{
-			return this.WU32(x,LE);
+			return this.WU32( x, LE );
 		},
+
+		// U32 =================================================================
 
 		RU32: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
@@ -503,6 +644,50 @@
 			return this[LE?'BYLE':'BYBE'](callee.Q,x||0,4);
 		}
 		.setup({ Q: Array(4) }),
+
+		// FXP [ADD250224] =====================================================
+
+		RFXP: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
+		//----------------------------------
+		// Interprets (a[p],a[1+p],a[2+p],a[3+p]) as a signed fixed-point number (16.16 representation.)
+		// => float in [-32768, 32767.99998474121]
+		{
+			//         16-bit integer part             16-bit frac part
+			return this.RI16(a,(LE?2+p:p),f,LE) + this.RU16(a,(LE?p:2+p),f,LE)/0x10000;
+		}
+		.setup({ SZ: 4 }),
+
+		WFXP: function(/*flo=0*/x,/*bool*/LE)
+		//----------------------------------
+		// Given a signed float in [-32768, 32767.99998474121], return a volatile sequence
+		// of 4 bytes carrying its fixed-point 16.16 representation (signed).
+		// => byte[4]  [VOLATILE]
+		{
+			return this.WU32( 0|Math.round(0x10000*(x||0)), LE );
+		},
+
+		// UFX [ADD250224] =====================================================
+
+		RUFX: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
+		//----------------------------------
+		// Interprets (a[p],a[1+p],a[2+p],a[3+p]) as an unsigned fixed-point number (16.16 representation.)
+		// => float in [0, 65535.9999847412]
+		{
+			//         16-bit integer part             16-bit frac part
+			return this.RU16(a,(LE?2+p:p),f,LE) + this.RU16(a,(LE?p:2+p),f,LE)/0x10000;
+		}
+		.setup({ SZ: 4 }),
+
+		WUFX: function(/*flo=0*/x,/*bool*/LE)
+		//----------------------------------
+		// Given an unsigned float in [0, 65535.9999847412], return a volatile sequence
+		// of 4 bytes carrying its fixed-point 16.16 representation (unsigned).
+		// => byte[4]  [VOLATILE]
+		{
+			return this.WU32( Math.round(0x10000*(x||0))>>>0, LE );
+		},
+
+		// F32 =================================================================
 
 		RF32: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE)
 		//----------------------------------
@@ -523,12 +708,14 @@
 		}
 		.setup({ Q: Array(4) }),
 
+		// F64 =================================================================
+
 		RF64: function(/*byte[]|str*/a,/*uint*/p,/*fct*/f,/*bool*/LE,  t)
 		//----------------------------------
 		// Interprets (a[p],a[1+p],...,a[7+p]) as a float64 (IEEE754 representation.)
 		// => float64
 		{
-			t = ( '00000000'+this.RU32(a, LE?p:(4+p), f, LE).toString(16) ).substr(-8);
+			t = ( '00000000'+this.RU32(a, LE?p:(4+p), f, LE).toString(16) ).slice(-8);
 			return Number.fromIEEE754( this.RU32(a, LE?(4+p):p, f, LE).toString(16) + t );
 		}
 		.setup({ SZ: 8 }),
@@ -540,44 +727,202 @@
 		// => byte[8]  [VOLATILE]
 		{
 			x = (x||0).toIEEE754(); // 16 characters ; e.g "405EDD2F1A9FBE77"
-			for( q=callee.Q, i=-1 ; ++i < 8 ; (p=2*i), (LE&&(p=14-p)), q[i]=Number('0x'+x.substr(p,2)) );
+			for( q=callee.Q, i=-1 ; ++i < 8 ; (p=2*i), (LE&&(p=14-p)), q[i]=Number('0x'+x.slice(p,2+p)) );
 			return q;
 		}
 		.setup({ Q: Array(8) }),
 
 	})
 
-	[STATIC]
+	//==========================================================================
+	// READ/WRITE LOOP
+	//==========================================================================
+	
+	[PRIVATE]
 	
 	({
-
-		onEngine: function onEngine_()
+		LOOP: function(/*'R'|'W'*/mode,/*str*/fmt,/*ByteStream*/BS,/*(obj|arr|BS)&*/what,  dst,src,idx,p,f,z,v,re,m,F,R,dp,LE,n,k,ZK,ZV,INC,a,i,o)
 		//----------------------------------
-		// Makes BS instances behave as Array instances.
+		// READ  mode: what::dst ; idx=what.length||0 ; init. pos=BS.__pos__
+		// WRITE mode: what::src ; idx=0              ; init. pos=0
+		// ---
+		// this :: ~
+		// => { pos:uint, val:?any }&  [VOLATILE]
 		{
-			callee.µ.prototype.__proto__ = Array.prototype;
-		},
+			const READ = +('R'==mode);                                // READ :: 1|0
+			const PUSH = !READ && Array.prototype.push;               // Only needed in WRITE mode
+			const DF_COUNT = READ ? 1 : 0;                            // Used when F.COUNT is defined.
+			
+			if( READ )
+			{
+				dst = what;
+				src = BS.__src__;
+				idx = dst.length||0;
+				p = BS.__pos__;
+				f = this['string' == typeof(src) ? 'GETS' : 'GETA'];  // Adjust getter based on __scr__ type.
+			}
+			else
+			{
+				dst = BS;
+				src = what;
+				idx = 0;
+				p = 0;
+				f = false;
+			}
+
+			for( z=0, v=void 0, (re=this.ENCS).lastIndex=0 ; m=re.exec(fmt) ; )
+			{
+				// m :: [ match,   tag, ?('>'|'<'), ?'*<num>', ?':<key>' ]
+
+				F = this[mode+m[1]];                                  // F  :: fct  ; read or write function
+				if( 'function' != typeof F ) continue;                // Shouldn't happen.
+				R = READ ? F : this['R'+m[1]];                        // R  :: read func.
+				dp = R.SZ;                                            // dp :: uint ; unit size.
+
+				LE = '<'===m[2];                                      // Little-endian flag. If missing, BE assumed.
+				n = (n=m[3]) ? parseInt(n.slice(1),10) : false;       // n :: uint|false ; <COUNT> param (false if missing)
+				k = (k=m[4]) ? k.slice(1) : false;                    // k :: str|false  ; <KEY> param (false if missing)
+
+				ZK = k && 0x30 <= (t=k.charCodeAt(0)) && t <= 0x39;   // ZK :: bool ; if k starts with a digit it MUST
+				if( ZK && '0' !== k ) continue;                       // be '0' otherwise skip that subscheme! [CHG250224]
+
+				++z;                                                  // Number of valid subschemes.
+
+				// ---
+				// 1. Meaning of Zero-Key (ZK) e.g 'U08:0', 'STR*3:0'
+				// READ:  Consume the IStream element(s) + shift pos
+				//        but don't save anything in the dest.
+				//        -> INC=0
+				// WRITE: Don't load anything from the source
+				//        but push sized ZERO bytes to the OStream.
+				//        -> INC=0 ; ZERO needed
+				// (In both cases the stream is affected.)
+				//
+				// 2. Meaning of Zero-Count (n===0) e.g 'U16*0', 'STR*0:s'
+				// READ:  Don't consume any IStream element (fixed pos)
+				//        but save the corresponding ZERO in dest and
+				//        update idx if relevant. [Do nothing if ZK.]
+				//        -> INC=auto ; ZERO needed
+				// WRITE: Get nothing from source and don't push any
+				//        byte to the OStream, but update idx if relevant.
+				//        [Do nothing if ZK.]
+				//        -> INC=auto
+				// (In both cases the stream is NOT affected.)
+				// ---
+
+				ZV = ( 0===n || ZK ) &&                               // In case it would serve:
+					 ( R.hasOwnProperty('ZERO') ? R.ZERO : 0 );       // ZERO value as told by the reader (default: 0.)
+				INC = +(false===k);                                   // 0|1 ; auto-increment iff no <KEY> param. (Rem: 0 if ZK.)
+
+				if( 0===n )                                           // Deals with Zero-Count -> NO STREAM ACCESS.
+				{
+					if( ZK ) continue;                                // Do nothing if Zero-Key.
+					READ && (dst[INC?idx:k]=ZV);                      // In READ mode load ZERO in dest key; in WRITE mode noop.
+					idx += INC;                                       // Increment idx iff k===false.
+					continue;
+				}
+
+				if( F.hasOwnProperty('COUNT') )                       // If available, the special F.COUNT prop is preset
+				{                                                     // to n (if non-false) or defaulted to DF_COUNT.
+					F.COUNT = false===n ? DF_COUNT : n;               // DF_COUNT is 1 in READ case ; 0 in WRITE case, meaning automatic sizing.
+					dp && (dp*=F.COUNT);                              // Upscale `dp` accordingly (irrelevant in WRITE case.)
+					n = 1;                                            // Reset n to 1.
+				}
+
+				false===n && (n=1);                                   // Now we can default n to 1 if it remains unspecified.
+
+				if( 1===n || ZK )                                     // Manage one element and/or Zero-Key.
+				{
+					i = INC ? idx : k;                                // Current index or key.
+					if( READ )
+					{
+						while( n-- )
+						{
+							v = F.call(this,src,p,f,LE);              // READ one element from the stream (even if ZK, so v is updated!)
+							p += dp;                                  // Shift stream position.
+							ZK || (dst[i]=v);                         // Hit the destination iff non-zero KEY.
+						}
+					}
+					else
+					{
+						v = ZK ? ZV : src[i];                         // In WRITE mode, get one elem from src, or ZERO if ZK.
+						a = F.call(this,v,LE);                        // Get the W-result (arr).
+						while( n-- ){ PUSH.apply(dst, a); p+=dp; }    // Push in the stream ; added `p+=dp` for consistency.
+					}
+
+					idx += INC;                                       // Increment idx iff k===false. (Rem: INC is always 0 if ZK.)
+					continue;
+				}
+
+				// COUNT > 1 AND non-Zero-Key ; e.g 'I08*3', 'STR*2:s'
+
+				if( INC )                                             // Direct index.
+				{
+					o = what;
+					i = idx;                                          // Iterate from `idx`.
+				}
+				else
+				{
+					o = what[k];                                      // Go into the key.
+					o===Object(o) || (o=what[k]=READ?[]:[o]);         // Initialize to Array if non-obj (empty if dst, singleton if src).
+					i = 0;                                            // Iterate from 0.
+				}
+
+				if( READ )
+					for( ; n-- ; (o[i++]=v=F.call(this,src,p,f,LE)), p+=dp  );
+				else
+					for( ; n-- ; PUSH.apply(dst,F.call(this,(v=o[i++]),LE)), p+=dp ); // Added p+=dp for consistency.
+
+				INC && (idx=i);
+			}
+
+			// [CHG250224] Final check: if the number of valid
+			// subschemes (z) does not equal the number of
+			// space-separated substrings in fmt, the client
+			// code MUST be alerted that the scheme is invalid!
+			// ---
+			fmt.length && z != fmt.split(this.SPCS).length
+			&& error( __("Syntax error in the scheme %1.", fmt.toSource()), callee.µ );
+
+			o = callee.Q;
+			o.pos = p;
+			o.val = v;
+			return o;
+		}
+		.setup
+		({
+			Q: { pos:0, val:void 0 },
+		}),
 
 	})
 
 	//==========================================================================
-	// API
+	// PUBLIC API (PROTOTYPE)
 	//==========================================================================
 
 	[PROTO]
 	
 	({
+		
+		// Makes BS instances behave as Array instances
+		// [CHG250226] `onEngine` trick not needed, just override __proto__ here and now.
+		__proto__: Array.prototype,
+
 		create: function create_as_(/*byte[]|str*/source)
-		//----------------------------------
-		// Constructor. Create an input stream if `source` is supplied (and non-empty),
-		// otherwise creates an output stream. The `source` arg can be either an array
+		//---------------------------------- (I/O)
+		// Constructor. Create an IStream if `source` is supplied (and non-empty),
+		// otherwise creates an OStream. The `source` arg can be either an array
 		// or a string.
+		// [IStream] :: { __val__, __pos__, __src__ } (private props)
+		//              + .peek() .read()
+		// [OStream] :: { __val__ } (private prop)
+		//              + .write() .getBytes()
 		{
 			this.__val__ = void 0;
 
 			if( (source||0).length && ('string'==typeof source || Object(source)===source ) )
 			{
-				// Input stream.
+				// IStream.
 				// ---
 				this.__pos__ = 0;
 				this.__src__ = source;
@@ -585,23 +930,47 @@
 			}
 			else
 			{
-				// Output stream.
+				// OStream.
 				// ---
 				this.peek = this.read = void 0;
 			}
 		},
-		
+
 		getSource: function getSource_AS$false$()
-		//----------------------------------
-		// [181123] [INPUT STREAM]  Get the source of this input stream.
-		// [OUTPUT STREAM] Return false.
-		// => byte[]  |  str  |  false
+		//---------------------------------- (I/O)
+		// [ISTREAM]  Get the source of this input stream.
+		// [OSTREAM]  Return false.
+		// => byte[]&  |  str  |  false
 		{
 			return this.hasOwnProperty('__src__') && this.__src__;
 		},
-		
+
+		getIndex: function getIndex_I()
+		//---------------------------------- (I/O)
+		// [IStream]  Get the position of the internal pointer.
+		// [OStream]  Get the index of the next write operation,
+		//            that is, this.length.
+		// => uint
+		{
+			return this.hasOwnProperty('__pos__') ? this.__pos__ : this.length;
+		},
+
+		getBytes: function getBytes_A(  t)
+		//---------------------------------- (I/O)
+		// [ADD250224]
+		// [ISTREAM] Get the original bytes of the source as a new Array
+		//           (Bytes are recovered from __src__ using 0xFF-AND)
+		// [OSTREAM] Get the final bytes of this stream as a new Array.
+		//           (Might be empty if no write has been processed yet!)
+		// => new byte[]
+		{
+			if( !this.hasOwnProperty('__src__') ) return this.slice(); // OStream
+			t = this.__src__;
+			return 'string' == typeof(t) ? t.toBytes() : t.slice();
+		},
+
 		valueOf: function valueOf_X()
-		//----------------------------------
+		//---------------------------------- (I/O)
 		// Return the latest processed value.
 		// => any
 		{
@@ -609,10 +978,11 @@
 		},
 
 		toString: function toString_i_S(/*uint=auto*/last)
-		//----------------------------------
-		// [INPUT STREAM]  Return String(this.valueOf()).
-		// [OUTPUT STREAM] Return the byte stream as a string.
-		// [181123] If `last` is provided, only return `last` characters from the end.
+		//---------------------------------- (I/O)
+		// [ISTREAM]  Return String(this.valueOf()).
+		// [OSTREAM]  Return the byte stream as a string.
+		// [181123] If `last` is provided, only return `last` characters from
+		// the end.
 		// ---
 		// => str
 		{
@@ -623,10 +993,10 @@
 		},
 		
 		toSource: function toSource_S()
-		//----------------------------------
+		//---------------------------------- (I/O)
 		// [ADD200420] Uneval the stream.
-		// [INPUT STREAM]  Return `(new $$["ByteStream"](<src>.toSource()))`.
-		// [OUTPUT STREAM] Return this.toString().toSource()
+		// [ISTREAM]  Return `(new µ(<src>.toSource()))`.
+		// [OSTREAM]  Return this.toString().toSource()
 		// ---
 		// => str
 		{
@@ -635,10 +1005,11 @@
 				this.toString().toSource();
 		},
 
-		peek: function peek_s_oa_$this$(/*str=U08*/fmt,/*obj|arr=this&*/dst,  I,i,src,f,p,re,m,F,dp,LE,n,k,v,o,j)
-		//----------------------------------
-		// [INPUT STREAM ONLY] Read the bytes associated to `fmt` without increasing the
-		// internal pointer. If `dst` is supplied, load the data here; use `this` otherw.
+		peek: function peek_s_oa_$this$(/*str='U08'*/fmt,/*(obj|arr)&*/dst,  t)
+		//---------------------------------- (I)
+		// [ISTREAM] Read the bytes matching the scheme format `fmt` without
+		// increasing the internal pointer. Data are loaded in `dst` if supplied,
+		// in `this` otherwise.
 		// ---
 		// `fmt` :: Space-separated encoding schemes, where each scheme
 		//    has the form <ENC>(`>`|`<`)?(`*`<COUNT>)?(`:`<KEY>)?
@@ -655,70 +1026,50 @@
 		// Examples:
 		//   "U16 ASC F64"   Load an uint16, an ascii char, and a double in dst[0],
 		//                   dst[1], dst[2].
-		//   "I16<*5"        Load five signed int16, LE-encoded, in dst[0]..dst[5].
+		//   "I16<*5"        Load five signed int16, LE-encoded, in dst[0]..dst[4].
 		//   "F32:myFloat"   Load a float32 in `dst.myFloat`.
 		//   "F64*2:coords"  Load two doubles in `dst.coords[0]` and `dst.coords[1]`.
 		// (More examples in the NOTICE.)
+		// [CHG250223] For the sake of consistency, every subscheme of the form
+		// `<tag>*0` where the <COUNT> parameter is explicitly set to 0 is
+		// interpreted as follows: do not read any byte from the IStream and
+		// set the corresponding element to ZERO in the destination, where
+		// ZERO is 0 unless otherwise specified by the read function. Important:
+		// the syntax `<tag>*0` DOES NOT affect the IStream in any way. It just
+		// allows you to bypass some elements while iterating dest indices.
+		// For example, `iStream.read( 'U16 U08*0 STR', dest )` is expected to
+		// set: dest[0]::uint16 from stream, dest[1]::0, dest[2]::char from stream.
 		// ---
 		// => this
 		{
-			I = callee.µ['~'];
+			'undefined' == typeof fmt && (fmt='U08');                      // Default scheme if missing: 'U08'
+			dst===Object(dst) || (dst=this);                               // Make sure we have a destination object.
 
-			'undefined' == typeof fmt && (fmt='U08');
-			dst===Object(dst) || (dst=this);
-			i = dst.length||0;
+			t = callee.µ['~'].LOOP('R',fmt,this,dst);
 
-			f = I['string' == typeof(src=this.__src__) ? 'GETS' : 'GETA'];
+			callee.POS = t.pos;
+			this.__val__ = t.val;
 
-			for( v=void 0, p=this.__pos__, (re=I.ENCS).lastIndex=0 ; m=re.exec(fmt) ; )
-			{
-				dp = (F=I['R'+m[1]]).SZ;
-				LE = '<'===m[2];
-				n = (n=m[3]) ? parseInt(n.substr(1),10) : false;
-				k = (k=m[4]) ? k.substr(1) : false;
-				if( !n )
-				{
-					F.MERGE && (F.MERGE=1);
-					v = F.call(I,src,p,f,LE);
-					p += dp;
-					false===n && (dst[false===k ? i++ : k]=v);
-					continue;
-				}
-				if( false===k )
-				{
-					o = dst;
-					j = i;
-				}
-				else
-				{
-					o = dst[k]||(dst[k]=[]);
-					j = 0;
-				}
-
-				F.MERGE && ((dp*=(F.MERGE=n)),(n=1));
-				for( ; n-- ; (o[j++]=v=F.call(I,src,p,f,LE)), p+=dp );
-				false===k && (i=j);
-			}
-
-			return (callee.POS=p), (this.__val__=v), this;
+			return this;
 		}
 		.setup({ POS:0 }),
 
-		read: function read_si_oa_$this$(/*str|uint=1*/fmt,/*obj|arr=this&*/dst,  p,v,n,i)
-		//----------------------------------
-		// [INPUT STREAM ONLY] Read the bytes associated to `fmt` and increment the
-		// internal pointer accordingly. If `dst` is supplied, load the data here;
-		// use `this` otherw.
-		// Special case: if `fmt` is a number, read `fmt` bytes and store the result
-		// as a byte string in `this.__val__`. In addition, if `dst` is an Array
-		// instance, push the read bytes into `dst`.
-		// `fmt` :: Space-separated encoding schemes, as detailed in `peek()`
+		read: function read_si_oa_$this$(/*str|uint=1*/fmt,/*(obj|arr)&*/dst,  p,v,n,i)
+		//---------------------------------- (I)
+		// [ISTREAM] Read the bytes matching the scheme format `fmt` and
+		// increment the internal pointer accordingly. Data are loaded in
+		// `dst` if supplied, in `this` otherwise.
+		// - If `fmt` is a string, it must be a space-separated encoding
+		//   scheme format, as detailed in `peek()`
+		// - If `fmt` is a number, read `fmt` bytes and store the result
+		//   as a byte string in `this.__val__`. In addition, if `dst` is
+		//   an Array instance, push the read bytes into `dst`.
 		// ---
 		// => this
 		{
 			if( 'string'==typeof fmt )
 			{
-				this.peek(fmt,dst);
+				this.peek( fmt,dst );
 				this.__pos__ = this.peek.POS;
 			}
 			else
@@ -734,80 +1085,55 @@
 					for( n=v.length, i=-1 ; ++i < n ; dst.push(0xFF&v.charCodeAt(i)) );
 					break;
 				}
-				
-				this.__pos__ = p+fmt;
+				this.__pos__ = p + fmt;
 			}
 			return this;
 		},
 
-		jump: function jump_I_$this$(/*uint32*/dp,  z)
-		//----------------------------------
-		// [INPUT STREAM]  Skip dp bytes.
-		// [OUTPUT STREAM] Feed dp bytes with \x00.
+		jump: function jump_I_$this$(/*uint32*/delta,  z)
+		//---------------------------------- (I/O)
+		// [ISTREAM]  Skip `delta` bytes.
+		// [OSTREAM]  Feed `delta` bytes with \x00.
 		// ---
 		// => this
 		{
-			dp >>>= 0;
+			delta >>>= 0;
 
 			if( this.hasOwnProperty('__pos__') )
 			{
-				this.__pos__ += dp;
+				this.__pos__ += delta;
 			}
 			else
 			{
-				for( z=this.length ; dp-- ; this[z++]=0 );
+				for( z=this.length ; delta-- ; this[z++]=0 );
 			}
 			return this;
 		},
 
-		write: function write_S_X_$this$(/*str=U08*/fmt,/*any*/data,  I,P,i,v,re,m,F,LE,n,k,o,j)
-		//----------------------------------
-		// [OUTPUT STREAM ONLY] Write the bytes associated to `fmt` at the end of the
-		// stream, using `data` as the source.
-		// `fmt`  :: Space-separated encoding schemes, as detailed in `peek()`
-		// `data` :: Value or set of values matching the encoding scheme(s).
+		write: function write_S_X_$this$(/*str='U08'*/fmt,/*any*/src,  t)
+		//---------------------------------- (O)
+		// [OSTREAM] Write bytes at the end of the OStream according to the
+		// scheme format `fmt` and using `src` as the data source.
+		// `fmt` :: Space-separated encoding schemes, as detailed in `peek()`
+		// `src` :: Value or set of values matching the encoding scheme(s).
+		// [CHG250223] For the sake of consistency, every subscheme of the form
+		// `<tag>*0` where the <COUNT> parameter is explicitly set to 0 is
+		// interpreted as follows: get the value from src, as specified, but
+		// do not write any byte in the OStream. Typically, this allows you
+		// to bypass some elements while iterating src indices. For example,
+		// `oStream.write( 'U16 U08*0 STR', src )` is expected to load
+		//  src[0] (uint16) and src[2] (str) while src[1] is ignored.
 		// ---
 		// => this
 		{
-			I = callee.µ['~'];
-			P = Array.prototype.push;
-			
-			data===Object(data) || ((callee.Q[0]=data),(data=callee.Q));
-			'undefined' == typeof fmt && (fmt='U08');
+			src===Object(src) || ((callee.Q[0]=src),(src=callee.Q));  // Coerce src to a singleton Array if non-Object.
+			'undefined' == typeof fmt && (fmt='U08');                 // Default scheme: 'U08'
 
-			i = 0;
-			for( v=void 0, (re=I.ENCS).lastIndex=0 ; m=re.exec(fmt) ; )
-			{
-				F = I['W'+m[1]];
-				F.LENGTH && (F.LENGTH=0); // automatic length for string
-				LE = '<'===m[2];
-				n = (n=m[3]) ? parseInt(n.substr(1),10) : false;
-				k = (k=m[4]) ? k.substr(1) : false;
-				if( !n )
-				{
-					v = data[false===k ? i++ : k];
-					false===n && P.apply(this,F.call(I,v,LE));
-					continue;
-				}
-				if( false===k )
-				{
-					o = data;
-					j = i;
-				}
-				else
-				{
-					o = data[k];
-					o===Object(o) || (o=[o]);
-					j = 0;
-				}
+			t = callee.µ['~'].LOOP('W',fmt,this,src);
+			this.__val__ = t.val;
 
-				F.hasOwnProperty('LENGTH') && ((dp*=(F.LENGTH=n)),(n=1));
-				for( ; n-- ; P.apply(this,F.call(I,v=o[j++],LE)) );
-				false===k && (i=j);
-			}
-
-			return (this.__val__=v), this;
+			return this;
 		}
 		.setup({ Q:Array(1) }),
-		
+
 	})
