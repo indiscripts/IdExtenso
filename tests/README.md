@@ -48,6 +48,17 @@ _Demonstrates:_
 
 ---
 
+##### [`ByteStreamDemo.jsx`](ByteStreamDemo.jsx)
+
+Getting started with the `$$.ByteStream` class.
+
+_Demonstrates:_
+   
+* **ByteStream** constructor (both modes.).
+* I/O methods and various tests with number and string tags.
+
+---
+
 ##### [`CheckIEEE754.jsx`](CheckIEEE754.jsx)
 
 Perform tests on `Number.fromIEEE754()` and `Number.prototype.toIEEE754()` functions. This script generates 10,000 random numbers in IEEE754 64bit format and check whether the dedicated routines properly handle them. We used it to benchmark and validate the implementation of `fromIEEE754()` and `toIEEE754()`. Cool thing is, the script double-checks each conversion throughout the `TransformationMatrix` object, which provides a hidden way to encode a Number instance into IEEE754 form. See the code for details.
