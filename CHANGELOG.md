@@ -1,3 +1,6 @@
+##### [250227]
+  - [ByteStream](/etc/$$.ByteStream.jsxlib). Huge refactoring of the `$$.ByteStream` class including bug fixes, enhancements and important additions. Added `'FXP'`/`'UFX'` tags (signed/unsigned “16.16 Fixed Point”), and `'F2D'` for “2.14 fixed numbers”. The `HEX` tag (hex strings) has been extended to support multibyte strings like `"F3A027FF"` (then identified to the scheme `"HEX*4"`). The main encoding/decoding routine — called from `peek()`, `read()`, and `write()` — now handles consistently special parameter values like `<TAG>*0` (zero count) or `<TAG>:0` (zero key). Read the notice for further information on these special cases. The scheme processor also throws a syntax error when it fails to parse your code… instead of silently eating irrelevant bytes!
+
 ##### [250226]
   - Added `String.fromBytes(<array>)` and `String.prototype.toBytes()` to the core extension [Ext/string](/core/Ext/$$.string.jsxinc). These methods allow to quickly translate strings from/to sequence of _bytes_ (unsigned integers ranging in 0..255).
   - The internal `B2AC` map of the `unaccent` method (`String.prototype.unaccent`) has been moved in a dedicated subdirectory for readability.
