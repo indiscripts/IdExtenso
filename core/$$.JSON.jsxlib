@@ -7,34 +7,291 @@
 		Encoding:       ÛȚF8
 		Core:           YES
 		Kind:           Module.
-		API:            =lave() eval()
-		DOM-access:     ---
-		Todo:           How do we deal with incoming Collections and plural specs?
+		API:            =lave() registerHook() unregisterHook() eval()
+		                UseSymLayout
+		DOM-access:     READ (properties if required)
+		Todo:           Deal with incoming Collections and plural DOM specs.
 		Created:        170306 (YYMMDD)
-		Modified:       240622 (YYMMDD)
+		Modified:       250319 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'JSON', 240622, 'lave'))
+;eval(__(MODULE, $$, 'JSON', 250319, 'lave'))
 
 	//==========================================================================
-	// BACKGROUND
+	// NOTICE -- New Version [CHG250319] 1st draft
 	//==========================================================================
 
 	/*
 
-	KNOWN ISSUES WITH DOM OBJECTS.
+	A - OVERVIEW
+	____________________________________________________________________________
+
+	The present $$.JSON module is an essential brick for serializing ExtendScript
+	data as well as InDesign DOM objects. It is part of the core branch and is
+	involved in many components ($$.Settings, etc.) Use the short syntax:
 	
-	1. From CS4 to CC 2017 various attempts to access the `properties` of a
-	   -shadow-settings spec makes InDesign crash. Paths that end with either
-	   "@drop-shadow-settings" or "@inner-shadow-settings" are dangerous and
-	   must be bypassed, especially in find/change preferences.
+	      var str = $$.JSON(<anything>);  // shortcut of $$.JSON.lave(<anything>)
+
+	to get <anything> serialized in your `str` variable. That one-line string
+	encodes the original data so that `$$.JSON.eval(str)` will return an equiva-
+	lent expression, that is, an identical value or an object with identical
+	structure and properties.
+
+	  E.g.
+	      var obj = {
+	          myStr:"Hello",
+	          myArr:[10,20,30],
+	          flag:false
+	          };
+	      alert( $$.JSON(obj) );
+	   -----------------------------------------------------
+	   → `{"myStr":"Hello","myArr":[10,20,30],"flag":false}`
+	
+	[REM] In this notice, strings resulting from $$.JSON() will be preceded by
+	      the → symbol and enclosed in GRAVE ACCENTS `...` to avoid confusion.
+	
+	Very roughly, the operation of $$.JSON(<anything>) is similar to that of
+	<anything>.toSource() as implementend in ExtendScript, but the present
+	solution offers much more complete and reliable outputs, especially when
+	a complex hierarchical structure is involved.
+
+	Contrary to what its name suggests, the present module does not strictly
+	conform to the official JSON syntax which can only serialize objects,
+	arrays, numbers, strings, booleans, and null -- cf developer.mozilla.org/
+	en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON
+	
+	The method $$.JSON.lave -- similar to JSON.stringify -- goes much further
+	and attempts to 'uneval' various elements that ExtendScript/ ScriptUI/
+	InDesign developers are required to manipulate and/or transport in string-
+	ified form.
+
+	Here are some peculiarities that illustrate how the usual JSON syntax is
+	extended in $$.JSON():
+
+	1. Support of NaN, Infinity and undefined. In some circumstances, the
+	   hexadecimal `0x...` number formatting is allowed too.
+	
+	2. String literals are encoded using IdExtenso's String.prototype.toSource
+	   (default double-quote mode), which guarantees a compact ASCII represen-
+	   tation (cf /core/Ext/$$.string.jsxinc.)
+	
+	3. Most 'special' objects are supported s.t. XML, Date, RegExp, File,
+	   Folder, UnitValue instances. E.g.
+
+	      var obj = {
+	          myReg:  /(?:abc|def)\d+/g,
+	          myUV:   UnitValue('12','pt'),
+	          myFile: new File("~/dir/test.txt")
+	          };
+	      alert( $$.JSON(obj) );
+	   -----------------------------------------------------
+	   → `{"myReg":RegExp("(?:abc|def)\\d+","g"),
+	       "myUV":UnitValue("12pt"),
+	       "myFile":File("~/dir/test.txt")}`
+
+	   This implies in particular that some *function calls* are allowed in the
+	   output string, e.g. `UnitValue("12pt")`, as long as the underlying
+	   functions are built-in methods that can be evaluated by ExtendScript.
+
+	4. With some additional formatting options, $$.JSON() can add
+	   'verbosity' and comments to the output string. E.g.
+
+		  var just = myText.justification; // Enumerator
+		  alert( $$.JSON(just, {spacing:1, domAccess:1}) );
+	   -----------------------------------------------------
+	   → `0x6C656674 /⁕ LEFT_ALIGN [left] ⁕/`
+
+	   In this example, note that the Enumeration number (1818584692) is
+	   automatically represented in `0x...` form, which better reflects
+	   its actual encoding (Adobe tag). Cf Number.prototype.isAdbe() in
+	   /core/Ext/$$.number.jsxinc.
+
+	5. To some extent, $$.JSON(...) also supports InDesign DOM objects
+	   in the sense of *specifiers* based on a path string that might be
+	   resolved later. E.g.
+	   
+	      // Two text frames being selected:
+	      alert( $$.JSON(app.selection, {domAccess:-1}) );
+	   -----------------------------------------------------
+	   → `["/document[@id=1]//text-frame[@id=260]","/document[@id=1]//text-frame[@id=241]"]`
+
+	   In this example the two frames are represented by their path string
+	   thanks to the option {domAccess:-1}.
+
+
+	B - BROWSING AND FORMATTING OPTIONS (LAVE)
+	____________________________________________________________________________
+
+	As stated in the abstract, the most important entry point into $$.JSON API
+	is the public `lave` method -- which $$.JSON() implicitly calls. The first
+	argument is the target object (or simple scalar) to be serialized.
+
+	Optional extra arguments are supported that allow you to refine the behavior
+	of the serializer. As of the new version released in March 2025, all these
+	options can be passed *as an object in the 2nd argument*. The `lave` function
+	remains backward compatible: the three separate arguments initially available
+	-- SPACED, DOM_ACCESS, FORCE_OBJ -- still work as before.
+	
+	      Old Syntax:  $$.JSON( data, <SPACED>, <DOM_ACCESS>, <FORCE_OBJ> )
+	                            arg1    arg2       arg3          arg4
+
+	      New Syntax:  $$.JSON( data, { spacing:?, domAccess:?, forceObj:?, ...} )
+	                            arg1  \______________ arg2 ____________________/
+
+	Previous and new options are documented in the source code (PUBLIC API); here
+	we shall simply indicate the essential points and changes:
+
+	      OPTION         VALUES        COMMENTS
+	      ----------------------------------------------------------------------
+	      spacing       -1|0|1|2|3|4   (Formerly SPACED arg.) Adjusts spacing
+	                                   from ultracompact (-1) to multiline (>0)
+	                                   Values 2,3,4 were added to set the number
+	                                   of indent spaces. +1 just specifies the
+	                                   default indent (=4 spaces)
+	      ----------------------------------------------------------------------
+	      domAccess      -1|0|+1       (Formerly DOM_ACCESS arg.) Determines how
+	                                   InDesign DOM objects should be browsed
+	                                   and serialized.
+	      ----------------------------------------------------------------------
+	      forceObj       bool (=0)     (Formerly FORCE_OBJ arg.) Forces the seria-
+	                                   lizer to browse the target *as an object*
+	                                   (key-value map) even if another default
+	                                   or custom representation is available.
+	      ----------------------------------------------------------------------
+	      cycleCheck¹    bool (=0)     (New option.) This critical feature enables
+	                                   or disables 'cycle detection'. ⚠ It is now
+	                                   disabled by default due to memory and per-
+	                                   formance costs. (DOM browsing remains safe
+	                                   from ref cycles anyway.)
+	      ----------------------------------------------------------------------
+	      richArr²       bool (=0)     (New option.) Tells the serializer how to
+	                                   deal with 'rich arrays' (arrays to which
+	                                   extra properties were added.) ⚠ Rich array
+	                                   support is now disabled by default: those
+	                                   objects are serialized as basic arrays,
+	                                   non-index properties being skipped.
+	      ----------------------------------------------------------------------
+	      bypassHooks³   bool (=0)     (New option.) Allows the client code to
+	                                   disable IdExtenso/custom JSON hooks.
+	      ----------------------------------------------------------------------
+	      skipUndefined  bool (=0)     (New option.) Skips `undefined` properties
+	                                   when serializing an object.
+	      ----------------------------------------------------------------------
+	      symLayout      bool (=0)     (New option.) Applies symmetrical layout
+	                                   to nested structures {...} and [...].
+	                                   Can be set globally instead,
+	                                   see $$.JSON.UseSymLayout.
+
+	¹ Serializing without cyclic error is a common issue with JSON processors.
+	  It occurs when some object <obj1> points to some object <obj2> that
+	  points back to <obj1>. `$$.JSON.lave` properly detects and prevents
+	  cycles in *DOM objects* (by caching the associated paths), but caching
+	  common Object references in ExtendScript is another story! This can be
+	  done by enabling the `cycleCheck` option, but you should be warned that
+	  this process is resource intensive and can cause dreadful execution times
+	  with huge objects.
+	
+	² Rich Arrays (or 'Hybrid Arrays') are common entities in IdExtenso,
+	  e.g. `var arr=[10,20,30]; arr.sum=60; etc`, but there is no clean
+	  JSON representation for such objects, as the string
+
+	     `{ "0":10, "1":20, "2":30, "length":3, "sum":60 }`
+
+	  will not evaluate back to a regular Array. The current implementation
+	  of the `richArr` option is based on a much more cryptic syntax that
+	  will anyway restore the original structure:
+
+	   -----------------------------------------------------
+	   → `(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})
+	     ([10,20,30],{"sum":60})`
+
+	  This is definitely not compatible with the JSON specification! Only use this
+	  option if you want ExtendScript to be able to reconstruct the original entity.
+
+	³ JSON Hooks have been introduced to allow any IdExtenso-compliant module or
+	  class to 'inject' its own method for serializing particular objects. Examples
+	  of JSON hooks can be found in $$.BigInt, $$.ByteStream, and other modules.
+	  As a result, the following code works (by default) as desired:
+	  
+	      var N = BigInt("123456789123456789123456789");
+	      alert( $$.JSON(N) );
+	   -----------------------------------------------------
+	   → `BigInt("123456789123456789123456789")`
+
+	   whereas the effect of `{bypassHooks:1}` would be:
+	   -----------------------------------------------------
+	   → `{"neg":0,"size":3,"0":1006919445,"1":193906301,"2":107081695}`
+	   
+	   which reveals the inner structure of the BigInt instance.
+
+
+	C - OTHER FEATURES (PUBLIC API)
+	____________________________________________________________________________
+
+	1. $$.JSON.UseSymLayout
+	   The boolean property UseSymLayout presets your *default* choice
+	   for the symLayout option. Thus, whenever symLayout is missing while
+	   calling $$.JSON(), the layout format is determined by UseSymLayout.
+
+	֩2. $$.JSON.registerHook() / unregisterHook()
+	   These two public methods have been added to streamline and standardize
+	   the addition of custom JSON hooks. This prevents the client code from
+	   explicitly calling on the private zone -- $$.JSON['~'] -- and manipula-
+	   ting the special '\x02' prefix used by private routines.
+
+	3. $$.JSON.eval()
+	   Reciprocal method of `lave`, `eval` unserializes a json string.
+	   So it reconstructs the original data from its stringified form.
+	   In the context of ExtendScript this method appears to be almost identical
+	   to `$.global.eval`, but it provides increased security.
+
+
+	D - ADDITIONAL IMPLEMENTATION NOTES
+	____________________________________________________________________________
+	
+	1. Agnostic Approach
+
+	Due to the special purpose of this module and the security it requires, all
+	critical references (such as the [[global]] object or native constructors)
+	are handled in what is called 'agnostic' mode, i.e. no assumption is made
+	about the context from which $$.JSON(...) is invoked.
+
+	For example, we do not suppose that `$` necessarily refers to the regular
+	ExtendScript Helper object, or that `String` refers to the regular
+	[[global]].String constructor. That's why the private zone contains may
+	references to all important objects or functions (GLOB, GSTR, etc) we need.
+	The whole module then relies and involves these aliases rather than the usual
+	tokens. So, even if JSON is embedded in a lexical context where usual refe-
+	rences should become irrelevant, all efforts have been made to make it still
+	run safely.
+
+	The `lave` method can return either usual or agnostic references, depending
+	on the lexical context from which it is invoked. In most cases the regular
+	aliases will be returned.
+
+	2. ExtendScript Issues and Workarounds
+
+	•  In ExtendScript the test `x===null` is not reliable when x refers to a
+	   `UnitValue` instance whose value is in the range ]-1,1[. Indeed, due to
+	   an implementation error regarding the '===' operator,
+
+	      `UnitValue(0.5,'pt')===null`
+
+	   is true (!) The LAVE routine has been updated to work around this bug.
+
+	3. DOM Issues and Workarounds
+
+	•  From InDesign CS4 to CC 2017 various attempts to access the `properties`
+	   of a -shadow-settings spec makes InDesign crash. Paths that end with
+	   either "@drop-shadow-settings" or "@inner-shadow-settings" are dangerous
+	   and must be bypassed, especially in find/change preferences.
 	
 	   E.g.
 	      app.changeObjectPreferences
 	         .strokeTransparencySettings
 	         .dropShadowSettings.properties      // => CRASH
-	
+
 	   But
 	      app.pageItemDefaults
 	         .strokeTransparencySettings
@@ -44,21 +301,19 @@
 	
 	      /@(find|change).+shadow-settings$/
 
-
-	2. Any access to app.scriptPreferences.properties causes InDesign
-	   to freeze (infinite loop?) so we must prevent JSON() from expanding
-	   the specifier path "/@script-preferences".
+	•  Any access to app.scriptPreferences.properties causes InDesign
+	   to freeze (infinite loop?) so we must prevent $$.JSON() from
+	   browsing the specifier `/@script-preferences`.
 	   [REM230518] Might be related to the huge `scriptArgs` array (?)
 
-
-	3. In CS4/CS5, some locales like RU may lead to invalid name-based
+	•  In CS4/CS5, some locales like RU may lead to invalid name-based
 	   specifiers due to the presence of inner double quotes, e.g
 
 	      /menu[@name="Контекстное меню "Общие""]/menu-item[@id=118791]
 
 	   The above specifier is initially retrieved from a working MenuItem,
 	   which however is reported as invalid and cannot be resolved again
-	   from the broken string. Should JSON encounter such entity, the
+	   from the broken string. Should $$.JSON() encounter such entity, the
 	   `resolve(...)` string would fail when evaluated. Furthermore, any
 	   attempt to access `obj.properties` would cause a runtime "Invalid
 	   object" error.
@@ -66,52 +321,14 @@
 	*/
 
 	//==========================================================================
-	// IMPLEMENTATION NOTES
+	// AGNOSTIC REFERENCES:
+	//     GLOB       GSTR     GOBJ     GREG     GNUM     GFCT
+	//    $.global   String   Object   RegExp   Number   Function
 	//==========================================================================
-
-	/*
-
-	Due to the special purpose of this module and the security it
-	requires, all critical references (such as the [[global]] object or
-	native constructors) have been handled in what is called here the
-	'agnostic' mode. That is, no assumption is made about the context from
-	which JSON's API could be invoked. For example, we do not suppose that
-	`$` necessarily refers to the regular ExtendScript Helper object, or
-	that `String` refers to the regular [[global]].String constructor.
-	That's why the private zone contains absolute references to all
-	important objects or functions (GLOB, GSTR, etc) we may need. The
-	whole module then relies and involves these aliases rather than the
-	usual tokens. So, even if JSON is embedded in a lexical context where
-	usual references should become irrelevant, all efforts have been made
-	to make it still run safely.
-	
-	However, the lave() function can return either usual or agnostic
-	references, depending on the lexical context from which it is invoked.
-	In most cases the regular aliases will be returned.
-	
-	[ADD170608] A 'JSON Hook' mechanism has been introduced to allow
-	any IdExtenso-compliant module or class to inject its own method for
-	generating a source string. See details in ~['\x01object'].
-	
-	[FIX180413] In ExtendScript the test `x===null` is not reliable when x
-	refers to a `UnitValue` instance whose value is in the range ]-1,1[.
-	Indeed, due to an implementation error regarding the '===' operator,
-	`UnitValue(0.5,'pt')===null` is true (!) The LAVE routine has been
-	updated to work around this bug.
-	
-	[FIX200606] Support of "rich arrays". See ~.['\x01Array']
-	[CHG200613] Better support of "rich arrays". Now returns a strict
-	Array object, augmented thru `(function(a,o...){...})([...],{...})`
-	
-	[CHG240622] Better error control in µ.eval().
-
-	*/
 
 	[PRIVATE]
 	
 	({
-		NEWL : $$.newLine,
-		
 		GLOB : (function(){return this}).call(null),
 		GSTR : (function(){return this.String}).call(null),
 		GOBJ : (function(){return this.Object}).call(null),
@@ -120,145 +337,181 @@
 		GFCT : (function(){return this.Function}).call(null),
 	})
 	
+	//==========================================================================
+	// LOW-LEVEL DATA & UTILITIES:
+	//     NEWL ANOF  ODEL() OTOS() NASO() NATV() OKID() ADBE() NEST() REFS()
+	//==========================================================================
+
 	[PRIVATE]
 
 	({
+		NEWL : $$.newLine,               // Newline is JSON output.
+		ANOF : ''+((function(){}).name), // Name of an anonymous function; usually "anonymous".
+
 		ODEL : function(/*obj&*/o,  k)
 		//----------------------------------
-		// Non-recursive Key Deleter.
-		// => `o`
+		// (Obj-Delete.) Deletes own properties (non-recursive.)
+		// => o&
 		{
 			for( k in o ) o.hasOwnProperty(k) && delete o[k];
 			return o;
 		},
-		
-		BRKN : function(/*str*/s)
-		//----------------------------------
-		// Whether s is a 'broken' spec path.
-		// [FIX230518] Bugfix (missing parentheses in logical condition!)
-		// => 1 [BROKEN] | 0 [NOT-BROKEN]
-		{
-			return +( 0 < s.indexOf('script-preferences') || callee.REBK.test(s) || (0 < s.indexOf('[@name="') && callee.DBQT(s)) );
-		}
-		.setup
-		({
-			REBK: RegExp('(?:find|change).+(?:shadow-settings)'),
-			DBQT: function(/*str*/s)
-			//----------------------------------
-			// [ADD210410] Whether the spec contains inner double quotes in
-			// `[@name=...]` part(s), like in `/menu[@name="Контекстное меню "Общие""]/`
-			// => 1 [YES-BROKEN]  |  0 [NO-OK]
-			{
-				return +(0 <= s.replace(callee.REG||(callee.REG=/(?:\[@name="|"\])/g),'').indexOf('"'));
-			},
-		}),
-
-		EST$ : function($0)
-		//----------------------------------
-		// ESTN Replacer.
-		// [REM] `this` is not the private zone, so we load
-		// the String ctor in callee.Q.
-		{
-			return callee.Q['_'+callee.Q.SourceEscapes[$0]];
-		}.setup({ Q: µ['~'].GSTR }),
-
-		ESTN : function(/*str*/s)
-		//----------------------------------
-		// Escape '\t', '\r' and '\n'
-		// XXX<TB>YYY<CR><LF>ZZZ  =>  `XXX\tYYY\r\nZZZ`
-		{
-			return s.replace(this.GREG.TBNL,this.EST$);
-		},
 
 		OTOS : function(/*obj*/o)
 		//----------------------------------
+		// (Obj-ToString.) Calls Object.prototype.toString on `o` (safe method.)
 		// E.g: => "[object RegExp]", "[object Array]" "[object global]" etc
+		// => str
 		{
 			return this.GOBJ.prototype.toString.call(o);
 		},
 
 		NASO : function(/*obj*/o,/*str*/k)
 		//----------------------------------
-		// Tell whether o has-NOT-OwnProperty k (secure.)
+		// (Not-Has-Own-Prop.) Whether o has NOT own property k (safe method.)
 		// => 1 | 0
 		{
-			return 1 - this.GOBJ.prototype.hasOwnProperty.call(o,k);
+			return 1-this.GOBJ.prototype.hasOwnProperty.call(o,k);
 		},
 
 		NATV : function(/*fct*/f,  q,s,p)
 		//----------------------------------
-		// Tell whether `f` is native.
-		// [REM] String(Object) is something like "{...[native code]...}"
+		// (Is-Native-Func.) Whether `f` is a native JS function.
+		// => 1 | 0
 		{
-			return ( q=callee.Q||(callee.Q=this.GOBJ.toSource().substr(this.GOBJ.toSource().indexOf('{'))) ),
-				0 > (p=(s=f.toSource()).indexOf(q)) ? 0 : +(s.length == p + q.length);
-		},
+			// TRICK: A typical native function is the Object constructor,
+			//        on which `toSource()` returns the string 
+			//            `(function Object() {  [native code] } )`
+			//        We use the end part of that string -- from `{` --
+			//        to determine whether the incoming function f
+			//        has the same final trace thru `toSource()`.
 
-		// Name of an anonymous function (=> "anonymous").
-		//----------------------------------
-		ANOF : ''+((function(){}).name),
+			q = callee.Q || ( s=this.GOBJ.toSource(), (callee.Q=s.slice(s.indexOf('{'))) );
+			// Typically, q=="{  [native code] } )"
+
+			return 0 > (p=(s=f.toSource()).indexOf(q)) ? 0 : +(s.length == p + q.length);
+		},
 
 		OKID : function(/*str*/s)
 		//----------------------------------
-		// Tell whether `s` is a valid JS identifier.
+		// (Is-OK-Identifier.) Whether `s` is a valid JS identifier.
+		// => 1 | 0
 		{
+			// [ADD250317] Quick precheck: invalidates strings that contain any space/NL char.
+			if( callee.RESP.test(s) ) return 0;
+
 			try{ this.GFCT('var '+s); return 1 }
 			catch(_){ return 0 }
+		}
+		.setup
+		({
+			RESP: /\s/,
+		}),
+
+		ADBE : function(/*u32*/n)
+		//----------------------------------
+		// (Adobe-Hexa-Tag.) Special uint32 formatter used if `n` happens
+		// to encode an Adobe tag, i.e `n.isAdbe()`. Returns a string
+		// representation of n in hexa form ("0x..."). An extra comment
+		// is added if RDCD is falsy.
+		// => `0xHHHHHHHH` | `0xHHHHHHHH /*[xyzt]*/`
+		{
+			return n.toHexa() + (
+				this.RDCD ?
+				'' :
+				__( "%2/*%2[%1]%2*/", n.toAdbe(), this.SPCE.length?' ':'')
+			);
 		},
+
+		NEST: function(/*'{}'|'[]'*/nest,/*str[]*/items,/*uint*/totLen,/*str*/prv,  n,ini,end,jnr,t)
+		//----------------------------------
+		// (Nested-Layout.) Expand items as object `{...}` or array `[...]` representation,
+		// depending on spacing (this.SPCE), current indent (this.INDT) and layout options.
+		// - `items`  is a set of stringified elements;
+		// - `totLen` is the sum of item lengths (used to evaluate single-line option.)
+		// - `prv`    is the previous indent (avoid recalculation.)
+		// => str
+		{
+			if( !(n=items.length) ) return nest;
+			
+			ini = nest.charAt(0);
+			end = nest.charAt(1);
+
+			if( (t=this.INDT).length && (callee.MAX_LEN_COMPACT < n || n*callee.MAX_AVG_COMPACT < totLen) )
+			{
+				// Multiline layout.
+
+				//   NON-SYMMETRICAL        SYMMETRICAL
+				// ------------------------------------------------------------
+				//   ==== xxxxxxx {         ==== xxxxxxx
+				//   ==== ==== item1,       ==== {
+				//   ==== ==== item2,       ==== ==== item1,
+				//      . . .               ==== ==== item2,
+				//   ==== ==== itemN,          . . .
+				//   ==== }                 ==== ==== itemN,
+				//                          ==== }
+
+				callee.SYM_LAYOUT && (ini = this.NEWL + prv + ini);
+				ini = ini + this.NEWL + t;
+				jnr = ',' + this.NEWL + t;
+				end = this.NEWL + prv + end;
+			}
+			else
+			{
+				// Single line layout.
+				// ---
+				t = this.SPCE.length ? ' ' : '';
+
+				ini = ini + t;
+				jnr = ',' + t;
+				end = t + end;
+			}
+
+			return ini + items.join(jnr) + end;
+		}
+		.setup
+		({
+			// Whether to apply symmetrical layout.
+			SYM_LAYOUT: 1,
+
+			// Maximum object/array length allowing one-line representation.
+			MAX_LEN_COMPACT: 15,
+
+			// Maximum *average* string size allowing one-line representation.
+			MAX_AVG_COMPACT: 20,
+		}),
 
 		REFS : function(/*ref*/o,  q,n,i)
 		//----------------------------------
-		// Reference Stack Manager (prevent cycles), init in lave()
-		// => 1 (already in stack) | 0 (just added)
+		// (Reference-Stack-Manager.) Whether `o` (as an object reference)
+		// has already been parsed during the current `lave` session. This
+		// routine is intended to prevent cycles (hence infinite loop)
+		// in the event the target object would contain self-references.
+		// Since this is a highly time&memory-consuming procedure, this
+		// function is now bypassed by default (see option.cycleCheck.)
+		// You want to turn it on ONLY if the target object is known to
+		// be unsafe.
+		// => 1 [ALREADY-IN-STACK] | 0 [JUST-ADDED]
 		{
 			i = n = (q=callee.Q).length;
 			while( i-- ){ if( o===q[i] ) return 1; }
-
 			return (q[n]=o), 0;
 
 		}.setup({ Q:[] }),
 
-		DOMS : function(/*dom*/o,  q,k,s,t)
-		//----------------------------------
-		// DOM Spec Cache Manager (prevent cycles), init. in lave().
-		// [CHG171125] Entirely rewritten to take care of KDOM < 0.
-		// => <nonEmptyString> [done]  |  <emptyString> [pending]
-		{
-			k = o.toSpecifier();
-			if( (q=callee.Q).hasOwnProperty(k) ) return q[k];
-
-			// The json `resolve("<spec>")` is allowed only if KDOM > 0.
-			// Otherwise we take "<spec>" alone--which evals to a string.
-			// ---
-			s = 0 < this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
-
-			// `t` indicates whether we have to prevent the caller
-			// from browsing this obj, and the reason why.
-			// [REM] The tag `ignored` appears if both KDOM<0 and INLP==1,
-			// which allows a root DOM object to explore its own properties.
-			// => 'ignored' | 'broken' | 'no-prop' | FALSE
-			// ---
-			t = ( 0 > this.KDOM && this.INLP && 'ignored' )
-				||
-				( this.BRKN(k) && 'broken' )
-				||
-				( this.NASO(o,'properties') && 'no-prop' );
-
-			// q[k] is the json to use, now or later, depending on t.
-			// The reason `(t||'cycle')` is added as inline comment
-			// only if verbosity is expected  AND  KDOM > 0.
-			// ---
-			this.SPCE && 0 < this.KDOM && ( s = '/*' + (t||'cycle') + '*/ ' + s );
-			q[k] = s;
-
-			return t ? s : '';
-
-		}.setup({ Q:{} }),
-
 	})
 
+	//==========================================================================
+	// SPECIFIC EXTENDSCRIPT/SCRIPTUI REFERENCES & UTILITIES
+	//     NTVF SRCN()
+	//==========================================================================
+
 	[PRIVATE]
+
 	({
+		// ES/SUI Native Function Map :: _<funcName> => "<host1>|<host2>..."
+		// where `eval(<host_i>)` returns a possible host for the function.
+		// Rem: the _<funcName> keys also cover operators, e.g `_<=`.
 		NTVF :
 		{
 		#include 'JSON/$$.natives.jsxres'
@@ -266,7 +519,7 @@
 		
 		SRCN : function(/*str*/name,/*fct*/f,  k,pfx,s,p,t)
 		//----------------------------------
-		// Search Native Function.
+		// (Search-Native-Function.)
 		// => '' [KO] | entire-string-path-from-global [OK].
 		// E.g:
 		// `((function(){return this}).call(null))["ListItem"]`
@@ -319,35 +572,111 @@
 		},
 	})
 
+	//==========================================================================
+	// SPECIFIC INDESIGN (DOM) REFERENCES & UTILITIES
+	//     BRKN() IDOM() DOMS()
+	//==========================================================================
+	
 	[PRIVATE]
-
+	
 	({
-		NSOB : '({})',                               // Not-supported-obj  --depends on SPACED in lave().
-		NSFC : '(function%1(){})',                   // Not-supported-func --depends on SPACED in lave().
-		NTFC : '(function%1(){})',                   // Native-func        --depends on SPACED in lave().
-		SNAN : 'Number.NaN',                         // Secure NaN [ADD170501] --may be REDUCED to '+{}'.
-		GBCD : '$.global',                           // Global code        --can be changed from lave().
-		DLCD : '$',                                  // Dollar code        --can be changed from lave().
-		SPCE : '',                                   // Spaces or empty    --depends on SPACED in lave().
-		RDCD : 0,                                    // Reduced form       --depends on SPACED in lave().
-		KDOM : 0,                                    // Keep DOM access    --depends on DOM_ACCESS in lave()
-		
-		INDT : '',                                   // Current indentation.
-		INLP : 0,                                    // Entered in a Array/Object loop.
-
-		KARR : µ['~'].OTOS([]),                      // "[object Array]"
-		KREG : µ['~'].OTOS(/z/),                     // "[object RegExp]"
-
-		ADBE : function(/*u32*/n)
+		BRKN : function(/*str*/s)
 		//----------------------------------
-		// [REM] This function is called only when `n.isAdbe()` is true.
+		// (Is-Broken-Path.) Whether s is a 'broken' DOM specifier path.
+		// [REM] A few DOM objects cannot be parsed at all due to InDesign bugs
+		// causing either a runtime error or a crash. This routine detects
+		// those dangerous specifiers.
+		// => 1 [BROKEN]  |  0 [NOT-BROKEN]
 		{
-			return n.toHexa() + (
-				this.RDCD ?
-				'' :
-				__( "%2/*%2[%1]%2*/", n.toAdbe(), this.SPCE?' ':'')
-			);
+			return +( 0 < s.indexOf('script-preferences') ||
+			          callee.REBK.test(s) ||
+			          (0 < s.indexOf('[@name="') && callee.DBQT(s)) );
+		}
+		.setup
+		({
+			REBK: RegExp('(?:find|change).+(?:shadow-settings)'),
+			DBQT: function(/*str*/s)
+			//----------------------------------
+			// [ADD210410] Whether the spec contains inner double quotes in
+			// `[@name=...]` part(s), like in `/menu[@name="Контекстное меню "Общие""]/`
+			// => 1 [YES-BROKEN]  |  0 [NO-OK]
+			{
+				return +(0 <= s.replace(callee.REG||(callee.REG=/(?:\[@name="|"\])/g),'').indexOf('"'));
+			},
+		}),
+		
+		IDOM : function(/*obj*/o)
+		//----------------------------------
+		// (Is-DOM-Obj.) Whether o is an InDesign DOM object.
+		// Required keys: 'toSpecifier' (fct) and 'properties'.
+		// => 1 [YES]  |  0  [NO]
+		{
+			return o.hasOwnProperty('toSpecifier') &&
+			       o.hasOwnProperty('properties') &&
+			       'function'==typeof o.toSpecifier;
 		},
+
+		DOMS : function(/*dom*/o,  q,k,s,t)
+		//----------------------------------
+		// (DOM-Spec-Cache-Manager.) Returns a non-empty string iff the
+		// target DOM object already has a cached 'representation'
+		// (either a `resolve(...)` command or a path string, depending
+		// on KDOM.)
+		// [REM] This routine is primarily used to prevent cycles in
+		// DOM references (regardless of the `cycleCheck` option.) Even
+		// if ~.REFS() is bypassed, DOM specifiers are tested through
+		// BRKN and registered so that they cannot be processed twice.
+		// => <nonEmptyString> [DONE]  |  <emptyString> [PENDING]
+		{
+			k = o.toSpecifier();
+			if( (q=callee.Q).hasOwnProperty(k) ) return q[k];
+
+			// The json `resolve("<spec>")` is allowed iff KDOM > 0.
+			// Otherwise we take "<spec>" alone--which evals to a string.
+			// ---
+			s = 0 < this.KDOM ? ('resolve(' + k.toSource() + ')') : k.toSource();
+
+			// `t` will indicate whether we have to prevent the caller
+			// from browsing this obj, and the reason why.
+			// [REM] The tag `ignored` appears if both KDOM<0 and INLP==1,
+			// which allows a root DOM object to explore its own properties.
+			// => 'ignored' | 'broken' | 'no-prop' | FALSE
+			// ---
+			t = ( 0 > this.KDOM && this.INLP && 'ignored' )
+				||
+				( this.BRKN(k) && 'broken' )
+				||
+				( this.NASO(o,'properties') && 'no-prop' );
+
+			// q[k] is the json to use, now or later, depending on t.
+			// The reason `(t||'cycle')` is added as inline comment
+			// only if verbosity is expected  AND  KDOM > 0.
+			// ---
+			this.SPCE.length && 0 < this.KDOM
+			&& ( s = '/*' + (t||'cycle') + '*/ ' + s );
+			
+			q[k] = s;
+
+			return t ? s : '';
+
+		}.setup({ Q:{} }),
+
+	})
+
+	//==========================================================================
+	// `\x01` KEYS (STRINGIFIERS)
+	// - SCALARS:    •undefined    •[bB]oolean  •[nN]umber   •[sS]tring
+	// - REFERENCES  •[fF]unction  •[oO]bject   •Array
+	// - SPECIAL:    •(xml|XML)    •XMLList     •Date        •RegExp
+	// - STATIC:     •global       •$           •Math
+	// - DOM/ES      •Enumeration  •Enumerator  •DomObj      •UnitValue
+	//               •Error        •File        •Folder      •Socket
+	//               •Namespace    •QName       •Reflection  •ReflectionInfo  
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
 
 		//----------------------------------
 		// Scalars from typeof, and associated 'classes.'
@@ -418,11 +747,11 @@
 		// Enumeration and Enumerator, thanks to Ext/enum.
 		//----------------------------------
 
-		'\x01Enumeration':function(x){ return this.INLP ? x.toSource(this.SPCE?1:0) : this['\x01Object'](x) },
-		'\x01Enumerator': function(x){ return 0 < this.KDOM ? x.toSource(this.SPCE?1:0) : this.ADBE(this.GNUM(x)) },
+		'\x01Enumeration':function(x){ return this.INLP ? x.toSource(this.SPCE.length?1:0) : this['\x01Object'](x) },
+		'\x01Enumerator': function(x){ return 0 < this.KDOM ? x.toSource(this.SPCE.length?1:0) : this.ADBE(this.GNUM(x)) },
 
 		//----------------------------------
-		// InDesign DOM objects (detected thru `toSpecifier`.)
+		// InDesign DOM objects (detected thru IDOM.)
 		//----------------------------------
 
 		'\x01DomObj':     function(x){ return this.DOMS(x) || this.LAVE(x.properties) },
@@ -481,10 +810,9 @@
 		// Other special ExtendScript objects.
 		//----------------------------------
 
-		'\x01Reflection': function(x){ return this.NSOB },            // => '({*not supported*})'
-		'\x01ReflectionInfo':function(x){ return this.NSOB },         // => '({*not supported*})'
-		'\x01Socket':     function(x){ return '(new Socket)' },       // => '(new Socket)'
-
+		'\x01Reflection':     function(x){ return this.NSOB },        // => '({*not supported*})'
+		'\x01ReflectionInfo': function(x){ return this.NSOB },        // => '({*not supported*})'
+		'\x01Socket':         function(x){ return '(new Socket)' },   // => '(new Socket)'
 
 		//----------------------------------
 		// References.
@@ -539,28 +867,29 @@
 		// See $$.BigInt implementation for a full example. Note also that the
 		// JSON hook mechanism only works in COMPACT or REDUCED mode.
 		{
+			// Special IdExtenso-based object hook.
+			// If the HOOK mode is allowed, look whether x's constructor name matches
+			// an IdExtenso class registered here as a `\x02...` key (hook.) If so,
+			// do not browse the object and return its stringified source instead,
+			// unless \x02<ctor>(x) generates a falsy output.
+			// [REM] Put this block *before* array test so that Array-based
+			// objects can also enjoy JSON hook.
+			// ---
+			if( this.HOOK && (k=x.constructor.name) && this.hasOwnProperty(k='\x02'+k) && (k=this[k](x)) )
+			{
+				return k;
+			}
+
 			// Array.
 			// [CHG200613] Added `x instanceof Array` to cover more cases.
 			// ---
 			if( this.KARR==this.OTOS(x) || (x instanceof Array) ) return this['\x01Array'](x);
 
 			// Special DOM object case.
-			// [ADD230518] Safer: make sure `toSpecifier` is a method.
 			// ---
-			if( x.hasOwnProperty('toSpecifier') && 'function'==typeof x.toSpecifier )
+			if( this.IDOM(x) )
 			{
 				return this['\x01DomObj'](x);
-			}
-
-			// [ADD170608] Special IdExtenso-based object hook.
-			// If the SPACED mode is off, look whether x's constructor name matches
-			// an IdExtenso class registered here as a `\x02...` key (hook.) If so,
-			// do not browse the object and return its stringified source instead,
-			// unless \x02<ctor>(x) generates a falsy output.
-			// ---
-			if( (!this.SPCE) && (k=x.constructor.name) && this.hasOwnProperty(k='\x02'+k) && (k=this[k](x)) )
-			{
-				return k;
 			}
 
 			// Known class, or default.
@@ -568,96 +897,139 @@
 			// [REM] Althoug myObj.__class__ is supposed to be "Object" (titlecase),
 			// comparing k against "object" (lowercase) is not a typo. Indeed we want to
 			// be absolutely sure that the present function won't go into infinite loop.
-			// Anyway it should never happen--in principle--that x.__class__ be "object".
+			// (It should never happen in principle that x.__class__ be "object"!)
 			// ---
 			( (k=x.__class__) && ('object'!=k) && this.hasOwnProperty(k='\x01'+k) ) || (k='\x01Object');
 			
 			return this[k](x);
 		},
 
-		'\x01Object':      function(x,  q,dq,sp,a,z,s)
+		'\x01Object':      function(x,  q,sp,a,n,sz,sku,s)
 		//----------------------------------
 		// Regular Object loop.
 		{
-			if( this.REFS(x) ) return '{/*cycle*/}';
+			if( this.TCYC && this.REFS(x) ) return '{/*cycle*/}'; // [CHG250317] Bypassed if TCYC==0
+
+			// Loop prolog.
+			// ---
 			this.INLP = 1;
+			q = this.INDT; // Backup indent
+			this.INDT = q + this.SPCE;
+			sp = this.SPCE.length ? ' ' : '';
 
-			dq = this.INDT = (q=this.INDT)+this.SPCE;
-			sp = this.SPCE ? ' ' : '';
-
-			z = (a=[]).length;
+			a = [];
+			n = sz = 0;
+			sku = this.SKUN; // [ADD250318]
 			for( s in x )
 			{
 				if( this.NASO(x,s) ) continue;
-				a[z++] = s.toSource() + sp + ':' + sp + this.LAVE(x[s]);
+				if( sku && 'undefined'==typeof(x[s]) ) continue;
+				sz += ( a[n++] = s.toSource() + sp + ':' + sp + this.LAVE(x[s]) ).length;
 			}
 			
-			s = 0===z ? '{}' :
-			(	dq ?
-				( '{' + this.NEWL + dq + a.join(',' + this.NEWL + dq) + this.NEWL + q + '}' ) :
-				( '{' + sp + a.join(','+sp) + sp + '}' )
-			);
-			
-			return (a.length=0),(this.INDT=q),s;
+			s = this.NEST( '{}', a, sz, q );
+
+			return (this.INDT=q), s; // Restore indent and return.
 		},
 
-		'\x01Array':       function(x,  q,dq,sp,a,n,z,i,s,sz,o,k)
+		'\x01Array':       function(x,  sub,q,a,n,i,s,sz,t)
 		//----------------------------------
 		// Regular Array loop.
 		{
-			if( this.REFS(x) ) return '[/*cycle*/]';
+			if( this.TCYC && this.REFS(x) ) return '[/*cycle*/]';        // [CHG250317] Bypassed if TCYC==0
 
-			this.INLP = 1;
-
-			dq = this.INDT = (q=this.INDT)+this.SPCE;
-			sp = this.SPCE ? ' ' : '';
-
-			for( z=(a=[]).length, n=x.length, i=-1, sz=0 ; ++i < n ; sz+=(a[z++]=this.LAVE(x[i])).length );
-			s = 0===z ? '[]' :
-			(
-				( dq && (10 < z || 15*z < sz) ) ?
-				( '[' + this.NEWL + dq + a.join(',' + this.NEWL + dq) + this.NEWL + q + ']' ) :
-				( '[' + sp + a.join(','+sp) + sp + ']' )
-			);
-
-			// [FIX200606] Special case for "Rich Array."
-			// A "rich array" is an Array object whose `length` is lower than `__count__`,
-			// that is, having additional properties beyond '0', '1'... indices.
-			// [FIX200613] In this particular case, a regular Array is created and extra
-			// keys are added from within an auto-executed function. JSON output looks like
-			// `(function(a,o...){...})([...],{...})`
-			// [FIX230721] An unusual situation arises when Array.prototype was augmented:
-			// x.__count__ then mistakenly increases by Array.prototype.__count__ (which is
-			// natively 0). Thus an additional test has been added on `o.__count__` (see below)
-			// to prevent useless outgrowths from popping up.
+			// Extract object part if relevant (Rich Array case.)
 			// ---
-			if( x.__count__ > x.length )
+			sub = this.RICH && x.__count__ > x.length && callee.OSUB(x); // sub :: obj | false [ADD250317]
+
+			// Loop prolog.
+			// ---
+			this.INLP = 1;
+			q = this.INDT; // Backup indent
+			this.INDT = q + this.SPCE + (sub?this.SPCE:'');
+			
+			for
+			(
+				a=[], n=x.length, i=-1, sz=0 ;
+				++i < n ;
+				sz += ( a[i] = this.LAVE(x[i]) ).length
+			);
+			
+			s = this.NEST( '[]', a, sz, q );
+
+			if( sub )
 			{
-				// Collect all non-index keys in o.
-				// ---
-				o = {};
-				for( k in x ) x.hasOwnProperty(k) && k !== ''+parseInt(k,10) && (o[k]=x[k]);
+				// Rich Array Case.
+				// A "rich array" is an Array object whose `length` is lower than `__count__`,
+				// that is, having additional properties beyond '0', '1'... indices. In this
+				// particular case, a regular Array is created and extra keys are added from
+				// within an auto-executed function. JSON output will look like
+				//    `(function(a,o...){...})([...],{...})`
 				
-				// Extend the output so a rich array is returned.
-				// [FIX230721] Condition added to prevent issues with fake 'Rich Arrays'
-				// that result from extended `Array.prototype` or similar exception.
-				// ---
-				if( o.__count__ )
-				{
-					k = this.SPCE ? this.NEWL + dq : '';
-					s = "(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})"
-					  + k + '(' + k
-					  + s
-					  + k + ',' + k
-					  + this['\x01Object'](o)
-					  + k + ')';
-				}
+				sub = this['\x01Object'](sub);
+
+				t = this.SPCE.length ? this.NEWL + q + this.SPCE : '';
+				s = "(function(a,o,k){for(k in o)o.hasOwnProperty(k)&&a[k]=o[k];return a})"
+				  + t + '('
+				  + t + this.SPCE + s
+				  + t + ','
+				  + t + this.SPCE + sub
+				  + t + ')';
 			}
 
-			return (a.length=0),(this.INDT=q),s;
-		},
+			return (this.INDT=q), s; // Restore indent and return.
+		}
+		.setup
+		({
+			OSUB: function(/*arrObj*/x,  r,k,z)
+			//----------------------------------
+			// Collect all *non-index* keys from x and check that the
+			// extracted object has at least one key different from 'index'.
+			// => new {}  [OK]  |  false [KO]
+			{
+				r = {};
+				for( k in x ) x.hasOwnProperty(k) && k !== (''+parseInt(k,10)) && (r[k]=x[k]);
+				z = r.__count__;
+				return (0==z || (1==z && 'length'==k)) ? false : r;
+			},
+		}),
 
 	})
+
+	//==========================================================================
+	// OPTIONS, DATA, FLAGS
+	//     KARR KREG NSOB NSFC NTFC SNAN GBCD DLCD SPCE RDCD KDOM TCYC INDT INLP
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		KARR : µ['~'].OTOS([]),                      // "[object Array]"
+		KREG : µ['~'].OTOS(/z/),                     // "[object RegExp]"
+
+		NSOB : '({})',                               // Not-supported-obj           ; depends on ops.spacing.
+		NSFC : '(function%1(){})',                   // Not-supported-func          ; depends on ops.spacing.
+		NTFC : '(function%1(){})',                   // Native-func                 ; depends on ops.spacing.
+		SNAN : 'Number.NaN',                         // Secure NaN                  ; may be REDUCED to '+{}'.
+		GBCD : '$.global',                           // Global code                 ; can be changed from lave().
+		DLCD : '$',                                  // Dollar code                 ; can be changed from lave().
+
+		SPCE : '',                                   // Spaces or empty             ; depends on ops.spacing.
+		RDCD : 0,                                    // Reduced form                ; depends on ops.spacing.
+		KDOM : 0,                                    // Keep DOM access             ; depends on ops.domAccess.
+		TCYC : 0,                                    // Whether to test ref cycles  ; depends on ops.cycleCheck.
+		RICH : 0,                                    // Expand 'rich arrays'        ; depends on ops.richArr.
+		HOOK : 1,                                    // JSON hooks allowed          ; depends on ops.bypassHooks
+		SKUN : 0,                                    // Skip undefined props        ; depends on ops.skipUndefined
+
+		INDT : '',                                   // Current indentation.
+		INLP : 0,                                    // Entered in a Array/Object loop.
+	})
+	
+	//==========================================================================
+	// ENTRY POINTS
+	//     LAVE() OPTS()
+	//==========================================================================
 
 	[PRIVATE]
 
@@ -678,70 +1050,176 @@
 			// ---
 			return ( x || null!==x ) ? this['\x01'+(typeof x)](x) : 'null';
 		},
+		
+		OPTS : function(/*?(obj|-1|0|+1)*/OPTIONS_SPACING,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  r,o,k,v)
+		//----------------------------------
+		// [ADD250317] (Normalize-Options.)
+		// => { spacing:-1|0|1|2|3|4, domAccess:-1|0|+1, forceObj:0|1, cycleCheck:0|1,
+		//      richArr:0|1, bypassHooks:0|1, skipUndefined:0|1, symLayout:0|1 }
+		{
+			r = {};
+			
+			o = OPTIONS_SPACING===Object(OPTIONS_SPACING)
+			? OPTIONS_SPACING
+			: { spacing:OPTIONS_SPACING };
+
+			// Normalize `spacing`
+			v = o.hasOwnProperty(k='spacing') ? o[k] : 0;
+			r[k] = v===(0|v) ? (0>v?-1:Math.min(v,4)) : (v?1:0);
+
+			// Normalize `domAccess`
+			v = o.hasOwnProperty(k='domAccess') ? o[k] : DOM_ACCESS;
+			r[k] = v===(0|v) && 0 > v ? -1 : (v?1:0);
+
+			// Normalize `forceObj`
+			v = o.hasOwnProperty(k='forceObj') ? o[k] : FORCE_OBJ;
+			r[k] = v ? 1 : 0;
+
+			// Normalize `cycleCheck`
+			v = o.hasOwnProperty(k='cycleCheck') ? o[k] : 0;
+			r[k] = v ? 1 : 0;
+
+			// Normalize `richArr`
+			v = o.hasOwnProperty(k='richArr') ? o[k] : 0;
+			r[k] = v ? 1 : 0;
+
+			// Normalize `bypassHooks`
+			v = o.hasOwnProperty(k='bypassHooks') ? o[k] : 0;
+			r[k] = v ? 1 : 0;
+
+			// Normalize `skipUndefined`
+			v = o.hasOwnProperty(k='skipUndefined') ? o[k] : 0;
+			r[k] = v ? 1 : 0;
+
+			// Normalize `symLayout` (default value is JSON.UseSymLayout.)
+			v = o.hasOwnProperty(k='symLayout') ? o[k] : callee.µ.UseSymLayout;
+			r[k] = v ? 1 : 0;
+
+			return r;
+		},
 	})
+
+	//==========================================================================
+	// PUBLIC API
+	//==========================================================================
 
 	[PUBLIC]
 
 	({
-		lave : function lave_x_t_b_b_S(/*any*/x,/*-1|0|+1=0*/SPACED,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,k,bkPP,ns,nt)
-		//----------------------------------
-		// [ADD171125] Allows DOM_ACCESS == -1 (i.e, do not even browse DOM object properties.)
-		// [ADD171116] Added FORCE_OBJ param.
-		// [CHG170418] Properly uneval (almost) anything in ExSc/SUI/InDesign context.
-		// [REM] Prevents Array/Object cycles;
-		//       Supports RegExp, File/Folder, UnitValue, XML/XMLList/QName/Namespace
-		//       Enumeration/Enumerator instance, Error, Date,
-		//       some native functions and static references, etc.
-		// `SPACED` :: whether the result must be reduced(-1), compact(0:default) or extended(+1).
-		//     - Compact means one-line ASCII -- unless `x` contains some XML [TODO].
-		//     - Extended(+1) means multiline and verbose.
-		//       [CHG170607] Extended mode also leads to expand IdExtenso-based objects,
-		//       e.g   BigInt(nnn) => `{ size:..., neg:..., etc... }`
-		//       while other modes use the ~[\x02<ctor.name>] method *if defined*,
-		//       e.g   BigInt(nnn) => `BigInt("nnn")`
-		//       See detail in ~[\x01object].
-		//     - Reduced(-1) is similar to compact, but it provides additional shortcuts
-		//       such as `!0` instead of `true`, etc. [ADD170418]
-		// `DOM_ACCESS` :: whether the result should maintain DOM accesses thru
-		//       `resolve()`, enumeration objects, etc. Default is 0, meaning that the
-		//       output string is safe from any underlying DOM command. In particular,
-		//       references of the form `resolve(<path>)` are changed into `"<path>"`.
-		//       While removing DOM access impacts the output string, this does not
-		//       prevent `lave()` from browsing DOM object properties.
-		//     - Use -1 to prevent DOM objects from being very browsed. [ADD171125]
-		//       In such case any DOM ref is substitued to its path.
-		// `FORCE_OBJ` :: whether `x` must be browsed as an object (if possible.)
-		//       This flag allows to input special objects s.t. $.global, ScriptUI,
-		//       BridgeTalk which would normally return themselves stringified.
-		//       Use with caution.
+		// As you can see throughout this framework, my personal preference is
+		// 'symmetrical layout' for functional blocks, objects, tables, etc.
+		// With UseSymLayout==1, opening punctuation (brackets, braces, paren-
+		// theses) is at the same indentation level as closing punctuation.
+		// If this global JSON option doesn't suit you, change it to 0 below
+		// or set it to 0 when your program starts up: $$.JSON.UseSymLayout=0.
+		// This is then a global preference. You can also set it locally
+		// (<options>.symLayout=1) while calling `$$.JSON(xxx, <options> )`.
+		// ---
+		UseSymLayout : 1,
+
+		lave : function lave_x_õï_t_b_S(/*any*/x,/*(obj|-1|0|1|2|3|4)=0*/OPTIONS_SPACING,/*-1|0|1=0*/DOM_ACCESS,/*0|1=0*/FORCE_OBJ,  I,bkPP,ops,spc,k,ns,nt)
+		//---------------------------------- auto
+		// Returns the JSON representation of `x` w.r.t options. Since this
+		// method is 'automatic', the client code can just use `$$.JSON(x, ...)`
+		// [CHG250318] The 1st argument OPTIONS_SPACING can now provide an object with all
+		// needed options in the form { spacing, domAccess, forceObj, ... }, instead of
+		// passing separate args SPACING, DOM_ACCESS, FORCE_OBJ. (Backwards compatibility
+		// is preserved for older codes based on the legacy syntax.)
+		// Default options apply if no extra argument is provided or left undefined.
+		// Rem: If DOM_ACCESS and/or FORCE_OBJ arguments are supplied *in addition* to
+		// an OPTIONS object, they will supersede .domAccess/.forceObj properties.
+		// Supported OPTIONS:
+		// ---------------------
+		// .spacing          -1 Outputs the shortest string using shortcuts like `!0`.
+		// (SPACING)          0 [def] Outputs a one-line string without shortcuts.
+		//              1|2|3|4 Outputs a verbose multi-line string and expands $$-based
+		//                      objects ; e.g BigInt(N) -> `{ size:..., neg:..., etc }`
+		//                      If spacing > 1, use the number (2|3|4) for indent space.
+		//                      Otherwise indent space is preset to 4 characters ('    ').
+		//                 REM: Compact spacing (-1 or 0) does not apply to XML objects.
+		// ---------------------
+		// .domAccess        -1 Prevents DOM objects from being browsed at all (any
+		// (DOM_ACCESS)         encountered reference is then replaced by its path.)
+		//                    0 [def] Browses DOM objects but keeps the output string
+		//                      safe from DOM commands (any encountered reference is then
+		//                      replaced by its path.)
+		//                   +1 Browses DOM objects and maintains associated commands
+		//                      like `resolve(<path>)`, enumeration accesses.
+		// ---------------------
+		// .forceObj       bool Whether to parse x as 'simple object' even if a better
+		// (FORCE_OBJ)          representation is available. This option allows you to
+		//                      get the input object stringified thru basic key-value
+		//                      mapping (as long as it supports it.) Use with caution.
+		//                      (Def: 0)
+		//                 REM: The option `forceObj` may be useful to identify pro-
+		//                      perties in special entities like $.global, ScriptUI...,
+		//                      which would normally yield a predefined string. Only
+		//                      'object' or 'function' types can honor this option.
+		// ---------------------
+		// .cycleCheck     bool Whether to enable cycle detection mechanism while
+		//                      parsing (regular) objects. This option is now disabled
+		//                      by default due to its performance cost. You might need
+		//                      it when processing objects known to have self-pointing
+		//                      references in their structure. (Def: 0)
+		//                 REM: This option is independent from DOM object parsing,
+		//                      which prevents cycles anyway.
+		// ---------------------
+		// .richArr        bool Whether to detect and extend 'rich arrays', that is,
+		//                      array objects having additional properties distinct
+		//                      from regular indices. If this option is enabled, a
+		//                      rich array is stringified using a special non-JSON
+		//                      syntax that will evaluate to the original structure:
+		//                       `(function(a,o){...})([<arrPart],{<objPart>})`
+		//                      This option is now preset to 0. (Def: 0)
+		// ---------------------
+		// .bypassHooks    bool Whether to bypass custom JSON hooks registered by
+		//                      IdExtenso clients. (Def: 0)
+		// ---------------------
+		// .skipUndefined  bool Whether to ignore undefined properties when represen-
+		//                      ting an object. (Def: 0)
+		//                 REM: Activate this option only if you need to remove lines
+		//                      of the form `"myProp": undefined` from a stringified
+		//                      object. This option does not apply to arrays.
+		// ---------------------
+		// .symLayout      bool Whether to represent objects and arrays using a symme-
+		//                      trical layout regarding nested {...} or [...] blocks.
+		//                      The default option is µ.UseSymLayout so you can preset
+		//                      this setting globally.
+		// ---------------------
 		// => uneval-string
 		{
 			I = callee.µ['~'];
-			bkPP = XML.prettyPrinting;
-
-			// [ADD170418] Normalize SPACED ; set I.RDCD.
-			// Warning: (undefined < 0) is TRUE in ExtendScript (!)
+			
+			// [CHG250317] The 2nd arg `OPTIONS_SPACING` can now provide
+			// a full object with all supported options. The old scheme
+			//     `lave(x, SPACING, DOM_ACCESS, FORCE_OBJ)`
+			// is still supported for backwards compatibility.
+			// Rem: `ops` is now normalized from `I.OPTS` and has
+			// a `cycleCheck` property preset to 0.
+			// ops :: { spacing, domAccess, forceObj, cycleCheck }
 			// ---
-			SPACED || (SPACED=0);
-			I.RDCD = +(0 > SPACED);
-			SPACED = +(0 < SPACED);
+			ops = I.OPTS(OPTIONS_SPACING, DOM_ACCESS, FORCE_OBJ);
+			spc = 0 < ops.spacing; // bool
 
-			// [ADD170501] Secured NaN.
+			// Temporarily adjust `XML.prettyPrinting`?
 			// ---
-			I.SNAN = I.RDCD ? '+{}' : 'Number.NaN';
+			bkPP = XML.prettyPrinting; // backup
+			XML.prettyPrinting = spc;
 
-			ns = SPACED ? '/*non supported*/' : '';
-			nt = SPACED ? '/*native code*/' : '';
+			// Preset internal flags and patterns.
+			// ---
+			I.RDCD = +(0 > ops.spacing);                              // 'Reduced form' flag.
+			I.SNAN = I.RDCD ? '+{}' : 'Number.NaN';                   // Safe NaN.
+			I.SPCE = ['', '    ','  ','   ','    '][ops.spacing]||''; // Elementary Indent Space
 
-			XML.prettyPrinting = !!SPACED;
-
-			I.SPCE = SPACED ? '    ' : '';
+			ns = spc ? '/*non supported*/' : '';
+			nt = spc ? '/*native code*/'   : '';
 			I.NSOB = __( '({%1})', ns );
 			I.NSFC = __('(%1{%2})','function%1()',ns);
 			I.NTFC = __('(%1{%2})','function%1()',nt);
 
-			I.INDT = '';
-			I.INLP = 0;
+			I.INDT = ''; // Current indentation
+			I.INLP = 0;  // In loop?
 
 			// Manage [[global]] and $ reference strings.
 			// ---
@@ -751,7 +1229,7 @@
 			// ---
 			if( I.GLOB===($||'').global )
 			{
-				// Usual references.
+				// Regular references.
 				// ---
 				I.GBCD = '$.global';
 				I.DLCD = '$';
@@ -764,28 +1242,104 @@
 				I.DLCD = I.GBCD+'["$"]';
 			}
 
-			I.REFS.Q.length = 0;
-
-			// [CHG171125] Supports DOM_ACCESS == -1.
+			// [ADD250317] `ops.cycleCheck` (now defaulted to 0) tells
+			// whether the browser must check and prevent ref cycles.
 			// ---
-			I.KDOM =  (DOM_ACCESS|=0) && (0 > DOM_ACCESS ? -1 : 1);
-			I.ODEL(I.DOMS.Q)['/'] = 0 < I.KDOM ? ('resolve(' + '/'.toSource() + ')') : '"/"';
+			I.TCYC = ops.cycleCheck;
+			I.REFS.Q.length = 0; // Safer in persistent engines.
 
-			// [ADD171116] Support FORCE_OBJ.
-			// ---
-			k = (k = FORCE_OBJ && x && (typeof x)) && ('object'==k || 'function'==k) ?
-				'\x01Object' :
-				'LAVE';
-			x = I[k](x);
-			// ---
+			// [ADD250318] Extra options.
+			I.RICH = ops.richArr;               // Conditionally apply 'rich array' syntax.
+			I.HOOK = ops.bypassHooks ? 0 : 1;   // Controls JSON hooks.
+			I.SKUN = ops.skipUndefined;         // Whether to skip undefined props in stringified objects.
+			I.NEST.SYM_LAYOUT = ops.symLayout;  // Whether to apply symmetrical layout to obj/arr.
 
-			I.REFS.Q.length = 0;
+			// [REM250317] DOM_ACCESS is now reflected in `ops.domAccess`.
+			// -1 :: Prevents DOM objects from being browsed at all.
+			//  0 :: Browses DOM objects but removes any DOM access from the output
+			//       (any ref is then replaced by its stringified path.)
+			// +1 :: Browses DOM objects and uses the `resolve(...)` scheme
+			//       for each reference.
+			// ---
+			I.KDOM = ops.domAccess;
+			
+			// Cleanup `I.DOMS.Q` (cached DOM strings) and preset the output
+			// string for the root DOM object `/` (aka app).
+			// ---
+			I.ODEL(I.DOMS.Q)['/'] = 0 < I.KDOM
+			? ( 'resolve(' + '/'.toSource() + ')' )
+			: ( '"/"' );
+
+			// [REM250317] FORCE_OBJ is now reflected in `ops.forceObj`.
+			// If turned on, request the input arg `x` to be browsed as a
+			// simple object even if a predefined 'stringifier' is available.
+			// This option has no effect if `typeof x` is neither "object"
+			// nor "function".
+			// ---
+			k = 'LAVE'; // Default stringifier.
+			
+			if( ops.forceObj && x && callee.RE_OBJ_TYPE(typeof x) )
+			{
+				k = '\x01Object'; // Object stringifier (forced.)
+				I.IDOM(x) && (x=x.properties);
+			}
+
+			x = I[k](x);    // Stringify `x`.
+
+			// Cleanup.
+			// ---
+			ops.cycleCheck && (I.REFS.Q.length=0);
 			I.ODEL(I.DOMS.Q);
-
 			XML.prettyPrinting = bkPP;
+
 			return x;
+		}
+		.setup
+		({
+			RE_OBJ_TYPE: /^object|function$/,
+		}),
+
+		registerHook : function registerHook_K_F_(/*key*/className,/*fct*/hook,  I,G)
+		//----------------------------------
+		// [ADD250318] Register a JSON hook for a custom class name.
+		// - `className` MUST be a the name of a function used as a constructor.
+		// - `hook` MUST be a function that takes in an object and returns its
+		//    string representation. The `hook` function should return a non-
+		//    empty string iff the incoming object is an instance of the class.
+		//    It's up to the client code to perform extra verifications regar-
+		//    ding object validity. [Warning: the calling context of `hook` is
+		//    not specified.]
+		// ---
+		// => undef
+		{
+			I = callee.µ['~'];
+			G = I.GLOB;
+
+			( 'string' == typeof className && I.OKID(className) )
+			|| G.error(__("Invalid 'className' argument: %1. Should be a valid identifier.",className), callee);
+
+			( 'function' == typeof hook && I.KREG != I.OTOS(hook) )
+			|| G.error(__("Invalid 'hook' argument: %1. Should be a function.",hook), callee);
+
+			I['\x02'+className] = hook;
 		},
-		
+
+		unregisterHook : function unregisterHook_K_(/*key*/className,  I,G)
+		//----------------------------------
+		// [ADD250318] Unregister a JSON hook for a custom class name.
+		// - `className` MUST be a the name of a function used as a constructor.
+		// ---
+		// => undef
+		{
+			I = callee.µ['~'];
+			G = I.GLOB;
+			
+			( 'string' == typeof className && I.OKID(className) )
+			|| G.error(__("Invalid 'className' argument: %1. Should be a valid identifier.",className), callee);
+
+			delete I['\x02'+className];
+		},
+
 		eval : function eval_S_X(/*str*/src,  G)
 		//----------------------------------
 		// Call eval on a 'laved' source string.
@@ -799,7 +1353,7 @@
 			// [ADD240622] Make the ExtendScript error more verbose.
 			// ---
 			( 'string'==typeof src && src.length )
-			|| G[callee.µ.__root__].error(__("Invalid argument: `src` should be a non-empty string!"),callee);
+			|| G.error(__("Invalid argument: `src` should be a non-empty string!"),callee);
 			
 			return G.eval( '(' + src + ')' );
 		},
