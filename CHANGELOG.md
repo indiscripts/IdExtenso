@@ -1,5 +1,11 @@
-##### [250320]
+## 2.50320
+Important update (March 20, 2025.) Global re-generation of the core structure, including recent fixes and additions.
+  - Enhanced [JSON](/core/$$.JSON.jsxlib) module — _see detail in [250319](#250319) entry._
   - [Ext/folder](/core/Ext/$$.folder.jsxinc): Restricts Folder's `create` patch to macOS ID **20.1** since Adobe has [fixed the bug in v20.2](https://community.adobe.com/t5/indesign-discussions/extendscript-bug-folder-create-may-no-longer-work-on-macos-indesign-20-1/m-p/15118324#M608118).
+  - [Ext/string](/core/Ext/$$.string.jsxinc): Added `String.fromBytes(<array>)` and `String.prototype.toBytes()`.
+
+_(Other changes do not affect the core branch. See previous log entries regarding updated extra modules.)_
+
   - [BigInt](/etc/$$.BigInt.jsxlib) and [Complex](/etc/$$.Complex.jsxlib) classes now use the regular `$$.JSON.registerHook(...)` method exposed by the public API. (This is the 'clean' way to declare JSON hooks, it avoids accessing the private zone from the outside and manually setting obscure `\x02...` keys.)
 
 ##### [250319]
