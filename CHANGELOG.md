@@ -1,4 +1,5 @@
 ##### [250320]
+  - [Ext/folder](/core/Ext/$$.folder.jsxinc): Restricts Folder's `create` patch to macOS ID **20.1** since Adobe has [fixed the bug in v20.2](https://community.adobe.com/t5/indesign-discussions/extendscript-bug-folder-create-may-no-longer-work-on-macos-indesign-20-1/m-p/15118324#M608118).
   - [BigInt](/etc/$$.BigInt.jsxlib) and [Complex](/etc/$$.Complex.jsxlib) classes now use the regular `$$.JSON.registerHook(...)` method exposed by the public API. (This is the 'clean' way to declare JSON hooks, it avoids accessing the private zone from the outside and manually setting obscure `\x02...` keys.)
 
 ##### [250319]
