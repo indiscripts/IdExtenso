@@ -11,16 +11,18 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        250129 (YYMMDD)
-		Modified:       250129 (YYMMDD)
+		Modified:       250320 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
+	// [CHG250320] Changed `20.1 <= ver` to `20.1 == ver` since the bug has
+	// been fixed on macOS InDesign 20.2 → https://tinyurl.com/mpncs63a
 	// [FIX250129] Folder.prototype.create()
 	// Fixes the Folder creation bug in macOS + ID 20.1
 	//==========================================================================
 
-	if( 'Macintosh'==File.fs && 20.1 <= parseFloat(app.version) )
+	if( 'Macintosh'==File.fs && 20.1 == parseFloat(app.version) )
 	//----------------------------------
 	// Provides a patch to the method `Folder.prototype.create` so
 	// that it still creates the folder including all missing parents
