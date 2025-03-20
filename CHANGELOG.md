@@ -1,3 +1,6 @@
+##### [250320]
+  - [BigInt](/etc/$$.BigInt.jsxlib) and [Complex](/etc/$$.Complex.jsxlib) classes now use the regular `$$.JSON.registerHook(...)` method exposed by the public API. (This is the 'clean' way to declare JSON hooks, it avoids accessing the private zone from the outside and manually setting obscure `\x02...` keys.)
+
 ##### [250319]
   - [JSON](/core/$$.JSON.jsxlib). Reworked in depth, added many new `$$.JSON(...)` options (`cycleCheck`, `richArr`, `bypassHooks`, `skipUndefined`, `symLayout`). Added `registerHook()` and `unregisterHook()` utilities. See the source code and the NOTICE for further detail.   
     ⚠ Default behaviors have been changed regarding cycle detection, “rich arrays”, etc. If you plan to supply a cycling object to `$$.JSON()`, make sure you set the `cycleCheck` option to 1 to (prevents infinite loop!)
