@@ -24,11 +24,11 @@
 		DOM-access:     NO
 		Todo:           toLong()
 		Created:        170503 (YYMMDD)
-		Modified:       180226 (YYMMDD)
+		Modified:       250320 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 180226))
+;$$.hasOwnProperty('BigInt') || eval(__(CLASS, $$, 'BigInt', 250320))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1577,9 +1577,9 @@
 			callee.µ.POS_INF = I.POS_INF = I.FINF(null, 0);
 			callee.µ.NEG_INF = I.NEG_INF = I.FINF(null,-1);
 			
-			// [ADD170607] Load the JSON Hook.
+			// [CHG250318] Register JSON Hook.
 			// ---
-			$.global[callee.µ.__root__].JSON['~']['\x02BigInt'] = I.JSON;
+			$.global[callee.µ.__root__].JSON.registerHook('BigInt',I.JSON);
 		},
 
 		probablePrime: function probablePrime_I_$Random$_$BigInt$(/*uint*/bits,/*Random=auto*/rng,  $$,I)
