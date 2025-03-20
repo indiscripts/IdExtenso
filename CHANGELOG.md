@@ -4,7 +4,7 @@
 
 ##### [250319]
   - [JSON](/core/$$.JSON.jsxlib). Reworked in depth, added many new `$$.JSON(...)` options (`cycleCheck`, `richArr`, `bypassHooks`, `skipUndefined`, `symLayout`). Added `registerHook()` and `unregisterHook()` utilities. See the source code and the NOTICE for further detail.   
-    ⚠ Default behaviors have been changed regarding cycle detection, “rich arrays”, etc. If you plan to supply a cycling object to `$$.JSON()`, make sure you set the `cycleCheck` option to 1 to (prevents infinite loop!)
+    ⚠ Default behaviors have been changed regarding cycle detection, “rich arrays”, etc. If you plan to supply a cycling object to `$$.JSON()`, make sure you set the `cycleCheck` option to 1 to prevent infinite loop!
 
 ##### [250227]
   - [ByteStream](/etc/$$.ByteStream.jsxlib). Huge refactoring of the `$$.ByteStream` class including bug fixes, enhancements and important additions. Added `'FXP'`/`'UFX'` tags (signed/unsigned “16.16 Fixed Point”), and `'F2D'` for “2.14 fixed numbers”. The `HEX` tag (hex strings) has been extended to support multibyte strings like `"F3A027FF"` (then identified to the scheme `"HEX*4"`). The main encoding/decoding routine — called from `peek()`, `read()`, and `write()` — now handles consistently special parameter values like `<TAG>*0` (zero count) or `<TAG>:0` (zero key). Read the notice for further information on these special cases. The scheme processor also throws a syntax error when it fails to parse your code… instead of silently eating irrelevant bytes!
