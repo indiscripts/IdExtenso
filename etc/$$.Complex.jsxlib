@@ -19,11 +19,11 @@
 		Todo:           More tests w/ advanced functions (pow...) & EPSILON ;
 		                pow() might be enhanced in case argument is a real.
 		Created:        180117 (YYMMDD)
-		Modified:       200307 (YYMMDD)
+		Modified:       250320 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('Complex') || eval(__(CLASS, $$, 'Complex', 200307))
+;$$.hasOwnProperty('Complex') || eval(__(CLASS, $$, 'Complex', 250320))
 
 	//==========================================================================
 	// BACKGROUND
@@ -358,7 +358,7 @@
 			
 			// Load the JSON Hook.
 			// ---
-			$.global[callee.µ.__root__].JSON['~']['\x02Complex'] = I.JSON;
+			$.global[callee.µ.__root__].JSON.registerHook('Complex',I.JSON);
 		},
 
 	})
