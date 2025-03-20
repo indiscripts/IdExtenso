@@ -1,4 +1,4 @@
-# *IdExtenso*  2.40626  (core: 210KB)
+# *IdExtenso*  2.50320  (core: 215KB)
 
 #### *“ExtendScript Framework for InDesign Ninjas.”* | [Overview](#overview) | [Key Points](#key-points) | [Getting Started](#getting-started) | [Quick Example](#quick-example)
 
@@ -56,7 +56,7 @@ The framework supports ExtendScript from version `3.92` to `4.x` and InDesign fr
 
 - Growing collection of powerful, fine-tuned and flexible ScriptUI components ([CheckGroup](/etc/ScriptUI/factories/$$.CheckGroup.jsxinc), [CheckList](/etc/ScriptUI/factories/$$.CheckList.jsxinc), [Edit](/etc/ScriptUI/factories/$$.Edit.jsxinc), [Popup](/etc/ScriptUI/factories/$$.Popup.jsxinc), [SideMenu](/etc/ScriptUI/factories/$$.SideMenu.jsxinc), [DrawnCheck](/etc/ScriptUI/factories/$$.DrawnCheck.jsxinc)...) easy to integrate in your own UI.
 
-> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) is 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice script based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module. And the most recent example of ***IdExtenso***-based product is the huge [IndexMatic³](https://indiscripts.com/category/projects/IndexMatic) program, which would not have existed without the present framework.
+> *Note*. — Advanced InDesign scripts (including commercial products) are entirely built upon ***IdExtenso***. For instance, our Pie Chart Builder [Claquos 3](http://www.indiscripts.com/category/projects/Claquos) as well as the book cover manager [HurryCover](http://www.indiscripts.com/category/projects/HurryCover) are 100% made up of ***IdExtenso*** components and modules. [SmartSort](https://www.indiscripts.com/category/projects/SmartSort), “advanced paragraph sorter for InDesign”, is also a nice script based on **[ModalScriptMenu](/etc/$$.ModalScriptMenu.jsxlib)**'s infrastructure and using the **[Collator](/etc/$$.Collator.jsxlib)** module. And the greatest example of ***IdExtenso***-based product is [IndexMatic³](https://indiscripts.com/category/projects/IndexMatic).
 
 ## Getting Started
 
