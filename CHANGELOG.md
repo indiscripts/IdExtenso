@@ -1,3 +1,18 @@
+##### [250507]
+  - Fixed the `CLNE` routine (object cloner) in the [Root](/core/$$.Root.jsxlib) module. Due to recent changes in [$$.JSON](/core/$$.JSON.jsxlib) defaults, the cloner must explicitly set the `richArr` option to `1` in order to fully recreate _rich arrays_. Here is the patched code:
+~~~~
+			return callee.µ.JSON.eval(callee.µ.JSON.lave(o,
+			{
+				spacing:       0, // single line
+				domAccess:     0, // default option
+				forceObj:      0, // default option
+				cycleCheck:    0, // faster (default option)
+				richArr:       1, // regenerate rich array (IMPORTANT) [FIX250507]
+				bypassHooks:   0, // default option
+				skipUndefined: 0, // default option
+			}));
+~~~~
+
 ## 2.50320
 Important update (March 20, 2025.) Global re-generation of the core structure, including recent fixes and additions.
   - Enhanced [JSON](/core/$$.JSON.jsxlib) module — _see detail in [250319](#250319) entry._
