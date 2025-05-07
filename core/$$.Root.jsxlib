@@ -14,11 +14,11 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150501 (YYMMDD)
-		Modified:       250320 (YYMMDD)
+		Modified:       250507 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, '$.global', $$, 250320, 'load'))
+;eval(__(MODULE, '$.global', $$, 250507, 'load'))
 
 	//==========================================================================
 	// NOTICE
@@ -98,9 +98,19 @@
 		CLNE : function(/*ref*/o)
 		//----------------------------------
 		// (Clone.) Object cloner.
+		// [FIX250507] Making sure the original behavior is preserved regarding rich arrays (cf. $$.JSON).
 		// => new object
 		{
-			return callee.µ.JSON.eval(callee.µ.JSON.lave(o));
+			return callee.µ.JSON.eval(callee.µ.JSON.lave(o,
+			{
+				spacing:       0, // single line
+				domAccess:     0, // default option
+				forceObj:      0, // default option
+				cycleCheck:    0, // faster (default option)
+				richArr:       1, // regenerate rich array (IMPORTANT) [FIX250507]
+				bypassHooks:   0, // default option
+				skipUndefined: 0, // default option
+			}));
 		},
 
 		RSLV: function(/*str*/s,  r,p,t)
