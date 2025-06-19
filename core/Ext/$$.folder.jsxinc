@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        250129 (YYMMDD)
-		Modified:       250320 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
@@ -40,3 +40,15 @@
 		};
 	}
 
+	//==========================================================================
+	// [ADD250619] Folder.prototype.getDisplayName()
+	//==========================================================================
+	Folder.prototype.getDisplayName = function getDisplayName()
+	//----------------------------------
+	// Safely return the `displayName` property -- i.e. decodeURI(this.name) --
+	// since direct access to `this.displayName` is erratic on macOS.
+	// ---
+	// => str
+	{
+		return decodeURI(this.name);
+	};
