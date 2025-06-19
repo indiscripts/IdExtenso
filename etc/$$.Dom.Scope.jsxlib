@@ -16,11 +16,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        180416 (YYMMDD)
-		Modified:       230826 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 230826, 'select'))
+;$$.Dom.hasOwnProperty('Scope') || eval(__(MODULE, $$.Dom.toSource(), 'Scope', 250619, 'select'))
 
 
 	//==========================================================================
@@ -1484,7 +1484,7 @@
 				(t=P[k]||0).length && (p+=(t=t.split('\x01')).length);
 				k = k.slice(1);
 				t = 1 < t.length ? (t[0]+'-'+t.pop()) : String(t[0]);
-				s = (NK==c ? k : File(k).displayName).replace(re,'');
+				s = (NK==c ? k : File(k).getDisplayName()).replace(re,'');
 				t = (a[a.length] = s + '  ['+ t + ']').length;
 				t > z && (z=t);
 			}
