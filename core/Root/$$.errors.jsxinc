@@ -11,7 +11,7 @@
 		DOM-access:     ---
 		Todo:           ---
 		Created:        150502 (YYMMDD)
-		Modified:       201111 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
@@ -406,7 +406,7 @@
 				// It is likely the case that `fx` is the name part of the
 				// running script pathname. [REM] `fx` is not URI-encoded.
 				// ---
-				if( (!fx) || fx===File(s).displayName )
+				if( (!fx) || fx===File(s).getDisplayName() )
 				{
 					fx = File(s).fullName;
 					break;
@@ -519,7 +519,7 @@
 					// ---
 					if( src instanceof File && src.exists )
 					{
-						src = '[' + src.displayName + ']';
+						src = '[' + src.getDisplayName() + ']';
 						break;
 					}
 
@@ -536,7 +536,7 @@
 					// ---
 					src  = src.name
 						|| fn
-						|| (fx && File(fx).displayName)
+						|| (fx && File(fx).getDisplayName())
 						|| (jb ? ('<'+jb+'>') : '');
 			}
 
@@ -579,7 +579,7 @@
 				alert([
 					e.message,
 					'________________________________________\r',
-					__("File:\t%1", File(e.fileName).displayName),
+					__("File:\t%1", File(e.fileName).getDisplayName()),
 					__("Line:\t%1", e.line)
 				].join('\r'));
 			}
