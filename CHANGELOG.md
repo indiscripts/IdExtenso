@@ -3,6 +3,10 @@ Partial patch (June 19, 2025.)
 
 InDesign 20.4.0 has introduced bugs of exceptional gravity weighing on **file and folder management in macOS environments**. Most are slated to be fixed by Adobe in an upcoming 20.4.1 release. IdExtenso 2.50619 essentially consolidates the `displayName` property access feature that has become erratic. These fixes address various [core](/core/) elements with no negative impact on previous (or future) versions of ExtendScript.
 
+The main new feature to integrate into your code, in order to make it more robust, is the call to the `File.getDisplayName()` method — resp. `Folder.getDisplayName()` — so you can safely retrieve the raw name (i.e., without URI notation) of a file or folder. This ensures that your script works in all versions of InDesign supported by IdExtenso, including v20.4.0.
+
+_Note:_ On the other hand, the [bug](https://community.adobe.com/t5/indesign-discussions/v20-4-0-52-extendscript-folder-execute-does-not-work-anymore/td-p/15373687) affecting `(File|Folder).execute()` is not fixed here. (It is workable through AppleScript, but the effort seems a bit excessive for a version of InDesign that's due for an imminent update.)
+
 ##### [250507]
   - Fixed the `CLNE` routine (object cloner) in the [Root](/core/$$.Root.jsxlib) module. Due to recent changes in [$$.JSON](/core/$$.JSON.jsxlib) defaults, the cloner must explicitly set the `richArr` option to `1` in order to fully recreate _rich arrays_. Here is the patched code:
 ~~~~
