@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           WINDOW device.
 		Created:        150502 (YYMMDD)
-		Modified:       220507 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,7 +32,7 @@
 	// WARN mode can only warn.
 	// ---
 
-;eval(__(MODULE, $$, 'Log', 220507, 'log'))
+;eval(__(MODULE, $$, 'Log', 250619, 'log'))
 
 	[PRIVATE]
 	
@@ -388,7 +388,7 @@
 			// ---
 			if( (ff=new File(callee.µ['~'].FPTH)).exists )
 			{
-				ff.execute();
+				ff.execute(); // [WARN250619] Won't work in ID 20.4 macOS!!!
 			}
 		},
 
