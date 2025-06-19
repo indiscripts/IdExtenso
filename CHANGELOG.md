@@ -1,3 +1,8 @@
+## 2.50619
+Partial patch (June 19, 2025.)
+
+InDesign 20.4.0 has introduced bugs of exceptional gravity weighing on **file and folder management in macOS environments**. Most are slated to be fixed by Adobe in an upcoming 20.4.1 release. IdExtenso 2.50619 essentially consolidates the `displayName` property access feature that has become erratic. These fixes address various [core](/core/) elements with no negative impact on previous (or future) versions of ExtendScript.
+
 ##### [250507]
   - Fixed the `CLNE` routine (object cloner) in the [Root](/core/$$.Root.jsxlib) module. Due to recent changes in [$$.JSON](/core/$$.JSON.jsxlib) defaults, the cloner must explicitly set the `richArr` option to `1` in order to fully recreate _rich arrays_. Here is the patched code:
 ~~~~
