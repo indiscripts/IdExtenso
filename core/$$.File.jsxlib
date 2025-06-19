@@ -16,11 +16,11 @@
 		DOM-access:     NO
 		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       220826 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 220826, 'toFile'))
+;eval(__(MODULE, $$, 'File', 250619, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -95,6 +95,11 @@
 	ExtendScript pretends `execute()` to be true. However, it is still
 	recommended to detect any `false` return and provide our own
 	fallback mechanism -- e.g `myFile.parent.execute()`.
+	
+	[BUG250619] Both `File.execute()` and `Folder.execute()` are broken
+	in InDesign 20.4.x macOS. Cf. community.adobe.com/t5/indesign-discussions/
+	v20-4-0-52-extendscript-folder-execute-does-not-work-anymore/td-p/15373687
+
 
 	File Creation. - To create a File object, use the File method or the
 	new operator. The constructor accepts full or partial path names, and
@@ -454,7 +459,7 @@
 			if( SHOW_FILE && t )
 			{
 				I.TFIL=I.FERR;
-				t.execute() || t.parent.execute();
+				t.execute() || t.parent.execute(); // [WARN250619] Won't work in ID 20.4 macOS!!!
 			}
 
 			return t;
@@ -621,7 +626,7 @@
 			// ---
 			if( ff.parent.absoluteURI == fd.absoluteURI )
 			{
-				$$.warn(__("%1 > The target %2 belongs to the [startup scripts] folder. The alias cannot be processed.",callee.µ,ff.displayName));
+				$$.warn(__("%1 > The target %2 belongs to the [startup scripts] folder. The alias cannot be processed.",callee.µ,ff.getDisplayName()));
 				return -2;
 			}
 
@@ -642,7 +647,7 @@
 					if( t.absoluteURI==ff.absoluteURI )
 					{
 						t = REMOVE ? lnk.remove() : true;             // Try to remove in REMOVE case.
-						t || $$.warn(__("%1 > Cannot remove the alias %2 from the [startup scripts] folder.",callee.µ,lnk.displayName));
+						t || $$.warn(__("%1 > Cannot remove the alias %2 from the [startup scripts] folder.",callee.µ,lnk.getDisplayName()));
 						return REMOVE ? 0 : -1;                       // That's the usual case so we won't go deeper.
 					}
 					
@@ -651,7 +656,7 @@
 					t = lnk.remove();                                 // Try to remove in any case.
 					if( !t )                                          // Stop here if the foreign alias cannot be removed.
 					{
-						$$.warn(__("%1 > Cannot remove the foreign alias %2 from the [startup scripts] folder.",callee.µ,lnk.displayName));
+						$$.warn(__("%1 > Cannot remove the foreign alias %2 from the [startup scripts] folder.",callee.µ,lnk.getDisplayName()));
 						return 0;
 					}
 				}
@@ -659,7 +664,7 @@
 				{
 					// (2) non-alias file MUST be preserved!!
 					// ---
-					$$.warn(__("%1 > A non-alias file %2 already exists in the [startup scripts] folder.",callee.µ,lnk.displayName));
+					$$.warn(__("%1 > A non-alias file %2 already exists in the [startup scripts] folder.",callee.µ,lnk.getDisplayName()));
 					return 0;
 				}
 			}
