@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        171202 (YYMMDD)
-		Modified:       220713 (YYMMDD)
+		Modified:       250619 (YYMMDD)
 
 *******************************************************************************/
 
@@ -44,6 +44,11 @@
 	*path separators* while keeping the string readable. The properties
 	`fullName` and `displayName` returns OSIP. They are not URI-encoded.
 	
+	[REM250619] `displayName` is erratic on macOS (specially in ID 20.4):
+	the property is no longer implemented in many cases and returns the
+	empty string. Workaround: `decodeURI( <File|Folder>.name )`
+	The same might be observed with `fullName` (?)
+	
 	(b) By contrast, the properties `absoluteURI`, `relativeURI`, `name`
 	and `path` contain fully URI-encoded strings based on UTF8 escaping.
 	
@@ -71,12 +76,12 @@
 	// fullName      /u/User/My Dir/My File.xy       /u/User/My Dir
 	//               ~/My Dir/My File.xy             ~/My Dir         (1)
 	// -------------------------------------------------------------------
-	// displayName   My File.xyz                     My Dir
+	// displayName   My File.xyz                     My Dir           (2)
 	// ===================================================================
 	// absoluteURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
 	// -------------------------------------------------------------------
 	// relativeURI   /u/User/My%20Dir/My%20File.xy   /u/User/My%20Dir
-	//               ../../My%20Dir/My%20File.xy     ../../My%20Dir   (2)
+	//               ../../My%20Dir/My%20File.xy     ../../My%20Dir   (3)
 	// -------------------------------------------------------------------
 	// path          /u/User/My%20Dir                /u/User
 	//               ~/My Dir                        ~                (1)
@@ -100,17 +105,33 @@
 	// readonly      true|false                      N/A
 	// eof           true|false                      N/A
 	// ===================================================================
-	// lineFeed      "windows" | "macintosh"         N/A              (3)
+	// lineFeed      "windows" | "macintosh"         N/A              (4)
 	// encoding      String (default: "")            N/A
-	// length        uint | -1                       N/A              (4)
+	// length        uint | -1                       N/A              (5)
 	// ===================================================================
 	// Notes:
 	// (1) Short notation may be returned (`~` refers to the current user.)
-	// (2) The result depends on the current folder -- cf. Folder.current.
-	// (3) It is not clear whether this string is lowercase or titlecase (?)
-	// (4) myFile.length == -1 if the file does not exist.
+	// (2) Erratic on macOS since ID 20.4.
+	// (3) The result depends on the current folder -- cf. Folder.current.
+	// (4) It is not clear whether this string is lowercase or titlecase (?)
+	// (5) myFile.length == -1 if the file does not exist.
 
 	*/
+
+	//==========================================================================
+	// [ADD250619] File.prototype.getDisplayName()
+	//==========================================================================
+	File.prototype.getDisplayName = function getDisplayName()
+	//----------------------------------
+	// Safely return the `displayName` property -- i.e. decodeURI(this.name) --
+	// since direct access to `this.displayName` is erratic.
+	// Cf. https://community.adobe.com/t5/indesign-discussions/
+	//     extendscript-file-displayname-no-longer-supported-in-id-20-4-macos/td-p/15377813
+	// ---
+	// => str
+	{
+		return decodeURI(this.name);
+	};
 
 	//==========================================================================
 	// File.prototype.nudeName()
@@ -120,11 +141,12 @@
 	//----------------------------------
 	// Return the name of this file without its extension.
 	// `uri` (default:0) :: return URI notation (based on `myFile.name`);
-	//       otherwise the `displayName` property is used.
+	//       otherwise generate the `displayName` property.
 	// ---
 	// => str   -- e.g  File("path/to/foo.bar") => "foo"
 	{
-		s = this[uri?'name':'displayName']; // [FIX220713] Was inversed!
+		s = this.name;
+		uri || (s=decodeURI(s)); // [FIX250619] Do not invoke `displayName` anymore.
 		return -1 == (p=s.lastIndexOf('.')) ? s : s.slice(0,p);
 	};
 
@@ -149,7 +171,7 @@
 		
 		fd = (ff=this).parent;
 		base = ff.nudeName();
-		ext = ff.displayName.slice(base.length);
+		ext = ff.getDisplayName().slice(base.length);
 		base = base.trim();
 		i = 1;
 
