@@ -1,3 +1,28 @@
+##### [250706]
+  - Updated [Unicode module](/etc/$$.Unicode.jsxlib) data with respect to the freshest [unicode.org/Public/UCD](http://www.unicode.org/Public/UCD) files (Sun, 25 Aug 2024.) Changes apply to `~.CATG` (Unicode General Categories), `~.SCRI` (Unicode Scripts) and `~.UBLK` (Unicode Character Blocks). The following new blocks have been added:
+~~~~
+[ 0x105C0,  0x105FF,  "Todhri" ]
+[ 0x10D40,  0x10D8F,  "Garay" ]
+[ 0x10EC0,  0x10EFF,  "Arabic Extended-C" ]
+[ 0x11380,  0x113FF,  "Tulu-Tigalari" ]
+[ 0x11380,  0x113FF,  "Tulu-Tigalari" ]
+[ 0x116D0,  0x116FF,  "Myanmar Extended-C" ]
+[ 0x11B00,  0x11B5F,  "Devanagari Extended-A" ]
+[ 0x11BC0,  0x11BFF,  "Sunuwar" ]
+[ 0x11F00,  0x11F5F,  "Kawi" ]
+[ 0x13430,  0x1345F,  "Egyptian Hieroglyph Format Controls" ]
+[ 0x13460,  0x143FF,  "Egyptian Hieroglyphs Extended-A" ]
+[ 0x16100,  0x1613F,  "Gurung Khema" ]
+[ 0x16D40,  0x16D7F,  "Kirat Rai" ]
+[ 0x1CC00,  0x1CEBF,  "Symbols for Legacy Computing Supplement" ]
+[ 0x1D2C0,  0x1D2DF,  "Kaktovik Numerals" ]
+[ 0x1E030,  0x1E08F,  "Cyrillic Extended-D" ]
+[ 0x1E4D0,  0x1E4FF,  "Nag Mundari" ]
+[ 0x1E5D0,  0x1E5FF,  "Ol Onal" ]
+[ 0x2EBF0,  0x2EE5F,  "CJK Unified Ideographs Extension I" ]
+[ 0x31350,  0x323AF,  "CJK Unified Ideographs Extension H" ]
+~~~~
+
 ## 2.50619
 Partial patch (June 19, 2025.)
 
