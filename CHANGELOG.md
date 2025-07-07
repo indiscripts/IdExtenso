@@ -1,3 +1,7 @@
+##### [250707]
+  - New generation of [MetaCollator](/etc/$$.MetaCollator.jsxlib) data (based on UCA `allkeys-16.0.0` and `decomps-16.0.0`) leading to a new set of [collator.keys](/etc/MetaCollator/data/collator.keys.txt).
+  - Automatic re-generation of internal [Collator](/etc/$$.Collator.jsxlib) data (`~.WMAP`, `~.MTCH`, `~.ZROS`, etc).
+
 ##### [250706]
   - Updated [Unicode module](/etc/$$.Unicode.jsxlib) data with respect to the freshest [unicode.org/Public/UCD](http://www.unicode.org/Public/UCD) files (Sun, 25 Aug 2024.) Changes apply to `~.CATG` (Unicode General Categories), `~.SCRI` (Unicode Scripts) and `~.UBLK` (Unicode Character Blocks). The following new blocks have been added:
 ~~~~
