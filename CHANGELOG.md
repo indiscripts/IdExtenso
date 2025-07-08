@@ -1,3 +1,6 @@
+##### [250708]
+  - Added Canadian Aboriginal Syllabics Extended-A range (`U+11AB0..U+11ABF`) to [Linguist/WSYS](/etc/Linguist/$$.WSYS.jsxres).
+
 ##### [250707]
   - New generation of [MetaCollator](/etc/$$.MetaCollator.jsxlib) data (based on UCA `allkeys-16.0.0` and `decomps-16.0.0`) leading to a new set of [collator.keys](/etc/MetaCollator/data/collator.keys.txt).
   - Automatic re-generation of internal [Collator](/etc/$$.Collator.jsxlib) data (`~.WMAP`, `~.MTCH`, `~.ZROS`, etc).
