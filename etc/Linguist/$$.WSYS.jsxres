@@ -11,13 +11,14 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        170426 (YYMMDD)
-		Modified:       220403 (YYMMDD)
+		Modified:       250708 (YYMMDD)
 
 *******************************************************************************/
 
 	//==========================================================================
 	// DATA  (each system key has four Titlecase chars)
 	// [RES] https://en.wikipedia.org/wiki/ISO_15924
+	// [RES] https://unicode.org/Public/UCD/latest/ucd/Scripts.txt
 	//==========================================================================
 	
 	// [ADD220403] Added keys.
@@ -183,7 +184,7 @@
 	{
 		name:   "Canadian Aboriginal",
 		dir:    "L2R",
-		ranges: [ [0x1400,0x167F],[0x18B0,0x18FF] ],
+		ranges: [ [0x1400,0x167F],[0x18B0,0x18FF], [0x11AB0, 0x11ABF] ], // [ADD250708] Added 'Extended-A'
 	},
 
 	Cari :
