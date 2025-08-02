@@ -1,3 +1,6 @@
+##### [250802]
+  - Updated the [ByteStream](/etc/$$.ByteStream.jsxlib) class with new public methods and helpers (`clone()`, `copy()`, etc). See the code for more detail.
+
 ##### [250708]
   - Added Canadian Aboriginal Syllabics Extended-A range (`U+11AB0..U+11ABF`) to [Linguist/WSYS](/etc/Linguist/$$.WSYS.jsxres).
 
@@ -1350,3 +1353,4 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
