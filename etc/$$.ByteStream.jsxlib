@@ -7,17 +7,21 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Class.
-		API:   [proto]  create() valueOf() getSource() getIndex() getBytes()
-		                toString() toSource() peek() read() jump() write()
+		API:            onEngine() isTag() isFormat() sizeOf() encode() ; ByteStream->[[global]]
+		       [proto]  =create() valueOf() getValue() getSource() getIndex() getBytes()
+		                toString() toSource() jump() clone() backup() restore()
+		                read()  read(U|I)(08|16|32)()
+		                peek()  peek(U|I)(08|16|32)()
+		                write() write(U|I)(08|16|32)()
 		                + Array.prototype
 		DOM-access:     NO
-		Todo:           Should the HEX tag support Little-Endian?
+		Todo:           Should the 'HEX' tag support Little-Endian?
 		Created:        180927 (YYMMDD)
-		Modified:       250227 (YYMMDD)
+		Modified:       250802 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 250227))
+;$$.hasOwnProperty('ByteStream') || eval(__(CLASS, $$, 'ByteStream', 250802))
 
 	//==========================================================================
 	// NOTICE
@@ -32,11 +36,11 @@
 	codes.) Its main purpose is to handle binary data stored in files.
 	Input streams (IStreams) are supplied in either Array or String form,
 	output streams (OStreams) are managed in Array form -- but you can use
-	`this.toString()` to get the corresponding string.
+	`this.toString()` to get the corresponding byte string.
 
 	- To create an IStream, use `new ByteStream(input)`, where `input`
 	  is either an Array of bytes, or a String of byte codes. The stream
-	  instance will then support `peek()` and `read()` methods.
+	  instance will then support `peek...()` and `read...()` methods.
 	
 	- To create an OStream, just use `new ByteStream()` with no argument.
 	  The stream instance will then support the `write()` method.
@@ -135,7 +139,7 @@
 	                shorts have to be processed.
 	                If <COUNT> is missing, 1 is assumed.
 	      
-	      [REM] If <COUNT> is `0`, no element is read/write
+	      [REM] If <COUNT> is `0`, no element is read/written
 	            from/to the stream.
 
 	      <KEY>     is a property name to read from or to write to.
@@ -230,9 +234,9 @@
 	      dest.rgb[2]. If dest.rgb doesn't exist, the
 	      array is created.
 	
-	Note, in the above example, that the values won't be *pushed* in
-	`dest.rgb` if such array already exists: the start index is always
-	reset to zero.
+	In the above example, note that the values won't be *pushed* on
+	`dest.rgb` if such array already exists with some elements: the
+	start index is always reset to zero.
 
 	Similarly,
 
@@ -269,11 +273,11 @@
 	`oStream.write("HEX*3", "3a62")` will write 3 bytes (0x00,0x3A,0x62),
 	as "3a62" is then regarded as "003A62" (left padding.)
 	
-	[REM] When `*<COUNT>` is missing, the `write` method automatically
-	considers the actual string length. For example, `write("STR", "hello")`
-	will exactly write 5 bytes, and an empty string is transparent (i.e. no
-	write is performed upon the OStream.) By contrast, `read("STR",dest)`
-	just reads a *single character* from the IStream, as would do "STR*1".
+	[REM] When `*<COUNT>` is missing, the `write` method  considers the
+	actual string length. For example, `write("STR", "hello")` will exactly
+	write 5 bytes, and an empty string is transparent (i.e. no write is
+	performed upon the OStream.) By contrast, `read("STR",dest)` just reads
+	a *single character* from the IStream, as would do "STR*1".
 
 	*/
 
@@ -327,7 +331,7 @@
 	[PRIVATE]
 
 	({
-		SPCS: / +/,
+		SPCS: / +/g,
 
 		// Encoding schemes.
 		// [ADD200420] Added `TAG` encoding (OTF tag, i.e ASC*4)
@@ -735,16 +739,18 @@
 	})
 
 	//==========================================================================
-	// READ/WRITE LOOP
+	// READ/WRITE:  LOOP() IGET()
 	//==========================================================================
 	
 	[PRIVATE]
 	
 	({
-		LOOP: function(/*'R'|'W'*/mode,/*str*/fmt,/*ByteStream*/BS,/*(obj|arr|BS)&*/what,  dst,src,idx,p,f,z,v,re,m,F,R,dp,LE,n,k,ZK,ZV,INC,a,i,o)
+		LOOP: function(/*'R'|'W'*/mode,/*str*/fmt,/*ByteStream|byte[]&*/BS,/*(obj|arr|BS)&*/what,  dst,src,idx,p,f,z,v,re,m,F,R,dp,LE,n,k,ZK,ZV,INC,a,i,o)
 		//----------------------------------
 		// READ  mode: what::dst ; idx=what.length||0 ; init. pos=BS.__pos__
 		// WRITE mode: what::src ; idx=0              ; init. pos=0
+		// [ADD250302] In 'R' mode, `BS` may be a simple array of bytes rather
+		// than a ByteStream instance: used internally by static `encode()`.
 		// ---
 		// this :: ~
 		// => { pos:uint, val:?any }&  [VOLATILE]
@@ -757,9 +763,9 @@
 			{
 				dst = what;
 				src = BS.__src__;
-				idx = dst.length||0;
+				idx = dst instanceof Array ? dst.length : 0;
 				p = BS.__pos__;
-				f = this['string' == typeof(src) ? 'GETS' : 'GETA'];  // Adjust getter based on __scr__ type.
+				f = this[BS.__get__];                                 // Adjust getter based on __scr__ type.
 			}
 			else
 			{
@@ -894,6 +900,127 @@
 			Q: { pos:0, val:void 0 },
 		}),
 
+		IGET: function(/*IStream&*/BS,/*RU16|RI16...*/RK,/*bool*/LE,/*bool*/READ,  v)
+		//----------------------------------
+		// [ADD250307] (Get-Value.) Utility for single peek/read actions on IStreams.
+		// [REM] Used by IStream shortcut methods.
+		// this :: ~
+		// => value
+		{
+			v = BS.__val__ = this[RK]( BS.__src__, BS.__pos__, this[ BS.__get__ ], LE );
+			READ && ( BS.__pos__ += this[RK].SZ );
+			return v;
+		},
+
+	})
+
+	//==========================================================================
+	// JSON HOOK
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		JSON : function(/*obj*/x)
+		// ---------------------------------
+		// (JSON-Hook.) x being *probably* a ByteStream instance (as
+		// `x.constructor.name` is "ByteStream"), returns a string that
+		// evaluates to x, or '' if additional verification fails.
+		// => str [OK]  |  '' [KO]
+		{
+			if( (!x) || x.constructor !== callee.µ ) return ''; // [KO]
+			
+			return __( "(new %1(%2))"
+				, callee.µ.name
+				, x.hasOwnProperty('__src__') ? x.__src__.toSource() : ''
+				);
+		},
+
+	})
+
+	//==========================================================================
+	// STATIC API
+	//==========================================================================
+	
+	[STATIC]
+	
+	({
+		onEngine: function onEngine_(  $$,I)
+		//----------------------------------
+		// Globalize and install JSON hook.
+		{
+			$.global.ByteStream = callee.µ; // globalize me!
+
+			$$ = $.global[callee.µ.__root__];
+			I = callee.µ['~'];
+			$$.JSON.registerHook('ByteStream', I.JSON);
+		},
+
+		isTag: function isTag_S_B(/*str*/tag)
+		//----------------------------------
+		// Whether the string `tag` (uppercase) is a supported encoding tag.
+		// [REM250302] For the time being, all encoding tags have 3 characters,
+		// e.g. 'STR', 'HEX', 'I08', 'U24', 'FXP', 'F64' etc
+		// => bool
+		{
+			return 'function' == typeof(callee.µ['~']['W'+tag]);
+		},
+
+		isFormat: function isFormat_S_B(/*str*/fmt, I)
+		//----------------------------------
+		// Whether the string `fmt` is a valid encoding format (space separated
+		// sequence of encoding schemes.)
+		// => bool
+		{
+			I = callee.µ['~'];
+			fmt = fmt.split(I.SPCS).join(' ');
+			return fmt == (fmt.match(I.ENCS)||[]).join(' ');
+		},
+		
+		sizeOf: function sizeOf_S_I(/*str*/fmt, I,re,a,z,i,m,x)
+		//----------------------------------
+		// Number of bytes consumed by the encoding format `fmt`
+		// -1 is returned if fmt is invalid.
+		// => uint [OK]  |  -1 [KO]
+		{
+			I = callee.µ['~'];
+			re = I.ENCS;
+
+			fmt = fmt.split(I.SPCS).join(' ');
+			a = fmt.match(re)||[];
+			if( fmt != a.join(' ') ) return -1;
+
+			for( z=0, i=a.length ; i-- ; z += x*I['R'+m[1]].SZ )
+			{
+				re.lastIndex = 0;
+				m = re.exec(a[i]); // m[1]:tag ; m[3]:''|'*nn'
+				x = (x=m[3]) ? parseInt(x.slice(1),10) : 1;
+			}
+			
+			return z;
+		},
+
+		encode: function encode_X_S_A(/*any*/src,/*str*/fmt,  t)
+		//----------------------------------
+		// Statically encode a `src` value into an array of bytes
+		// according to the scheme format `fmt`.
+		// `src` :: Value or set of values matching the encoding scheme(s).
+		// `fmt` :: Space-separated encoding schemes, e.g 'STR' ; 'U32*2' ; etc
+		// [REM250302] This function basically works as the prototyped `write`
+		// method except that no ByteStream instance is involved: the result
+		// is immediatly returned as a new Array of bytes.
+		// ---
+		// => new uint8[]
+		{
+			src===Object(src) || ((callee.Q[0]=src),(src=callee.Q));  // Coerce src to a singleton Array if non-Object.
+			
+			callee.µ['~'].LOOP( 'W', fmt, r=[], src);
+
+			return r;
+		}
+		.setup({ Q:Array(1) }),
+
 	})
 
 	//==========================================================================
@@ -908,31 +1035,53 @@
 		// [CHG250226] `onEngine` trick not needed, just override __proto__ here and now.
 		__proto__: Array.prototype,
 
-		create: function create_as_(/*byte[]|str*/source)
+		create: function create_as$ByteStream$_i_(/*byte[]|str|IStream*/source,/*uint=0*/offset)
 		//---------------------------------- (I/O)
 		// Constructor. Create an IStream if `source` is supplied (and non-empty),
-		// otherwise creates an OStream. The `source` arg can be either an array
-		// or a string.
-		// [IStream] :: { __val__, __pos__, __src__ } (private props)
-		//              + .peek() .read()
+		// otherwise creates an OStream. The `source` arg can be either an array,
+		// a string or an input ByteStream [ADD250227]
+		// [IStream] :: { __val__, __pos__, __src__, __get__, __mem__ } (private props)
+		//              + .peek() .read() .backup() .restore() .copy() .clone()
+		//              + .(peek|read)U16()
 		// [OStream] :: { __val__ } (private prop)
 		//              + .write() .getBytes()
+		//              + .writeU16()
 		{
 			this.__val__ = void 0;
 
-			if( (source||0).length && ('string'==typeof source || Object(source)===source ) )
+			if( 'string'==typeof source || Object(source)===source )
 			{
 				// IStream.
 				// ---
-				this.__pos__ = 0;
-				this.__src__ = source;
-				this.write = void 0;
+				this.__pos__ = offset >>> 0;                                         // [CHG250303]
+
+				this.__src__ = callee.µ===source.constructor
+				? ( source.hasOwnProperty('__src__') ? source.__src__ : '' )
+				: ( source.length ? source : '' );
+
+				this.__get__ = 'string' == typeof(this.__src__) ? 'GETS' : 'GETA';   // [ADD250307] Will speed up inner routines.
+				this.__mem__ = [];                                                   // [ADD250227] Backup indices.
+
+				// Remove OStream methods.
+				this.write =
+				this.writeU08 = this.writeI08 =
+				this.writeU16 = this.writeI16 =
+				this.writeU32 = this.writeI32 = void 0;
+
+				// Checkpoint.
+				this.__pos__ < this.__src__.length
+				|| error( __("Invalid or insufficient IStream source: length=%1, index=%2",this.__src__.length,this.__pos__),callee.µ );
 			}
 			else
 			{
-				// OStream.
+				// OStream (just remove IStream methods.)
 				// ---
-				this.peek = this.read = void 0;
+				this.peek = this.read =
+				this.peekU08 = this.readU08 = this.peekI08 = this.readI08 = 
+				this.peekU16 = this.readU16 = this.peekI16 = this.readI16 =
+				this.peekU32 = this.readU32 = this.peekI32 = this.readI32 = void 0;
+
+				this.backup = this.restore = this.copy = this.clone = void 0;
 			}
 		},
 
@@ -967,6 +1116,14 @@
 			if( !this.hasOwnProperty('__src__') ) return this.slice(); // OStream
 			t = this.__src__;
 			return 'string' == typeof(t) ? t.toBytes() : t.slice();
+		},
+
+		getValue: function getValue_X()
+		//---------------------------------- (I/O)
+		// Alias of `valueOf`.
+		// => any
+		{
+			return this.__val__;
 		},
 
 		valueOf: function valueOf_X()
@@ -1090,24 +1247,88 @@
 			return this;
 		},
 
-		jump: function jump_I_$this$(/*uint32*/delta,  z)
+		jump: function jump_I_$this$(/*uint32|str*/deltaOrFormat,  dt,z)
 		//---------------------------------- (I/O)
+		// [ADD250304] Now also supports an encoding format as 1st argument,
+		//             e.g. myStream.jump('U32*4 I16') equiv. to jump(18).
 		// [ISTREAM]  Skip `delta` bytes.
 		// [OSTREAM]  Feed `delta` bytes with \x00.
 		// ---
 		// => this
 		{
-			delta >>>= 0;
+			dt = 'string' == typeof deltaOrFormat
+			? ( callee.µ.sizeOf(deltaOrFormat) )
+			: ( deltaOrFormat >>> 0 );
+			
+			if( 0 >= dt )
+			{
+				0 > dt && $$.warn( __("Invalid format %1 in ByteStream.jump()",deltaOrFormat.toSource()) );
+				return this;
+			}
 
 			if( this.hasOwnProperty('__pos__') )
 			{
-				this.__pos__ += delta;
+				this.__pos__ += dt;
 			}
 			else
 			{
-				for( z=this.length ; delta-- ; this[z++]=0 );
+				for( z=this.length ; dt-- ; this[z++]=0 );
 			}
 			return this;
+		},
+		
+		backup: function backup_$this$()
+		//---------------------------------- (I)
+		// [ISTREAM] Backup the current pointer. [ADD250227]
+		// => this
+		{
+			this.__mem__.push(this.__pos__);
+			return this;
+		},
+
+		restore: function restore_$this$()
+		//---------------------------------- (I)
+		// [ISTREAM] Restore the last saved pointer (if available) [ADD250227].
+		// => this
+		{
+			this.__mem__.length && (this.__pos__=this.__mem__.pop());
+			return this;
+		},
+
+		copy: function copy_i_$ByteStream$(/*uint=0*/offset)
+		//---------------------------------- (I)
+		// [ISTREAM] Create a new iStream from the specified offset
+		// by positioning the index within the internal source, which
+		// is then 'shared' between iStream instances. `offset` is
+		// relative to the source -- not to this.getIndex().
+		// [REM250305] This method is lighter and faster than clone().
+		// It allows the client code to process stream data at some
+		// different position without interfering with the original
+		// ByteStream state. However, `myCopy.getSource()` will
+		// return the whole string -- or array reference -- attached
+		// to the original ByteStream instance, and `myCopy.getIndex()`
+		// will return the 0-based index relative to the whole source.
+		// => new IStream
+		{
+			return callee.µ( this, offset>>>0 );
+		},
+
+		clone: function clone_i_$ByteStream$(/*uint=0*/offset)
+		//---------------------------------- (I)
+		// [ISTREAM] Create a new iStream from the specified offset
+		// by extracting a new source (string or Array) from the
+		// original data. `offset` is relative to the source --
+		// not to this.getIndex().
+		// [REM250305] This method may be slower and more memory
+		// consuming than copy(), but it guarantees that the new
+		// IStream instance is independent from original data.
+		// The internal pointer is then initialized to 0 and re-
+		// flects the actual index within the source (being a
+		// detached fragment of the original data). You can then
+		// rely on myClone.getSource() and myClone.getIndex().
+		// => new IStream
+		{
+			return callee.µ( this.__src__.slice(offset>>>0) );
 		},
 
 		write: function write_S_X_$this$(/*str='U08'*/fmt,/*any*/src,  t)
@@ -1135,5 +1356,205 @@
 			return this;
 		}
 		.setup({ Q:Array(1) }),
+
+		//======================================================================
+		// SHORTCUTS (faster for single values of common types)
+		//======================================================================
+
+		peekU08: function peekU08_b_Y(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('U08>')` if not-LE ; `+this.peek('U08<')` if LE.
+		// ---
+		// => uint8
+		{
+			return callee.µ['~'].IGET( this, 'RU08', LE, false );
+		},
+
+		readU08: function readU08_b_Y(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('U08>')` if not-LE ; `+this.read('U08<')` if LE.
+		// ---
+		// => uint8
+		{
+			return callee.µ['~'].IGET( this, 'RU08', LE, true );
+		},
+
+		writeU08: function writeU08_Y_b_$this$(/*uint8*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('U08>',v)` if not-LE ; `this.write('U08<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WU08( (this.__val__=(val>>>=0)),LE ));
+			return this;
+		},
+
+		//======================================================================
+
+		peekI08: function peekI08_b_Ÿ(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('I08>')` if not-LE ; `+this.peek('I08<')` if LE.
+		// ---
+		// => int8
+		{
+			return callee.µ['~'].IGET( this, 'RI08', LE, false );
+		},
+
+		readI08: function readI08_b_Ÿ(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('I08>')` if not-LE ; `+this.read('I08<')` if LE.
+		// ---
+		// => int8
+		{
+			return callee.µ['~'].IGET( this, 'RI08', LE, true );
+		},
+
+		writeI08: function writeI08_Ÿ_b_$this$(/*int16*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('I08>',v)` if not-LE ; `this.write('I08<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WI08( (this.__val__=(val|=0)), LE ));
+			return this;
+		},
+
+		//======================================================================
+
+		peekU16: function peekU16_b_Y(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('U16>')` if not-LE ; `+this.peek('U16<')` if LE.
+		// ---
+		// => uint16
+		{
+			return callee.µ['~'].IGET( this, 'RU16', LE, false );
+		},
+
+		readU16: function readU16_b_Y(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('U16>')` if not-LE ; `+this.read('U16<')` if LE.
+		// ---
+		// => uint16
+		{
+			return callee.µ['~'].IGET( this, 'RU16', LE, true );
+		},
+
+		writeU16: function writeU16_Y_b_$this$(/*uint16*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('U16>',v)` if not-LE ; `this.write('U16<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WU16( (this.__val__=(val>>>=0)), LE ));
+			return this;
+		},
+
+		//======================================================================
+
+		peekI16: function peekI16_b_Ÿ(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('I16>')` if not-LE ; `+this.peek('I16<')` if LE.
+		// ---
+		// => int16
+		{
+			return callee.µ['~'].IGET( this, 'RI16', LE, false );
+		},
+
+		readI16: function readI16_b_Ÿ(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('I16>')` if not-LE ; `+this.read('I16<')` if LE.
+		// ---
+		// => int16
+		{
+			return callee.µ['~'].IGET( this, 'RI16', LE, true );
+		},
+
+		writeI16: function writeI16_Ÿ_b_$this$(/*int16*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('I16>',v)` if not-LE ; `this.write('I16<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WI16( (this.__val__=(val|=0)), LE ));
+			return this;
+		},
+
+		//======================================================================
+
+		peekU32: function peekU32_b_I(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('U32>')` if not-LE ; `+this.peek('U32<')` if LE.
+		// ---
+		// => uint32
+		{
+			return callee.µ['~'].IGET( this, 'RU32', LE, false );
+		},
+
+		readU32: function readU32_b_I(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('U32>')` if not-LE ; `+this.read('U32<')` if LE.
+		// ---
+		// => uint32
+		{
+			return callee.µ['~'].IGET( this, 'RU32', LE, true );
+		},
+
+		writeU32: function writeU32_I_b_$this$(/*uint32*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('U32>',v)` if not-LE ; `this.write('U32<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WU32( (this.__val__=(val>>>=0)), LE ));
+			return this;
+		},
+
+		//======================================================================
+
+		peekI32: function peekI32_b_Ï(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.peek('I32>')` if not-LE ; `+this.peek('I32<')` if LE.
+		// ---
+		// => int32
+		{
+			return callee.µ['~'].IGET( this, 'RI32', LE, false );
+		},
+
+		readI32: function readI32_b_Ï(/*bool=0*/LE)
+		//---------------------------------- (I)
+		// [ISTREAM] Shortcut:
+		// returns `+this.read('I32>')` if not-LE ; `+this.read('I32<')` if LE.
+		// ---
+		// => int32
+		{
+			return callee.µ['~'].IGET( this, 'RI32', LE, true );
+		},
+
+		writeI32: function writeI32_Ï_b_$this$(/*int32*/val,/*bool=0*/LE,  I)
+		//---------------------------------- (O)
+		// [OSTREAM] Shortcut:
+		// `this.write('I32>',v)` if not-LE ; `this.write('I32<',v)` if LE.
+		// ---
+		// => this
+		{
+			Array.prototype.push.apply(this, callee.µ['~'].WI32( (this.__val__=(val|=0)), LE ));
+			return this;
+		},
 
 	})
