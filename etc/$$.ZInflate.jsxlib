@@ -9,13 +9,13 @@
 		Kind:           Module.
 		API:            =raw() zlib()
 		DOM-access:     NO
-		Todo:           ---
+		Todo:           Dictionary support for zlib preset dictionaries.
 		Created:        180921 (YYMMDD)
-		Modified:       181126 (YYMMDD)
+		Modified:       260106 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ZInflate') || eval(__(MODULE, $$, 'ZInflate', 181126, 'raw'))
+;$$.hasOwnProperty('ZInflate') || eval(__(MODULE, $$, 'ZInflate', 260106, 'raw'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -68,6 +68,12 @@
 	Last 4 bytes :: Adler32 checksum of the uncompressed data (excl. any
 	dictionary data.)
 
+	[REM] The Adler32 checksum is a rolling checksum algorithm that provides
+	data integrity verification. It is faster than CRC32 but still offers good
+	error detection capabilities. The checksum is computed over the original
+	uncompressed data and stored as a 32-bit big-endian value at the end of
+	the zlib stream.
+
 	*/
 
 	//==========================================================================
@@ -103,6 +109,21 @@
 	
 	Alternately, call `$$.ZInflate.zlib(myZlibString)` if your input string is
 	surrounded by a zlib wrapper. (See the BACKGROUND section.)
+
+	ZLIB WRAPPER
+	
+	The `zlib` method handles zlib-wrapped compressed data which includes:
+	- Header validation (compression method and window size)
+	- Adler32 checksum verification for data integrity
+	- Optional lenient mode for graceful error handling
+	
+	Usage:
+	   $$.ZInflate.zlib(myZlibData)          // strict mode (default)
+	   $$.ZInflate.zlib(myZlibData, true)    // lenient mode
+	
+	In strict mode (default), Adler32 checksum failures throw an error.
+	In lenient mode, checksum failures log a warning and return the data,
+	allowing recovery from minor corruption while alerting the user.
 
 	*/
 
@@ -177,6 +198,26 @@
 			return callee;
 		}
 		.setup({ BIT_BUF:-1, BIT_LEN:-1 }),
+
+		ADLR: function(/*str*/s,/*?uint16*/seed,  a,b,n,i,mn)
+		//----------------------------------
+		// (Adler32.) Shared implementation with ZDeflate
+		// => uint32
+		{
+			( seed && 'number'==typeof seed ) || (seed=0);
+			a = seed ? (0xFFFF&seed) : 1;
+			b = seed ? (seed >>> 16) : 0;
+
+			for( mn=0, n=s.length, i=-1 ; ++i < n ; )
+			{
+				3850 > (mn=n-i) || (mn=3850);
+				for( mn+=i ; i < mn ; b += (a+=0xFF&s.charCodeAt(i++)) );
+				a = (15*(a>>>16)+(a&65535));
+				b = (15*(b>>>16)+(b&65535));
+			}
+
+			return ((b%65521) << 16) | (a%65521);
+		},
 	})
 
 	//==========================================================================
@@ -665,44 +706,80 @@
 			8 > (wPower>>>=0) && (wPower=15);
 			
 			15 < wPower
-			&& $.global[callee.µ.__root__].error(__("%1 > This library doesn't support win size greater than 32K.",callee.µ));
+			&& error(__("%1 > This library doesn't support win size greater than 32K.",callee.µ));
 			
 			n = 2*(I.WMEM = 1 << wPower);
 			n === I.INFL.WIN.length || ( (delete I.INFL.WIN),(I.INFL.WIN = Array(n)) );
 
 			'string' == typeof data || (data=String(data));
-
+			
+			// Input validation
+			// ---
+			if( !data.length ) return '';  // Handle empty strings gracefully
+			
 			return callee.µ['~'].INFL(data);
 		},
 
-		zlib: function zlib_S_S(/*str*/data,  n,x,METH,INFO,D)
+		zlib: function zlib_S_b_S(/*str*/data,/*?bool*/lenient,  n,x,METH,INFO,D,r,adlr,exp)
 		//----------------------------------
 		// Inflate (decompress) zlib wrapped data.
 		// [REF] tools.ietf.org/html/rfc1950
+		// `lenient` :: if true, logs warning on checksum failure and returns data;
+		//              if false (default), checksum failure throws error.
 		{
 			'string' == typeof data || (data=String(data));
+			
+			// Input validation
+			// ---
+			if( !data.length ) return '';  // Handle empty strings gracefully
 
 			7 <= (n=data.length)
-			|| $.global[callee.µ.__root__].error(__("%1 > Invalid data length (%2). Should be at least 7.",callee.µ,n));
+			|| error(__("%1 > Invalid data length (%2). Should be at least 7.",callee.µ,n));
 			
 			x = data.charCodeAt(0);
 
 			// METH
 			// ---
 			8 == ( METH=(15&x) )
-			|| $.global[callee.µ.__root__].error(__("%1 > Invalid METHOD (%2) in zlib stream.", callee.µ, METH));
+			|| error(__("%1 > Invalid METHOD (%2) in zlib stream.", callee.µ, METH));
 			
 			// INFO
 			// ---
 			7 >= ( INFO=(15&(x>>>4)) )
-			|| $.global[callee.µ.__root__].error(__("%1 > Invalid INFO (%2) in zlib stream.", callee.µ, INFO));
+			|| error(__("%1 > Invalid INFO (%2) in zlib stream.", callee.µ, INFO));
 
 			// Offset
 			// ---
 			x = data.charCodeAt(1);
 			D = (0x20&x) ? 1 : 0;   // DICT ID?
 			
-			return callee.µ.raw( data.slice(2+D,n-4), 8+INFO );
+			// TODO: Handle preset dictionaries if D==1
+			D && error(__("%1 > Preset dictionaries not yet supported.",callee.µ));
+
+			// Decompress payload
+			// ---
+			r = callee.µ.raw( data.slice(2+D,n-4), 8+INFO );
+			
+			// Verify Adler32 checksum
+			// ---
+			exp = (data.charCodeAt(n-4)<<24) | (data.charCodeAt(n-3)<<16) | (data.charCodeAt(n-2)<<8) | data.charCodeAt(n-1);
+			adlr = callee.µ['~'].ADLR(r);
+			
+			// Check integrity
+			// ---
+			if( adlr !== exp )
+			{
+				if( lenient )
+				{
+					+$$.warn && $$.Log.warn(__("%1 > Adler32 checksum mismatch (lenient mode). Expected: %2, Got: %3 - Data may be corrupted!",callee.µ,exp,adlr));
+				}
+				else
+				{
+					error(__("%1 > Adler32 checksum mismatch. Expected: %2, Got: %3",callee.µ,exp,adlr));
+				}
+			}
+
+			return r;
 		},
 	})
 
