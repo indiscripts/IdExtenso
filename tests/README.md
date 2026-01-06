@@ -426,3 +426,18 @@ _Demonstrates:_
 * Using the `__()` function with a Yalt string.
 * Activating another locale.
 * Inserting a placeholder in a translation string.
+
+---
+
+##### [`ZDeflate_ZInflate_Test.jsx`](tests/ZDeflate_ZInflate_Test.jsx)
+
+Comprehensive testing of the compression and decompression modules (**ZDeflate** and **ZInflate**.)
+
+_Demonstrates:_
+
+* Including compression modules from `/etc` (ZDeflate and ZInflate.)
+* Testing both raw deflate and RFC 1950 zlib formats.
+* Comprehensive data validation with multiple test cases (empty strings, simple text, repetitive data, binary data.)
+* Performance benchmarking with timing measurements.
+* Error handling and test result reporting.
+* Using compression ratio calculations and utility methods.
