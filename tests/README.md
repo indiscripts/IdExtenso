@@ -24,43 +24,43 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 | Script | Description | Key Features |
 |--------|-------------|--------------|
-| [AppToJson](#appToJson) | Stringify app.properties | JSON handling, file operations |
-| [BasicScriptDemo](#basicScriptDemo) | PathNodes script demo | UI, localization, settings |
-| [BasicScriptMenuDemo](#basicScriptMenuDemo) | Menu-enabled PathNodes | Menu extension, persistence |
-| [ByteStreamDemo](#byteStreamDemo) | ByteStream class usage | Binary data handling |
-| [CheckIEEE754](#checkIEEE754) | IEEE754 number validation | Number conversion, benchmarks |
-| [CollatorTester](#collatorTester) | Collator module testing | Text collation, multilingual |
-| [DomTextParcelsTest](#domTextParcelsTest) | TextParcels class demo | DOM manipulation, progress bars |
-| [EnvSummary](#envSummary) | Environment reporting | System info, context detection |
-| [GetWebImage](#getWebImage) | Web image download | HTTP requests, ScriptUI |
-| [GetWebText](#getWebText) | Web text download | HTTP/HTTPS, text processing |
-| [InstantDialog](#instantDialog) | DOM dialog creation | XML dialogs, localization |
-| [LevenFilterList](#levenFilterList) | Dynamic list filtering | String algorithms, UI events |
-| [MarkovShuffle](#markovShuffle) | Text scrambling | Markov chains, randomization |
-| [MenuAccess](#menuAccess) | Menu component access | DOM navigation, menu paths |
-| [MenuCamelCase](#menuCamelCase) | Custom menu action | Menu installation, event handling |
-| [PageRangeTester](#pageRangeTester) | Page range parsing | Range validation, formatting |
-| [ParseIntFix](#parseIntFix) | parseInt bug fixes | ExtendScript patches |
-| [PlaceWebImage](#placeWebImage) | Web image placement | HTTP, file handling, DOM |
-| [PlayWithBigInt](#playWithBigInt) | Arbitrary precision math | BigInt operations, algorithms |
-| [PlayWithUnit](#playWithUnit) | Unit conversion | Measurement units, i18n |
-| [RectPackTest](#rectPackTest) | Rectangle packing | Layout algorithms, geometry |
-| [RegexFromCodeRanges](#regexFromCodeRanges) | Unicode regex building | Character ranges, regex patterns |
-| [ScriptUIBuilder](#scriptUIBuilder) | UI construction | Component factories, widgets |
-| [ScriptUIColorTester](#scriptUIColorTester) | UI color testing | Color management, themes |
-| [ShowEnvironment](#showEnvironment) | Environment display | System diagnostics |
-| [ShowHelp](#showHelp) | API documentation | Module introspection |
-| [SuiFactories](#suiFactories) | ScriptUI components | Custom widgets, factories |
-| [UnicodeToAscii](#unicodeToAscii) | Text transliteration | Unicode conversion |
-| [UseJsxBlindLib](#useJsxBlindLib) | Script obfuscation | Binary scrambling |
-| [YaltIsGreat](#yaltIsGreat) | Localization demo | Multi-language support |
-| [ZDeflate_ZInflate_Test](#zDeflate_zInflate_test) | Compression testing | Data compression, validation |
+| [AppToJson](#-apptojson) | Stringify app.properties | JSON handling, file operations |
+| [BasicScriptDemo](#-basicscriptdemo) | PathNodes script demo | UI, localization, settings |
+| [BasicScriptMenuDemo](#-basicscriptmenudemo) | Menu-enabled PathNodes | Menu extension, persistence |
+| [ByteStreamDemo](#-bytestreamdemo) | ByteStream class usage | Binary data handling |
+| [CheckIEEE754](#-checkieee754) | IEEE754 number validation | Number conversion, benchmarks |
+| [CollatorTester](#-collatortester) | Collator module testing | Text collation, multilingual |
+| [DomTextParcelsTest](#-domtextparcelstest) | TextParcels class demo | DOM manipulation, progress bars |
+| [EnvSummary](#-envsummary) | Environment reporting | System info, context detection |
+| [GetWebImage](#-getwebimage) | Web image download | HTTP requests, ScriptUI |
+| [GetWebText](#-getwebtext) | Web text download | HTTP/HTTPS, text processing |
+| [InstantDialog](#-instantdialog) | DOM dialog creation | XML dialogs, localization |
+| [LevenFilterList](#-levenfilterlist) | Dynamic list filtering | String algorithms, UI events |
+| [MarkovShuffle](#-markovshuffle) | Text scrambling | Markov chains, randomization |
+| [MenuAccess](#-menuaccess) | Menu component access | DOM navigation, menu paths |
+| [MenuCamelCase](#-menucamelcase) | Custom menu action | Menu installation, event handling |
+| [PageRangeTester](#-pagerangetester) | Page range parsing | Range validation, formatting |
+| [ParseIntFix](#-parseintfix) | parseInt bug fixes | ExtendScript patches |
+| [PlaceWebImage](#-placewebimage) | Web image placement | HTTP, file handling, DOM |
+| [PlayWithBigInt](#-playwithbigint) | Arbitrary precision math | BigInt operations, algorithms |
+| [PlayWithUnit](#-playwithunit) | Unit conversion | Measurement units, i18n |
+| [RectPackTest](#-rectpacktest) | Rectangle packing | Layout algorithms, geometry |
+| [RegexFromCodeRanges](#-regexfromcoderanges) | Unicode regex building | Character ranges, regex patterns |
+| [ScriptUIBuilder](#-scriptuibuilder) | UI construction | Component factories, widgets |
+| [ScriptUIColorTester](#-scriptuicolortester) | UI color testing | Color management, themes |
+| [ShowEnvironment](#-showenvironment) | Environment display | System diagnostics |
+| [ShowHelp](#-showhelp) | API documentation | Module introspection |
+| [SuiFactories](#-suifactories) | ScriptUI components | Custom widgets, factories |
+| [UnicodeToAscii](#-unicodetoascii) | Text transliteration | Unicode conversion |
+| [UseJsxBlindLib](#-usejsxblindlib) | Script obfuscation | Binary scrambling |
+| [YaltIsGreat](#-yaltisgreat) | Localization demo | Multi-language support |
+| [ZDeflate_ZInflate_Test](#-zdeflate_zinflate_test) | Compression testing | Data compression, validation |
 
 ---
 
 ## 🔧 Detailed Script Reference
 
-### 📄 AppToJson {#appToJson}
+### 📄 AppToJson
 
 **[`AppToJson.jsx`](AppToJson.jsx)**
 
@@ -73,7 +73,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🎨 BasicScriptDemo {#basicScriptDemo}
+### 🎨 BasicScriptDemo
 
 **[`BasicScriptDemo.jsx`](BasicScriptDemo.jsx)**
 
@@ -88,7 +88,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🍴 BasicScriptMenuDemo {#basicScriptMenuDemo}
+### 🍴 BasicScriptMenuDemo
 
 **[`BasicScriptMenuDemo.jsx`](BasicScriptMenuDemo.jsx)**
 
@@ -103,7 +103,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📊 ByteStreamDemo {#byteStreamDemo}
+### 📊 ByteStreamDemo
 
 **[`ByteStreamDemo.jsx`](ByteStreamDemo.jsx)**
 
@@ -115,7 +115,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🔢 CheckIEEE754 {#checkIEEE754}
+### 🔢 CheckIEEE754
 
 **[`CheckIEEE754.jsx`](CheckIEEE754.jsx)**
 
@@ -130,7 +130,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🌍 CollatorTester {#collatorTester}
+### 🌍 CollatorTester
 
 **[`CollatorTester.jsx`](CollatorTester.jsx)**
 
@@ -145,7 +145,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📝 DomTextParcelsTest {#domTextParcelsTest}
+### 📝 DomTextParcelsTest
 
 **[`DomTextParcelsTest.jsx`](DomTextParcelsTest.jsx)**
 
@@ -160,7 +160,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🖥️ EnvSummary {#envSummary}
+### 🖥️ EnvSummary
 
 **[`EnvSummary.jsx`](EnvSummary.jsx) vs. [`EnvSummary.bin.jsx`](EnvSummary.bin.jsx)**
 
@@ -174,7 +174,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🖼️ GetWebImage {#getWebImage}
+### 🖼️ GetWebImage
 
 **[`GetWebImage.jsx`](GetWebImage.jsx)**
 
@@ -191,7 +191,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📄 GetWebText {#getWebText}
+### 📄 GetWebText
 
 **[`GetWebText.jsx`](GetWebText.jsx)**
 
@@ -202,7 +202,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### ⚡ InstantDialog {#instantDialog}
+### ⚡ InstantDialog
 
 **[`InstantDialog.jsx`](InstantDialog.jsx)**
 
@@ -218,7 +218,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🔍 LevenFilterList {#levenFilterList}
+### 🔍 LevenFilterList
 
 **[`LevenFilterList.jsx`](LevenFilterList.jsx)**
 
@@ -232,7 +232,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🎲 MarkovShuffle {#markovShuffle}
+### 🎲 MarkovShuffle
 
 **[`MarkovShuffle.jsx`](MarkovShuffle.jsx)**
 
@@ -246,7 +246,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🍔 MenuAccess {#menuAccess}
+### 🍔 MenuAccess
 
 **[`MenuAccess.jsx`](MenuAccess.jsx)**
 
@@ -257,7 +257,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🐫 MenuCamelCase {#menuCamelCase}
+### 🐫 MenuCamelCase
 
 **[`MenuCamelCase.jsx`](MenuCamelCase.jsx)**
 
@@ -272,7 +272,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📖 PageRangeTester {#pageRangeTester}
+### 📖 PageRangeTester
 
 **[`PageRangeTester.jsx`](PageRangeTester.jsx)**
 
@@ -286,7 +286,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🔧 ParseIntFix {#parseIntFix}
+### 🔧 ParseIntFix
 
 **[`ParseIntFix.jsx`](ParseIntFix.jsx)**
 
@@ -300,7 +300,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🌐 PlaceWebImage {#placeWebImage}
+### 🌐 PlaceWebImage
 
 **[`PlaceWebImage.jsx`](PlaceWebImage.jsx)**
 
@@ -313,7 +313,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🔢 PlayWithBigInt {#playWithBigInt}
+### 🔢 PlayWithBigInt
 
 **[`PlayWithBigInt.jsx`](PlayWithBigInt.jsx)**
 
@@ -328,7 +328,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📏 PlayWithUnit {#playWithUnit}
+### 📏 PlayWithUnit
 
 **[`PlayWithUnit.jsx`](PlayWithUnit.jsx)**
 
@@ -344,7 +344,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📦 RectPackTest {#rectPackTest}
+### 📦 RectPackTest
 
 **[`RectPackTest.jsx`](RectPackTest.jsx)**
 
@@ -358,7 +358,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 📝 RegexFromCodeRanges {#regexFromCodeRanges}
+### 📝 RegexFromCodeRanges
 
 **[`RegexFromCodeRanges.jsx`](RegexFromCodeRanges.jsx)**
 
@@ -371,7 +371,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🏗️ ScriptUIBuilder {#scriptUIBuilder}
+### 🏗️ ScriptUIBuilder
 
 **[`ScriptUIBuilder.jsx`](ScriptUIBuilder.jsx)**
 
@@ -386,7 +386,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🎨 ScriptUIColorTester {#scriptUIColorTester}
+### 🎨 ScriptUIColorTester
 
 **[`ScriptUIColorTester.jsx`](ScriptUIColorTester.jsx)**
 
@@ -402,7 +402,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 💻 ShowEnvironment {#showEnvironment}
+### 💻 ShowEnvironment
 
 **[`ShowEnvironment.jsx`](ShowEnvironment.jsx)**
 
@@ -423,7 +423,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### ❓ ShowHelp {#showHelp}
+### ❓ ShowHelp
 
 **[`ShowHelp.jsx`](ShowHelp.jsx)**
 
@@ -436,7 +436,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🎛️ SuiFactories {#suiFactories}
+### 🎛️ SuiFactories
 
 **ScriptUI Component Factory Demos**
 
@@ -479,7 +479,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🌍 UnicodeToAscii {#unicodeToAscii}
+### 🌍 UnicodeToAscii
 
 **[`UnicodeToAscii.jsx`](UnicodeToAscii.jsx)**
 
@@ -491,7 +491,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🔒 UseJsxBlindLib {#useJsxBlindLib}
+### 🔒 UseJsxBlindLib
 
 **[`UseJsxBlindLib.jsx`](UseJsxBlindLib.jsx)**
 
@@ -502,7 +502,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🗣️ YaltIsGreat {#yaltIsGreat}
+### 🗣️ YaltIsGreat
 
 **[`YaltIsGreat.jsx`](YaltIsGreat.jsx)**
 
@@ -517,7 +517,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ---
 
-### 🗜️ ZDeflate_ZInflate_Test {#zDeflate_zInflate_test}
+### 🗜️ ZDeflate_ZInflate_Test
 
 **[`ZDeflate_ZInflate_Test.jsx`](tests/ZDeflate_ZInflate_Test.jsx)**
 
