@@ -1,3 +1,6 @@
+##### [260106]
+  - Updated the [ZInflate](/etc/$$.ZInflate.jsxlib) and [ZDeflate](/etc/$$.ZDeflate.jsxlib) modules (zlib decompression and compression.)
+
 ##### [250802]
   - Updated the [ByteStream](/etc/$$.ByteStream.jsxlib) class with new public methods and helpers (`clone()`, `copy()`, etc). See the code for more detail.
 
@@ -1353,4 +1356,5 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
