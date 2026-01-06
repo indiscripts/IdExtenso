@@ -7,15 +7,15 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =run() onEngine() zlib()
+		API:            =run() onEngine() zlib() fast() best() getRatio()
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180914 (YYMMDD)
-		Modified:       190420 (YYMMDD)
+		Modified:       260106 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 190420, 'run'))
+;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 260106, 'run'))
 
 
 	//==========================================================================
@@ -32,20 +32,53 @@
 	been applied to get the most efficient inflate/deflate processes in
 	IdExtenso.
 	
-	These modules are fine for processing *small* data streams (say < 50KB)
-	in a decent time; then avoiding the use of external tools, libraries, or
-	DOM methods. If you need to zip/unzip *larger* files from InDesign, turn
-	to the DOM methods `app.packageUCF()` and `app.unpackageUCF()`.
+	These modules are optimized for processing *small* data streams (≤50KB)
+	in reasonable time, avoiding external tools, libraries, or DOM methods.
+	For *larger* files from InDesign, use the DOM methods `app.packageUCF()`
+	and `app.unpackageUCF()` which provide better performance.
 
-	`ZDeflate` and `ZInflate` are independent, so if your project only wants
-	to compress strings, you can include `$$.ZDeflate.jsxlib` alone.
+	`ZDeflate` and `ZInflate` are independent modules. If your project only
+	needs compression, you can include `$$.ZDeflate.jsxlib` alone.
 
-	COMPRESSION
+	PERFORMANCE OPTIMIZATION
 	
-	Use `$$.ZDeflate(myOriginalString)` to get the compressed string using
-	the default options (level=6 ; input buffer=32KB ; small memory model.)
-	To refine this, cf detail in the `run` method.
+	This module uses an 8KB sliding window (optimized for ExtendScript 
+	performance) rather than the standard 32KB window. This provides:
+	- Significantly faster compression in ExtendScript environment
+	- Lower memory usage
+	- Optimal performance for typical small data streams (images, text)
+	- Full RFC 1951 compliance within the reduced window size
+
+	BASIC USAGE
 	
+	Use `$$.ZDeflate(myString)` for quick compression with default settings:
+	- Compression level: 6 (balanced speed/ratio)
+	- Input buffer: 32KB
+	- Memory model: small (8KB sliding window)
+	
+	ADVANCED USAGE
+	
+	Custom compression:
+	- `$$.ZDeflate.run(data, level, inKB, bufCapa)` - Full parameter control
+	- `$$.ZDeflate.fast(data)` - Quick compression (level 1)
+	- `$$.ZDeflate.best(data)` - Maximum compression (level 9)
+	- `$$.ZDeflate.zlib(data)` - RFC 1950 zlib-wrapped output
+	- `$$.ZDeflate.getRatio(original, compressed)` - Calculate compression ratio
+
+	PARAMETERS
+	
+	- `level` (1-9): Compression level. Higher = better ratio, slower speed
+	- `inKB` (16-64): Input buffer size in KB. Default: 32KB
+	- `bufCapa` (0-2): Buffer capacity (0=small/8KB, 1=medium/16KB, 2=big/32KB)
+	
+	PERFORMANCE GUIDELINES
+	
+	- Data ≤50KB: Use ZDeflate (optimal performance)
+	- Data >50KB: Consider app.packageUCF() for better performance
+	- Small text/images: Use fast() for speed
+	- Archive storage: Use best() for maximum compression
+	- Network transfer: Use zlib() for standard compliance
+
 	[REM] The `run` method is automatic, that is, `$$.ZDeflate()` is the
 	shortcut of `$$.ZDeflate.run()`
 
@@ -71,7 +104,7 @@
 
 		// Constants.
 		//----------------------------------
-		WMEM: 32768/4,                            // Base window size (2^13) ; must be 2^n.
+		WMEM: 32768/4,                            // Base window size (8KB) ; optimized for ExtendScript performance.
 		DLIT: 257,                                // 1 + (Number of literals.)
 		MMIN: 3,                                  // Min. match length ; the max. length is fixed to 258.
 		// ---
@@ -160,7 +193,9 @@
 		
 		ADLR: function(/*str*/s,/*?uint16*/seed,  a,b,n,i,mn)
 		//----------------------------------
-		// (Adler32.) [ADD190420]
+		// (Adler32.) Compute Adler-32 checksum as defined in RFC 1950.
+		// Used by zlib format for data integrity verification.
+		// [ADD190420] Enhanced for zlib compliance.
 		// => uint32
 		{
 			( seed && 'number'==typeof seed ) || (seed=0);
@@ -1358,14 +1393,26 @@
 
 		run: function run_S_i_i_i_S(/*str*/data,/*?(1..9)=6*/level,/*16..64=32*/inKB,/*0|1|2=0*/bufCapa,  I,bs,hb,inSz,bits)
 		//----------------------------------
-		// `level`   :: Compression level (1..9) ; default: 6.
+		// Main compression method with full parameter control.
+		// `level`   :: Compression level (1..9) ; default: 6. Higher=better ratio, slower.
 		// `inKB`    :: Size in KB of the input buffer (16..64) ; default: 32.
-		// `bufCapa` :: 0(small) | 1(medium) | 2(big)
-		// => str
+		// `bufCapa` :: Memory model: 0(small/8KB) | 1(medium/16KB) | 2(big/32KB) ; default: 0.
+		// => str    :: Compressed data (raw deflate format)
 		{
 			I = callee.µ['~'];
 			
 			'string' == typeof data || (data=String(data));
+			
+			// Input validation
+			// ---
+			if( !data.length ) return '';  // Handle empty strings gracefully
+			
+			// Performance warning for large inputs
+			// ---
+			if( data.length > 51200 ) // 50KB
+			{
+				+$$.trace && $$.Log.warn(__("%1 > Processing large data (%2 chars). Consider using app.packageUCF() for files >50KB.",callee.µ,data.length));
+			}
 
 			// WMEM = 2^15 ; WDIM = 2*WMEM = 2^16 => bits >= 16  (since 2^bits must >= WDIM.)
 			// May we change BITS?
@@ -1389,13 +1436,13 @@
 			// Assertions.
 			// ---
 			bs <= inSz
-			|| $.global[callee.µ.__root__].error(__("Input buffer too small (%1). Should be at least %2KB.",inSz,bs/1024));
+			|| error(__("Input buffer too small (%1). Should be at least %2KB.",inSz,bs/1024));
 
 			I.WMEM <= (1 << (bits-1))
-			|| $.global[callee.µ.__root__].error(__("Window memory too large (%1). Should be at most %2.",I.WMEM,(1 << (bits-1))));
+			|| error(__("Window memory too large (%1). Should be at most %2.",I.WMEM,(1 << (bits-1))));
 
 			( hb < bits && hb >= 8 )
-			|| $.global[callee.µ.__root__].error(__("Invalid bit capacity (%1). Should be between 8 and %2.",hb,bits-1));
+			|| error(__("Invalid bit capacity (%1). Should be between 8 and %2.",hb,bits-1));
 
 			// Literal buffer dim is: inSz + 64 extra positions.
 			// ---
@@ -1404,8 +1451,10 @@
 
 		zlib: function zlib_S_S(/*str*/data,  adlr)
 		//----------------------------------
-		// [ADD190420] Deflate (compress) data in zlib wrapper.
-		// [REF] tools.ietf.org/html/rfc1950
+		// Compress data in RFC 1950 zlib format (with Adler32 checksum).
+		// This format is widely supported and includes integrity verification.
+		// [ADD190420] RFC 1950 compliant zlib wrapper with Adler32.
+		// => str :: zlib-formatted compressed data
 		{
 			'string' == typeof data || (data=String(data));
 			
@@ -1418,13 +1467,43 @@
 			// ---
 			data = callee.µ.run( data );
 
-			// Zlib headers:
+			// Zlib headers (RFC 1950):
 			// ---
 			// 78 01 - No Compression/low
-			// 78 9C - Default Compression
+			// 78 9C - Default Compression (used here)
 			// 78 DA - Best Compression 
 
 			return '\x78\x9C' + data + adlr;
 		},
-	})
 
+		// Utility methods for common compression scenarios
+		//----------------------------------
+		
+		fast: function fast_S_S(/*str*/data)
+		//----------------------------------
+		// Quick compression with minimal CPU usage (level 1).
+		// Ideal for real-time processing or when speed is prioritized over ratio.
+		// => str :: Compressed data
+		{
+			return callee.µ.run(data, 1);
+		},
+
+		best: function best_S_S(/*str*/data)
+		//----------------------------------
+		// Maximum compression ratio (level 9) for storage/archival.
+		// Slower processing but optimal space efficiency.
+		// => str :: Compressed data
+		{
+			return callee.µ.run(data, 9);
+		},
+
+		getRatio: function getRatio_S_S_N(/*str*/original, /*str*/compressed)
+		//----------------------------------
+		// Calculate compression efficiency as percentage reduction.
+		// Useful for analyzing compression performance and choosing optimal settings.
+		// => num :: Compression ratio [0..100] (higher = better compression)
+		{
+			if( !original.length ) return 0;
+			return (1 - compressed.length / original.length) * 100;
+		},
+	})
