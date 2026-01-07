@@ -10,7 +10,7 @@
 		API:  static:   SourceEscapes fromCodePoint() fromBytes() fromUTF8()
 		                fromBase64() random() levenDist() levenFilter()
 		       proto:   codePointAt() toBytes() toUTF8() toBase64() toSource()
-		                split() [CS4] indexOf() [CS4] lastIndexOf() [CS4]
+			            adler32() -- CS4: split() indexOf() lastIndexOf()
 		                charAt()
 		                subReplace()
 		                asPath() toPath() relativePath()
@@ -21,7 +21,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       250226 (YYMMDD)
+		Modified:       260107 (YYMMDD)
 
 *******************************************************************************/
 
@@ -277,6 +277,56 @@
 		return ( n %= 3 ) ?
 			( 1 < n ? (r.slice( 0, -1 ) + '=') : (r.slice( 0, -2 ) + '==') ) :
 			r;
+	};
+
+	//==========================================================================
+	// [260107] String.prototype.adler32()
+	//==========================================================================
+
+	String.prototype.adler32 = function adler32(/*?uint32*/seed,  a,b,s,n,t,i)
+	//----------------------------------
+	// Compute the Adler-32 checksum of this string (optimized implementation).
+	// 
+	// The optional `seed` parameter allows resuming checksum computation from a previous
+	// state, which is essential in streaming data scenarios and format specifications:
+	//
+	//   ZLIB COMPRESSION: In zlib format (RFC 1950), the Adler-32 checksum is computed
+	//   over the entire uncompressed data stream. The seed enables continuing checksum
+	//   calculation when processing compressed streams in chunks, maintaining integrity
+	//   across block boundaries without recomputing the entire stream.
+	//
+	//   PNG PROCESSING: PNG files use zlib-compressed data in IDAT chunks. While each
+	//   IDAT chunk contains part of a single zlib stream (not separate streams), the
+	//   seed parameter is useful when implementing incremental PNG processing where
+	//   you need to compute checksums over reconstructed image data progressively.
+	//
+	//   INCREMENTAL PROCESSING: For large files or network streams, data can be processed
+	//   in segments while maintaining checksum continuity by passing the previous segment's
+	//   checksum as the seed for the next segment.
+	//
+	// The seed splits into two 16-bit values: a = seed & 0xFFFF (low), b = seed >>> 16 (high).
+	// Default values when no seed is provided: a = 1, b = 0 (standard Adler-32 initialization).
+	//
+	// Tests: https://devbeaver.com/checksum-calculator-validator-tools/adler
+	// E.g. "Wikipedia".adler32() --> 300286872 (i.e. 0x11E60398)
+	// ---
+	// => uint32
+	{
+		'number' == typeof seed ? ( a=0xFFFF&seed, b=seed>>>16 ) : ( a=1, b=0 );
+
+		// The constant 2654 in this implementation is an optimization parameter derived from the Adler-32 checksum algorithm.
+		// It represents the maximum number of bytes processed in a single loop iteration before performing a modulo reduction to
+		// prevent overflow and maintain performance. This value is chosen because it balances the number of operations per iteration
+		// with the need to keep the intermediate sums a and b within manageable ranges, ensuring efficient computation.
+		// The specific value of 2654 is related to the properties of the modulo operation with 65521 (the largest prime less than 2^16)
+		// and the typical byte size of data being processed. This optimization reduces the frequency of expensive modulo operations
+		// while still ensuring the checksum remains accurate.
+
+		for( n=(s=String(this)).length, t=0, i=0 ; i < n ; a = 15*(a >>> 16) + (0xFFFF&a), b = 15*(b >>> 16) + (0xFFFF&b) )
+		for( (2654 < (t=n-i) && (t=2654)), (t+=i) ; i < t ; b += (a += (0xFF&s.charCodeAt(i++))) );
+
+		// [REM260707] The >>>0 is used to ensure the result is a uint32.
+		return (((b % 65521) << 16) | (a % 65521))>>>0;
 	};
 
 	//==========================================================================
