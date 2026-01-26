@@ -1,5 +1,8 @@
+##### [260126]
+   - [Log](/core/$$.Log.jsxlib): Slight improvements. Ability to call `$$.Log.push()` without argument (forcibly generates an empty line in the log.) This is equivalent to `$$.Log.push("")`.
+
 ##### [260107]
-  - Added [Adler-32](https://en.wikipedia.org/wiki/Adler-32) checksum algorithm to [Ext/string](/core/Ext/$$.string.jsxinc). Use `myString.addler32()` to get the uint32 checksum.
+  - Added [Adler-32](https://en.wikipedia.org/wiki/Adler-32) checksum algorithm to [Ext/string](/core/Ext/$$.string.jsxinc). Use `myString.adler32()` to get the uint32 checksum.
 
 ##### [260106]
   - Updated the [ZInflate](/etc/$$.ZInflate.jsxlib) and [ZDeflate](/etc/$$.ZDeflate.jsxlib) modules (zlib decompression and compression.)
@@ -1359,6 +1362,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
