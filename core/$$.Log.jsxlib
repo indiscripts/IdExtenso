@@ -13,7 +13,7 @@
 		DOM-access:     NO
 		Todo:           WINDOW device.
 		Created:        150502 (YYMMDD)
-		Modified:       250619 (YYMMDD)
+		Modified:       260126 (YYMMDD)
 
 *******************************************************************************/
 
@@ -32,7 +32,7 @@
 	// WARN mode can only warn.
 	// ---
 
-;eval(__(MODULE, $$, 'Log', 250619, 'log'))
+;eval(__(MODULE, $$, 'Log', 260126, 'log'))
 
 	[PRIVATE]
 	
@@ -117,13 +117,13 @@
 			// ---
 			ymd = __( "%1-%2-%3",
 				String(dt.getFullYear()),
-				('0'+(1+dt.getMonth())).substr(-2),
-				('0'+dt.getDate()).substr(-2)
+				('0'+(1+dt.getMonth())).slice(-2),
+				('0'+dt.getDate()).slice(-2)
 				);
 			hms = __( "%1:%2:%3",
-				('0'+dt.getHours()).substr(-2),
-				('0'+dt.getMinutes()).substr(-2),
-				('0'+dt.getSeconds()).substr(-2)
+				('0'+dt.getHours()).slice(-2),
+				('0'+dt.getMinutes()).slice(-2),
+				('0'+dt.getSeconds()).slice(-2)
 				);
 	
 			q = callee.Q;
@@ -141,7 +141,7 @@
 
 			ymd==q.ymd ? (ymd='') : (q.ymd=ymd);
 			(!ymd) && hms==q.hms ? (hms='') : (q.hms=hms);
-			1e3 > (dms=dt-q.init) && (dms=('00'+dms).substr(-3));
+			1e3 > (dms=dt-q.init) && (dms=('00'+dms).slice(-3));
 
 			// E.g. <NewLine>2015-05-04<NewLine>21:32:01       045
 			// ---
@@ -150,7 +150,7 @@
 				__("%1%2  %3",
 					ymd && (this.NWLN+ymd+this.NWLN),
 					hms || ('        '),
-					('        '+dms).substr(-8)
+					('        '+dms).slice(-8)
 				);
 
 		}.setup({ Q:{init:Date.now(), ymd:'', hms:''} }),
@@ -276,13 +276,14 @@
 			return callee.µ['~'].CGLV(0);
 		}.copy('..'),
 	
-		push : function push_S_B(/*str*/s)
+		push : function push_s_B(/*str=''*/s)
 		//----------------------------------
 		// Inconditionally push s into the current devices
 		// (whatever the current level, incl. mute.)
+		// [CHG260126] If `s` is undefined, just push an empty line.
 		// => 1 [OK]  |  0 [KO]
 		{
-			return callee.µ['~'].PUSH(s);
+			return callee.µ['~'].PUSH( 'undefined'==typeof s ? '' : String(s) );
 		},
 
 		// ---
@@ -394,12 +395,9 @@
 
 		chrono : function chrono_$Log$()
 		//----------------------------------
-		// (1) On call, triggers a basic stopwatch and
-		// returns the Log module itself.
-		// (2) On valueOf, returns the elapsed time in ms
-		// => uint
-		// (3) On toString, returns String(<elapsed_time>)
-		// => str
+		// (1) On call, triggers a basic stopwatch and returns the Log module itself.
+		// (2) On valueOf, returns the elapsed time in ms  => uint
+		// (3) On toString, returns String(<elapsed_time>) => str
 		// ---
 		// Typical use:
 		//     $$.Log.chrono().trace("Start process.");
@@ -408,13 +406,14 @@
 		// ---
 		// => µ
 		{
-			return (callee.Q=Date.now()), callee.µ;
+			return (callee.Q=-new Date), callee.µ;
 		}
 		.setup
 		({
-			Q: Date.now(),
-			valueOf:  function(){ return Date.now()-this.Q },
-			toString: function(){ return String(Date.now()-this.Q) },
+			// [CHG260126] ±new Date is slightly faster than Date.now()
+			Q: -new Date,
+			valueOf:  function(){ return +new Date + this.Q },
+			toString: function(){ return String(+new Date + this.Q) },
 		}),
 
 	})
