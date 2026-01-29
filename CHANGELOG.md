@@ -1,4 +1,7 @@
 ##### [260126]
+   - [Env](/core/$$.Env.jsxlib) and [“estk entry point”](/$$.estk.jsxinc) have undergone a few adjustments in order to make scripts running _from ExtendScript ToolKit_ more accurately managed. When you create an IdExtenso script that should run outside of InDesign, use `#include 'path/to/$$.estk.jsxinc'` as your entry point. As long as InDesign DOM features are not involved in your project, this should work as expected. The present update concerns `$$.Env` methods related to this particular option: `$$.Env.isToolKit` (`0|1`) tells whether your script runs in “estk mode”, `$$.Env.summary()` now returns information better suited to the ESTK environment.
+
+##### [260126]
    - [Log](/core/$$.Log.jsxlib): Slight improvements. Ability to call `$$.Log.push()` without argument (forcibly generates an empty line in the log.) This is equivalent to `$$.Log.push("")`.
 
 ##### [260107]
@@ -1362,6 +1365,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
