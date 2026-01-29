@@ -11,13 +11,13 @@
 		                engineState() runCount() session()
 		                idEngine() inBinStream() inStartup() scriptsPanel()
 		                domVersion()->$$ globalEvent()->$$ tempRedraw()->$$
-		                uiLevel()->$$ canToolkit()->$$
+		                uiLevel()->$$ canToolkit()->$$ isToolKit()->$$
 		DOM-access:     [GET] app.scriptPreferences ; app.properties.activeScript ;
 		                      app.properties.activeScriptUndoMode ;
 		                      app.performanceMetric
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       230813 (YYMMDD)
+		Modified:       260129 (YYMMDD)
 
 *******************************************************************************/
 
@@ -34,6 +34,7 @@
 
 		// ExtendScript.
 		// ---
+		ESPT : (app.properties.estkEntryPoint)>>>0,            // [ADD260129] Whether estk entry point is used.
 		ESVS : __("%1 (build: %2)", $.version, $.build),       // e.g "4.5.6 (build: 80.1060872)"
 		ESNB : parseFloat($.version),                          // e.g  4.5  [subdigits are ignored.]
 		
@@ -495,6 +496,16 @@
 		// => 1 [OK]  |  0 [KO]
 		{
 			return +('IDLE'==callee.µ['~'].ESTK());
+		}
+		.copy('..'),
+
+		isToolKit : function isToolKit_B()
+		//----------------------------------
+		// [260129] Whether the ESTK entry point was used.
+		// ---
+		// => 1 [OK]  |  0 [KO]
+		{
+			return callee.µ['~'].ESPT;
 		}
 		.copy('..'),
 
