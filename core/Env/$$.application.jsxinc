@@ -1,7 +1,7 @@
 /*******************************************************************************
 
 		Name:           Application
-		Desc:           InDesign-related information.
+		Desc:           InDesign-related information (or fallback for ETSK entry point)
 		Path:           /core/Env/$$.application.jsxinc
 		Require:        Env/system ; Env/script
 		Encoding:       ÛȚF8
@@ -11,32 +11,32 @@
 		DOM-access:     [GET] app.version ; app.fullName ; app.generalPreferences.uiBrightnessPreference
 		Todo:           ---
 		Created:        190202 (YYMMDD)
-		Modified:       220602 (YYMMDD)
+		Modified:       260129 (YYMMDD)
 
 *******************************************************************************/
 
 	[PRIVATE]
 	
 	({
-		IDVS : String(app.version),                            // e.g "11.1.0.22"
-		IDNB : parseFloat(app.version),                        // e.g  11.1 | 8 [subdigits are ignored.]
+		IDVS : String(app.version),                            // e.g "11.1.0.22"                    (or any "x.y" in estk mode)
+		IDNB : parseFloat(app.version),                        // e.g  11.1 | 8 [subdigits ignored]  (or any x in estk mode)
 
 		// URI path to the application ('exe' or 'app') file.
 		// E.g MAC "/Applications/Adobe%20InDesign%20CS<X>/Adobe%20InDesign%20CS<X>.app"
 		// E.g WIN "/c/Program%20Files/Adobe/Adobe%20InDesign%20CC%202017/InDesign.exe"
 		// ---
-		INDD : String(app.fullName),
+		INDD : String(app.fullName),                           // or "ExtendScript Toolkit" in estk mode
 	})
 
 	[PRIVATE]
 	
 	({
-		// InDesign version name ;  e.g "CS4 (6.x)" ; "CC12 (12.x)"
+		// InDesign version name ("21.x", "CS4 (6.x)"...) or "ESTK x.y" in estk mode.
 		// ---
-		IDNM : __("%1 (%2)"
-			, 9 <= µ['~'].IDNB ? ("CC"+µ['~'].IDNB) : ("CS"+(µ['~'].IDNB-2))
-			, µ['~'].IDVS
-			),
+		IDNM : ( µ['~'].ESPT && __("ESTK %1", µ['~'].IDVS) ) // [CHG260129] estk entry point
+			   || ( 9 <= µ['~'].IDNB && µ['~'].IDVS )
+			   || ( 6 <= µ['~'].IDNB && __("CS%1 (%2)", (µ['~'].IDNB-2), µ['~'].IDVS) )
+			   || ( µ['~'].IDVS ), // fallback (shouldn't happen)
 
 		DARK : function(/*undef|1|0*/BKP,  v,x)
 		//----------------------------------
@@ -92,6 +92,10 @@
 		//    and return 1 if the current version is greater-or-equal, 0 otherwise.
 		// 3. If EQUAL is truthy, return 1 if the current INDD version matches
 		//    `ver` digits (# or #.# format), 0 otherwise.
+		// [REM260129] If IdExtenso runs in "estk entry point" mode, this function
+		// still uses the underlying `app.version` (e.g. 3.4), although this is not
+		// an actual "ID version".
+		// => str [GETTER]  |  (1|0) [TEST]
 		{
 			return 'undefined' == typeof ver ?
 				callee.µ['~'].IDVS :
@@ -104,12 +108,15 @@
 		}
 		.copy('..'),
 		
-		idFullName : function idFullName_S()
+		idFullName : function idFullName_S(  t)
 		//----------------------------------
-		// Return the INDD full name.
+		// Return the application full name.
 		// E.g => "Adobe InDesign CS5.5 (7.5.5.xx)"
+		// [CHG260129] If estk entry point -> "Adobe ExtendScript Toolkit x.y"
+		// => str
 		{
-			return "Adobe InDesign " + callee.µ['~'].IDNM;
+			t = callee.µ['~'].ESPT;
+			return __( "Adobe %1 %2", t?"ExtendScript Toolkit":"InDesign", callee.µ['~'][t?'IDVS':'IDNM'] );
 		},
 
 	})
