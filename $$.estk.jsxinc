@@ -11,7 +11,7 @@
 		DOM-access:     NO
 		Todo:           ---
 		Created:        180614 (YYMMDD)
-		Modified:       250619 (YYMMDD)
+		Modified:       260129 (YYMMDD)
 
 *******************************************************************************/
 
@@ -41,9 +41,8 @@
 	Thanks to this special patch you can enjoy CORE modules like `JSON` or `Log`
 	in your scripts, and even extra modules like `Yalt`, `MD5`, `BigInt`...
 
-	However, keep in mind that IdExtenso is primarily thought to automate
-	InDesign, hence DOM-oriented modules and functions (`$$.Env`, `$$.Dom`...)
-	will either stop working or return irrelevant data.
+	However, InDesign DOM-oriented modules and functions (`$$.Env`, `$$.Dom`...)
+	will either return irrelevant data or just stop working...
 
 	*/
 
@@ -68,23 +67,33 @@
 		G.PerformanceMetricOptions = new G.Enumeration; // [ADD210403]
 
 		// ---
+		// [REM260129] The dummy G.app={...} is just a fallback,
+		// ESTK already exposes a [[global]] `app` object with
+		// a few properties (name, version...)
+		// ---
 
 		$.global.A = G.app || (G.app={ version:"1.0", name:"estk" });
 		A.translateKeyString = function translateKeyString(s){ return String(s) };
 		A.findKeyStrings =     function findKeyString(s){ return String(s) };
 		A.activate =           function activate(){ };
-		A.scriptPreferences = {
+		A.scriptPreferences =
+		{
 			version:              A.version,
 			enableRedraw:         0,
 			userInteractionLevel: 0,
 			scriptsFolder:        Folder.myDocuments,
 			measurementUnit:      0,
-			};
+		};
 		A.generalPreferences =    { properties:0 };
 		A.userName =              '';
 		A.locale =                0;
 		A.fullName =              A.name;
-		A.properties =            0;
+		A.properties =
+		{
+			estkEntryPoint:       1, // [ADD260129] So `app.properties.estkEntryPoint` is reliable and won't hurt InDesign.
+			enableRedraw:         0,
+			userInteractionLevel: 0,
+		};
 		A.layoutWindows =         0; // [FIX190303]
 
 		delete $.global.A;
