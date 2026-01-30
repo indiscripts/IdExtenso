@@ -21,7 +21,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       260107 (YYMMDD)
+		Modified:       260130 (YYMMDD)
 
 *******************************************************************************/
 
@@ -212,7 +212,7 @@
 
 	String.B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
-	String.fromBase64 = function fromBase64(/*str|uint8[]*/s,/*bool=0*/AS_BYTES,  CHR,B,n,r,i,x0,x1,x2,x3,x)
+	String.fromBase64 = function fromBase64(/*str|uint8[]*/s,/*bool=0*/AS_BYTES,  CHR,n,B,r,i,x0,x1,x2,x3,x)
 	//----------------------------------
 	// Given a sequence of *valid* Base64 codes (string or array), reconstruct
 	// and output the original JS string. By default, the outcoming bytes are
@@ -224,9 +224,14 @@
 		CHR = String.fromCharCode;
 		'string' == typeof s || (s=CHR.apply(0,s)); // [FIX230210]
 
+		// [ADD260130] Validate input length (safer)
+		n = s.length;
+		if( !n ) return '';
+		if( n%4 ) throw ("Invalid Base64 string length: " + n);
+
 		for
 		(
-			B=String.B64, n=s.length, r='', i=0 ;
+			B=String.B64, r='', i=0 ;
 			// ---
 			i < n ;
 			// ---
@@ -241,7 +246,7 @@
 		return AS_BYTES ? r : String.fromUTF8(r);
 	};
 
-	String.prototype.toBase64 = function toBase64(/*bool=0*/AS_BYTES,  s,B,n,r,i,x)
+	String.prototype.toBase64 = function toBase64(/*bool=0*/AS_BYTES,  s,B,n,r,i,x,b0,b1,b2)
 	//----------------------------------
 	// Convert this string into Base64. (The result is always a code string
 	// exclusively formed of B64 characters.)
@@ -266,17 +271,21 @@
 
 		for
 		(
-			B=String.B64, n=s.length, r='', i=0 ;
-			// ---
-			i < n ;
-			// ---
-			x = s.charCodeAt(i++) << 16 | s.charCodeAt(i++) << 8 | s.charCodeAt(i++),
-			r += B.charAt(63&(x>>18))+B.charAt(63&(x>>12))+B.charAt(63&(x>>6))+B.charAt(63&x)
+			B=String.B64, n=s.length, r='', i = 0 ;
+			i < n;
+
+			b0 = s.charCodeAt(i++),
+			b1 = -(i==n) || s.charCodeAt(i++),
+			b2 = -(i==n) || s.charCodeAt(i++),
+
+			// [CHG260130] Handle the three cases: 3 bytes, 2 bytes, 1 byte
+			x = b0 << 16 | (0 > b1 ? 0 : b1 << 8) | (0 > b2 ? 0 : b2),
+			r += B.charAt(63 & (x >> 18)) + B.charAt(63 & (x >> 12)) + 
+			( 0 > b1 ? '=' : B.charAt(63 & (x >> 6)) ) +
+			( 0 > b2 ? '=' : B.charAt(63 & x) )
 		);
 
-		return ( n %= 3 ) ?
-			( 1 < n ? (r.slice( 0, -1 ) + '=') : (r.slice( 0, -2 ) + '==') ) :
-			r;
+		return r;
 	};
 
 	//==========================================================================
@@ -645,7 +654,7 @@
 				throw Error(__("%1 > %2", 'Ext/string', err));
 			}
 
-			R.improvable = [a.join(''),a.length=0][0];
+			R.improvable = a.join(''); // [CHG260125] Resetting `a.length` to 0 was unnecessarily time-consuming
 			return R;
 
 		})({})
