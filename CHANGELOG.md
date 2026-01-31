@@ -1,3 +1,6 @@
+##### [260131]
+   - Added an optional `AS_HEXA` (bool) argument in `String.prototype.toBytes()`. A purely convenient flag for generating hexa strings (like `['03','FF','2C'...]`) instead of pure int8 elements `[3,255,44...]`. If your string _bin_ is intended to encode bytes, you can easily inspect data using e.g. `bin.toBytes(true).join(' ')`, which yields a typical byte stream of the form `"03 FF 2C..."`.
+
 ##### [260130]
    - Improved security of `String.fromBase64()` and `String.prototype.toBase64()` in [Ext/string](/core/Ext/$$.string.jsxinc).
 
@@ -1368,6 +1371,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
