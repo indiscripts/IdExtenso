@@ -21,7 +21,7 @@
 		                May improve word boundary detection in trunc methods (?)
 		                String.prototype.replace (U+0000 compliant in CS4.)
 		Created:        150510 (YYMMDD)
-		Modified:       260130 (YYMMDD)
+		Modified:       260131 (YYMMDD)
 
 *******************************************************************************/
 
@@ -157,13 +157,19 @@
 		return String.fromCharCode.apply(0,a);
 	};
 	
-	String.prototype.toBytes = function toBytes(  r,i)
+	String.prototype.toBytes = function toBytes(/*bool=0*/AS_HEXA,  r,i)
 	//----------------------------------
 	// Convert this string into a sequence of bytes, considering each character
 	// code as a uint8. (Any charcode beyond 0xFF will undergo the 0xFF mask.)
-	// => uint8[]
+	// [ADD260130] If AS_HEXA, the returned array contains 2-char hex codes
+	// rather than uint8 numbers: ['03','FF','2C'...] instead of [3,255,44...]
+	// => uint8[]  |  str[] (if AS_HEXA)
 	{
-		for( r=Array(i=this.length) ; i-- ; r[i]=0xFF&this.charCodeAt(i) );
+		r = Array(i=this.length);
+		if( AS_HEXA )
+			for( ; i-- ; r[i]=(0xFF&this.charCodeAt(i)).toHexa('',2) );
+		else
+			for( ; i-- ; r[i]=0xFF&this.charCodeAt(i) );
 		return r;
 	};
 
