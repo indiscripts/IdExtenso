@@ -1,3 +1,6 @@
+##### [260201]
+   - [File](/core/$$.File.jsxlib): Added an optional `len` (uint) argument in `$$.File.readBinary(file,?len)`. When supplied, `readBinary` returns at most `len` bytes instead of the entire file. Useful when you only need to check the ‘signature’ of a binary file.
+
 ##### [260131]
    - Added an optional `AS_HEXA` (bool) argument in `String.prototype.toBytes()`. A purely convenient flag for generating hexa strings (like `['03','FF','2C'...]`) instead of pure int8 elements `[3,255,44...]`. If your string _bin_ is intended to encode bytes, you can easily inspect data using e.g. `bin.toBytes(true).join(' ')`, which yields a typical byte stream of the form `"03 FF 2C..."`.
 
@@ -1371,6 +1374,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
