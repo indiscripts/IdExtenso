@@ -16,11 +16,11 @@
 		DOM-access:     NO
 		Todo:           BOM or not-BOM? ; MAC bash scripting
 		Created:        160130 (YYMMDD)
-		Modified:       250619 (YYMMDD)
+		Modified:       260201 (YYMMDD)
 
 *******************************************************************************/
 
-;eval(__(MODULE, $$, 'File', 250619, 'toFile'))
+;eval(__(MODULE, $$, 'File', 260201, 'toFile'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -330,13 +330,15 @@
 			return callee.µ['~'].TOFL(fx,CHECK_EXIST?1:0);
 		},
 
-		readBinary: function readBinary_$File$S_S$false$(/*File|str*/fx)
+		readBinary: function readBinary_$File$S_S$false$(/*File|str*/fx,/*?uint*/len)
 		//----------------------------------
 		// Read a file in BINARY mode and return the resulting string.
+		// [ADD260201] If `len` (uint>0) is supplied, read only `len` bytes.
+		// (This is useful to check the signature of a huge binary file.)
 		// => str | FERR
 		{
 			return (fx=callee.µ['~'].OPEN(fx,'r','BINARY')) &&
-				[fx.read(),fx.close()][0];
+				[ (len>>>=0) ? fx.read(len) : fx.read(), fx.close() ][0];
 		},
 
 		writeBinary: function writeBinary_$File$S_S_$File$$false$(/*File|str*/fx,/*str*/s)
