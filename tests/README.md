@@ -54,7 +54,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 | [UnicodeToAscii](#unicodetoascii) | Text transliteration | Unicode conversion |
 | [UseJsxBlindLib](#usejsxblindlib) | Script obfuscation | Binary scrambling |
 | [YaltIsGreat](#yaltisgreat) | Localization demo | Multi-language support |
-| [ZDeflate_ZInflate_Test](#zdeflate_zinflate_test) | Compression testing | Data compression, validation |
+| [ZDeflate_ZInflate_Test](#zdeflate_zinflate_test) | Zip/unzip checker | Data compression, validation |
 
 ---
 
@@ -521,15 +521,14 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 **[`ZDeflate_ZInflate_Test.jsx`](tests/ZDeflate_ZInflate_Test.jsx)**
 
-> Comprehensive testing of the compression and decompression modules (**ZDeflate** and **ZInflate**).
+> Quick test of the compression and decompression modules (**ZDeflate** and **ZInflate**).
 
 **Demonstrates:**
 - Including compression modules from `/etc` (ZDeflate and ZInflate)
-- Testing both raw deflate and RFC 1950 zlib formats
-- Comprehensive data validation with multiple test cases (empty strings, simple text, repetitive data, binary data)
-- Performance benchmarking with timing measurements
-- Error handling and test result reporting
-- Using compression ratio calculations and utility methods
+- Testing `zip()` and `unZip()` on either a long byte string or a File
+- Data validation: check that the final uncompressed stream is strictly equal to the input
+- Timing measurements for each test case (internal methods vs. external InDesign packager/unpackager.)
+- Pushing messages in the Log system, error handling, etc.
 
 ---
 
@@ -546,3 +545,4 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 ---
 
 *Happy scripting with **IdExtenso**!*
+
