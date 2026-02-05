@@ -1,3 +1,25 @@
+##### [260205]
+
+⚡ **New Implementation of [ZDeflate](/etc/$$.ZDeflate.jsxlib) (compressors) and [ZInflate](/etc/$$.ZInflate.jsxlib) (decompressors)**
+
+- Supports “raw DEFLATE” format, ZIP, GZIP, and ZLIB comp/decomp with proper checksums (CRC32/ADLER32). ZIP support includes UTF-8 filename handling via the `zip()` method.
+- All public methods accept strings, arrays, or File objects — with a requirement to ensure input is byte-level (e.g., UTF8-encoded text).
+- Automatically leverages `app.packageUCF()` / `app.unpackageUCF()` for large files (much faster) and falls back to internal algorithms for smaller inputs or when InDesign's DOM methods are unavailable.
+- In `$$.ZDeflate`, implements a binary-search-based prefix matching algorithm. Default settings (maxLen=10, maxDis=4096) deliver ~40% compression ratio on ASCII streams in optimal time.
+- Supports both dynamic and static Huffman trees. Dynamic mode uses a package-merge algorithm for optimal code length generation, while static mode uses precomputed canonical maps for speed.
+- The `ForceInternal` flag (public) allows the client script to bypass `packageUCF()`/`unpackageUCF()` for testing (or in pure ExtendScript environments.)
+- Comprehensive error messages and fallback logic ensure reliable operation across different environments.
+
+→ Go to the respective NOTICE and source for more detail on the public API: [ZDeflate](/etc/$$.ZDeflate.jsxlib), [ZInflate](/etc/$$.ZInflate.jsxlib).
+
+*Use Cases:*
+
+- File format processing (e.g. PNG chunks).
+- High-performance compression in InDesign scripts.
+- Cross-platform compression with fallbacks for legacy environments.
+
+→ For testing both modules in a basic zip/unzip task: [ZDeflate_ZInflate_Test.jsx](/tests/ZDeflate_ZInflate_Test.jsx).
+
 ##### [260201]
    - [File](/core/$$.File.jsxlib): Added an optional `len` (uint) argument in `$$.File.readBinary(file,?len)`. When supplied, `readBinary` returns at most `len` bytes instead of the entire file. Useful when you only need to check the ‘signature’ of a binary file.
 
@@ -1374,6 +1396,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
