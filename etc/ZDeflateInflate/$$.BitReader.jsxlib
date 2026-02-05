@@ -1,0 +1,169 @@
+/*******************************************************************************
+
+		Name:           BitReader
+		Desc:           LSB-first bitstream (input) used by $$.ZInflate
+		Path:           /etc/ZDeflateInflate/$$.BitReader.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class
+		API:            =create() reset() readBits() byteAlign()
+		    Static:     MaxBinLen
+		DOM-access:     NO
+		Todo:           add toSource() $$.JSON hook?
+		Created:        260201 (YYMMDD)
+		Modified:       260205 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('BitReader') || eval(__(CLASS, $$, 'BitReader', 260205))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+		[REM] The ZDeflateInflate directory contains utilities used by ZDeflate
+		      and/or ZInflate. Some are shared, others remain independent.
+		
+		This class structures the *input bitstream* of INFLATE and is specifi-
+		cally invoked from $$.ZInflate. However, as this is a utility for
+		"bit-level input", a client script may use its logic/API anywhere else.
+		
+		IMPLEMENTATION NOTES
+		
+		ExtendScript is notoriously faster at processing strings (UTF16) than
+		dealing with arrays. Also, some bit-level operations can be delayed and
+		performed on [01]+ strings using `parseInt(binStr,2)`. The present
+		implementation uses this approach to improve performance.
+		
+		- The source `bytes` stream is encoded as a string (any byte is
+		  just taken as a charcode and read from left to right)
+		
+		- However, bits are temporarily packed in the _bin_ string representing
+		  the LSB-first bitstream in a 256-length [01]+ package.
+		  
+		     bytes ::  ... [i] [i+1] [i+2] ...
+		     ------------------------------------------------------------
+		     _bin_ ::  { . . . <__i+2__> <__i+1__> <__i__> . . . }
+		                                       ^
+		                                     _end_
+		     ------------------------------------------------------------
+		     where <__p__> represents the [01]+
+		     representation of bytes.charCodeAt(p)
+		
+		  This way, the next `nbits`-sized bit sequence can be extracted from
+		  _bin_ using `parseInt(_bin_.slice(_end_-nbits,_end_),2)`,
+		  provided that _end_ is updated accordingly and that _bin_ is
+		  continually extended (to the right) with new bits from `bytes`.
+
+		- The static `MaxBinLen` property was empirically set to 256, meaning
+		  that `_bin_` aggregates up to 256 characters. Extending and slicing a
+		  256-character ExtendScript string is faster than going into per-bit
+		  operations and byte processing at each `readBits` step.
+
+	*/
+
+	//==========================================================================
+	// STATIC       MaxBinLen
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+		MaxBinLen: 256, // Just to be consistent with BitWriter.
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_S_$BitReader$(/*str*/src,  t)
+		// ---------------------------------
+		// Constructor:
+		// => { bytes==src, idx:uint }
+		{
+			// _bin_ temporarily represents in *right-to-left form* a part of the
+			// LSB-first binstream. Consecutive units formed of '0's and '1's (str)
+			// are concatenated here. The max length of _bin_ is controlled by MaxBinLen.
+			// ---
+			// _end_ is the current 'end index' in _bin_ (originally _bin_.length)
+			// It is continually decremented while reading bits, and automatically
+			// reset to the maximum length when _bin_ is updated.
+
+			this._MaxBinLen_ = (t=callee.µ.MaxBinLen);  // Keep max bin len and max
+			this._MaxBytes_ = Math.ceil(t/8);           // bytes internally linked.
+			
+			this.reset(src);
+		},
+		
+		reset: function reset_S_$BitReader$(/*str*/src)
+		//----------------------------------
+		// Reset all internal members to this source.
+		// => undef
+		{
+			this.bytes = src; // Input bytes as a string [\x00-\xFF]+
+			this.idx = 0;     // Next byte (index) to be read (disregarding
+			                  // unprocessed bytes already loaded in _bin_)
+			this._bin_ = '';  // Available bits in [01]+ form
+			this._end_ = 0;   // Unprocessed bits in _bin_
+			
+			return this;
+		},
+
+		readBits: function readBits_I_b_I(/*uint<=32*/bitCount,/*bool=0*/AS_BIN_STR,  e,s,n,t,eMax,i)
+		//----------------------------------
+		// Read exactly bitCount bits and return the resulting value.
+		// If AS_BIN_STR, return the raw [01]+ string.
+		// => uint
+		{
+			if( !bitCount ) return AS_BIN_STR ? '' : 0;
+
+			if( (e=this._end_) < bitCount )
+			{
+				// Sequence of bytes of interest (may be < 128/8 )
+				s = this.bytes.slice(this.idx, this.idx + this._MaxBytes_);
+				n = s.length;
+				if( bitCount > e + 8*n ) throw "No enough bits in the input stream!";
+
+				t = this._bin_.slice(0,e); // Remove the bits already consumed (right side of _bin_)
+				for
+				(
+					eMax=this._MaxBinLen_-8, i=0 ;
+					i < n && e <= eMax ;
+					t = ('0000000'+s.charCodeAt(i++).toString(2)).slice(-8) + t,
+					e += 8
+				);
+				
+				this._bin_ = t;
+				this._end_ = e; // ( _bin_.length == _end_ == e ) >= bitCount
+				this.idx += i;
+			}
+			
+			t = this._bin_.slice(this._end_-=bitCount, e); // [01]+
+			return AS_BIN_STR ? t : parseInt(t,2);
+		},
+		
+		byteAlign: function byteAlign_I(  b)
+		//----------------------------------
+		// Automatically 'drops' the proper number of bits (0..7)
+		// to ensure that _bin_ ends up byte-aligned.
+		// Return the number of unprocessed BYTES already loaded
+		// in _bin_.
+		// [REM] Use `this.idx - retval` to get the index of the
+		// next *unprocessed* byte. By contrast, `this.idx` reflects
+		// the index of the next *unread* byte in the source.
+		// => uint
+		{
+			// Since _bin_'s index 0 is always a byte boundary,
+			// `_end_ % 8` is the number of bits to consume.
+			(b = this._end_%8) && this.readBits(b,true);
+			
+			return this._end_/8;
+		},
+
+	})
