@@ -1,1509 +1,1469 @@
 /*******************************************************************************
 
 		Name:           ZDeflate
-		Desc:           Encapsulate the deflate (compression) algorithm.
+		Desc:           DEFLATE/ZIP/GZIP/ZLIB Compressors
 		Path:           /etc/$$.ZDeflate.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =run() onEngine() zlib() fast() best() getRatio()
-		DOM-access:     NO
+		API:            =raw() zip() gzip() zlib()
+		                ForceInternal
+		DOM-access:     app.packageUCF() [usually required]
 		Todo:           ---
 		Created:        180914 (YYMMDD)
-		Modified:       260106 (YYMMDD)
+		Modified:       260205 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 260106, 'run'))
+#include 'ZDeflateInflate/$$.BitWriter.jsxlib'
 
+;$$.hasOwnProperty('ZDeflate') || eval(__(MODULE, $$, 'ZDeflate', 260205, 'raw'))
 
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
 
 	/*
+		[CHG260205] Refactored from scratch.
 
-	[REF] http://www.onicos.com/staff/iz/amuse/javascript/expert/
-	
-	Both the `ZDeflate` and `ZInflate` modules are based on Masanao Izumo's
-	implementation -- www.onicos.com/staff/iz/amuse/javascript/expert/ --
-	ported into ExtendScript. Many tests have been done and many tricks have
-	been applied to get the most efficient inflate/deflate processes in
-	IdExtenso.
-	
-	These modules are optimized for processing *small* data streams (≤50KB)
-	in reasonable time, avoiding external tools, libraries, or DOM methods.
-	For *larger* files from InDesign, use the DOM methods `app.packageUCF()`
-	and `app.unpackageUCF()` which provide better performance.
+		PURPOSE
+		________________________________________________________________________
 
-	`ZDeflate` and `ZInflate` are independent modules. If your project only
-	needs compression, you can include `$$.ZDeflate.jsxlib` alone.
+		The ZDeflate module implements DEFLATE/ZIP/GZIP/ZLIB compression
+		with LZ77-like matching and Huffman encoding. It provides both fast raw
+		DEFLATE compression and/or complete archive support through InDesign's
+		app.packageUCF() when available¹.
 
-	PERFORMANCE OPTIMIZATION
-	
-	This module uses an 8KB sliding window (optimized for ExtendScript 
-	performance) rather than the standard 32KB window. This provides:
-	- Significantly faster compression in ExtendScript environment
-	- Lower memory usage
-	- Optimal performance for typical small data streams (images, text)
-	- Full RFC 1951 compliance within the reduced window size
+		¹ Automatic fallback strategy: Uses app.packageUCF() for files > 2KB
+		  (much faster) and falls back to pure ExtendScript (~.RCMP) for
+		  smaller inputs or when app.packageUCF() is unavailable.
 
-	BASIC USAGE
-	
-	Use `$$.ZDeflate(myString)` for quick compression with default settings:
-	- Compression level: 6 (balanced speed/ratio)
-	- Input buffer: 32KB
-	- Memory model: small (8KB sliding window)
-	
-	ADVANCED USAGE
-	
-	Custom compression:
-	- `$$.ZDeflate.run(data, level, inKB, bufCapa)` - Full parameter control
-	- `$$.ZDeflate.fast(data)` - Quick compression (level 1)
-	- `$$.ZDeflate.best(data)` - Maximum compression (level 9)
-	- `$$.ZDeflate.zlib(data)` - RFC 1950 zlib-wrapped output
-	- `$$.ZDeflate.getRatio(original, compressed)` - Calculate compression ratio
+		ZDeflate internally supports dual compression modes (Static vs. Dynamic
+		Huffman trees) and 'mimicks' LZ77 through binary-search prefix matching
+		with configurable match length (3..258) and distance (3..16384). A fast
+		package-merge algorithm is used (optimized for ExtendScript) with length-
+		limited Huffman code generation up to 15 bits. These options are not
+		exposed to the API: the default parameters work fine (dynamic mode,
+		max_match_length:10, max_distance:4096).
 
-	PARAMETERS
-	
-	- `level` (1-9): Compression level. Higher = better ratio, slower speed
-	- `inKB` (16-64): Input buffer size in KB. Default: 32KB
-	- `bufCapa` (0-2): Buffer capacity (0=small/8KB, 1=medium/16KB, 2=big/32KB)
-	
-	PERFORMANCE GUIDELINES
-	
-	- Data ≤50KB: Use ZDeflate (optimal performance)
-	- Data >50KB: Consider app.packageUCF() for better performance
-	- Small text/images: Use fast() for speed
-	- Archive storage: Use best() for maximum compression
-	- Network transfer: Use zlib() for standard compliance
+		ZDeflate supports the following formats: Raw DEFLATE² (default), ZIP³,
+		GZIP, ZLIB wrappers with proper CRC32/ADLER32 checksums.
 
-	[REM] The `run` method is automatic, that is, `$$.ZDeflate()` is the
-	shortcut of `$$.ZDeflate.run()`
+		² The raw compressor (RCMP) handles up to 1MB via automatic 64KB block
+		  segmentation, so you can still compress (deflate) reasonably sized
+		  streams even if packageUCF() doesn't respond. This internal utility
+		  should handle 100K streams in about 1s.
+
+		³ The zip() method manages UTF-8 filename. It automatically encodes
+		  non-ASCII filenames in ZIP archives using UTF-8 flag (0x800) when
+		  necessary -- an issue that app.packageUCF() doesn't seem to
+		  natively address.
+
+		The client script is expected to send bytes (int8). All public methods
+		accept strings (bytes as charcodes), arrays or File objects. When you
+		pass a string -- which is definitely the best format in ExtendScript --
+		make sure it is not, or no longer, made of UTF16 units (all compressors
+		assume byte-level processing).
+
+		In particular, an arbitrary *text* string is not a byte stream per se,
+		unless it is known to contain pure ASCII characters. Otherwise, it's
+		your responsibility to 'translate' a text into bytes. The most common
+		inter-format is UTF8, i.e. `myString.toUTF8()` in IdExtenso.
+
+		Compressors are more likely to be invoked within file format processing
+		tasks (PNG chunks, etc).
+
+
+		IMPLEMENTATION NOTES
+		________________________________________________________________________
+
+		Our custom LZ77 algorithm (PRFX) only handle {length,distance} pairs
+		that can be encoded in a single UTF16 token using the format:
+
+		               1(DD..DD)(LL..LL)   16 bits
+		               │└──┬───┘└──┬───┘
+		               │   │       └────── Length - 3
+		               │   └────────────── Distance - 1
+		               └─ Flag
+
+		where the sequence (DD..DD)(LL..LL) uses exactly 15 bits. The 16-bit
+		mask (0x8000) determines whether a token represents a {length,distance}
+		pair. Other char codes transparently represent incoming bytes left intact
+		during compression.
+
+		The respective bitlength of (DD..DD) vs. (LL..LL) is determined dynamically
+		with respect to internal options bounded by these absolute min/max ranges:
+
+		     ABSOLUTE              ZDeflate      DEFLATE
+		      BOUNDARY             Support*      Spec.
+		     ------------------------------------------------
+		     Min. Match Length      3             3
+		     Max. Match Length      258           258
+		     Max. Match Distance    16384         32768
+		     ------------------------------------------------
+		     * ZDeflate also limits to 15 bits the internal
+		       representation of maxLen|maxDis, which makes
+		       these two maxima interdependent.
+
+		Internal Encoding and Ranges:
+		  ---------------------------------------------------
+		   CATEGORY | RAW VALUE |  TOKEN CHARCODE  |  SYMBOL
+		  ---------------------------------------------------
+		  Literals  |  0-255    |    RAW VALUE     |   0-255   LL
+		  EOB       |   ---     |       ---        |    256    LL
+		  Lengths   |  3-255    |  1...(LL..LL)¹   | 257-285³  LL
+		  Distances |  1-16384  |  1(DD..DD)...²   |   0-29⁴   DS
+		  ---------------------------------------------------
+		   ¹  (LL..LL) is the binary LOW part of the {L,D}
+		      token (see above.)
+		   ²  (DD..DD) is the binary HIGH part of the {L,D}
+		      token (see above.)
+		   ³  Symbols come from ~.L2SY (3..258)=>(257..285).
+		      The static LL map also include the symbols 286,287
+		      (specified but not used.)
+		   ⁴  Symbols comes from ~.D2SY (1..16384)=>(0..29)
+		      Symbols 30,31 exist in the alphabet but “will never
+		      actually occur”.
+
+		In practice, we found that pre-setting max_length = 10
+		and max_dist = 4096 still results in very decent compression
+		ratio (~40%) in optimal time, at least with random ‘lorem-
+		ipsum’ ASCII streams.
+		
+		If you want to play with other options, make your client
+		code refine the private `µ['~'].RCMP.OPS` object. Just
+		be sure that the resulting `(DD..DD)(LL..LL)` encoding
+		won't require more than 15 bits.
+		
+		Finally, remember that the internal compressor and all its
+		dependencies are completely bypassed for streams > 2K if
+		`app.packageUCF` is available, which is usually the case
+		in an InDesign script. Set the `ForceInternal` property
+		to 1 if you want to forcibly disable this 'external' tool.
 
 	*/
 
 	//==========================================================================
-	// CONSTANT DATA
+	// COMMON ZInflate/ZDeflate TOOLS
+	//==========================================================================
+
+	#include 'ZDeflateInflate/$$.common.jsxinc'
+
+	//==========================================================================
+	// CANONICAL HUFFMAN CODE MAPS (STATIC) & SYMBOLS
+	// LLMP  DSMP  L2SY  D2SY()
 	//==========================================================================
 
 	[PRIVATE]
-	
+
 	({
-		// Bit-Length-Order (shared w/ inflate.)
-		//----------------------------------
-		BLOR: Array( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 ),
-		BLSZ: 19,
 
-		// Enums.
+		// Static LITERAL/LENGTH Map :: 0..287 => binstr (7 to 9 bit chars)
 		//----------------------------------
-		ESTO: 0,                                  // Stored block.
-		ESTA: 1,                                  // Static trees.
-		EDYN: 2,                                  // Dynamic trees.
-
-		// Constants.
-		//----------------------------------
-		WMEM: 32768/4,                            // Base window size (8KB) ; optimized for ExtendScript performance.
-		DLIT: 257,                                // 1 + (Number of literals.)
-		MMIN: 3,                                  // Min. match length ; the max. length is fixed to 258.
-		// ---
-		ZR36: 16,                                 // REP_3_6      (code for 3 <= count <= 6)
-		ZR3A: 17,                                 // REPZ_3_10    (code for 3 <= count <= 10)
-		ZR11: 18,                                 // REPZ_11_138  (code for 11 <= count <= 138)
-
-		// Default compression settings.
-		//----------------------------------
-		FULL: true,                               // Full search.
-	})
-	
-	//==========================================================================
-	// BASIC TOOLS
-	//==========================================================================
-	
-	[PRIVATE]
-	
-	({
-		REVB: function(/*int32*/code,/*0..32*/n,  r)
-		//----------------------------------
-		// (Bit-Reverse.) Reverse the first `n` bits from `code`.
+		LLMP:
 		{
-			r = 0;
-			do{ r |= 1&code ; code >>= 1 ; r <<= 1 } while( 0 < --n );
-			return r >> 1;
+			// DEFLATE spec:     LL SYMBOL  CL(bits)
+			//                   ------------------
+			//                    0-143     8
+			//                    144-255   9
+			//                    256-279   7
+			//                    280-287   8
+			//                   ------------------
+			0:"00110000", 1:"00110001", 2:"00110010", 3:"00110011", 4:"00110100", 5:"00110101", 6:"00110110", 7:"00110111", 8:"00111000",
+			9:"00111001", 10:"00111010", 11:"00111011", 12:"00111100", 13:"00111101", 14:"00111110", 15:"00111111", 16:"01000000",
+			17:"01000001", 18:"01000010", 19:"01000011", 20:"01000100", 21:"01000101", 22:"01000110", 23:"01000111", 24:"01001000",
+			25:"01001001", 26:"01001010", 27:"01001011", 28:"01001100", 29:"01001101", 30:"01001110", 31:"01001111", 32:"01010000",
+			33:"01010001", 34:"01010010", 35:"01010011", 36:"01010100", 37:"01010101", 38:"01010110", 39:"01010111", 40:"01011000",
+			41:"01011001", 42:"01011010", 43:"01011011", 44:"01011100", 45:"01011101", 46:"01011110", 47:"01011111", 48:"01100000",
+			49:"01100001", 50:"01100010", 51:"01100011", 52:"01100100", 53:"01100101", 54:"01100110", 55:"01100111", 56:"01101000",
+			57:"01101001", 58:"01101010", 59:"01101011", 60:"01101100", 61:"01101101", 62:"01101110", 63:"01101111", 64:"01110000",
+			65:"01110001", 66:"01110010", 67:"01110011", 68:"01110100", 69:"01110101", 70:"01110110", 71:"01110111", 72:"01111000",
+			73:"01111001", 74:"01111010", 75:"01111011", 76:"01111100", 77:"01111101", 78:"01111110", 79:"01111111", 80:"10000000",
+			81:"10000001", 82:"10000010", 83:"10000011", 84:"10000100", 85:"10000101", 86:"10000110", 87:"10000111", 88:"10001000",
+			89:"10001001", 90:"10001010", 91:"10001011", 92:"10001100", 93:"10001101", 94:"10001110", 95:"10001111", 96:"10010000",
+			97:"10010001", 98:"10010010", 99:"10010011", 100:"10010100", 101:"10010101", 102:"10010110", 103:"10010111", 104:"10011000",
+			105:"10011001", 106:"10011010", 107:"10011011", 108:"10011100", 109:"10011101", 110:"10011110", 111:"10011111", 112:"10100000",
+			113:"10100001", 114:"10100010", 115:"10100011", 116:"10100100", 117:"10100101", 118:"10100110", 119:"10100111", 120:"10101000",
+			121:"10101001", 122:"10101010", 123:"10101011", 124:"10101100", 125:"10101101", 126:"10101110", 127:"10101111", 128:"10110000",
+			129:"10110001", 130:"10110010", 131:"10110011", 132:"10110100", 133:"10110101", 134:"10110110", 135:"10110111", 136:"10111000",
+			137:"10111001", 138:"10111010", 139:"10111011", 140:"10111100", 141:"10111101", 142:"10111110", 143:"10111111", 144:"110010000",
+			145:"110010001", 146:"110010010", 147:"110010011", 148:"110010100", 149:"110010101", 150:"110010110", 151:"110010111", 152:"110011000",
+			153:"110011001", 154:"110011010", 155:"110011011", 156:"110011100", 157:"110011101", 158:"110011110", 159:"110011111", 160:"110100000",
+			161:"110100001", 162:"110100010", 163:"110100011", 164:"110100100", 165:"110100101", 166:"110100110", 167:"110100111", 168:"110101000",
+			169:"110101001", 170:"110101010", 171:"110101011", 172:"110101100", 173:"110101101", 174:"110101110", 175:"110101111", 176:"110110000",
+			177:"110110001", 178:"110110010", 179:"110110011", 180:"110110100", 181:"110110101", 182:"110110110", 183:"110110111", 184:"110111000",
+			185:"110111001", 186:"110111010", 187:"110111011", 188:"110111100", 189:"110111101", 190:"110111110", 191:"110111111", 192:"111000000",
+			193:"111000001", 194:"111000010", 195:"111000011", 196:"111000100", 197:"111000101", 198:"111000110", 199:"111000111", 200:"111001000",
+			201:"111001001", 202:"111001010", 203:"111001011", 204:"111001100", 205:"111001101", 206:"111001110", 207:"111001111", 208:"111010000",
+			209:"111010001", 210:"111010010", 211:"111010011", 212:"111010100", 213:"111010101", 214:"111010110", 215:"111010111", 216:"111011000",
+			217:"111011001", 218:"111011010", 219:"111011011", 220:"111011100", 221:"111011101", 222:"111011110", 223:"111011111", 224:"111100000",
+			225:"111100001", 226:"111100010", 227:"111100011", 228:"111100100", 229:"111100101", 230:"111100110", 231:"111100111", 232:"111101000",
+			233:"111101001", 234:"111101010", 235:"111101011", 236:"111101100", 237:"111101101", 238:"111101110", 239:"111101111", 240:"111110000",
+			241:"111110001", 242:"111110010", 243:"111110011", 244:"111110100", 245:"111110101", 246:"111110110", 247:"111110111", 248:"111111000",
+			249:"111111001", 250:"111111010", 251:"111111011", 252:"111111100", 253:"111111101", 254:"111111110", 255:"111111111", 256:"0000000",
+			257:"0000001", 258:"0000010", 259:"0000011", 260:"0000100", 261:"0000101", 262:"0000110", 263:"0000111", 264:"0001000",
+			265:"0001001", 266:"0001010", 267:"0001011", 268:"0001100", 269:"0001101", 270:"0001110", 271:"0001111", 272:"0010000",
+			273:"0010001", 274:"0010010", 275:"0010011", 276:"0010100", 277:"0010101", 278:"0010110", 279:"0010111", 280:"11000000",
+			281:"11000001", 282:"11000010", 283:"11000011", 284:"11000100", 285:"11000101", 286:"11000110", 287:"11000111"
 		},
 
-		HASH: function(/*int*/x,/*int*/y)
+		// Static DISTANCE Map :: 0..29 => binstr (5 bit chars)
 		//----------------------------------
-		// (Hash.) Hash routine.
-		// => int
+		DSMP:
 		{
-			return callee.MASK & ( ( x << callee.SHFT ) ^ ( 0xFF & y ) );
-		}
-		.setup({ MASK:-1, SHFT:-1 }),
+			// DEFLATE spec:     DS SYMBOL  CL(bits)
+			//                   ------------------
+			//                    0-29      5
+			//                   ------------------
+			0:"00000", 1:"00001", 2:"00010", 3:"00011", 4:"00100", 5:"00101", 6:"00110", 7:"00111", 8:"01000",
+			9:"01001", 10:"01010", 11:"01011", 12:"01100", 13:"01101", 14:"01110", 15:"01111", 16:"10000",
+			17:"10001", 18:"10010", 19:"10011", 20:"10100", 21:"10101", 22:"10110", 23:"10111", 24:"11000",
+			25:"11001", 26:"11010", 27:"11011", 28:"11100", 29:"11101"
+		},
 
-		INSH: function(/*arr*/win,/*arr&*/dic,/*uint*/beg,/*fct*/hash,  x,r)
+		L2SY: String.fromCharCode.apply(0,
 		//----------------------------------
-		// (Insert-Hash.) Insert the string in the dictionary and set match head
-		// to the previous head of the hash chain (the most recent string with
-		// same hash key). Return the hash head.
-		// [REM] All calls to this method are made with consecutive input chars
-		// and the first MIN_MATCH bytes of the string are valid (except for the
-		// last MIN_MATCH-1 bytes of the input file).
-		// => uint
+		// `L2SY.charCodeAt(len)` returns the Length Symbol (lsym) for length `len` (3 <= len <= 258) => 257..285
+		// [REM] Lengths 0,1,2 are not used.
+		[0,0,0,
+		257,258,259,260,261,262,263,264,265,265,266,266,267,267,268,268,269,269,269,269,270,270,270,270,271,271,271,271,272,272,272,272,
+		273,273,273,273,273,273,273,273,274,274,274,274,274,274,274,274,275,275,275,275,275,275,275,275,276,276,276,276,276,276,276,276,
+		277,277,277,277,277,277,277,277,277,277,277,277,277,277,277,277,278,278,278,278,278,278,278,278,278,278,278,278,278,278,278,278,
+		279,279,279,279,279,279,279,279,279,279,279,279,279,279,279,279,280,280,280,280,280,280,280,280,280,280,280,280,280,280,280,280,
+		281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,281,
+		282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,282,
+		283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,283,
+		284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,284,285]
+		),
+
+		D2SY: function(/*1..16383*/d,  k,r)
+		//----------------------------------
+		// Returns the Dist Symbol (dsym) for distance 'd' (1 <= d <= 32768)
+		// this :: any
+		// => 0..29
 		{
-			x = callee.DX + ( callee.POS = hash(callee.POS, win[callee.DW+beg]) );
-			
-			r = dic[callee.WMASK&beg] = dic[x];
-			dic[x] = beg;
+			// Code Bits Dist     Code Bits   Dist        Code Bits Distance
+			// ---- ---- ----     ---- ----  ------       ---- ---- --------
+			//   0   0    1        10   4     33-48       20    9   1025-1536
+			//   1   0    2        11   4     49-64       21    9   1537-2048
+			//   2   0    3        12   5     65-96       22   10   2049-3072
+			//   3   0    4        13   5     97-128      23   10   3073-4096
+			//   4   1   5,6       14   6    129-192      24   11   4097-6144
+			//   5   1   7,8       15   6    193-256      25   11   6145-8192
+			//   6   2   9-12      16   7    257-384      26   12  8193-12288
+			//   7   2  13-16      17   7    385-512      27   12 12289-16384
+			//   8   3  17-24      18   8    513-768      28   13 16385-24576
+			//   9   3  25-32      19   8   769-1024      29   13 24577-32768
+
+			if (d <= 4) return d - 1;
+			r = callee[k='_'+d] || ( callee[k] = 4*(d<7) || 5*(d<9) || 6*(d<13) || 7*(d<17) || 8*(d<25) ||
+				9*(d<33) || 10*(d<49) || 11*(d<65) || 12*(d<97) || 13*(d<129) || 14*(d<193) || 15*(d<257) ||
+				16*(d<385) || 17*(d<513) || 18*(d<769) || 19*(d<1025) || 20*(d<1537) || 21*(d<2049) || 22*(d<3073) ||
+				23*(d<4097) || 24*(d<6145) || 25*(d<8193) || 26*(d<12289) || 27*(d<16385) || 28*(d<24577) || 29 );
 			return r;
-		}
-		.setup({ DX:µ['~'].WMEM, DW:-1+µ['~'].MMIN, POS:0, WMASK:-1+µ['~'].WMEM }),
-
-		READ: function(/*arr&*/buf,/*int*/off,/*int*/len,  p,s,n,i)
-		//----------------------------------
-		// (Read-to-Buffer.) Read string data into the buffer and return the
-		// number of chars actually read (at most `len`.)
-		// => int
-		{
-			for( p=callee.POS, n=(s=callee.DATA).length, i=-1 ; ++i < len && p < n ; buf[i+off]=255&s.charCodeAt(p++) );
-			return (callee.POS=p), i;
-		}
-		.setup({ DATA:'', POS:0, TIMER:0 }),
-
-		OUTB: function(/*int8*/x,  a,dp,n,q,t,i)
-		//----------------------------------
-		// (Output-Byte.) Output a 8-bit value into the queue-buffer.
-		// => undef
-		{
-			(a=callee.OBUF)[ (dp=callee.OFF) + callee.POS++ ] = x;
-			if( (n=callee.ODIM) != dp + callee.POS ) return;
-
-			// Queue.
-			// ---
-			(q=callee.FREE) ? (callee.FREE=q.next) : (q={ ptr:Array(n) });
-			q.next = q.size = q.off = 0;
-			callee.TAIL = (t=callee.TAIL) ? (t.next=q) : (callee.HEAD=q);
-
-			for( n=q.size=callee.POS-dp, i=-1 ; ++i < n ; q.ptr[i]=a[i+dp] );
-
-			callee.POS = callee.OFF = 0;
-		}
-		.setup({ OBUF:false, ODIM:0, OFF:0, POS:0, HEAD:false, TAIL:false, FREE:false }),
-		
-		ADLR: function(/*str*/s,/*?uint16*/seed,  a,b,n,i,mn)
-		//----------------------------------
-		// (Adler32.) Compute Adler-32 checksum as defined in RFC 1950.
-		// Used by zlib format for data integrity verification.
-		// [ADD190420] Enhanced for zlib compliance.
-		// => uint32
-		{
-			( seed && 'number'==typeof seed ) || (seed=0);
-			a = seed ? (0xFFFF&seed) : 1;
-			b = seed ? (seed >>> 16) : 0;
-
-			for( mn=0, n=s.length, i=-1 ; ++i < n ; )
-			{
-				3850 > (mn=n-i) || (mn=3850);
-				for( mn+=i ; i < mn ; b += (a+=0xFF&s.charCodeAt(i++)) );
-				a = (15*(a>>>16)+(a&65535));
-				b = (15*(b>>>16)+(b&65535));
-			}
-
-			return ((b%65521) << 16) | (a%65521);
 		},
 
 	})
 
 	//==========================================================================
-	// SLIDING WINDOW
+	// LZ-ALGO : FIND LONGEST PREFIX LENGTH/DISTANCE
+	// (Just an approximation of LZ77: that's the best we can do in ExtendScript)
 	//==========================================================================
 
 	[PRIVATE]
-	
+
 	({
 
-		FILL: function(/*uint*/idx,/*fct*/fRead,/*?int*/mPos,  q,eof,DLT,WSZ,MNL,IMX,HSZ,w,dic,lka,i,t,x)
+		PRFX: function(/*str*/input,/*uint*/index,/*uint*/maxLen,/*uint*/maxDis,/*3<=uint*/minLen,  x,y,q,n,p,z,B,ko,md,r)
 		//----------------------------------
-		// (Fill-Window.) Fill the window when the lookahead becomes insufficient.
-		// Updates start index with respect to the supplied idx. Updates lookahead
-		// (LOOK), and sets EOF if end of input. (At least two bytes are read.)
-		// Return updated match pos.
-		// => int [UPDATED MATCH START]
+		// (Find-Longest-Prefix.)
+		// Given input :: "...<queue>" -- where <queue> := input.slice(index,index+maxLen) --
+		// find the longest <queue> prefix already available BEFORE index.
+		// The highest index pos (< index) is then considered: return the {dist,len} of
+		// the match, where `dist` is the positive distance from index (i.e. `index-pos`)
+		// and `len` the match length (<= maxLen).
+		// this :: ~
+		// => { dist:1..maxDis, len:3..maxLen }& [OK]  |  0 [KO]
 		{
-			(q=callee).IDX = idx;
-			if( eof=q.EOF ) return mPos||0;
+			maxDis > index && (maxDis=index); // Sanitize maxDis
 
-			DLT = q.DELTA;
-			WSZ = q.WDIM;
-			MNL = q.MIN_LOOK;
-			IMX = q.IDX_MAX;
-			HSZ = q.H_SIZE;
+			// Left-shift and reduce input to the minimum area (~2X faster)
+			// Rem: `index-maxDis` is the lowest allowed position (absolue)
+			y = index + maxLen;
+			0 < (x=index-maxDis) && ( index-=x );                          // index is now the 0-index relative to the reduced input
+			( 0 < x || y < input.length ) && (input=input.slice(x,y));
 
-			lka = q.LOOK;
-			for( w=q.WIN, dic=q.PRV ; lka < MNL && (!eof) ; ( eof = 0 >= (i=fRead(w,idx+lka,x)) ) || (lka+=i) )
+			// Queue and 'actual max length' (n)
+			q = input.slice(index);                                        // <queue> portion (limited to maxLen but could be shorter!)
+			if( minLen > (n=q.length) ) return 0;                          // Not enough characters in input to satisfy minLen.
+
+			y = index-1;                                                   // highest allowed index (used in lastIndexOf), avoids recalculation
+			x = input.lastIndexOf(q.slice(0,minLen),y);                    // x :: previous index of the minimum match, or -1.
+			if( 0 > x ) return 0;                                          // min_match not found before index --> KO (no need to investigate further)
+
+			// Tests have shown that pre-checking the *full* match via
+			// `input.lastIndexOf(q,y)` tends to slow down the algorithm.
+			// Better is to preset B := [ <min>, n ] when entering the loop.
+			// The full_match case (z=n) is still detected quickly.
+
+			for
+			(
+				ko=0, p=x, z=minLen,                                       // Preset exit state: minMatch at p=x, length z=1
+				B = [ z, n ] ;                                             // `B` represents [infSize,supSize] :: (tested,untested)
+
+				1 < B[1]-B[0] ;                                            // loop as long as a size exists between infSize and supSize
+
+				(
+				 ( ko = +(0 > (x=input.lastIndexOf(q.slice(0,md=(B[0]+B[1])>>>1),y))) ) // test the mid_match of size `md`: ko if not-found,
+				 || (p=x, z=md)                                                         // otherwise p=midIndex,z=midSize
+				),
+
+				B[ko]=md                                                   // ...and reduce the interval:
+			);
+
+			// So far, (p,z) is a known solution.
+			// - if ko==1, md is a KO supSize and infSize is good, nothing to do
+			// - if ko==0, md is a OK infSize and supSize hasn't been tested yet
+			//             this test is only relevant if B[1] > minLen
+			(!ko) && minLen < (md=B[1])
+			&& 0 <= (x=input.lastIndexOf(q.slice(0,md),y))
+			&& ( p=x, z=md ); // Better solution
+
+			// Return a volatile {dist,len} structure.
+			// ---
+			r = callee.Q || (callee.Q={ dist:0, len:0 });
+			return (r.dist=index-p), (r.len=z), r;
+		},
+
+		LZCF: function(/*uint=15*/maxLen,/*uint=auto*/maxDis,/*uint=3*/minLen,  mx,LBT)
+		//----------------------------------
+		// (Config-PRFX-Params) Validate input params for PRFX.
+		//  - maxLen :: 3..258    (def 15)
+		//  - maxDis :: 3..16384  (def 2047)
+		//  - minLen :: 3..maxLen (def 3)
+		// [REM] The storage of (maxLen,maxDis) should require at most 31 bits.
+		// this :: ~
+		// => { minLen, maxLen, maxDis, lenBits }  |  false [ERR] + .EMSG
+		{
+			// [CHG260204] maxlen and maxDis reflect actual maxima (e.g 258,16384)
+			// while *token encoding* only requires resp.
+			//   • mxLenCode = maxLen - 3
+			//   • mxDisCode = maxDis - 1
+			// (since maxLen>=3 AND maxDis >= 1).
+			// ---
+
+			const MIN_LEN = 3;      // Absolute minimum match length (minLen can be higher)
+			const MAX_LEN = 258;    // Absolute maximum match length (maxLen can be lower)
+			const MIN_DIS = 3;      // Absolute minimum value of maxDis (this is not the minimum distance per se)
+			const MAX_DIS = 16384;  // Absolute maximum value of maxDis
+
+			// Bit allocation logic
+			// ---
+			try
 			{
-				if( -1 == (x=WSZ-lka-idx) ){ x--; continue; }
-				if( idx < IMX ) continue;
-
-				// Shift.
+				(maxLen >>>= 0) || (maxLen=15);
+				if( maxLen < MIN_LEN || maxLen > MAX_LEN) throw __("Invalid parameter: `maxLen` (%1) must be between %2 and %3.",maxLen,MIN_LEN,MAX_LEN);
+				for( mx=maxLen-3, LBT=0 ; mx > ( 1 << ++LBT ) ; ); // [REM260204] maxLen :: 3+mxLenCode
 				// ---
-				for( i=-1 ; ++i < DLT ; w[i]=w[i+DLT] );
-				mPos -= DLT;
-				q.IDX = (idx -= DLT);
-				q.START -= DLT;
-
-				for( i=-1 ; ++i < HSZ ; (t=-DLT+dic[i+DLT]), (dic[i+DLT] = 0 <= t ? t : 0) );
-				for( i=-1 ; ++i < DLT ; (t=-DLT+dic[i]),     (dic[i]     = 0 <= t ? t : 0) );
-
-				x += DLT;
+				(maxDis >>>= 0) || ( maxDis=Math.min(MAX_DIS,1<<(15-LBT)) ); // [REM260204] maxDis :: 1+mxDisCode
+				if( maxDis < MIN_DIS || maxDis > MAX_DIS) throw __("Invalid parameter: `maxDis` (%1) must be between %2 and %3.",maxDis,MIN_DIS,MAX_DIS);
+				if( maxDis > (1<<(15-LBT)) ) throw __("Invalid parameter: `maxDis` (%1) cannot be greater than %2.",maxDis,1<<(15-LBT));
+				// ---
+				minLen = Math.max(MIN_LEN, minLen>>>0); // At least MIN_LEN
+				if( minLen > maxLen ) throw __("Invalid parameter: `minLen` (%1) cannot be greater than `maxLen` (%2).",minLen,maxLen);
 			}
-			q.LOOK = lka;
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				return false;
+			}
 
-			eof && (q.EOF=true);
-			return mPos||0;
+			return {
+				minLen: minLen,
+				maxLen: maxLen,
+				maxDis: maxDis,
+				lenBits: LBT,
+			};
 		}
 		.setup
 		({
-			DELTA:  µ['~'].WMEM,        // Local copy of window mem (avoid context dependency.)
-			WDIM:   2*µ['~'].WMEM,      // Total Window size.
-			MIN_LOOK: -1,               // fed from onEngine
-			IDX_MAX:  -1,               // fed from onEngine
-			// ---
-			H_SIZE:   -1,               // fed from DEFL
-			// ---
-			EOF:   true,
-			WIN:   false,
-			PRV:   false,
-			START: 0,
-			IDX:   0,
-			LOOK:  0,
+			EMSG: '',
 		}),
 
 	})
-	
+
 	//==========================================================================
-	// OUTPUT ROUTINES
+	// STATIC H-TREE COMPRESSION - BLOCK TYPE 1
+	// <IS_LAST> <BTYPE> <BITSTREAM>
 	//==========================================================================
 
 	[PRIVATE]
-	
+
 	({
 
-		OUTS: function(/*int16*/x,  fOB,dp,a)
+		DEFC: function(/*str*/data,/*uint=15*/maxLen,/*uint=auto*/maxDis,/*uint=auto*/minLen,  cfg,LBT,n,r,out,iSup,len,dis,i,c,cc,t)
 		//----------------------------------
-		// (Output-Short.) Output a 16-bit value [LO,HI].
+		// (Default-Static-Compression.) Fastest LZ Compression for static Huffman encoding,
+		// bypassing frequency collection.
+		// {str}  data    String formed of 8-bit characters: \x00 <= data[i] <= \xFF
+		// {uint} maxLen  Max length of a match (3..258). Default: 15.
+		// {uint} maxDis  Max distance of a match (3..16384). Default: auto.
+		//                This implementation reduces the upper bound [DEFLATE spec says 32768].
+		// {uint} minLen  Min length of a match (3..maxLen). Default: 3.
+		// {obj} ret
+		//       {
+		//       tokens:     string of compressed tokens, <length:distance> being encoded
+		//                   as a single UTF16 char in \(0x8000|((dis-1)<<LBT)|(len-3)) form.
+		//       lenBits:    Number of len bits used in <length:distance> tokens.
+		//       }
+		// ---
+		// this :: ~
+		// => { tokens:str, lenBits:uint }  |  INTERNAL_ERR
 		{
-			x &= 0xFFFF;
-			fOB = this.OUTB;
+			const CHR = String.fromCharCode;
 
-			if( 2+(dp=fOB.OFF)+fOB.POS < fOB.ODIM )
+			// LZ-config and data structure
+			// ---
+			const LZ = this.PRFX; // Find-longest-prefix algo
+			(cfg=this.LZCF(maxLen,maxDis,minLen)) || error( __("Internal %1 error: %2",callee.µ,this.LZCF.EMSG), callee );
+			// ---
+			minLen = cfg.minLen;
+			maxLen = cfg.maxLen;
+			maxDis = cfg.maxDis;
+			LBT = cfg.lenBits;
+
+			n = data.length;
+			r = { lenBits: LBT };
+
+			// Main compression loop
+			// ---
+			for( out=data.slice(0,i=minLen), iSup=n-minLen ; i < iSup ; out += c, i += len )
+			if( t=LZ(data, i, maxLen, maxDis, minLen) )
 			{
-				a = fOB.OBUF;
-				a[dp + fOB.POS++] = 0xFF&x;
-				a[dp + fOB.POS++] = x >>> 8;
+				// Match found -> <dis-1|len-3> token
+				len = t.len;
+				dis = t.dist;
+				c = CHR( 0x8000 | ((dis<<LBT)-1) | (len-3) );
 			}
-			else 
+			else
 			{
-				fOB(0xFF&x);
-				fOB(x >>> 8);
+				len = 1;
+				c = data.slice(i,1+i);
 			}
-		},
+			i < n && (out += data.slice(i));
 
-		QCPY: function(/*arr&*/buf,/*int*/off,/*int*/bfSize,  fOB,H,n,i,j,p,t,a)
-		//----------------------------------
-		// (Queue-Copy.) Copy the queue in this buffer at offset `off`.
-		// => uint
-		{
-			fOB = this.OUTB;
-
-			for( H=fOB.HEAD, n=0 ; H && 0 < (i=bfSize-n) ; n+=i )
-			{
-				i > H.size  && (i=H.size);
-
-				for( p=off+n, t=H.off, j=-1 ; ++j < i ; buf[p+j]=H.ptr[t+j] );
-
-				H.off += i;
-				if( H.size -= i ) continue;
-
-				fOB.HEAD = H = (t=H).next;
-				t.next = fOB.FREE;
-				fOB.FREE = t;
-			}
-
-			t = fOB.POS - fOB.OFF;
-			if( n == bfSize || 0 >= t ){ return n; }
-
-			(i=bfSize-n) > t && (i=t);
-
-			for( a=fOB.OBUF, t=fOB.OFF, p=off+n, j=-1 ; ++j < i ; buf[p+j] = a[t+j] );
-			n += i;
-			fOB.POS == (fOB.OFF+=i) && (fOB.POS=fOB.OFF=0);
-
-			return n;
-		},
-
-		SNDB: function(/*int|obj*/x,/*int|falsy*/n,  d,bs)
-		//----------------------------------
-		// (Send-Bits.) If `n` is falsy, `x` MUST be a code node and then the pair
-		// ( x=x.fc , n=x.dl ) is used instead.
-		// [REM] callee.BDIM (size of the bit buffer) can be 24 (?)
-		// => <this>
-		{
-			n || ((n=x.dl),(x=x.fc));
-
-			callee.BBUF |= (x << (bs=callee.BSHIFT));
-			if( bs <= (d=callee.BDIM-n) ){ callee.BSHIFT+=n; return this; }
-
-			this.OUTS(callee.BBUF);
-			callee.BBUF = x >> (callee.BDIM - bs);
-			callee.BSHIFT -= d;
-			return this;
-		}
-		.setup({ BBUF:0, BDIM:16, BSHIFT:0, }),
-
-		SEND: function(/*tree*/T,/*int*/maxCode,/*tree*/BL,  nx,pv,mx,mn,k36,k3A,k11,n,i,cur)
-		//----------------------------------
-		// (Send-Tree.) Send a literal or distance tree in compressed form,
-		// using the codes from BL tree.
-		// => undef
-		{
-			(nx=T[0].dl) ? ((mx=7),(mn=4)) : ((mx=138),(mn=3));
-
-			k36 = this.ZR36; // 16
-			k3A = this.ZR3A; // 17
-			k11 = this.ZR11; // 18
-
-			for( n=0, pv=i=-1 ; ++i <= maxCode ; )
-			{
-				cur = nx;
-				nx = T[1+i].dl;
-				if( ++n < mx && cur == nx ) continue;
-
-				if( n < mn )
-				{
-					do{ this.SNDB(BL[cur]) }while( --n );
-				}
-				else if( cur )
-				{
-					cur != pv && (this.SNDB(BL[cur]),--n);
-					this.SNDB(BL[k36]).SNDB(-3+n, 2);
-				}
-				else if( n <= 10 )
-				{
-					this.SNDB(BL[k3A]).SNDB(-3+n, 3);
-				}
-				else 
-				{
-					this.SNDB(BL[k11]).SNDB(-11+n, 7);
-				}
-
-				n = 0;
-				pv = cur;
-				mn = 3;
-				mx = (0==nx)*138 || (cur==nx)*6 || (++mn,7);
-			}
+			r.tokens = out + CHR(256); // Append EOB
+			return r;
 		},
 
 	})
 
 	//==========================================================================
-	// INNER PROCESS
+	// DYNAMIC H-TREE COMPRESSION (BLOCK TYPE 2)
+	// <IS_LAST> <BTYPE> <HLIT> <HDIST> <HCLEN> <clCodeLengths> <lldsCodeLengths> <BITSTREAM...>
 	//==========================================================================
 
 	[PRIVATE]
-	
+
 	({
 
-		MTCH: function(/*int*/curMatch,/*uint*/prvLen,/*cnst*/mxDIST,/*fct*/FW,  iBEG,iSUP,rMAX,mLIM,dic,MSK,len,i,w,dx,bef,end,sm,m,t)
-		//---------------------------------- (70%)
-		// (Longest-Match-Algo.) Set match start to the longest match starting at
-		// the given string and return its length. Matches shorter or equal to
-		// previous length are discarded, in which case the result is equal to prev
-		// length and match start is garbage.
+		PKMG: function(/*uint[]&*/symFreqs,/*uint<=32*/MAX_BITS,/*bool=0*/NEW_ARR,  INI,order,n,capa,flags,prv,cur,msk,i,iSup,z,p,q,hi,lo,nn,k,a)
+		//----------------------------------
+		// (Package-Merge.) Optimized Package-Merge for NonZero Frequencies (NZF).
+		// {arr}  freqs     UTF16-encoded frequencies for any symbol < symFreqs.length
+		//                  Each frequency must be in 0-0xFFFF.
+		//                  Implementation limit: `symFreqs` can contain *at most* 65535 NZFs.
+		// {uint} MAX_BITS  Maximum allowed code length <= 32
+		//                  Rem: with MAX_BITS bits, we can encode at most 2^MAX_BITS symbols.
+		//                  Implementation limit (<=32) for uint32 bit masking.
+		// {bool} NEW_ARR   If set, return a new array (keep symFreqs unchanged.)
+		//                  Default is FALSE since we usually don't keep original frequencies.
+		// The returned array (symFreqs or a new one) is then updated with the optimal CodeLength
+		// for each symbol (zero-frequency elements aren't modified). For convenience, an extra
+		// MAX_VAL property is set to the maximum length used.
 		// ---
-		// curMatch :: head of the hash chain for the current string (strstart) and its
-		//             distance is <= mxDIST, and prev_length >= 1
-		// prvLen   :: previous match length.
-		// => int
-		{
-			// iBEG  :: Init scan index.
-			// iSUP  :: Sup scan index (iBEG+258.)
-			// rMAX  :: Max result length (<= 258) -- depending on FULL and `nice` setting.
-			// ---
-			iSUP = 258+(iBEG=FW.IDX);
-			rMAX = this.FULL ? 258 : callee.NICE;
-
-			// Stop when current match becomes <= mLIM.
-			// Prevent matches with the string of win-index 0.
-			// [REM] mxDIST :: 32K - (1 + 258 + MMIN=3 )
-			// ---
-			0 < (mLIM=iBEG-mxDIST) || (mLIM=0);
-			
-			// len :: max hash chain length.
-			// ---
-			len = callee.MAX_CHAIN_LEN;
-			
-			// dx :: best match length so far (init. to the prev length.)
-			// ---
-			callee.GOOD <= (dx=prvLen) && (len >>= 2);                // already a good match => reduce length to save time
-
-			w = FW.WIN;
-			bef = w[-1+iBEG+dx];                                      // bef :: value at endscan-1
-			end = w[iBEG+dx];                                         // end :: value at endscan
-			sm = this.DINT.MATCH_START;
-
-			for( dic=FW.PRV, MSK=callee.MASK, i=iBEG, t=true ; len-- && t ; t = mLIM < (curMatch=dic[MSK&curMatch]) )
-			{
-				m = curMatch;
-				if( end!=w[m+dx] || bef!=w[-1+m+dx] || w[m]!=w[i] || w[++m]!=w[1+i] ) continue;
-
-				for(
-					i+=2, ++m ;
-					w[++i]==w[++m] && w[++i]==w[++m] && w[++i]==w[++m] && w[++i]==w[++m] &&
-					w[++i]==w[++m] && w[++i]==w[++m] && w[++i]==w[++m] && w[++i]==w[++m] &&
-					i < iSUP ;
-					);
-
-				t = i - iBEG;                         // length of the current match
-				i = iBEG;
-
-				if( t <= dx ) continue;               // too small
-				sm = curMatch;
-				if( (dx=t) >= rMAX ) break;           // long enough.
-				
-				bef = w[-1+iBEG+dx];
-				end = w[iBEG+dx];
-			}
-
-			this.DINT.MATCH_START = sm;
-			return dx;
-		}
-		.setup({ MASK:µ['~'].INSH.WMASK, GOOD:-1, NICE:-1 }),
-
-		IDSC: function(/*obj&*/desc,/*uint|false*/iDyn,/*uint|false*/iSta,/*arr*/xBits,/*uint*/xb,/*uint*/itm,/*uint*/mxLen,/*uint*/mxCde,  a,n,i)
-		//----------------------------------
-		// (Init-Descriptor.) Initialize a descriptor and create its inner
-		// trees (empty) with respect to the lengths iDyn and iStat.
+		// Example 1 - from <github.com/sellibitze/packagemerge-rs/blob/master/src/lib.rs>
+		//   PKMG( [1,1,2,4,8,16,32], 5 ) --> [5,5,5,5,3,2,1]
+		// Example 2 - from <create.stephan-brumme.com/length-limited-prefix-codes>
+		//   PKMG( [0,1,270,1,6,0,10,20,0], 4 ) --> [0,4,1,4,4,0,4,2,0]
 		// ---
-		// => callee
+		// this :: any
+		// => uint[]&  + .MAX_VAL ; The incoming array is returned w/ updated values (bit lengths).
+		//    | INTERNAL_ERR
 		{
-			a = desc.dyna = (n=iDyn||0) ? Array(n) : false;
-			for( i=-1 ; ++i < n ; a[i]={ fc:0, dl:0 } );
+			const CHR = String.fromCharCode;
 
-			a = desc.stat = (n=iSta||0) ? Array(n) : false;
-			for( i=-1 ; ++i < n ; a[i]={ fc:0, dl:0 } );
-			
-			desc.xbits = xBits||false;
+			// Implementation limit.
+			32 >= MAX_BITS
+			|| error( __("Internal %1 error: MAX_BITS (%2) too large. Should be <= 32.",callee.µ,MAX_BITS), callee ); // Should never happen in this module.
 
-			desc.xbase = xb||0;
-			desc.items = itm||0;
-			desc.maxlen = mxLen||0;
-			desc.maxcode = mxCde||0;
+			// 1. Extract NZFs and sort them, keeping track of OrderedNZFIndex => OriginalIndex.
+			// ---
+			NEW_ARR && (symFreqs=symFreqs.slice());
+			symFreqs.MAX_VAL = 0; // Init extra prop
+			// ---
+			for( INI=[], i=-1 ; ++i < symFreqs.length ; (k=symFreqs[i]) && (INI[INI.length]=CHR(k,i)) ); // INI :: `<fq><idx>`[]
 
-			return callee;
-		},
 
-		IBLK: function(/*false|obj&*/LD,/*?obj&*/DD,/*?obj&*/BD,  F,a,o,n,i)
-		//----------------------------------
-		// (Init-Block.) Initialize a new block. If LD is false -> full init.
-		// => undef
-		{
-			if( false===LD )
+			n = INI.length;                                                                              // n :: number of NZFs
+			if( 0===n ) return symFreqs;                                                                 // n==0 -> return [0...0] (unchanged)
+			if( 1===n ) return (symFreqs[INI[0].charCodeAt(1)]=1), (symFreqs.MAX_VAL=1), symFreqs;       // n==1 -> return [0...0, 1, 0...0] (single freq) [FIX260126]
+			// Ensure MAX_BITS is large enough to encode all symbols!
+			(n >>> MAX_BITS)
+			&& error( __("Internal %1 error: MAX_BITS (%2) too small. Should be >= %3.",callee.µ,MAX_BITS,(n<<1)), callee ); // Should never happen in this module.
+
+			for( INI.sort(), order='', i=-1 ; ++i < n ; order += INI[i].slice(1), INI[i]='\0'+INI[i].slice(0,1) ); // Don't use charAt
+
+			// ---
+			// {str} order ::  `<idxFq0><idxFq1>...`, where idxFq_i is the original symFreqs' index for index i in INI
+			// {arr} INI   ::  [ `\0<Fq0>`, `\0<Fq1>`, ... ]  Fqi <= '\uFFFF', each chunk has length 2.
+			// ---
+
+			capa = 2*n - 1;         // Maximum items in a binary tree with n leaves
+			flags = Array(capa);    // Bit flags tracking merge history
+
+			// 2. Main loop: build the package-merge tree level by level
+			for( prv=INI, z=0 ; ++z < MAX_BITS ; prv=cur ) // Rem: INI already covers level 0.
 			{
-				F = this.FLSH;
-				LD = F.LI_DESC;
-				DD = F.DI_DESC;
-				BD = F.BL_DESC;
+				// Next struct: merge of INI `\0<fqi>` and `<hi><lo>_`
 
-				// Reset all descriptors (fresh arrays.)
-				// ---
-				this.IDSC
-				(LD, this.HUFF.HEAP_SIZE, 2+this.COMP.LC_OFF, this.COMP.X_LENG, this.DLIT, this.COMP.LC_OFF, 15, 0)
-				(DD, 1+2*this.COMP.DB_DIM,  this.COMP.DB_DIM, this.COMP.X_DIST, 0,         this.COMP.DB_DIM, 15, 0)
-				(BD, 1+2*this.BLSZ,                    false, this.COMP.X_BL,   0,         this.BLSZ,         7, 0);
-
-				for( a=this.GBIT.BL_COUNT, i=-1 ; ++i <= 15 ; a[i]=0 );
-				o = LD.stat;
-				for( n=0 ; n <= 143 ; (o[n++].dl=8), a[8]++ );
-				for(     ; n <= 255 ; (o[n++].dl=9), a[9]++ );
-				for(     ; n <= 279 ; (o[n++].dl=7), a[7]++ );
-				for(     ; n <= 287 ; (o[n++].dl=8), a[8]++ );
-				this.GCOD(o, 1+this.COMP.LC_OFF, a);
-
-				o = DD.stat;
-				for( F=this.REVB, n=-1 ; ++n < this.COMP.DB_DIM ; (o[n].dl=5), o[n].fc=F(n,5) );
-			}
-
-			// Dynamic init.
-			// ---
-			for( a=BD.dyna, n=this.BLSZ,        i=-1 ; ++i < n ; a[i].fc=0 );
-			for( a=DD.dyna, n=this.COMP.DB_DIM, i=-1 ; ++i < n ; a[i].fc=0 );
-			for( a=LD.dyna, n=this.COMP.LC_OFF, i=-1 ; ++i < n ; a[i].fc=0 );
-			a[256].fc = 1; // End block
-
-			// Reset scalars.
-			// ---
-			o = this.FREQ;
-			o.FLAG_BIT= 1;
-			o.LAST_LITR = o.LAST_DIST = o.LAST_FLAG = o.FLAG_VAL = 0;
-			this.GBIT.STAT_LEN = this.GBIT.OPT_LEN = 0;
-		},
-
-		DOWN: function(/*tree*/T,/*int*/hid,/*heap&*/HP,/*arr*/DP,/*uint*/hLen,  v,i,x,y,xf,yf)
-		//----------------------------------
-		// (Down-Heap.) Restore the heap property by moving down the tree starting at `hid`,
-		// exchanging a node with the smallest of its children if necessary, stopping when
-		// the heap property is re-established (each parent smaller than its children.)
-		// => undef
-		{
-			// T        :: the tree to restore
-			// hid      :: node to move down
-			// hid << 1 :: left son of hid
-			// HP       :: heap structure.
-			// DP       :: associated depth array.
-
-			for( v=HP[hid], i=hid << 1 ; i <= hLen ; i <<= 1 )
-			{
-				// Set i to the smallest of the two children. (Use the depth tree as tie
-				// breaker when subtrees have equal frequency; minimizes the worst case length.)
-				// ---
-				i < hLen
-				&& ( (xf=T[x=HP[1+i]].fc) < (yf=T[y=HP[i]].fc) || ( xf==yf && DP[x] <= DP[y] ) )
-				&& ++i;
-
-				// Exit if v is smaller than both children.
-				// ---
-				if( (xf=T[x=v].fc) < (yf=T[y=HP[i]].fc) || ( xf==yf && DP[x] <= DP[y] ) ) break;
-
-				// Exchange v with the smallest child.
-				// ---
-				HP[hid] = HP[i];
-				hid = i;
-			}
-
-			HP[hid] = v;
-		},
-
-		GCOD: function(/*tree&*/T,/*int*/maxCode,/*uint[16]*/BLC,  q,c,i,F)
-		//----------------------------------
-		// (Gen-Codes.) Generate codes for that tree and bit counts (needn't be
-		// optimal.) `maxCode` is the largest code with nonzero frequency ;
-		// the array `BLC` already contains bit-length counts for that tree,
-		// the `.dl` key is already set for all elements. This function then
-		// sets the `.fc` key (code) for all elements of nonzero code length.
-		// => undef
-		{
-			// Distrib counts are first used to generate codes w/o bit reversal.
-			// [REM] Optim: the cached array (length=16) is filled at each call.
-			// ---
-			for( q=callee.Q, c=i=0 ; ++i <= 15 ; q[i]=c=((c + BLC[-1+i]) << 1) );
-			
-			// Reverse the bits.
-			// ---
-			for( F=this.REVB, i=-1 ; ++i <= maxCode ; (c=T[i].dl)&&(T[i].fc=F(q[c]++,c)) );
-		}
-		.setup({ Q:Array(16) }),
-
-		GBIT: function(/*obj&*/desc,/*heap*/HP,/*uint*/h,  q,hSup,DT,XT,ST,b,c,l,n,m,i,x,t,ovf)
-		//----------------------------------
-		// (Gen-Bit-Lengths.) Compute the optimal bit lengths for a tree and
-		// update the total bit length for the current block.
-		// [REM] Frequencies and parents are already set; heap[heapMax] and above
-		// have already been sorted by increasing frequency. This function then
-		// sets the field size to the optimal bit length, and makes `BL_COUNT`
-		// host the frequencies for each bit length. The optimal length is also
-		// updated; and static length is updated if stat is not null.
-		// => uint[16]  (BL_COUNT)
-		{
-			q = callee.BL_COUNT;
-
-			hSup = this.HUFF.HEAP_SIZE
-			HP = this.HUFF.HEAP;
-			
-			DT = desc.dyna;
-			XT = desc.xbits;
-			ST = desc.stat;
-
-			// Preset counts to zero.
-			// ---
-			for( i=-1 ; ++i <= 15 ; q[i]=0 );
-
-			// Root of the heap.
-			// ---
-			DT[HP[h]].dl = 0;
-
-			// First pass: compute the optimal bit lengths (which
-			// may overflow in the case of the bit length tree.)
-			// ovf :: number of elements with bit length too large.
-			// h   :: heap index
-			// ---
-			for( b=desc.xbase, c=desc.maxcode, l=desc.maxlen, ovf=0 ; ++h < hSup ; )
-			{
-				l < (i=1+DT[DT[n=HP[h]].dl].dl) && ((i=l),++ovf);
-				
-				DT[n].dl = i;                     // Overwrite DT[n].dl (no longer needed.)
-				if( n > c ) continue;             // Not a leaf node.
-
-				q[i]++;                          // Increase counter.
-				x = n >= b ? XT[n-b] : 0;
-				callee.OPT_LEN += (t=DT[n].fc)*(i+x);       // Update the opt length.
-				ST && (callee.STAT_LEN += t*(x+ST[n].dl));   // Update the static length (if static tree.)
-			}
-			if( !ovf ) return q;
-
-			// [REF] This happens for example on obj2 and pic of the Calgary corpus.
-
-			// Find the 1st bit length which could increase.
-			// ---
-			for( ; 0 < ovf ; ovf -= 2 )
-			{
-				for( i=-1+l ; !q[i] ; i-- );
-				q[i]--;
-				q[1+i] += 2;
-				q[l]--;
-			}
-
-			// Recompute all bit lengths, scanning in increasing frequency.
-			// [REM] `h` is still equal to HEAP_SIZE. (It is simpler to reconstruct all
-			// lengths instead of fixing only the wrong ones.)
-			// ---
-			for( i=1+l ; --i ; )
-			{
-				for( n=q[i] ; n ; )
+				// Create pairs from previous level and append to INI  ;  pair :: `<hi><lo>_` (length==3)
+				for( cur=INI.slice(), iSup=prv.length-1, i=-2 ; iSup > (i+=2) ; cur.push(CHR(hi,lo)+'_') )
 				{
-					if( c < (m=HP[--h]) ) continue;
-					if( i != (t=DT[m].dl) )
+					p = prv[i];
+					q = prv[1+i];
+
+					hi = p.charCodeAt(0) + q.charCodeAt(0);
+					lo = p.charCodeAt(1) + q.charCodeAt(1);
+					lo > 0xFFFF && ( hi+=(lo>>>16), lo&=0xFFFF );
+				}
+				cur.sort();
+
+				// Process flags ; bit mask for this depth level is 1 << z
+				for( msk=1<<z, i=-1 ; ++i < cur.length ; 3==cur[i].length && (flags[i] |= msk) );
+			}
+
+			// 3. Backtracking phase: determine code lengths by tracing back through the tree
+			// ---
+			for( a=Array(n), nn=capa-1, z=MAX_BITS ; z-- > 0 && nn > 0 ; nn = 2*k )
+			for( msk=1<<z, k=0, i=-1 ; ++i < nn ; 0 === (msk&flags[i]) ? a[i-k]=1+(0|a[i-k]) : ++k );
+			// a :: [len0, len1...] corresponding to the n NZFs.
+			symFreqs.MAX_VAL = a[0];
+
+			// 4. Update original array and return.
+			for( i=-1 ; ++i < n ; symFreqs[order.charCodeAt(i)]=a[i] );
+
+			return symFreqs;
+		},
+
+		CLST: function(/*(0..15)[286+30]*/LL_DS,/*uint[19]&*/freqs,  r,n,i,z,di,sb,c,t)
+		//----------------------------------
+		// (Code-Lengths-Stream.) Generate the stream to encode while dealing with repeat
+		// codes 16,17,18 and *updating freqs[symbol] accordingly*.
+		// Rem: LL_DS is the concat of LL and DS code lengths, the symbols considered
+		//      here are 0..15 (CL symbols), i.e. the *values* found in LL_DS.
+		//  => <sym>(<xtra><xbits>)?[]     ; stream to encode
+		{
+			const CHR = String.fromCharCode;
+
+			for( r=Array(), n=LL_DS.length, i=0 ; i < n ; i += di )
+			{
+				sb = LL_DS[i]; // 0 <= sb <= 15
+
+				// z :: how many times `sb` occurs from here (z>=1)
+				for( z=1 ; (i+z) < n && sb===LL_DS[i+z] ; z++ );
+				di = z;
+
+				// Nonzero Case
+				// ---
+				if( sb )
+				{
+					freqs[sb]++;
+					r.push(c=CHR(sb));                                 // Emit the symbol alone
+					z--;                                               // Remaining count (may be 0 if single)
+
+					if( 3 <= z )                                       // At least 3 more times?
 					{
-						callee.OPT_LEN += (i-t)*DT[m].fc;
-						DT[m].fc = i;
+						6 < (t=z) && (t=6);                            // t = min(z,6) => t == 3|4|5|6 => 0 <= t-3 <= 3 (2bits)
+						freqs[16]++;
+						r.push(CHR(16,t-3,2));                         // Emit t×sb using symbol 16  (16,t-3,2)
+						z -= t;                                        // Remaining count
 					}
-					n--;
-				}
-			}
-			
-			return q;
-		}
-		.setup({ BL_COUNT:Array(16), OPT_LEN:-1, STAT_LEN:-1 }),
 
-		HUFF: function(/*obj&*/desc,  HP,DP,Dyn,Sta,n,o,hLen,h,c,i,j)
-		//----------------------------------
-		// (Build-Huffman-Tree.) Construct one Huffman tree and assigns the code bit
-		// strings and lengths. Update the total bit length for the current block.
-		// [REM] The frequency field is already set for all tree elements. This
-		// function sets the size and code fields to the optimal bit length and
-		// corresponding code. It also updates the opt. length, and static length
-		// if static stree is not null. `maxcode` is set too.
-		// => undef
-		{
-			HP = callee.HEAP;
-			DP = callee.DEPTH;
-			
-			Dyn = desc.dyna;
-			Sta = desc.stat;
-			n =   desc.items;
-
-			// Build the initial heap, with least frequent element in HP[SMALLEST].
-			// Children of HP[n] are HP[2*n] and HP[2*n+1] ; HP[0] is not used.
-			// ---
-			hLen = 0;
-			h = callee.HEAP_SIZE;
-			for( c=i=-1 ; ++i < n ; Dyn[i].fc ? (DP[HP[++hLen]=c=i]=0) : (Dyn[i].dl=0) );
-
-			// "The pkzip format requires that at least one distance code exists,
-			// and that at least one bit should be sent even if there is only one
-			// possible code. So to avoid special checks later on we force at least
-			// two codes of nonzero frequency."
-			// ---
-			for( o=this.GBIT ; hLen < 2 ; )
-			{
-				Dyn[i = HP[++hLen] = 2 > c ? ++c : 0].fc = 1;
-				DP[i] = 0;
-				o.OPT_LEN--;
-				Sta && (o.STAT_LEN -= Sta[i].dl);
-			}
-
-			desc.maxcode = c;
-
-			// The elements HP[heap_len/2+1 .. heap_len] are leaves,
-			// establish sub-heaps of increasing lengths.
-			// ---
-			for( i = hLen >> 1 ; i >= 1 ; this.DOWN(Dyn,i--,HP,DP,hLen) );
-
-			// Construct the Huffman tree by repeatedly combining the
-			// least two frequent nodes. [REM] The index of the
-			// smallest element is 1.
-			// ---
-			do
-			{
-				i = HP[1];
-				HP[1] = HP[hLen--];
-				this.DOWN(Dyn,1,HP,DP,hLen);
-				j = HP[1];
-				HP[--h] = i;
-				HP[--h] = j;
-				Dyn[n].fc = Dyn[i].fc + Dyn[j].fc;
-				DP[n] = DP[i] > 1+DP[j] ? DP[i] : (1+DP[j]);
-				Dyn[i].dl = Dyn[j].dl = n;
-				HP[1] = n++;
-				this.DOWN(Dyn,1,HP,DP,hLen);
-			}
-			while( hLen >= 2 );
-
-			HP[--h] = HP[1];
-			this.GCOD(Dyn, c, this.GBIT(desc,HP,h));
-		}
-		.setup({ HEAP_SIZE:-1, HEAP:false, DEPTH:false }), // Fed from onEngine
-
-		SCAN: function(/*tree&*/T,/*int*/maxCode,  nx,pv,mx,mn,k36,k3A,k11,BT,n,i,cur)
-		//----------------------------------
-		// (Scan-Tree.) Scan a literal or distance tree to determine the frequencies
-		// of the codes in the bit length tree. Updates the opt. len to take into
-		// account the repeat counts. (The contribution of the bit length codes will
-		// be added later during the construction of BL tree.)
-		// => undef
-		{
-			(nx=T[0].dl) ? ((mx=7),(mn=4)) : ((mx=138),(mn=3));
-			T[1+maxCode].dl = 0xFFFF; // guard
-
-			k36 = this.ZR36; // 16
-			k3A = this.ZR3A; // 17
-			k11 = this.ZR11; // 18
-
-			for( BT=this.FLSH.BL_DESC.dyna, n=0, pv=i=-1 ; ++i <= maxCode ; )
-			{
-				cur = nx;
-				nx = T[1+i].dl;
-				if( ++n < mx && cur == nx ) continue;
-				
-				if( n < mn )
-				{
-					BT[cur].fc += n;
-				}
-				else if( cur )
-				{
-					cur != pv && BT[cur].fc++;
-					BT[k36].fc++;
-				}
-				else
-				{
-					BT[n <= 10 ? k3A : k11].fc++;
+					for( ; 0 < z ; freqs[sb]++, r.push(c), z-- );      // Emit the remaing z×sb as singles.
+					continue;
 				}
 
-				n = 0;
-				pv = cur;
-				mn = 3;
-				mx = (0==nx)*138 || (cur==nx)*6 || (++mn,7);
-			}
-		},
-
-		FREQ: function(/*int|0*/dist,/*int*/lc,  F,LD,DD,osz,isz,c,n,a,dyn)
-		//----------------------------------
-		// (Tally-Frequencies.) Save the match info and tally the frequency counts.
-		// Return true if the current block has to be flushed.
-		// `lc` :: (match length - MIN_MATCH), or unmatched char if dist==0.
-		// => bool
-		{
-			F = this.COMP;
-			
-			LD = this.FLSH.LI_DESC;
-			DD = this.FLSH.DI_DESC;
-
-			callee.LITR_BUF[callee.LAST_LITR++] = lc;
-			if( 0 == dist )
-			{
-				LD.dyna[lc].fc++;                   // lc is the unmatched char
-			}
-			else 
-			{
-				// Here, lc is the match length - MIN_MATCH.
+				// Zero Case
 				// ---
-				dist--;                           // dist = match distance - 1
-				LD.dyna[ this.DLIT+F.LENG_CODE[lc] ].fc++;
-				DD.dyna[ 255&F.DIST_CODE[256>dist?dist:(256+(dist>>7))] ].fc++;
-
-				callee.DIST_BUF[callee.LAST_DIST++] = dist;
-				callee.FLAG_VAL |= callee.FLAG_BIT;
-			}
-
-			callee.FLAG_BIT <<= 1;
-			
-			// Output the flags if they fill a byte.
-			// ---
-			(7&callee.LAST_LITR) || ((callee.FLAGS[callee.LAST_FLAG++]=callee.FLAG_VAL),(callee.FLAG_VAL=0),(callee.FLAG_BIT=1));
-
-			// Try to guess if it is profitable to stop
-			// the current block here.
-			// [REM] TRY_GUESS is set to (2 < level).
-			// ---
-			if( callee.TRY_GUESS && !(0xFFF&callee.LAST_LITR) )
-			{
-				// Compute an upper bound for the compressed length.
-				// ---
-				isz = this.FILL.IDX - this.FILL.START;
-				for( dyn=DD.dyna, osz=8*callee.LAST_LITR, n=F.DB_DIM, a=F.X_DIST, c=-1 ; ++c < n ; osz += dyn[c].fc*(5+a[c]) );
-				osz >>= 3;
-				
-				// In           :: isz  ; Out          :: osz
-				// Percentage   :: 100-(osz*100/isz)
-				// ---
-				if( osz < parseInt(isz/2,10) && callee.LAST_DIST < parseInt(callee.LAST_LITR/2,10) ) return true;
-			}
-
-			return (callee.LAST_LITR == -1+(n=callee.DDIM)) || (n == callee.LAST_DIST);
-		}
-		.setup(
-		{
-			TRY_GUESS: true,
-			// ---
-			DDIM:      -1,
-			DIST_BUF:  false,
-			LITR_BUF:  false,
-			FLAGS:     false,
-			// ---
-			FLAG_BIT:  -1,
-			LAST_DIST: -1,
-			LAST_LITR: -1,
-			LAST_FLAG: -1,
-		}), // fed from DEFL
-
-		COMP: function(/*obj&*/LT,/*obj&*/DT,  LL,DB,DC,LB,LC,XL,XD,lbf,dbf,fgs,lx,dx,fx,fg,d,i,c,x)
-		//----------------------------------
-		// (Compress-Block.) Send the block data compressed using the given Huf-trees.
-		{
-			if( !(LL=this.FREQ.LAST_LITR) ){ this.SNDB(LT[256]); return; } // End block
-
-			DB = callee.DIST_BASE;
-			DC = callee.DIST_CODE
-
-			LB = callee.LENG_BASE;
-			LC = callee.LENG_CODE;
-
-			XD = callee.X_DIST;
-			XL = callee.X_LENG;
-			
-			lbf = this.FREQ.LITR_BUF;
-			dbf = this.FREQ.DIST_BUF;
-			fgs = this.FREQ.FLAGS;
-			lx = dx = fx = fg = 0;
-			do
-			{
-				(7&lx) ? (fg >>= 1) : (fg=fgs[fx++]);
-
-				i = 0xFF&lbf[lx++];
-
-				// Send a literal byte?
-				// ---
-				if( !(1&fg) ){ this.SNDB(LT[i]); continue; }
-
-				// Here i is the match length - MIN_MATCH.
-				// ---
-				this.SNDB( LT[this.DLIT+(c=LC[i])] );                    // send the length code.
-				(x=XL[c]) && this.SNDB(i-=LB[c], x);                // extra length bits?
-
-				d = dbf[dx++];                                      // send the distance code.
-				this.SNDB( DT[c=0xFF&(256>d?DC[d]:DC[256+(d>>7)])] );
-				(x=XD[c]) && this.SNDB(d-=DB[c], x);                // extra distance bits?
-			}
-			while( lx < LL );
-
-			this.SNDB(LT[256]); // End block
-		}
-		.setup(
-		{
-			// ExtraLength and ExtraDistance bits.
-			// ---
-			X_DIST: Array( 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13 ),
-			X_LENG: Array( 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0 ),
-
-			// Extra BL-Bits.
-			// ---
-			X_BL:   Array( 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 7 ),
-
-			// Other constant data -- fed from onEngine.
-			// ---
-			DIST_BASE:false, DB_DIM:30, DIST_CODE:false,             // Distance codes.
-			LENG_BASE:false, LB_DIM:29, LENG_CODE:false, LC_OFF:-1,  // Length codes.
-		}),
-
-		FLSH: function(/*int*/eof,/*fct*/FW,  BO,LD,DD,BD,d,i,mx,no,ns,c0,c1,t,w,a)
-		//----------------------------------
-		// (Flush-Block.) Determine the best encoding for the current block
-		// (dynamic trees, static trees, or store) and output the encoded
-		// block.
-		// => undef
-		{
-			BO = this.BLOR;
-			LD = callee.LI_DESC;
-			DD = callee.DI_DESC;
-			BD = callee.BL_DESC;
-
-			d = FW.IDX - FW.START;                      // Length of input block.
-
-			this.FREQ.FLAGS[this.FREQ.LAST_FLAG] = this.FREQ.FLAG_VAL;// Save the flags for the last 8 items.
-			this.HUFF(LD);                                            // Construct the literal tree.
-			this.HUFF(DD);                                            // Construct the distance tree.
-
-			// At this point, the opt. length and static length
-			// are the total bit lengths of the compressed block data,
-			// excl. the tree representations.
-			
-			// Construct the Huffman tree for the 'bit lengths' for the above
-			// two trees, and get the Bit-Length order of the last BL code to send.
-
-			this.SCAN(LD.dyna, LD.maxcode);             // Bit length frequency in literal tree.
-			this.SCAN(DD.dyna, DD.maxcode);             // Bit length frequency in dist. tree.
-			this.HUFF(BD);                                // Bit length descriptor.
-
-			// ---
-			// [REM] Opt. length now includes the length of the tree
-			// representations, except the lengths of the
-			// bit lengths codes and the 5+5+4 bits for the counts.
-			// ---
-
-			// Determine the number of bit length codes to send.
-			// "The pkzip format requires that at least 4 bit length codes
-			// be sent. (appnote.txt says 3 but the actual value used is 4.)"
-
-			for( a=BD.dyna, i=-1+this.BLSZ ; i >= 3 && !(a[BO[i]].dl) ; i-- );
-			t = (this.GBIT.OPT_LEN += (3*(1+i)+14)); // Update opt len to include the BL tree and counts.
-			mx = i;
-
-			// Determine the best encoding. Compute first the block
-			// length in bytes.
-			( (ns=(10+this.GBIT.STAT_LEN)>>3) <= (no=(10+t)>>3) ) && (no=ns);
-
-			if( d+4 <= no && FW.START >= 0 )          // Two words (+4) for the lengths.
-			{
-				// STORE block type.
-				// ---
-				this.SNDB((this.ESTO << 1) + eof, 3);
-				
-				// Align on byte boundary.
-				// ---
-				0 >= (t=this.SNDB).BSHIFT || ( 8 < t.BSHIFT ? this.OUTS : this.OUTB )(t.BBUF);
-				t.BBUF = t.BSHIFT = 0;
-
-				this.OUTS(d);
-				this.OUTS(~d);
-				
-				// Copy block.
-				// ---
-				for( w=FW.WIN, t=FW.START, i=-1 ; ++i < d ; this.OUTB(w[t+i]) );
-			}
-			else if( ns == no )
-			{
-				// STATIC block type.
-				// ---
-				this.SNDB((this.ESTA << 1) + eof, 3);
-				this.COMP(LD.stat, DD.stat);
-			}
-			else 
-			{
-				// DYNAMIC block type.
-				// ---
-				this.SNDB((this.EDYN << 1) + eof, 3);
-				// ---
-				// Send the header using dynamic Huffman trees: counts
-				// lengths of the bit length codes, literal and dist. trees.
-				// ---
-				c0 = LD.maxcode;                                   // c0 >= 256
-				c1 = DD.maxcode;                                   // c1 >= 0
-				this.SNDB(-256+c0, 5).SNDB(c1, 5).SNDB(-3+mx, 4);     // mx >= 3
-				for( a=BD.dyna, i=-1 ; ++i <= mx ; this.SNDB(a[BO[i]].dl, 3) );
-				this.SEND( LD.dyna, c0, BD.dyna );
-				this.SEND( DD.dyna, c1, BD.dyna );
-				// ---
-				this.COMP(LD.dyna, DD.dyna);
-			}
-
-			this.IBLK(LD,DD,BD);
-
-			if( !eof ) return;
-			
-			// Align on byte boundary.
-			// ---
-			//0 >= (t=this.SNDB).BSHIFT || ( 8 < t.BSHIFT ? this.OUTS : this.OUTB )(t.BBUF);
-			0 >= (t=this.SNDB).BSHIFT || this[ 8 < t.BSHIFT ? 'OUTS' : 'OUTB' ](t.BBUF);
-			t.BBUF = t.BSHIFT = 0;
-		}
-		.setup(
-		{
-			LI_DESC: { dyna:false, stat:false, xbits:false, xbase:0, items:0, maxlen:0, maxcode:0 },
-			DI_DESC: { dyna:false, stat:false, xbits:false, xbase:0, items:0, maxlen:0, maxcode:0 },
-			BL_DESC: { dyna:false, stat:false, xbits:false, xbase:0, items:0, maxlen:0, maxcode:0 },
-		}),
-
-		FAST: function(/*fct&*/FW,/*uint*/match,/*cnst*/mMIN,/*cnst*/mxDIST,/*cnst*/mxLAZY,/*fct*/fHash,  w,dic,fIns,lka,id,hh,t)
-		//----------------------------------
-		// (Deflate-Fast.) Processes a new input file.
-		// This function does not perform lazy evaluation of matches and inserts new
-		// strings in the dictionary only for unmatched strings or for short matches.
-		// It is used only for the fast compression options.
-		// => uint
-		{
-			w = FW.WIN;
-			dic = FW.PRV;
-			fIns = this.INSH;
-
-			while( (lka=FW.LOOK) && !this.OUTB.HEAD )
-			{
-				// Insert the string window[strstart .. strstart+2] in the
-				//  dictionary, and set hash head to the head of the hash chain.
-				// ---
-				hh = fIns(w,dic,id=FW.IDX,fHash);
-
-				// To simplify the code, we prevent matches with the string
-				// of window index 0 (in particular we have to avoid a match
-				// of the string with itself at the start of the input file).
-				// ---
-				if( hh != 0 && id - hh <= mxDIST )
+				for( ; 0 < z ; r.push(c), z-=t )
 				{
-					match = this.MTCH(hh,this.DINT.PREV_LEN,mxDIST,FW); // update this.DINT.MATCH_START
-					match > lka && (match=lka);
-				}
-
-				if( match >= mMIN )
-				{
-					t = this.FREQ(id - this.DINT.MATCH_START, match - mMIN);
-					lka -= match;
-					
-					// Insert new strings in the hash table only if the match
-					// length is not too large. Saves time but degrades compression.
-					// ---
-					if( match <= mxLAZY )
+					if( 11 <= z )                                      // At least 11X?
 					{
-						match--;
-						do{ ++id; fIns(w,dic,id,fHash); } while( --match );
-						++id;
+						138 < (t=z) && (t=138);                        // t = min(z,138) => t = 11|12|...|137|138  =>  0 <= t-11 <= 127 (7bits)
+						freqs[18]++;
+						c = CHR(18,t-11,7);                            // Emit t×sb using symbol 18  (18,t-11,7)
 					}
-					else 
+					else if( 3 <= z )                                  // At least 3X?
 					{
-						id += match;
-						match = 0;
-						fIns.POS = fHash(0xFF&w[id], w[1+id]);
-					}
-				}
-				else 
-				{
-					t = this.FREQ(0, 0xFF&w[id]);
-					--lka;
-					++id;
-				}
-
-				t && (this.FLSH(0,FW),(FW.START=id));
-
-				// Make sure that we always have enough lookahead, except
-				// at the end of the input file. We need MAX_MATCH bytes
-				// for the next match, plus MIN_MATCH bytes to insert the
-				// string following the next match.
-
-				FW.LOOK = lka;
-				this.DINT.MATCH_START = FW(id,this.READ,this.DINT.MATCH_START);
-			}
-			return match;
-		},
-
-		BTTR: function(/*fct&*/FW,/*uint*/match,/*cnst*/mMIN,/*cnst*/mxDIST,/*cnst*/mxLAZY,/*fct*/fHash,  w,dic,fIns,prev,far,lka,id,hh,t,p)
-		//----------------------------------
-		// (Deflate-Better.)
-		// => uint
-		{
-			w = FW.WIN;
-			dic = FW.PRV;
-
-			fIns = this.INSH;
-			prev = false;
-			far = callee.TOO_FAR;
-			while( (lka=FW.LOOK) && !this.OUTB.HEAD )
-			{
-				hh = fIns(w,dic,id=FW.IDX,fHash);
-
-				// Find the longest match, discarding those <= prev_length.
-				// ---
-				prev = match;
-				p = this.DINT.MATCH_START;
-				match = mMIN - 1;
-				if( hh != 0 && prev < mxLAZY && id - hh <= mxDIST )
-				{
-					match = this.MTCH(hh,prev,mxDIST,FW); // change this.DINT.MATCH_START
-					match > lka && (match=lka);
-					
-					// Ignore a length 3 match if it is too distant:
-					// If prev_match is also MIN_MATCH, match_start is
-					// garbage but we will ignore the current match anyway.
-					// ---
-					match == mMIN && (id-this.DINT.MATCH_START > far) && match--;
-				}
-
-				// If there was a match at the previous step and the
-				// current match is not better, output the previous match.
-				// ---
-				if( prev >= mMIN && match <= prev )
-				{
-					t = this.FREQ(-1+id-p, prev-mMIN);
-					
-					// Insert in hashtable all strings up to the end of
-					// the match (id-1 and id are already inserted.)
-					// ---
-					lka -= (-1+prev);
-					prev -= 2;
-					
-					// [REM] id never exceeds WSIZE-MAX_MATCH, so there
-					// are always MIN_MATCH bytes ahead. If lookahead < MIN_MATCH
-			 		// these bytes are garbage, but it does not matter since the
-					// next lookahead bytes will always be emitted as literals.
-					// ---
-					do{ id++; fIns(w,dic,id,fHash); }while( --prev );
-
-					this.DINT.MATCHED = false;
-					match = mMIN - 1;
-					++id;
-					t && (this.FLSH(0,FW),(FW.START=id));
-				}
-				else if( this.DINT.MATCHED )
-				{
-					// If there was no match at the previous position, output a
-					// single literal. If there was a match but the current match
-					// is longer, truncate the previous match to a single literal.
-					// ---
-					this.FREQ(0, 255&w[-1+id]) && (this.FLSH(0,FW),(FW.START=id));
-					++id;
-					--lka;
-				}
-				else 
-				{
-					// There is no previous match to compare with, wait for
-					// the next step to decide.
-					// ---
-					this.DINT.MATCHED = true;
-					++id;
-					--lka;
-				}
-
-				FW.LOOK = lka;
-				this.DINT.MATCH_START = FW(id,this.READ,this.DINT.MATCH_START);
-			}
-			
-			false===prev || (this.DINT.PREV_LEN=prev);
-			return match;
-		}
-		.setup({ TOO_FAR: -1 }), // fed from DEFL
-
-		DINT: function(/*arr&*/buf,/*int*/off,/*int*/bfSize,/*1..9*/level,  FW,DSC,w,mn,a,n,i,c,d,f,o,p)
-		//----------------------------------
-		// (Deflate-Internal.)
-		// => int
-		{
-			w = (FW=this.FILL).WIN;
-
-			if( !callee.INI_DONE )
-			{
-				if( !FW.EOF )
-				{
-					mn = -1+this.MMIN;
-					this.SNDB.BBUF = this.SNDB.BSHIFT = 0;
-
-					this.FLSH.DI_DESC.stat || this.IBLK(false);
-
-					// Not needed (and time consuming!)
-					// for( a=FW.PRV, p=this.WMEM, n=FW.H_SIZE, i=-1 ; ++i < n ; a[i+p]=0 );
-
-					o = callee.CONFIG[level];
-					callee.MAX_LAZY = o.lazy;
-					this.MTCH.GOOD = o.good;
-					this.FULL || (this.MTCH.NICE=o.nice);
-					this.MTCH.MAX_CHAIN_LEN = o.chain;
-
-					FW.IDX = FW.START = 0;
-					if( FW.EOF = 0 >= (FW.LOOK=this.READ(w, 0, FW.WDIM)) )
-					{
-						FW.LOOK = 0;
+						10 < (t=z) && (t=10);                          // t = min(z,10) => t == 3|...|10 => 0 <= t-3 <= 7 (3bits)
+						freqs[17]++;
+						c = CHR(17,t-3,3);                             // (17,t-3,3)
 					}
 					else
 					{
-						FW(0,this.READ);
-						for( p=0, n=mn, i=-1 ; ++i < n ; p=this.HASH(p,w[i]) );
-						this.INSH.POS = p;
+						freqs[sb]++;
+						c = '\0';
+						t = 1;
 					}
-
-					this.OUTB.HEAD = this.OUTB.TAIL = false;
-					this.OUTB.POS = this.OUTB.OFF = 0;
-					3 >= level ?
-						( (callee.PREV_LEN=mn),(callee.MATCH_LEN=0) ) :
-						( (callee.MATCH_LEN=mn),(callee.MATCHED=false) );
-					callee.COMPLETED = false;
 				}
-
-				callee.INI_DONE = true;
-				if( !FW.LOOK ){ callee.COMPLETED = true; return 0; }
 			}
-
-			n = this.QCPY(buf, off, bfSize);
-			if( bfSize == n ) return bfSize;
-			if( callee.COMPLETED ) return n;
-
-			callee.MATCH_LEN = this[3 >= level ? 'FAST' : 'BTTR']
-				( FW, callee.MATCH_LEN, this.MMIN, callee.MAX_DIST, callee.MAX_LAZY, this.HASH );
-
-			if( !FW.LOOK )
-			{
-				callee.MATCHED && this.FREQ(0, 255&w[-1+FW.IDX]);
-				this.FLSH(1,FW);
-				callee.COMPLETED = true;
-			}
-
-			return n + this.QCPY(buf, n + off, bfSize - n);
-		}
-		.setup({
-			INI_DONE:  false,
-			COMPLETED: false,
-			MATCHED:   false,
-			MATCH_LEN: 0,
-			PREV_LEN:  0,
-			MAX_DIST: -1, // fed by onEngine
-			MATCH_START: -1,
-			CONFIG: Array
-			(
-				{ good: 0, lazy:  0, nice:  0, chain:   0 }, // 0(noop)
-				{ good: 4, lazy:  4, nice:  8, chain:   4 }, // Level 1
-				{ good: 4, lazy:  5, nice: 16, chain:   8 }, // Level 2
-				{ good: 4, lazy:  6, nice: 32, chain:  32 }, // Level 3
-				{ good: 4, lazy:  4, nice: 16, chain:  16 }, // Level 4
-				{ good: 8, lazy: 16, nice: 32, chain:  32 }, // Level 5
-				{ good: 8, lazy: 16, nice:128, chain: 128 }, // Level 6
-				{ good: 8, lazy: 32, nice:128, chain: 256 }, // Level 7
-				{ good:32, lazy:128, nice:258, chain:1024 }, // Level 8
-				{ good:32, lazy:258, nice:258, chain:4096 }  // Level 9
-			),
-			MAX_LAZY: -1,
-		}),
-
-		DEFL: function(/*str*/data,/*1..9*/level,/*uint*/litDim,/*0x2000|4000|8000*/bs,/*13|14|15*/hb,  F,t,i,j,r,a)
-		//----------------------------------
-		// (Deflate.)
-		// level     :: Compression level.
-		// litDim    :: Actual dim of the literal buffer.
-		// bs        :: Buffer size (0x2000|0x4000|0x8000).
-		// hb        :: Hash bits (related to bs.)
-		// => str
-		{
-			// Data string.
-			// ---
-			(F=this.READ).DATA=data;
-			F.POS=0;
-
-			// Level-related settings.
-			// ---
-			this.FREQ.TRY_GUESS = 2 < level;
-
-			// Out buffer dim.
-			// ---
-			if( (F=this.OUTB).OBUF ) return;
-			F.ODIM = 0x2000; // Might change?
-			F.FREE = F.HEAD = F.TAIL = false;
-			F.OBUF = Array(F.ODIM);
-
-			// Initial conditions and sliding window.
-			// ---
-			this.DINT.INI_DONE = false;
-			(F=this.FILL).EOF = false;
-			F.WIN = Array(F.WDIM);
-			F.PRV = Array(1 << callee.BITS);
-
-			// Literal and distance buffer.
-			// ---
-			this.FILL.H_SIZE = 1 << hb;
-			this.BTTR.TOO_FAR = 0x1000;     // 'Too far' distance within the buffer ; may we use bs>>>2 instead??
-			this.HASH.MASK = -1 + this.FILL.H_SIZE;
-			this.HASH.SHFT = parseInt((hb + this.MMIN - 1) / this.MMIN, 10);
-			// ---
-			(F=this.FREQ).DDIM = bs;
-			F.DIST_BUF = Array(bs);
-			F.LITR_BUF = Array(litDim);
-			F.FLAGS    = Array(parseInt(bs/8),10);
-
-			const CHR = String.fromCharCode;
-			for( r='', a=Array(1024) ; 0 < (i=this.DINT(a,0,a.length,level)) ; )
-			{
-				for( j=-1 ; ++j < i ; r += CHR(a[j]) );
-			}
-
-
-			// Cleanup.
-			// ---
-			this.FREQ.DIST_BUF = this.FREQ.LITR_BUF = this.FREQ.FLAGS = false;
-			this.IDSC(this.FLSH.LI_DESC)(this.FLSH.DI_DESC)(this.FLSH.BL_DESC);      // Cleanup descriptors and inner trees.
-			this.FILL.WIN  = this.FILL.PRV  = false;
-			this.OUTB.HEAD = this.OUTB.TAIL = this.OUTB.FREE = false;
-			this.OUTB.OBUF = false;
-			this.READ.DATA = '';
 
 			return r;
-		}
-		.setup({ BITS:16 }),
+		},
+
+		IDYN: function(/*BitWriter&*/BW,/*(0..15)[286]&*/LL,/*(0..15)[30]&*/DS,  HLIT,HDIS,HCLEN,CL,strm,map,ord,lastNZ,i,t,k)
+		//----------------------------------
+		// (Init-Dynamic-Tree.) Encode and write the dynamic H-tree through BitWriter, based on LL/DS frequencies.
+		// Stream :: <IS_LAST> <BTYPE> <HLIT> <HDIST> <HCLEN> <clCodeLengths> <lldsCodeLengths> <BITSTREAM...>
+		//                             ========================================================
+		// {obj&} BW :: BitWriter
+		// {arr}  LL :: CodeLength (0-15) for each LL symbol in 0..285, LL.MAX_BITS is preset.
+		// {arr}  DS :: CodeLength (0-15) for each DS symbol in 0..29,  DS.MAX_BITS is preset.
+		// ---
+		// this :: ~
+		// => undef
+		{
+			// Header.
+			// ---
+			HLIT = LL.length-257;       // Strictly 29 (might be truncated for optim?)
+			HDIS = DS.length - 1;       // Strictly 29 (might be truncated for optim?)
+			BW.writeBits(HLIT, 5);
+			BW.writeBits(HDIS, 5);
+
+			// Combine Code Lengths, tally freqs and generate CL stream and CL code lengths.
+			// LL.concat(DS)
+			// ---
+			CL = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // Init freqs for the 19 CL symbols (0..18)
+			strm = this.CLST(LL.concat(DS), CL);          // Compute LL freqs and generate strm :: <sym>(<xtra><xbits>)?[]
+
+			// ---
+			// Rem: strm.length may be < (LL+DS).length
+			// 1st char is the symb in 0-18 (\x00-\x12), next chars if present are `<xtra><xbits>` data.
+			// ---
+
+			// CL SYMBOL   0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18
+			//            -----------------------------------------------------------------
+			// Before:    14, 0, 0, 4, 5, 7,13, 6, 8, 2, 9, 4, 2, 4, 0, 0, 2, 5, 4   (freq)
+			// After       3, 0, 0, 5, 4, 4, 3, 4, 4, 5, 3, 4, 5, 4, 0, 0, 5, 4, 4   (bits)
+			CL = this.PKMG(CL, 7); // Package merge: now CL contains optimal code lengths in 0..7.
+
+			// Write HCLEN and CL code lengths.
+			ord = this.CL_ORDER; // str :: <0..18>[19]  ; permutation (0..18) -> (0..18)
+			for( lastNZ=18 ; lastNZ >= 4 && CL[ord.charCodeAt(lastNZ)] === 0 ; lastNZ-- );
+			// ---
+			BW.writeBits( (HCLEN=-3+lastNZ), 4 );                                      // <HCLEN> (4 bits)
+			for( t=4+HCLEN, i=-1 ; ++i < t ; BW.writeBits(CL[ord.charCodeAt(i)],3) );  // <clCodeLengths> 3*HCLEN + 4 bits
+
+		    map = this.HMAP(CL);                                                       // map :: { CL_SYMB => bin_str }
+		    // E.g.
+		    // { 0:"000", 3:"11100", 4:"0110", 5:"0111", 6:"001", 7:"1000", 8:"1001", 9:"11101",
+		    //  10:"010", 11:"1010", 12:"11110", 13:"1011", 16:"11111", 17:"1100", 18:"1101" }
+
+		    // Encode LL/DS code lengths.
+			for( i=-1 ; ++i < strm.length ; )
+			{
+				t = strm[i]; // <sym>(<xtra><xbits>)?
+				BW.writeBits( map[t.charCodeAt(0)] );
+				3 == t.length && BW.writeBits( t.charCodeAt(1), t.charCodeAt(2) );
+			}
+		},
+
+		DYNC: function(/*str*/data,/*uint=15*/maxLen,/*uint=auto*/maxDis,/*uint=auto*/minLen,  cfg,LBT,n,r,LL,DS,llMx,dsMx,out,iSup,len,dis,i,c,cc,t)
+		//----------------------------------
+		// (Dynamic-Compression.) Huffman-aware LZ Compression *with Frequency Collection* aimed at dynamic
+		// H-Tree construction
+		// {str}  data    String formed of 8-bit characters: \x00 <= data[i] <= \xFF
+		// {uint} maxLen  Max length of a match (3..258). Default: 15.
+		// {uint} maxDis  Max distance of a match (3..16384). Default: auto.
+		//                This implementation reduces the upper bound [DEFLATE spec says 32768].
+		// {uint} minLen  Min length of a match (3..maxLen). Default: 3.
+		// ---
+		// {obj} ret
+		//       {
+		//       tokens:     string of compressed tokens, <length:distance> being encoded
+		//                   as a single UTF16 char in \(0x8000|((dis-1)<<LBT)|(len-3)) form.
+		//       lenBits:    Number of len bits used in <length:distance> tokens.
+		//       llData:     idx=>freq map for LL symbols (incl. zero-frequency symbols),
+		//                   i.e. array of 286 uint16.
+		//       dsData:     idx=>freq map for DS symbols (incl. zero-frequency symbols),
+		//                   i.e. array of 30 uint16.
+		//       }
+		// ---
+		// this :: ~
+		// => { tokens:str, lenBits:uint, llData:uint16[286], dsData:uint16[30] }
+		//    | INTERNAL_ERR
+		{
+			const CHR = String.fromCharCode;
+			const ROU = Math.round;
+			const L2S = this.L2SY; // str
+			const D2S = this.D2SY; // fct
+
+			// LZ-Config and data structure
+			// ---
+			const LZ = this.PRFX; // Find-longest-prefix algo
+			(cfg=this.LZCF(maxLen,maxDis,minLen)) || error( __("Internal %1 error: %2",callee.µ,this.LZCF.EMSG), callee );
+			minLen = cfg.minLen;
+			maxLen = cfg.maxLen;
+			maxDis = cfg.maxDis;
+			LBT = cfg.lenBits;
+
+			n = data.length;
+			r = { lenBits: LBT };
+
+			(LL = r.llData = Array(286))[256] = 1;                                        // Any `undefined` LL[cc] will be coerced to 0
+			llMx = 1;                                                                     // Max LL count
+			DS = r.dsData = Array(30);                                                    // Any `undefined` DS[cc] will be coerced to 0
+			dsMx = 0;                                                                     // Max DS count
+
+			// Main compression loop with frequency collection
+			// ---
+			for( out=data.slice(0,minLen), i=-1 ; ++i < minLen && i < n ;                 // Trailing literals
+				(cc=data.charCodeAt(i)), llMx < (t=LL[cc]=1+(LL[cc]>>>0)) && (llMx=t) );  // Update LL symbol freq
+
+			for( iSup=n-minLen ; i < iSup ; out += c, i += len )
+			if( t=LZ(data, i, maxLen, maxDis, minLen) )                                   // LZ compression?
+			{
+				len = t.len;
+				dis = t.dist;
+				c = CHR( 0x8000 | ((dis-1)<<LBT) | (len-3) );                             // Compute <dis|len> token
+				// ---
+				cc = L2S.charCodeAt(len), llMx < (t=LL[cc]=1+(LL[cc]>>>0)) && (llMx=t);   // Update LL symbol freq
+				cc = D2S(dis), llMx < (t=DS[cc]=1+(DS[cc]>>>0)) && (dsMx=t);              // Update DS symbol freq
+			}
+			else
+			{
+				len = 1;
+				c = data.slice(i,1+i); // Bypass charAt bug with \0
+				cc = c.charCodeAt(0), llMx < (t=LL[cc]=1+(LL[cc]>>>0)) && (llMx=t);
+			}
+
+			if( i < n )for( out += data.slice(i) ; n > i ;                                   // Remaining literals
+				(cc=data.charCodeAt(i++)), llMx < (t=LL[cc]=1+(LL[cc]>>>0)) && (llMx=t) );   // Update LL symbol freq
+
+			r.tokens = out + CHR(256);                                                       // Append EOB
+
+			// Normalize LL/DS frequencies in 0..0xFFFF
+			// ---
+			c = +(0xFFFF < llMx && (0xFFFF/llMx));
+			for( i=LL.length ; i-- ; (t=LL[i]||(LL[i]=0)) && c && (LL[i]=ROU(c*t)||1) );
+			// ---
+			c = +(0xFFFF < dsMx && (0xFFFF/dsMx));
+			for( i=DS.length ; i-- ; (t=DS[i]||(DS[i]=0)) && c && (DS[i]=ROU(c*t)||1) );
+
+			return r;
+		},
 
 	})
 
 	//==========================================================================
-	// API
+	// DEFLATE COMPRESSOR
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		ENCO: function(/*BitWriter&*/BW,/*str*/tokens,/*uint*/LBT,/*obj*/llMap,/*obj*/dsMap,  n,i,sb,len,dis,p,xb)
+		//----------------------------------
+		// (Encode-Bitstream.) Generic encoder for either static or dynamic H-tree.
+		// Will encode the sequence of `tokens` using the supplied code maps `llMap`,`dsMap`.
+		// this :: ~
+		// => undef
+		{
+			const MSK = (1 << LBT) - 1;
+
+			const L2S = this.L2SY;   // Len   -> LSym   (str)
+			const LSB = this.LS2B;   // LSym  -> Base   (str) ; use LSym - 257
+			const LSX = this.LS2X;   // LSym  -> Xbits  (str) ; use LSym - 257
+
+			const D2S = this.D2SY;   // Dis   -> DSym   (fct)
+			const DSB = this.DS2B;   // DSym  -> Base   (str)
+			const DSX = this.DS2X;   // DSym  -> Xbits  (str)
+
+			for( n=tokens.length, i=-1 ; ++i < n ; )
+			{
+				if( 256 >= (sb=tokens.charCodeAt(i)) )
+				{
+					// Literal or EOB
+					BW.writeBits( llMap[sb] );
+				}
+				else
+				{
+					// Rebuild the Length/Distance pair
+					len = 3 + (MSK&(sb&=0x7FFF));
+					dis = 1 + (sb >> LBT);
+
+					// Length
+					BW.writeBits(llMap[sb=L2S.charCodeAt(len)]);
+					(xb=LSX.charCodeAt(p=sb-257)) && BW.writeBits(len-LSB.charCodeAt(p),xb);
+
+					// Distance
+					BW.writeBits(dsMap[sb=D2S(dis)]);
+					(xb=DSX.charCodeAt(p=sb)) && BW.writeBits(dis-DSB.charCodeAt(p),xb);
+				}
+			}
+		},
+
+		CBLK: function(/*str*/data,/*BitWriter&*/BW,/*{...}*/ops,  $$,sz,lbk,prf,mxLen,mnLen,mxDis,cmp,llMap,dsMap,t,x)
+		//----------------------------------
+		// (Compress-Block.) Compress and encode a block through $$.BitWriter and
+		// return the final byte string. The incoming bytestream `data` is guaran-
+		// teed to have at most `RCMP.MAX_BLK_LEN` bytes, that is 64K in the
+		// current implementation. This max size is empirically deter mined so it
+		// preserves good perf.
+		//   ops :: { prefBlockType:0|1|2, isLastBlock:0|1,
+		//            mxLen:3..258, mxDis:3..16384, mnLen:3..mxLen }
+		// this :: ~
+		// => undef
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+
+			sz = data.length;
+			if( !sz ) return; // Should not happen!
+
+			lbk = ops.isLastBlock ? '1' : '0';
+			prf = ops.prefBlockType; // 0|1|2
+			// ---
+			mxLen = ops.mxLen;
+			mxDis = ops.mxDis;
+			mnLen = ops.mnLen;
+
+			// Supersedes block type pref, depending on size.
+			sz < callee.COMP_MIN && (prf=0);
+			sz > callee.UNCOMP_MAX && (prf=prf||2);
+
+			switch( prf )
+			{
+				case 2: // Block Type 2 (Dynamic)
+					(+$$.trace) && $$.trace( __("%1 > [CBLK] Compressing %2 bytes in dynamic mode (block type=2)",callee.µ, sz) );
+
+					cmp = this.DYNC( data, mxLen, mxDis, mnLen );
+					BW.writeBits(lbk).writeBits( 2, 2 );
+
+					// ---
+					// [REM] PKMG (package-merge) internally converts frequencies into
+					// bit lengths, hence `llData&` and `dsData&` are updated so they
+					// will support ~.HMAP. The bitlength 15 is required.
+					// ---
+
+					this.IDYN( BW, this.PKMG(cmp.llData, 15), this.PKMG(cmp.dsData, 15) );
+					llMap = this.HMAP( cmp.llData );
+					dsMap = this.HMAP( cmp.dsData );
+					this.ENCO( BW, cmp.tokens, cmp.lenBits, llMap, dsMap );
+					break;
+
+				case 1: // Block Type 1 (Static)
+					(+$$.trace) && $$.trace( __("%1 > [CBLK] Compressing %2 bytes in static mode (block type=1)",callee.µ, sz) );
+
+					cmp = this.DEFC( data, mxLen, mxDis, mnLen );
+					BW.writeBits(lbk).writeBits( 1, 2 );
+					// ---
+					llMap = this.LLMP; // static LL map
+					dsMap = this.DSMP; // static DS map
+					this.ENCO( BW, cmp.tokens, cmp.lenBits, llMap, dsMap );
+					break;
+
+				default: // Block Type 0 (Stored) :: <IS_LAST> <BTYPE> <PADDING> <LEN> <~LEN> <BITSTREAM>
+					(+$$.trace) && $$.trace( __("%1 > [CBLK] Storing %2 bytes without compression (block type=0)",callee.µ, sz) );
+
+					BW.writeBits(lbk).writeBits(0, 2);    // BFINAL, BTYPE=00
+					BW.flush();  // Pad any partial byte to completion before each BTYPE=00 block
+
+					x = 0xFFFF&~sz;                       // Bitwise complement (16 bits)
+					t = String.fromCharCode
+					(
+						0xFF&sz, sz>>>8,                  // <LEN>   :: lo, hi
+						0xFF&x,  x>>>8,                   // <~LEN>  :  lo, hi
+					);
+
+					BW.bytes += t + data;
+			}
+		}
+		.setup
+		({
+			COMP_MIN:   10,   // Never compress size < 10
+			UNCOMP_MAX: 256,  // Always compress size > 256 (btw a 'stored' block requires size <= 0xFFFF)
+		}),
+
+		RCMP: function(/*str*/src,  n,BW,ops,iSup,i)
+		//----------------------------------
+		// (Raw-Deflate-Compressor.) Generic entry point for 'RAW DEFLATE' compression.
+		// This method supports `src` up to 1MB and will slice bytes into 64K blocks.
+		// However, time perf is essentially linear and 100K already requires ~1s,
+		// which is dramatically slower than `~.APZP`. This routine remains fast on
+		// small sources (< 4K) and should be used at higher sizes only if APZP
+		// is unavailable or failed.
+		// Best compression ratio is obtained in dynamic mode (prefBlockType:2)
+		// and (mxLen=10,mxDis=4096) seems to be the best config for TEXT data,
+		// with no impact on time performance.
+		// ---
+		// Rem: BitWriter accumulates the compressed bytes up to the end, flush()
+		//      being processed only at the *last block* stage. (Byte-padding
+		//      MUST NOT be performed before!)
+		// this :: ~
+		// => str [OK]  |  false [ERR] + .EMSG
+		{
+			const MXB = callee.MAX_BLK_LEN;  // Max DEFLATE block size: 64K
+
+			callee.EMSG = '';
+			if( this.MAX_TO_DEFL < (n=src.length) )
+			{
+				callee.EMSG = __("The source stream (%1 KB) exceeds the maximum capacity %2 KB.", (n/1024).toFixed(1), this.MAX_TO_DEFL/1024);
+				return false;
+			}
+
+			BW = $.global[callee.µ.__root__].BitWriter();
+			ops = callee.OPS;
+			iSup = n-MXB;
+
+			for( ops.isLastBlock=0, i=0 ; i < iSup ; this.CBLK(src.slice(i,i+=MXB), BW, ops) );
+
+			ops.isLastBlock=1; // Final block
+			this.CBLK(src.slice(i), BW, ops);
+
+			return BW.getResult();
+		}
+		.setup
+		({
+			EMSG: '',
+			OPS:
+			{
+				isLastBlock:   1,     // Adjusted dynamically.
+				prefBlockType: 2,     // Dynamic H-Tree (better ratio on average, no perf impact)
+				// ---
+				mxLen:         10,    // -> mxLen-3 = 7    (3bits)  ; yields very decent results.
+				mxDis:         4096,  // -> mxDis-1 = 4095 (12bits) ; longest distance is better!
+				mnLen:         3,     // There is no serious reason to increase this.
+			},
+			MAX_BLK_LEN: 0x10000,  // 64K
+		}),
+
+	})
+
+	//==========================================================================
+	// GZIP AND ZLIB WRAPPERS
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+		GZWP: function(/*str*/src,/*str*/rawDefl)
+		//----------------------------------
+		// (GZIP-Wrapper.) Given the original `src` (uncompressed) and its raw
+		// DEFLATE bytestream `rawDefl`, return the minimal, valid GZIP bytestream:
+		//   ID1 + ID2 + CMF + MTIME + [XFL][OS] + DEFLATE + CRC32 + ISIZE
+		// this :: ~
+		// => str
+		{
+			const CHR = String.fromCharCode;
+			const LE = this.LE32;
+
+			return this.GZIN + '\x08\x00' + LE(Math.floor((+new Date)/1e3)) + '\x00\x03' +
+			       rawDefl + LE(this.CRC32(src)) + LE(0xFFFFFFFF&src.length);
+		},
+
+		ZLWP: function(/*str*/src,/*str*/rawDefl)
+		//----------------------------------
+		// (ZLIB-Wrapper.) Given the original `src` (uncompressed) and its raw
+		// DEFLATE bytestream `rawDefl`, return the minimal, valid ZLIB bytestream:
+		//   CMF + FLG + DEFLATE + ADLER32
+		// CMF :: 0x78 (deflate method, 32K window) - this is standard
+		// FLG :: 0x9C (fixed when no preset dictionary)
+		// this :: ~
+		// => str
+		{
+			return '\x78\x9C' + rawDefl + this.BE32(src.adler32());
+		},
+
+	})
+
+	//==========================================================================
+	// FAST ZIP COMPRESSOR (.zip)
+	//==========================================================================
+
+	[PRIVATE]
+
+	({
+
+		APZP: function(/*str|byte[]|File*/src,/*bool=0*/DEFLATE_ONLY,  $$,T,isTmpSrc,iniUtf8,srcName,ffSrc,fdSrc,ucf,ffZip,t,zip,nn,mm,tt,p,q,d,sz,z,fhd,cde,eoc,cm,flg)
+		//----------------------------------
+		// (App-Package-ZIP.) Make a ZIP stream from a source through `app.packageUCF`
+		// and return either the whole PKZIP stream, or only the DEFLATE stream,
+		// depending on `DEFLATE_ONLY`. Also used as a superfast DEFLATE compressor,
+		// since the processed ZIP always uses CM=8.
+		// - This method is always faster than RCMP if src > 2K (and significantly
+		//   faster for larger files.) It also provides a better compression ratio
+		//   and will support src > 1MB.
+		// - In CS4, `app.packageUCF()` seems unable to properly package `\x00\x01\x02...`
+		//   although $$.File.writeBinary() properly creates the temporary file. We suspect
+		//   that the U+0000 character is the problem...
+		// - `app.packageUCF()` fails if the source filename has non-ASCII chars (!)
+		//   but the present routine solves the issue by maintaining the actual internal
+		//   filename through UTF8 (when necessary.)
+		// ---
+		// this :: ~
+		// => str [OK]  |  false [ERR] + EMSG   ; The returned string is either pure DEFLATE or PKZIP bytes.
+		{
+			const MIME = "application/IdExtenso"; // arbitrary mimetype
+			const PKIN = this.PKIN;
+			const U32 = this.LE32;
+			const U16 = this.LE16;
+
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace) && $$.trace;
+			T&&T( __("%1 > [APZP] Want to zip a %2 (length: %3).", callee.µ, (src?src.constructor.name:typeof src), (src||0).length) );
+
+			callee.EMSG = '';
+
+			// 1. Make sure we have a valid source
+			// ---
+			isTmpSrc = ffSrc = 0;
+			while( src===Object(src) )
+			{
+				if( src instanceof File )
+				{
+					if( !src.exists )
+					{
+						callee.EMSG = __("The file %1 doesn't exist.",''+src);
+						$$.warn( __("%1 > [APZP] %2", callee.µ, callee.EMSG) );
+						return false;
+					}
+					ffSrc = src;
+					T&&T( __("%1 > [APZP] Source file: %2", callee.µ, ffSrc.getDisplayName()) );
+					break;
+				}
+
+				if( src instanceof Array )
+				{
+					try
+					{
+						src = String.fromCharCode.apply(0,src);
+					}
+					catch(e)
+					{
+						(+$$.warn) && $$.warn( __("%1 > [APZP] Cannot create the byte string from array %2", callee.µ,$$.JSON(src)) );
+						src = false;
+					}
+					if( false !== src )
+					{
+						T&&T( __("%1 > [APZP] Array successfully converted to string.", callee.µ) );
+						break;
+					}
+				}
+
+				callee.EMSG = __("Invalid source argument (%1).",src.constructor.name);
+				$$.warn( __("%1 > [APZP] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+			if( 0===ffSrc )
+			{
+				if( 'string' != typeof src )
+				{
+					callee.EMSG = __("Invalid source argument (%1).",typeof src);
+					return false;
+				}
+				if( !src.length )
+				{
+					callee.EMSG = __("Empty string.");
+					return false;
+				}
+				T&&T( __("%1 > [APZP] Non-empty string available. (A temp source file is required.)", callee.µ) );
+				isTmpSrc = 1; // want a temp source File (pending)
+			}
+
+			// 2. In any case, create a temp folder (in Folder.temp)
+			// ---
+			for
+			(
+				t=$$.File.stamp(5) ;                           // e.g "bazbo"
+				(fdSrc=new Folder(Folder.temp+'/'+t)).exists ; // While existing folder...
+				t = '_'+t                                      // ...preprend '_'
+			);
+			if( !fdSrc.create() )
+			{
+				callee.EMSG = __("Cannot create temp source folder %1.",''+fdSrc);
+				$$.warn( __("%1 > [APZP] %2", callee.µ,callee.EMSG) );
+				return false;
+			}
+			T&&T( __("%1 > [APZP] Set temp source folder: %2", callee.µ, ''+fdSrc) );
+
+			// 3. Create or copy source file in fdSrc
+			// ---
+			iniUtf8 = false;                // No initial filename (so far)
+			srcName = this.DUMMY_NAME;      // Dummy filename ('data.tmp')
+
+			if( isTmpSrc )
+			{
+				// `DUMMY_NAME` is pure ascii so there is no issue with srcName
+				// ---
+				ffSrc = $$.File.writeBinary(fdSrc + '/' + srcName, src);
+				if( !ffSrc )
+				{
+					callee.EMSG = __("Cannot write binary file.");
+					$$.warn( __("%1 > [APZP] %2", callee.µ, callee.EMSG) );
+					return false;
+				}
+				T&&T( __("%1 > [APZP] Temp source file (%2) successfully created from the binary stream %3.", callee.µ, ffSrc.getDisplayName(), src.trunc(100).toSource()) );
+			}
+			else
+			{
+				// ---
+				// The filename `t.getDisplayName()` may have UTF8 chars that would
+				// cause app.packageUCF to fail:
+				// (1) If DEFLATE_ONLY is processed we don't need filename
+				//     consistency so let's use the dummy name.
+				// (2) If a full zip stream is expected, we want to restore the
+				//     correct src filename but it may contain no-ascii chars.
+				//     In this case :
+				//     - store the original name, UTF8-encoded, in `iniUtf8` ;
+				//     - create a dummy ASCII `srcName` with the exact same length.
+				//     - restore the original name through byte manipulation (below)
+				// ---
+
+				if( !DEFLATE_ONLY )
+				{
+					srcName = ffSrc.name;         // Default case (URI notation)
+
+					t = ffSrc.getDisplayName();   // May contain non-ascii chars
+					tt = t.toUTF8();              // UTF8 expression
+
+					if( t != tt )
+					{
+						iniUtf8 = tt;             // iniUtf8 :: Original UTF8 expression.
+
+						srcName = Array(1+iniUtf8.length).join('a');
+						4 < srcName.length && (srcName=srcName.slice(0,-4)+'.tmp'); // srcName :: `aa..aa.tmp` ( length == iniUtf8.length )
+
+						T&&T( __("%1 > [APZP] Created the dummy filename %2 to store %3 (UTF8).", callee.µ, srcName.toSource(), iniUtf8.toSource()) );
+					}
+				}
+
+				t = ffSrc; // Existing input file
+				ffSrc = new File( fdSrc + '/' + srcName );
+				if( !t.copy(ffSrc) )
+				{
+					callee.EMSG = "Cannot copy file.";
+					$$.warn( __("%1 > [APZP] Cannot copy file %2 to %3.", callee.µ, ''+t, ''+ffSrc));
+					return false;
+				}
+				T&&T( __("%1 > [APZP] Copied the input file into the temp folder: %2", callee.µ, ''+ffSrc) );
+			}
+
+			// 4. Create the zip file thru app.packageUCF.
+			// [WARNING] Don't try to save the zip *within* fdSrc -> infinite loop!!!
+			ffZip = (new File(fdSrc.parent + '/' + ffSrc.name + '.zip')).fresh();
+			T&&T( __("%1 > [APZP] Declared the destination ZIP file: %2", callee.µ, ''+ffZip) );
+
+			// [REM] app.packageUCF(srcFolder, destFile, mimeType) has three args since ID 7.0,
+			// but there is no issue in passing the 3rd arg in CS4.
+			try
+			{
+				app.packageUCF( fdSrc, ffZip, MIME );
+				ucf = 1;
+				T&&T( __("%1 > [APZP] app.packageUCF returned successfully.", callee.µ) );
+			}
+			catch(e)
+			{
+				ucf = 0;
+				$$.warn( __("%1 > [APZP] app.packageUCF failed with args (%2,%3) -- %4", callee.µ,''+fdSrc,''+ffZip, ''+e) );
+			}
+
+			// 5. Remove ffSrc and fdSrc
+			// [REM] Folders must be empty before they can be deleted.
+			try
+			{
+				ffSrc.remove(); fdSrc.remove();
+				T&&T( __("%1 > [APZP] Removed temp source folder.", callee.µ) );
+			}
+			catch(e){ $$.warn( __("%1 > [APZP] Cannot remove temp source folder -- %2", callee.µ,''+e) ); }
+
+			if( !ucf )
+			{
+				// [REM260130] packageUCF may fail while still producing an (invalid) ZIP file!
+				try{ ffZip.remove(); } catch(_){}
+				callee.EMSG = "InDesign's packageUCF failed.";
+				return false;
+			}
+
+			T&&T( __("%1 > [APZP] Reading the ZIP file, then removing it...", callee.µ) );
+
+			// 6. Read ffZip data and retrieve the byte stream.
+			zip = $$.File.readBinary(ffZip);
+			try{ ffZip.remove(); } catch(_){}
+
+			T&&T( __("%1 > [APZP] ZIP contents (first bytes): %2", callee.µ, zip.length ? zip.slice(0,30).toBytes('hexa').join(' ') : $$.JSON(zip)) );
+
+			// Checkpoints
+			// ---
+			try
+			{
+				if( !zip.length ) throw "Empty zip!";
+				if( 0 !== zip.indexOf(PKIN) ) throw "PKZIP header signature not found at the starting byte.";
+				if( '\0\0' !== zip.slice(8,10) ) throw "CM method of mimetype should be 0.";
+				sz = zip.charCodeAt(18) + 0x100*(zip.charCodeAt(19))      // Size of mime data
+				   + 0x10000*zip.charCodeAt(20)
+				   + 0x1000000*zip.charCodeAt(21);
+				nn = zip.charCodeAt(26) + 0x100*zip.charCodeAt(27);       // mime file name length (should be 8)
+				mm = zip.charCodeAt(28) + 0x100*zip.charCodeAt(29);       // mime file extra length (should be 0)
+				p = 30+nn+mm+sz;                                          // Offset of good file header signature
+				if( zip.slice(p,p+4) !== PKIN ) throw "PKZIP header signature not found (2nd header).";
+
+				// Good file CM method (16bits) : we expect cm==8 (should be the case in ID.)
+				cm = zip.charCodeAt(p+8) + 0x100*zip.charCodeAt(p+9);
+				if( 8 != cm ) throw __("CM method should be 8. Found %1 (%2)!", cm, cm.toHexa("", 4));
+				sz = zip.charCodeAt(p+18) + 0x100*(zip.charCodeAt(p+19))  // Size of good data
+				   + 0x10000*zip.charCodeAt(p+20)
+				   + 0x1000000*zip.charCodeAt(p+21);
+				// Start position (p+30+nn+mm)
+				nn = zip.charCodeAt(p+26) + 0x100*zip.charCodeAt(p+27);   // good file name length
+				mm = zip.charCodeAt(p+28) + 0x100*zip.charCodeAt(p+29);   // good file extra length (should be 0)
+				q = p+30+nn+mm;                                           // Start of good (DEFLATE) data
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				$$.warn( __("%1 > [APZP] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+
+			if( DEFLATE_ONLY )
+			{
+				T&&T( __("%1 > [APZP] Returning the DEFLATE stream only.", callee.µ) );
+				return zip.slice(q,q+sz);
+			}
+
+			try
+			{
+				q += sz;                                                  // q :: MimeCDEntry offset
+				nn = zip.charCodeAt(q+28) + 0x100*zip.charCodeAt(q+29);   // mimeCD file name length
+				mm = zip.charCodeAt(q+30) + 0x100*zip.charCodeAt(q+31);   // mimeCD extra field length
+				tt = zip.charCodeAt(q+32) + 0x100*zip.charCodeAt(q+33);   // mimeCD file comment length
+				t = q + 46 + nn + mm + tt;                                // t :: GoodCDEntry offset
+				if( zip.slice(t,t+4) !== '\x50\x4B\x01\x02' ) throw "Central File Header signature not found."
+				nn = zip.charCodeAt(t+28) + 0x100*zip.charCodeAt(t+29);   // goodCD file name length
+				mm = zip.charCodeAt(t+30) + 0x100*zip.charCodeAt(t+31);   // goodCD extra field length
+				tt = zip.charCodeAt(t+32) + 0x100*zip.charCodeAt(t+33);   // goodCD file comment length
+				d = t + 46 + nn + mm + tt;                                // d :: EOCD offset
+				if( zip.slice(d,d+4) !== '\x50\x4B\x05\x06' ) throw "End Of Central Directory signature not found."
+
+				// Cur   Desc             Action   Final Offset
+				// ----------------------------------------------
+				// 0     MimeFileHeader   REMOVE   ~
+				// ~     MimeFileData     REMOVE   ~
+				// ---
+				// p     GoodFileHeader   KEEP     0
+				//       GoodFileData     KEEP
+				// ---
+				// q     MimeCDEntry      REMOVE   ~
+				// t     GoodCDEntry      UPDATE   q-p
+				// ---
+				// d     EOCD             UPDATE
+
+				if( iniUtf8.length===nn )
+				{
+					// Restore UTF8 filename
+
+					flg = 0x800|(zip.charCodeAt(p+6) + 0x100*zip.charCodeAt(p+7)); // Set bit 11 (UTF8) in general purpose bit flag (bytes 6-7)
+					fhd = zip.slice(p,p+6) + U16(flg) + zip.slice(p+8, p+30) + iniUtf8 + zip.slice(p+30+nn, q);  // extra field + data
+
+					flg = 0x800|(zip.charCodeAt(t+8) + 0x100*zip.charCodeAt(t+9)); // Set bit 11 (UTF8) in general purpose bit flag (bytes 6-7)
+					cde = zip.slice(t, t+8) + U16(flg) + zip.slice(t+10, t+46) + iniUtf8 + zip.slice(t+46+nn, d);  // extra field + comment
+				}
+				else
+				{
+					fhd = zip.slice(p, q);
+					cde = zip.slice(t, d);
+				}
+
+				cde = cde.slice(0,42) + '\0\0\0\0' + cde.slice(46);       // Update GoodCDEntry's relative offset to 0 (uint32).
+
+				z = zip.charCodeAt(d+12) + 0x100*zip.charCodeAt(d+13)     // Current size of central directory
+				  + 0x10000*zip.charCodeAt(d+14)
+				  + 0x1000000*zip.charCodeAt(d+15);
+
+				z -= (t-q);                                               // z :: Final size after removing [q,t]
+				t = q-p;                                                  // t :: Final start of CD
+
+				eoc = zip.slice(d,d+8)
+				    + '\x01\x00\x01\x00'                                  // Change total CD entries ( 2->1 )
+				    + U32(z)                                              // New size of the CD (uint32)
+				    + U32(t)                                              // New offset of the CD (uint32)
+				    + zip.slice(d+20);
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				$$.warn( __("%1 > [APZP] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+
+			T&&T( __("%1 > [APZP] Returning the full ZIP stream.", callee.µ) );
+			return fhd + cde + eoc;
+		}
+		.setup
+		({
+			EMSG: '',
+		}),
+
+	})
+
+	//==========================================================================
+	// API   All compressors support `input` as
+	//       - a JS string (assumed to deliver int8 char codes),
+	//       - an array of bytes,
+	//       - a (binary) File.
 	//==========================================================================
 
 	[PUBLIC]
-	
+
 	({
+		// Experimental flag: Setting `µ.ForceInternal` to 1
+		// entirely bypasses the (fast) `app.packageUCF` method.
+		// (Useful for testing, or in pure estk env.)
+		// ---
+		ForceInternal: !$$.Env.idVersion(6), // exclude estk
 
-		onEngine: function onEngine_(  I,F,DB,DC,LB,LC,a,i,c,d,n)
-		// ---------------------------------
-		{
-			I = callee.µ['~'];
-			
-			// Feed constant arrays once for all.
-			//----------------------------------
-			F = I.COMP;
-			DB = F.DIST_BASE = Array(F.DB_DIM);             //  30
-			DC = F.DIST_CODE = Array(512);                  // 512
-			LB = F.LENG_BASE = Array(F.LB_DIM);             //  29
-			LC = F.LENG_CODE = Array(1+258-I.MMIN);         // 256
-
-			a = F.X_LENG;
-			for( d=F.LB_DIM-1, i=c=0 ; c < d ; ++c )
-				for( LB[c]=i, n=1<<a[c] ; n-- ; LC[i++]=c );
-
-			a = F.X_DIST;
-			for( LC[-1+i]=c, d=0, c=-1 ; ++c < 16 ; )
-				for( DB[c]=d, n=1<<a[c] ; n-- ; DC[d++]=c );
-			for( d >>= 7 ; c < F.DB_DIM ; c++ )
-				for( DB[c]=d<<7, n=1<<a[c]-7 ; n-- ; DC[256 + d++]=c );
-
-			// Some constant scalars.
-			//----------------------------------
-			n = F.LC_OFF = I.DLIT + F.LB_DIM;               // L-Codes offset.
-			I.FILL.MIN_LOOK = 1+258 + I.MMIN;               // Min. match lookahead.
-			I.DINT.MAX_DIST = I.WMEM - I.FILL.MIN_LOOK;     // Max. match distance.
-			I.FILL.IDX_MAX  = I.WMEM + I.DINT.MAX_DIST;     // Max. index.
-			
-			// Heap structure.
-			//----------------------------------
-			n = 1+2*n;
-			(F=I.HUFF).HEAP_SIZE = n;                       // Heap size.
-			F.HEAP  = Array(n);                             // Heap.
-			F.DEPTH = Array(n);                             // Depth array.
-		},
-
-		run: function run_S_i_i_i_S(/*str*/data,/*?(1..9)=6*/level,/*16..64=32*/inKB,/*0|1|2=0*/bufCapa,  I,bs,hb,inSz,bits)
+		raw: function raw_SA$File$_S(/*str|byte[]|File*/input,  I,src,sz,bin)
 		//----------------------------------
-		// Main compression method with full parameter control.
-		// `level`   :: Compression level (1..9) ; default: 6. Higher=better ratio, slower.
-		// `inKB`    :: Size in KB of the input buffer (16..64) ; default: 32.
-		// `bufCapa` :: Memory model: 0(small/8KB) | 1(medium/16KB) | 2(big/32KB) ; default: 0.
-		// => str    :: Compressed data (raw deflate format)
+		// Raw DEFLATE Compressor
+		// Return the compressed string (byte charcodes) from this input.
+		// ---
+		// => str [OK]  |  ERR [KO]
 		{
+			const APT = callee.APZP_THRS; // APZP threshold (~2K)
+
 			I = callee.µ['~'];
-			
-			'string' == typeof data || (data=String(data));
-			
-			// Input validation
-			// ---
-			if( !data.length ) return '';  // Handle empty strings gracefully
-			
-			// Performance warning for large inputs
-			// ---
-			if( data.length > 51200 ) // 50KB
+
+			if( !callee.µ.ForceInternal )
 			{
-				+$$.trace && $$.Log.warn(__("%1 > Processing large data (%2 chars). Consider using app.packageUCF() for files >50KB.",callee.µ,data.length));
+				src = I.SRCE(input, APT);                            // src :: str(<=APT) | File(>APT) | false
+				false===src && error( __("%1 cannot raw-deflate: %2",callee.µ,I.SRCE.EMSG), callee ); // source error
+
+				sz = src.length;
+				bin = (sz > APT) && I.APZP( src, 'only-deflate' );   // bin :: false | str (tried APZP if size > APT)
+
+				// ---
+				// [REM] Ignore APZP.EMSG in 'raw' since we'll try internal method.
+				// ---
+
+				(src instanceof File) && I.SRCE.CLEAN_TMP(src);      // Cleanup src *if temp file*
+
+				if( bin.length ) return bin;
+			}
+			else
+			{
+				input = I.SRCE(input, 1/0);                          // input :: str | false
+				false===input && error( __("%1 cannot raw-deflate: %2",callee.µ,I.SRCE.EMSG), callee ); // source error
+				sz = input.length;
 			}
 
-			// WMEM = 2^15 ; WDIM = 2*WMEM = 2^16 => bits >= 16  (since 2^bits must >= WDIM.)
-			// May we change BITS?
 			// ---
-			I.DEFL.BITS = bits = 16;
-
-			// Normalize args.
+			// If APZP didn't not work, run RCMP iff supported size.
 			// ---
-			1 > (level|=0) ? (level=6) : ( 9 < level && (level=9) );            // 1 <= (level=6) <= 9
-			8 > (inKB|=0)  ? (inKB=32) : ( 64 < inKB && (inKB=64) );            // 8 <= (inKB=32) <= 64
-			1 > (bufCapa|=0) ? (bufCapa=0) : ( 1 < bufCapa && (bufCapa=2) );    // 0(small) | 1(medium) | 2(big)
 
-			// Literal and distance buffer dim.
-			// ---                                                              // SMALL      | MEDIUM      | BIG
-			bs = [0x2000,0x4000,0x8000][bufCapa];                               // 0x2000(8K) | 0x4000(16K) | 0x8000(32K)
-			// --- Hash bits ( 8 <= hb < callee.BITS )
-			hb = [13,14,15][bufCapa];                                           // 13         | 14          | 15
-			// ---
-			inSz = 1024*inKB;
+			// Precheck size.
+			sz > I.MAX_TO_DEFL && error( __("%1 cannot raw-deflate (input size: %2).",callee.µ,sz), callee ); // source too large for RCMP
 
-			// Assertions.
-			// ---
-			bs <= inSz
-			|| error(__("Input buffer too small (%1). Should be at least %2KB.",inSz,bs/1024));
+			src = 'string' == typeof input ? input : I.SRCE(input,1/0); // Forced string (cannot fail)
+			bin = I.RCMP(src); // str | false
+			false===bin && error( __("%1 cannot raw-deflate: %2",callee.µ,I.RCMP.EMSG), callee ); // DEFLATE error
 
-			I.WMEM <= (1 << (bits-1))
-			|| error(__("Window memory too large (%1). Should be at most %2.",I.WMEM,(1 << (bits-1))));
+			return bin;
+		}
+		.setup
+		({
+			APZP_THRS: 0x800, // (2K) Beyond this size, prefer APZP if available.
+		}),
 
-			( hb < bits && hb >= 8 )
-			|| error(__("Invalid bit capacity (%1). Should be between 8 and %2.",hb,bits-1));
-
-			// Literal buffer dim is: inSz + 64 extra positions.
-			// ---
-			return I.DEFL(data,level,64+inSz,bs,hb);
-		},
-
-		zlib: function zlib_S_S(/*str*/data,  adlr)
+		zip: function zip_SA$File$_S$File$(/*str|byte[]|File*/input,  I,zip,src,sz,fn,t)
 		//----------------------------------
-		// Compress data in RFC 1950 zlib format (with Adler32 checksum).
-		// This format is widely supported and includes integrity verification.
-		// [ADD190420] RFC 1950 compliant zlib wrapper with Adler32.
-		// => str :: zlib-formatted compressed data
+		// ZIP Compressor:
+		// - If input is supplied as a string or array of bytes, return
+		//   the zipped STRING (byte charcodes).
+		// - If input is supplied as a File, create and return the
+		//   zipped FILE `<inputName>.zip` at the same location.
+		//   (A fresh filename is generated in case of existing file.)
+		// If you need to get a ZIP *string* from a File,
+		// simply send `$$.File.readBinary(myInputFile)`.
+		// ---
+		// => str|File [OK]  |  ERR [KO]
 		{
-			'string' == typeof data || (data=String(data));
-			
-			// Adler32 suffix.
+			I = callee.µ['~'];
+
+			zip = (!callee.µ.ForceInternal) && I.APZP(input);  // zip :: false | str  (trying the fastest method)
+
 			// ---
-			adlr = callee.µ['~'].ADLR(data);
-			adlr = String.fromCharCode( adlr>>>24, 0xFF&(adlr>>>16), 0xFF&(adlr>>>8), 0xFF&(adlr>>>0) );
-
-			// Default compression.
+			// [REM] APZP.EMSG may return a message.
 			// ---
-			data = callee.µ.run( data );
 
-			// Zlib headers (RFC 1950):
-			// ---
-			// 78 01 - No Compression/low
-			// 78 9C - Default Compression (used here)
-			// 78 DA - Best Compression 
+			if( !zip.length ) // Fallback (slower: use RCMP).
+			{
+				src = 'string' == typeof input ? input : I.SRCE(input,1/0); // Forced string.
+				false===src && error( __("%1 cannot zip this input: %2",callee.µ,I.SRCE.EMSG), callee ); // source error
 
-			return '\x78\x9C' + data + adlr;
-		},
+				// Precheck size.
+				if( I.MAX_TO_DEFL < (sz=src.length) )
+				{
+					// Source too large for RCMP:
+					// throw APZP error message if available.
+					t = I.APZP.EMSG || __("Size too large: %1.", sz);
+					error( __("%1 cannot zip this input: %2",callee.µ,t), callee );
+				}
 
-		// Utility methods for common compression scenarios
+				fn = input instanceof File  // ZIP requires a filename:
+				? input.getDisplayName()    // Keep original
+				: I.DUMMY_NAME;             // Use the temp 'dummy' name
+
+				false === (t=I.RCMP(src)) && error( __("%1 cannot zip this input: %2",callee.µ,I.RCMP.EMSG), callee );
+				zip = I.PKWP( src.length, I.CRC32(src), t, fn );
+			}
+
+			if( input instanceof File ) // input File implies output File
+			{
+				fn = input.parent + '/' + input.name.replace(callee.RE_EXT,'') + '.zip';
+				t = (new File(fn)).fresh();
+				zip = $$.File.writeBinary( t, zip );
+				zip || error( __("%1 cannot create the output .zip file %2.",callee.µ,''+t), callee );
+			}
+
+			return zip;
+		}
+		.setup
+		({
+			RE_EXT: /\.[^.]+$/,
+		}),
+
+		gzip: function gzip_SA$File$_S(/*str|byte[]|File*/input,  I,src)
 		//----------------------------------
-		
-		fast: function fast_S_S(/*str*/data)
-		//----------------------------------
-		// Quick compression with minimal CPU usage (level 1).
-		// Ideal for real-time processing or when speed is prioritized over ratio.
-		// => str :: Compressed data
+		// GZIP Compressor: return the optimal gzip string (byte charcodes).
+		// => str [OK]  |  ERR [KO]
 		{
-			return callee.µ.run(data, 1);
+			I = callee.µ['~'];
+			src = I.SRCE(input,1/0); // Forced string.
+			false===src && error( __("%1 cannot gzip this input: %2",callee.µ,I.SRCE.EMSG), callee ); // source error
+			return I.GZWP( src, callee.µ.raw(src) );
 		},
 
-		best: function best_S_S(/*str*/data)
+		zlib: function zlib_SA$File$_S(/*str|byte[]|File*/input,  I,src)
 		//----------------------------------
-		// Maximum compression ratio (level 9) for storage/archival.
-		// Slower processing but optimal space efficiency.
-		// => str :: Compressed data
+		// ZLIB Compressor: return the optimal zlib string (byte charcodes).
+		// => str [OK]  |  ERR [KO]
 		{
-			return callee.µ.run(data, 9);
+			I = callee.µ['~'];
+			src = I.SRCE(input,1/0); // Forced string.
+			false===src && error( __("%1 cannot zlib this input: %2",callee.µ,I.SRCE.EMSG), callee ); // source error
+			return I.ZLWP( src, callee.µ.raw(src) );
 		},
 
-		getRatio: function getRatio_S_S_N(/*str*/original, /*str*/compressed)
-		//----------------------------------
-		// Calculate compression efficiency as percentage reduction.
-		// Useful for analyzing compression performance and choosing optimal settings.
-		// => num :: Compression ratio [0..100] (higher = better compression)
-		{
-			if( !original.length ) return 0;
-			return (1 - compressed.length / original.length) * 100;
-		},
 	})
