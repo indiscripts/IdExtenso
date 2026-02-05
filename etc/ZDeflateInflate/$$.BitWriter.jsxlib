@@ -1,0 +1,175 @@
+/*******************************************************************************
+
+		Name:           BitWriter
+		Desc:           LSB-first bitstream (output) used by $$.ZDeflate
+		Path:           /etc/ZDeflateInflate/$$.BitWriter.jsxlib
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Class
+		API:            =create() writeBits() flush() getResult()
+		    Static:     MaxBinLen
+		DOM-access:     NO
+		Todo:           add toSource() $$.JSON hook?
+		Created:        260125 (YYMMDD)
+		Modified:       260205 (YYMMDD)
+
+*******************************************************************************/
+
+;$$.hasOwnProperty('BitWriter') || eval(__(CLASS, $$, 'BitWriter', 260205))
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+		[REM] The ZDeflateInflate directory contains utilities used by ZDeflate
+		      and/or ZInflate. Some are shared, others remain independent.
+		
+		This class structures the *output bitstream* of DEFLATE and is specifi-
+		cally invoked from $$.ZDeflate. However, as this is a utility for
+		"bit-level output", a client script may use its logic/API anywhere else.
+		
+		IMPLEMENTATION NOTES. ExtendScript is notoriously faster at processing
+		strings (UTF16) than dealing with arrays. Also, some bit-level operations
+		can be delayed and performed on [01]+ strings using `parseInt(binStr,2)`.
+		The present implementation uses this approach to improve performance.
+		
+		- The static `MaxBinLen` property was empirically set to 256, meaning that
+		  the internal [01]+ representation of the bitstream simply concats 0's
+		  and 1's as long as its length is lower than 256. Indeed, it is very
+		  easy to handle, extend and slice a 256-character ExtendScript string,
+		  and still faster than going into per-bit operations and byte processing
+		  at each `writeBits` step.
+		
+		- The final `bytes` buffer is encoded as a string too, since
+		  `myStr += char` is faster than `myArr.push(elem)`. (Any byte is
+		  just taken as a charcode.)
+
+		The client code might convert bytes-as-string into bytes-as-array using
+		IdExtenso's `toBytes()` method. But in practice and in most cases, you
+		won't even need such array: `BitWriter.getResult()` returns a string that
+		can be sent to `$$.File.writeBinary` or just mixed with other strings
+		(header, footer, etc).
+
+		[NOTE] In ExtendScript, `String.prototype.charAt` has a bug when it reaches
+		the NUL character (\0): it then returns '' instead of '\0' (!) This bug is
+		fixed in IdExtenso but, when time performance is critical, better is to
+		entirely bypass `str.charAt()` if `str` is known to contain \0 character(s).
+		The workaround is to use `str.slice(i,1+i)` rather than `str.charAt(i)`.
+
+	*/
+
+	//==========================================================================
+	// PRIVATE      REVS RDX7()
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Bit reverse string (faster) -- Converts any uint8 into its bit-mirrored uint8 (byte)
+		REVS: String.fromCharCode.apply(0,
+		[0,128,64,192,32,160,96,224,16,144,80,208,48,176,112,240,8,136,72,200,40,168,104,232,24,152,88,216,56,184,120,248,
+		4,132,68,196,36,164,100,228,20,148,84,212,52,180,116,244,12,140,76,204,44,172,108,236,28,156,92,220,60,188,124,252,
+		2,130,66,194,34,162,98,226,18,146,82,210,50,178,114,242,10,138,74,202,42,170,106,234,26,154,90,218,58,186,122,250,6,
+		134,70,198,38,166,102,230,22,150,86,214,54,182,118,246,14,142,78,206,46,174,110,238,30,158,94,222,62,190,126,254,1,
+		129,65,193,33,161,97,225,17,145,81,209,49,177,113,241,9,137,73,201,41,169,105,233,25,153,89,217,57,185,121,249,5,133,
+		69,197,37,165,101,229,21,149,85,213,53,181,117,245,13,141,77,205,45,173,109,237,29,157,93,221,61,189,125,253,3,131,
+		67,195,35,163,99,227,19,147,83,211,51,179,115,243,11,139,75,203,43,171,107,235,27,155,91,219,59,187,123,251,7,135,71,
+		199,39,167,103,231,23,151,87,215,55,183,119,247,15,143,79,207,47,175,111,239,31,159,95,223,63,191,127,255]
+		),
+
+		RDX7: function(/*BitWriter*/BW,  RV,s,i,iMax,p)
+		//----------------------------------
+		// Reduces BW._bin_ to at most 7 bits (processing as many pending bytes as needed.)
+		// - Called by `writeBits` when BW._win_ is too long (cf µ.MaxBinLen)
+		// - Optionally called by `flush` before it has to produce a padded byte.
+		// this :: ~
+		// => undef
+		{
+			for
+			(
+				RV=this.REVS, s=BW._bin_, iMax=s.length-8, i=0 ;
+				i <= iMax ;
+				p = parseInt(s.slice(i,i+=8), 2),
+				BW.bytes += RV.slice(p,1+p) // [REM] Bypasses `RV.charAt` (cf NOTICE)
+			);
+			BW._bin_ = s.slice(i);
+		},
+	})
+
+	//==========================================================================
+	// STATIC       MaxBinLen
+	//==========================================================================
+
+	[STATIC]
+	
+	({
+		MaxBinLen: 256,
+	})
+
+	//==========================================================================
+	// PROTO API
+	//==========================================================================
+
+	[PROTO]
+	
+	({
+		create: function create_$BitWriter$()
+		// ---------------------------------
+		// Constructor:
+		// => { bytes:int8_str, _bin_:str }
+		{
+			// _bin_ temporarily represents in *left-to-right form* a part of the
+			// LSB-first binstream. Consecutive units formed of '0's and '1's (str)
+			// are concatenated here. The max length of _bin_ is set in µ.MaxBinLen.
+
+			this._bin_ = '';  // Assumed 'private' (DO NOT CHANGE IT FROM THE CLIENT CODE)
+			this.bytes = '';  // Accumulates final bytes as a string [\x00-\xFF]+
+		},
+
+		writeBits: function writeBits_SÝ_i_$BitWriter$(/*str|uint8*/what,/*?uint<=8*/bitCount,  i,t,µ)
+		//----------------------------------
+		// - If `bitCount` is defined (implying `what` of type uint8), reverse `what`
+		//   binary representation and writes exactly bitCount bits:
+		//        E.g (13,6) => "101100"  (from 13 == b00001101)
+		// - Otherwise, `what` MUST be a [01]+ string and it is written
+		//   as is (without reversing bit order).
+		// [REM] The inner _bin_ string undergoes left-to-right concatenation.
+		// => this
+		{
+			if( bitCount )for( t=what, what='', i=-1 ; ++i < bitCount ; what += ((1<<i)&t)?'1':'0' );
+			(µ=callee.µ).MaxBinLen <= (this._bin_ += what).length && µ['~'].RDX7(this);
+
+			return this;
+		},
+
+		flush: function flush_$BitWriter$(  I,s,p)
+		//----------------------------------
+		// Prepare the *final* `bytes`, applying _bin_ reduction and zero-padding if necessary.
+		// (Use flush() to finally convert the internal binstream to bytes, or to apply padding
+		// at some point.)
+		// => this
+		{
+			I = callee.µ['~'];
+			8 <= this._bin_.length && I.RDX7(this);       // Reduces this._bin_ to at most 7 bits.
+			if( (s=this._bin_).length )                   // 0 < _bin_.length < 8
+			{
+				p = parseInt((s+'0000000').slice(0,8),2); // Pad and get the last (reversed) byte.
+				this.bytes += I.REVS.slice(p,1+p);        // [REM] Bypasses `RV.charAt` (cf NOTICE)
+				this._bin_='';
+			}
+
+			return this;
+		},
+
+		getResult: function getResult_S()
+		//----------------------------------
+		// Return the final bytes as a string.
+		// => str
+		{
+			return this.flush().bytes;
+		},
+
+	})
