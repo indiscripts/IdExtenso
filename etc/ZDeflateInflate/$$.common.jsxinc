@@ -1,0 +1,372 @@
+/*******************************************************************************
+
+		Name:           common
+		Desc:           Common ZInflate/ZDeflate tools (private)
+		Path:           /etc/ZDeflateInflate/$$.common.jsxinc
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Snippet
+		API:         ~. LE16() LE32() BE16() BE32() CRC16() CRC32()
+		                LS2B lS2X DS2B DS2X CL_ORDER HMAP()
+		                GZIN PKIN PKWP() SRCE()
+		DOM-access:     NO
+		Todo:           ---
+		Created:        260201 (YYMMDD)
+		Modified:       260205 (YYMMDD)
+
+*******************************************************************************/
+
+	//==========================================================================
+	// NOTICE
+	//==========================================================================
+
+	/*
+
+		This file contains routines and/or data that either $$.ZDeflate or
+		$$.ZInflate -- and often both -- will use.
+		
+		For simplicity and given the compact size of the code below, it is
+		'included' identically in the [PRIVATE] zone of *each* module.
+		Hence, if your project invokes both $$.ZDeflate and $$.ZInflate,
+		this internal code is actually duplicated and 'hosted' in each.
+		
+		[REM] Another approach would have been to create a separate, indepen-
+		dent utility module and require it to be included upstream of
+		$$.ZDeflate and/or $$.ZInflate. This would have slightly reduced the
+		memory footprint but complicated the integration logic.
+		We have instead chosen to confine this lightweight snippet to the
+		`./etc/ZDeflateInflate/` subdirectory.
+
+	*/
+
+	//==========================================================================
+	// UTILITIES   LE16() LE32() BE16() BE32() CRC16() CRC32()
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+
+		LE16: function(/*uint16*/x)
+		//----------------------------------
+		// => str ;   2 byte-chars (Little-Endian representation of x)
+		{
+			return String.fromCharCode( 0xFF&(x>>>0), 0xFF&(x>>>8) );
+		},
+
+		LE32: function(/*uint32*/x)
+		//----------------------------------
+		// => str ;   4 byte-chars (Little-Endian representation of x)
+		{
+			return String.fromCharCode( 0xFF&(x>>>0), 0xFF&(x>>>8), 0xFF&(x>>>16), 0xFF&(x>>>24) );
+		},
+
+		BE16: function(/*uint16*/x)
+		//----------------------------------
+		// => str ;   2 byte-chars (Big-Endian representation of x)
+		{
+			return String.fromCharCode( 0xFF&(x>>>8), 0xFF&(x>>>0) );
+		},
+
+		BE32: function(/*uint32*/x)
+		//----------------------------------
+		// => str ;   4 byte-chars (Big-Endian representation of x)
+		{
+			return String.fromCharCode( 0xFF&(x>>>24), 0xFF&(x>>>16), 0xFF&(x>>>8), 0xFF&(x>>>0) );
+		},
+
+		CRC16: function(/*str*/s,  q,x,i,t)
+		//----------------------------------
+		// For PKZIP specifically, the standard is:
+		// Initial value: 0xFFFF ; Final XOR: 0xFFFF ; Polynomial: 0x8005 (reflected)
+		// => uint16
+		{
+			q = callee.Q || (callee.Q=[]);
+			if( !q.length )
+				for( i=-1 ; ++i < 256 ; q[i]=x>>>0 )
+				for( x=i, t=-1 ; ++t < 8 ; x=(1&x)?0x8005^(x>>>1):x>>>1 );
+
+			for
+			(
+				x=0xFFFF, t=s.length, i=-1 ;
+				++i < t ;
+				x = q[0xFF&(x^s.charCodeAt(i))]^(x>>>8)
+			);
+
+			return 0xFFFF&(x^0xFFFF);
+		},
+
+		CRC32: function(/*str*/s,  q,x,i,t)
+		//----------------------------------
+		// For GZIP.
+		// => uint32
+		{
+			q = callee.Q || (callee.Q=[]);
+			if( !q.length )
+				for( i=-1 ; ++i < 256 ; q[i]=x>>>0 )
+				for( x=i, t=-1 ; ++t < 8 ; x=(1&x)?0xEDB88320^(x>>>1):x>>>1 );
+
+			for
+			(
+				x=0xFFFFFFFF, t=s.length, i=-1 ;
+				++i < t ;
+				x = q[0xFF&(x^s.charCodeAt(i))]^(x>>>8)
+			);
+
+			return (x^0xFFFFFFFF) >>> 0;
+		},
+
+	})
+
+	//==========================================================================
+	// LS2B LS2X DS2B DS2X  (Base & Extra Bits for Length/Distance Symbols)
+	// CL_ORDER HMAP()
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// LS2B.charCodeAt(sym-257) gives the BASE for Length symbol `lsym` (257 <= lsym <= 285)
+		// LS2X.charCodeAt(sym-257) gives the EXTRA BITS for Length symbol `lsym` (257 <= lsym <= 285)
+		LS2B: String.fromCharCode(3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258,  /*not_used*/323),
+		LS2X: String.fromCharCode(0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0,                              /*not_used*/6),
+
+		// DS2B.charCodeAt(sym) gives the BASE for Dist symbol `dsym` (0 <= dsym <= 29)
+		// DS2X.charCodeAt(sym) gives the EXTRA BITS for Dist symbol `dsym` (0 <= dsym <= 29)
+		DS2B: String.fromCharCode(1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577),
+		DS2X: String.fromCharCode(0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13),
+
+		// Special INFLATE Type2 "Code length code order" for Dynamic H-Tree.
+		CL_ORDER: String.fromCharCode(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15),
+
+		HMAP: function(/*uint[]*/codeLengths,/*bool=0*/REVERSED_MAP,  ret,mx,n,a,z,nxt,k,b,sb,F)
+		//----------------------------------
+		// (Canonical-Huffman-Map.)
+		// - By default, build canonical Huffman codes from code lengths, e.g.
+		//   { 0:"00110000", 1:"00110001", 2:"00110010", 3:"00110011", etc }
+		// - In REVERSED_MAP mode, the map is returned in { revKey => symb }
+		//   form, where revKey is <bit_length> (1st charCode) + bin_mirror, e.g
+		//   { "\x0800001100":0, "\x0810001100":1, "\x0801001100":2, etc }
+		// [REM] If the `codeLengths` array already provides a .MAX_VAL property,
+		// use it rather than recalculating the max code length.
+		// this :: ~
+		// => new obj  ;   { symb => bin_str } [DEFAULT]
+		//                 { <bits>rev_str => symb ; .MIN_BITS .MAX_BITS } [REVERSED]
+		{
+			mx = codeLengths.hasOwnProperty('MAX_VAL') ? codeLengths.MAX_VAL : Math.max.apply(0, codeLengths);
+
+			// a :: count at each length, e.g
+			// -------------------------------
+			//    0  1  2  3  4  5
+			// [  u, u, u, 3, 8, 4  ]  ; `u` means zero (undefined)
+			// -------------------------------
+			for( a=Array(1+mx), n=codeLengths.length, sb=-1 ; ++sb < n ; (z=codeLengths[sb]) && (a[z]=1+(0|a[z])) );
+
+			// nxt[i+1] = 2*( nxt[i] + count(i) ), e.g
+			// -------------------------------
+			//    0  1  2  3  4  5
+			// [  u, 0, 0, 0, 6, 28  ] ; `u` means zero (undefined)
+			//                │   └───── 28 = 2*(6+8) <-> 11100b
+			//                └─────────  6 = 2*(0+3) <->   110b
+			for( nxt=Array(1+mx), k=b=0 ; ++b <= mx ; k=nxt[b]=2*(k + (0|a[b-1])) );
+
+			// Map each *used* symbol to its canonical binary representation, or reverse.
+			ret = REVERSED_MAP
+			? ( (F=callee.REV_MAP), {MIN_BITS:mx,MAX_BITS:mx} ) // MIN_BITS refined in REV_MAP()
+			: ( (F=callee.DIR_MAP), {} );
+			for( sb=-1 ; ++sb < n ; (z=codeLengths[sb]) && F(ret,sb,nxt[z]++,z) );
+
+			return ret;
+		}
+		.setup
+		({
+			DIR_MAP: function(/*{}&*/map,/*uint*/symb,/*uint*/code,/*0<uint<16*/bits)
+			//----------------------------------
+			{
+				// e.g.  3 => "00110011"
+				// ---
+				map[symb] = ('000000000000000'+code.toString(2)).slice(-bits);
+			},
+
+			REV_MAP: function(/*{}&*/rev,/*uint*/symb,/*uint*/code,/*0<uint<16*/bits,  t)
+			//----------------------------------
+			{
+				// e.g.  '\x0811001100' => 3
+				// ---
+				bits < rev.MIN_BITS && (rev.MIN_BITS=bits);
+				t = ('000000000000000'+code.toString(2)).slice(-bits).split('').reverse().join('');
+				rev[String.fromCharCode(bits)+t] = symb;
+			},
+		}),
+
+	})
+
+	//==========================================================================
+	// GZIN  PKIN  DUMMY_NAME  PKWP()  SRCE()
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		// Expected signature of a GZIP file header
+		GZIN: '\x1F\x8B',
+
+		// Expected signature of a PKZIP file header (found at each local file header start)
+		PKIN: '\x50\x4B\x03\x04',
+		
+		DUMMY_NAME: "tmp.dat",
+		
+		// Max input length (uncompressed) entering internal DEFLATE
+		MAX_TO_DEFL: 2 * 1024*1024, // 2MB
+
+		// Max input length (compressed) entering internal INFLATE.
+		MAX_TO_INFL: 1 * 1024*1024, // 1MB
+
+		PKWP: function(/*uint32*/unSize,/*uint32*/crc32,/*str*/rawDefl,/*str=dummy*/ffName,  fsz,csz,LHD,CHD,EHD,TMDT,lfh,cdh,eoc,t)
+		//----------------------------------
+		// (PKZIP-Wrapper.) Given the original uncompressed size (unSize), the CRC32
+		// checksum of the original stream, the raw DEFLATE bytestream `rawDefl`,
+		// and an optional filename, return a minimal, valid ZIP byte stream.
+		// Used for producing a valid ZIP output if:
+		//  - APZP is unavailable in ZDeflate
+		//  - a temporary ZIP stream is needed in ZInflate
+		// [REM] If supplied, `ffName` is the desired *display name* (UTF16 string)
+		//       so ffName.toUTF8() is always applied.
+		// this :: ~
+		// => str
+		{
+			const U16 = this.LE16;
+			const U32 = this.LE32;
+
+			csz = rawDefl.length;      // compressed size
+
+			'string' == typeof ffName || (ffName=this.DUMMY_NAME);
+			ffName = ffName.toUTF8();  // Convert to UTF-8 since we use flags(0x800)
+			fsz = ffName.length;       // filename size
+
+			// Cache constant header portions: (Rem: changed flags(8) to flags(0x800) in order to support UTF8.)
+			// ---
+			// LHD :: signature(0x04034b50) + ver_needed_16(20) + flags_16(0x800) + cm_16(8)
+			// CHD :: signature(0x02014b50) + ver_made_16(20) + ver_needed_16(20) + flags_16(0x800) + cm_16(8)
+			// EHD :: signature(0x06054b50) + disk_num_16(0) + disk_start_16(0) + disk_entries_16(1) + tot_entries_16(1)
+			// ---
+			LHD = callee.LHD || (callee.LHD='\x50\x4B\x03\x04' + U16(20) + U16(0x800) + U16(8));
+			CHD = callee.CHD || (callee.CHD='\x50\x4B\x01\x02' + U16(20) + U16(20) + U16(0x800) + U16(8));
+			EHD = callee.EHD || (callee.EHD='\x50\x4B\x05\x06' + '\0\0\0\0' + U16(1) + U16(1));
+
+			// Generate MS-DOS timestamp from current date/time
+			// MS-DOS time: bits 0-4 (seconds/2), bits 5-10 (minutes), bits 11-15 (hours)
+			// MS-DOS date: bits 0-4 (day), bits 5-8 (month), bits 9-15 (year-1980)
+			// ---
+			t = new Date();
+			TMDT = U16( (t.getHours() << 11) | (t.getMinutes() << 5) | (t.getSeconds() >> 1)  )  // last_mode_time_16
+			     + U16( ((t.getFullYear()-1980) << 9) | ((1+t.getMonth()) << 5) | t.getDate() ); // last_mode_date_16
+
+			// Local File Header:
+			// lfh :: LHD + [ TMDT + CRC_32 + csz_32 + unSize_32 + fsz_16 + extra_len_16(0) ] + ffName
+			// Central Directory Header:
+			// cdh :: CHD + [...] + fcomment_16(0) + disk_start_16(0) + int_atts_16(0) + ext_atts_32(0) + rel_offset_32(0) + fileName
+			// End Of Central Directory:
+			// eoc :: EHD + cd_size32(cdh.length) + cd_offset32(lfh.length+csz) + comment_len_16(0)
+			// ---
+			lfh = LHD + (t=TMDT+U32(crc32)+U32(csz)+U32(unSize)+U16(fsz)+'\0\0') + ffName;
+			cdh = CHD + t + '\0\0\0\0\0\0\0\0\0\0\0\0\0\0' + ffName;
+			eoc = EHD + U32(cdh.length) + U32(lfh.length + csz) + '\0\0';
+
+			return lfh + rawDefl + cdh + eoc;
+		},
+
+		SRCE: function(/*any*/src,/*uint|Infinity=64K*/MAX_STR_LEN,  tStr,tObj,n,t,$$,r)
+		//----------------------------------
+		// Validate any input stream (string, array, File) and return:
+		//  - a string if 0 < len <= MAX_STR_LEN
+		//  - a File if len > MAX_STR_LEN (src is returned if this is
+		//    already a File, a new temp file is created otherwise.)
+		// [REM] MAX_STR_LEN=1    -> forced File
+		//       MAX_STR_LEN=1/0  -> forced string
+		// this :: ~
+		// => str|File [OK]  |  false [ERR] + .EMSG
+		{
+			'number' == typeof MAX_STR_LEN || (MAX_STR_LEN=0x10000);
+
+			callee.EMSG = '';
+			callee.TMP_URI = '';
+
+			tStr = 'string' == typeof src;           // true iff string
+			tObj = (!tStr) && src===Object(src);     // true iff Object
+			n = (tStr||tObj) && src.length;          // uint | false | undef
+
+			if( !n )
+			{
+				t = tObj ? src.constructor.name : typeof src;
+				callee.EMSG = 0===n
+				? __("Empty input argument (%1).", t)
+				: __("Invalid input argument (%1): should be a String, a File, or an Array of bytes.", t);
+				return false;
+			}
+
+			if( tObj )
+			{
+				if( src instanceof Array )
+				{
+					try
+					{
+						src = String.fromCharCode.apply(0,src);
+						tObj = false;
+						tStr = true;
+					}
+					catch(e)
+					{
+						callee.EMSG = __("Invalid Array of bytes: %1", ''+e );
+					}
+				}
+				else
+				{
+					src instanceof File
+					? ( src.exists || callee.EMSG = __("Invalid input argument: the File %1 doesn't exist.", ''+src) )
+					: ( callee.EMSG = __("Invalid input argument (%1): should be a String, a File, or an Array of bytes.", src.constructor.name) );
+				}
+				
+				if( callee.EMSG ) return false;
+			}
+
+			$$ = $.global[callee.µ.__root__];
+			
+			if( n <= MAX_STR_LEN )
+			{
+				r = tStr ? src : $$.File.readBinary(src); // str | false
+				if( !r.length )
+				{
+					callee.EMSG = __("Cannot read the file %1 in binary mode.", ''+src);
+					return false;
+				}
+			}
+			else
+			{
+				t = 0;
+				r = tObj ? src : $$.File.writeBinary( t=(new File(Folder.temp+'/Z_'+$$.File.stamp()+'.tmp')).fresh(), src );
+				if( !r.length )
+				{
+					callee.EMSG = __("Cannot create the temp file %1 in binary mode.", ''+t);
+					return false;
+				}
+				0===t || (callee.TMP_URI=r.absoluteURI);
+			}
+			
+			return r;
+		}
+		.setup
+		({
+			EMSG:    '',  // Last error message
+			TMP_URI: '',  // Temporary file flag
+			CLEAN_TMP: function(/*File*/src)
+			//----------------------------------
+			// this :: ~.SRCE
+			{
+				if( src.absoluteURI === this.TMP_URI )try{ src.remove() }catch(_){}
+				this.TMP_URI = '';
+			},
+		}),
+	})
+
