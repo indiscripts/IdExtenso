@@ -1,785 +1,1085 @@
 /*******************************************************************************
 
 		Name:           ZInflate
-		Desc:           Encapsulate the inflate/zlib (decompression) algorithm.
+		Desc:           DEFLATE/ZIP/GZIP/ZLIB Decompressors (CM=8)
 		Path:           /etc/$$.ZInflate.jsxlib
 		Require:        ---
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =raw() zlib()
-		DOM-access:     NO
-		Todo:           Dictionary support for zlib preset dictionaries.
+		API:            =unCompress() unRaw() unZip() unGzip() unZlib()
+		                ForceInternal
+		DOM-access:     app.unpackageUCF() [sometimes used]
+		Todo:           ---
 		Created:        180921 (YYMMDD)
-		Modified:       260106 (YYMMDD)
+		Modified:       260205 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ZInflate') || eval(__(MODULE, $$, 'ZInflate', 260106, 'raw'))
+#include 'ZDeflateInflate/$$.BitReader.jsxlib'
 
-	//==========================================================================
-	// BACKGROUND
-	//==========================================================================
-
-	/*
-
-	ZLIB FORMAT
-
-	A zlib stream has the following structure:
-	
-	Byte 0 :: CMF (Compression Method and flags.)
-	          xxxx xxxx
-	          INFO METH
-
-	      - METH==8 denotes the 'deflate' compression method with a window
-	        size up to 32K; this is the method used by gzip and PNG.
-
-	      - For METH==8, INFO is the base-2 log of the window size, minus 8;
-	        So, winSize = 2^(8+INFO)   ; e.g winSize = 32K if INFO=7
-	        Values of INFO > 7 are not allowed; INFO is undefined if METH!=8.
-
-	Byte 1 :: FLG (Flags.)
-	          xx x xxxxx
-	          LV D CHECK
-
-	      - CHECK: check bits for CMF and FLG.
-
-	      - D: Whether a DICT dictionary identifier is present immediately
-	        after the FLG byte. The dictionary is a sequence of bytes which
-	        are initially fed to the compressor w/o producing any compressed
-	        output. If present, DICT is the Adler32 checksum of this sequence
-	        of bytes. The decompressor can use this id to determine which
-	        dictionary has been used by the compressor.
-
-	      - LV: Compression level. These flags are available for use by
-	        specific compression methods. The 'deflate' method (METH=8) sets
-	        these flags as follows:
-	           LV == 0  ->  compressor used fastest algorithm.
-	           LV == 1  ->  compressor used fast algorithm.
-	           LV == 2  ->  compressor used default algorithm.
-	           LV == 3  ->  compressor used maximum, slowest compression.
-	        LV is not needed for decompression; it is there to indicate if
-	        recompression might be worthwile.
-	
-	Bytes [2,3,4,5] :: [opt] DICT ID, if the `D` flag is set in FLG.
-	
-	Next bytes :: Compressed data.
-	
-	Last 4 bytes :: Adler32 checksum of the uncompressed data (excl. any
-	dictionary data.)
-
-	[REM] The Adler32 checksum is a rolling checksum algorithm that provides
-	data integrity verification. It is faster than CRC32 but still offers good
-	error detection capabilities. The checksum is computed over the original
-	uncompressed data and stored as a 32-bit big-endian value at the end of
-	the zlib stream.
-
-	*/
+;$$.hasOwnProperty('ZInflate') || eval(__(MODULE, $$, 'ZInflate', 260205, 'unCompress'))
 
 	//==========================================================================
 	// NOTICE
 	//==========================================================================
 
 	/*
+		[CHG260205] Refactored from scratch.
 
-	[REF] http://www.onicos.com/staff/iz/amuse/javascript/expert/
-	
-	Both the `ZDeflate` and `ZInflate` modules are based on Masanao Izumo's
-	implementation -- www.onicos.com/staff/iz/amuse/javascript/expert/ --
-	ported into ExtendScript. Many tests have been done and many tricks have
-	been applied to get the most efficient inflate/deflate processes in
-	IdExtenso.
-	
-	These modules are fine for processing *small* data streams (say < 50KB)
-	in a decent time; then avoiding the use of external tools, libraries, or
-	DOM methods. If you need to zip/unzip *larger* files from InDesign, turn
-	to the DOM methods `app.packageUCF()` and `app.unpackageUCF()`.
-	
-	`ZDeflate` and `ZInflate` are independent, so if your project only wants
-	to decompress strings, you can include `$$.ZInflate.jsxlib` alone.
+		The ZInflate module offers all symmetric decompressors to ZDeflate:
+		it can decompress ZIP files, GZIP/ZLIB wrappers, and of course
+		the pure “DEFLATE” stream as such. It is therefore assumed that any
+		input format you may send to this module does 'wrap' a byte stream
+		coming from a DEFLATE compression (CM=8 in all specifications).
+		
+		¹ The raw decompression mechanism is sometimes referred to as
+		  ‘inflate’.
 
-	DE-COMPRESSION
-	
-	Use `$$.ZInflate(myCompressedString)` to get the uncompressed string using
-	the default option: window=32KB (i.e wPower=15.) To refine this parameter,
-	cf detail in the `raw` method.
+		[REM] Whatever the decompression method you invoke, keep in mind
+		that the returned string is equivalent to an array of bytes (uint8)
+		without extra conversion -- its origin and/or format being unknown.
+		So, if the result is to be interpreted as e.g. UTF8 units, it is the
+		responsibility of the client script to apply further treatment like
+		UTF8->UTF16 conversion via `String.fromUTF8(result)`, and so on.
 
-	[REM] The `raw` method is automatic, that is, `$$.ZInflate()` is the
-	shortcut of `$$.ZInflate.raw()`
-	
-	Alternately, call `$$.ZInflate.zlib(myZlibString)` if your input string is
-	surrounded by a zlib wrapper. (See the BACKGROUND section.)
+		ZInflate implements an ExtendScript-optimized inflate algorithm
+		(Huffman decoding, support of static/dynamic/stored block types)
+		which still offers very acceptable time performance for 200KB or
+		more. However, a much faster routine² is used whenever possible
+		specifically for ZIP and GZIP streams.
 
-	ZLIB WRAPPER
-	
-	The `zlib` method handles zlib-wrapped compressed data which includes:
-	- Header validation (compression method and window size)
-	- Adler32 checksum verification for data integrity
-	- Optional lenient mode for graceful error handling
-	
-	Usage:
-	   $$.ZInflate.zlib(myZlibData)          // strict mode (default)
-	   $$.ZInflate.zlib(myZlibData, true)    // lenient mode
-	
-	In strict mode (default), Adler32 checksum failures throw an error.
-	In lenient mode, checksum failures log a warning and return the data,
-	allowing recovery from minor corruption while alerting the user.
+		² InDesign's app.unpackageUCF() directly supports ZIP files.
+		  With a simple 'zip-repacking' trick, the same path can be
+		  used for GZIP too.
 
+		ZInflate falls back to its internal decompressor (~.INFL) if no faster
+		approach is available. Also, you can set the `ForceInternal` property
+		to 1 if you want to forcibly disable the 'external' unpackageUCF tool
+		and go with the slower, internal implementation.
+
+		[REM] Unlike TinyInflate (recently removed) the present module does
+		not support base64 encoding for the input stream. When needed, the
+		client code will just have to send `String.fromBase64(myBase64)`
+		to obtain the very same functionality.
 	*/
 
 	//==========================================================================
-	// CONSTANT DATA
+	// COMMON ZInflate/ZDeflate TOOLS
 	//==========================================================================
 
-	[PRIVATE]
-	
-	({
-		// Bit-Length-Order (shared w/ inflate.)
-		//----------------------------------
-		BLOR: Array( 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 ),
-		BLSZ: 19,
+	#include 'ZDeflateInflate/$$.common.jsxinc'
 
-		// Enums.
-		//----------------------------------
-		ESTO: 0,                                  // Stored block.
-		ESTA: 1,                                  // Static trees.
-		EDYN: 2,                                  // Dynamic trees.
-
-		// Constants.
-		//----------------------------------
-		WMEM: 32768,                              // Updated from params.
-		CPDI: Array(1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577),
-		CPLN: Array(3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0),
-		CPEX: Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99),
-		XDBT: Array(0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13),
-	})
-	
 	//==========================================================================
-	// BASIC TOOLS
+	// STATIC H-MAPS (REVERSED)
 	//==========================================================================
 	
 	[PRIVATE]
 	
 	({
-		GETB: function(/*uint*/n,/*fct*/DMP)
+		// REVERSED Static LITERAL/LENGTH Map :: <7|8|9><invStr> => 0..287
+		// - 1st charcode of the key: nb of bits
+		// - next chars of the key: *reversed* code length [speed up]
+		// - result: LL symb
+		// Algo for BitReader: 1. read 7 bits -> bin
+		//                     2. if the key `<7>bin` exists -> done
+		//                     3. read one more bit b -> bin := b+ bin (str)
+		//                     4. if the key `<8>bin` exists -> done
+		//                     5. read one more bit b -> bin := b+bin (str)
+		//                     6. if the key `<9>bin` exists -> done
+		//                     7. error
 		//----------------------------------
-		// (Get-Bits.)
-		// => int
+		LLRV:
 		{
-			return DMP.BIT_BUF & callee.MASK_BITS[n];
+			"\x0800001100": 0, "\x0810001100": 1, "\x0801001100": 2, "\x0811001100": 3, "\x0800101100": 4, "\x0810101100": 5, "\x0801101100": 6, "\x0811101100": 7,
+			"\x0800011100": 8, "\x0810011100": 9, "\x0801011100":10, "\x0811011100":11, "\x0800111100":12, "\x0810111100":13, "\x0801111100":14, "\x0811111100":15,
+			"\x0800000010":16, "\x0810000010":17, "\x0801000010":18, "\x0811000010":19, "\x0800100010":20, "\x0810100010":21, "\x0801100010":22, "\x0811100010":23,
+			"\x0800010010":24, "\x0810010010":25, "\x0801010010":26, "\x0811010010":27, "\x0800110010":28, "\x0810110010":29, "\x0801110010":30, "\x0811110010":31,
+			"\x0800001010":32, "\x0810001010":33, "\x0801001010":34, "\x0811001010":35, "\x0800101010":36, "\x0810101010":37, "\x0801101010":38, "\x0811101010":39,
+			"\x0800011010":40, "\x0810011010":41, "\x0801011010":42, "\x0811011010":43, "\x0800111010":44, "\x0810111010":45, "\x0801111010":46, "\x0811111010":47,
+			"\x0800000110":48, "\x0810000110":49, "\x0801000110":50, "\x0811000110":51, "\x0800100110":52, "\x0810100110":53, "\x0801100110":54, "\x0811100110":55,
+			"\x0800010110":56, "\x0810010110":57, "\x0801010110":58, "\x0811010110":59, "\x0800110110":60, "\x0810110110":61, "\x0801110110":62, "\x0811110110":63,
+			"\x0800001110":64, "\x0810001110":65, "\x0801001110":66, "\x0811001110":67, "\x0800101110":68, "\x0810101110":69, "\x0801101110":70, "\x0811101110":71,
+			"\x0800011110":72, "\x0810011110":73, "\x0801011110":74, "\x0811011110":75, "\x0800111110":76, "\x0810111110":77, "\x0801111110":78, "\x0811111110":79,
+			"\x0800000001":80, "\x0810000001":81, "\x0801000001":82, "\x0811000001":83, "\x0800100001":84, "\x0810100001":85, "\x0801100001":86, "\x0811100001":87,
+			"\x0800010001":88, "\x0810010001":89, "\x0801010001":90, "\x0811010001":91, "\x0800110001":92, "\x0810110001":93, "\x0801110001":94, "\x0811110001":95,
+			"\x0800001001":96, "\x0810001001":97, "\x0801001001":98, "\x0811001001":99, "\x0800101001":100,"\x0810101001":101,"\x0801101001":102,"\x0811101001":103,
+			"\x0800011001":104,"\x0810011001":105,"\x0801011001":106,"\x0811011001":107,"\x0800111001":108,"\x0810111001":109,"\x0801111001":110,"\x0811111001":111,
+			"\x0800000101":112,"\x0810000101":113,"\x0801000101":114,"\x0811000101":115,"\x0800100101":116,"\x0810100101":117,"\x0801100101":118,"\x0811100101":119,
+			"\x0800010101":120,"\x0810010101":121,"\x0801010101":122,"\x0811010101":123,"\x0800110101":124,"\x0810110101":125,"\x0801110101":126,"\x0811110101":127,
+			"\x0800001101":128,"\x0810001101":129,"\x0801001101":130,"\x0811001101":131,"\x0800101101":132,"\x0810101101":133,"\x0801101101":134,"\x0811101101":135,
+			"\x0800011101":136,"\x0810011101":137,"\x0801011101":138,"\x0811011101":139,"\x0800111101":140,"\x0810111101":141,"\x0801111101":142,"\x0811111101":143,
+			// ---
+			"\x09000010011":144,"\x09100010011":145,"\x09010010011":146,"\x09110010011":147,"\x09001010011":148,"\x09101010011":149,"\x09011010011":150,"\x09111010011":151,
+			"\x09000110011":152,"\x09100110011":153,"\x09010110011":154,"\x09110110011":155,"\x09001110011":156,"\x09101110011":157,"\x09011110011":158,"\x09111110011":159,
+			"\x09000001011":160,"\x09100001011":161,"\x09010001011":162,"\x09110001011":163,"\x09001001011":164,"\x09101001011":165,"\x09011001011":166,"\x09111001011":167,
+			"\x09000101011":168,"\x09100101011":169,"\x09010101011":170,"\x09110101011":171,"\x09001101011":172,"\x09101101011":173,"\x09011101011":174,"\x09111101011":175,
+			"\x09000011011":176,"\x09100011011":177,"\x09010011011":178,"\x09110011011":179,"\x09001011011":180,"\x09101011011":181,"\x09011011011":182,"\x09111011011":183,
+			"\x09000111011":184,"\x09100111011":185,"\x09010111011":186,"\x09110111011":187,"\x09001111011":188,"\x09101111011":189,"\x09011111011":190,"\x09111111011":191,
+			"\x09000000111":192,"\x09100000111":193,"\x09010000111":194,"\x09110000111":195,"\x09001000111":196,"\x09101000111":197,"\x09011000111":198,"\x09111000111":199,
+			"\x09000100111":200,"\x09100100111":201,"\x09010100111":202,"\x09110100111":203,"\x09001100111":204,"\x09101100111":205,"\x09011100111":206,"\x09111100111":207,
+			"\x09000010111":208,"\x09100010111":209,"\x09010010111":210,"\x09110010111":211,"\x09001010111":212,"\x09101010111":213,"\x09011010111":214,"\x09111010111":215,
+			"\x09000110111":216,"\x09100110111":217,"\x09010110111":218,"\x09110110111":219,"\x09001110111":220,"\x09101110111":221,"\x09011110111":222,"\x09111110111":223,
+			"\x09000001111":224,"\x09100001111":225,"\x09010001111":226,"\x09110001111":227,"\x09001001111":228,"\x09101001111":229,"\x09011001111":230,"\x09111001111":231,
+			"\x09000101111":232,"\x09100101111":233,"\x09010101111":234,"\x09110101111":235,"\x09001101111":236,"\x09101101111":237,"\x09011101111":238,"\x09111101111":239,
+			"\x09000011111":240,"\x09100011111":241,"\x09010011111":242,"\x09110011111":243,"\x09001011111":244,"\x09101011111":245,"\x09011011111":246,"\x09111011111":247,
+			"\x09000111111":248,"\x09100111111":249,"\x09010111111":250,"\x09110111111":251,"\x09001111111":252,"\x09101111111":253,"\x09011111111":254,"\x09111111111":255,
+			// ---
+			"\x070000000":256,"\x071000000":257,"\x070100000":258,"\x071100000":259,"\x070010000":260,"\x071010000":261,"\x070110000":262,"\x071110000":263,
+			"\x070001000":264,"\x071001000":265,"\x070101000":266,"\x071101000":267,"\x070011000":268,"\x071011000":269,"\x070111000":270,"\x071111000":271,
+			"\x070000100":272,"\x071000100":273,"\x070100100":274,"\x071100100":275,"\x070010100":276,"\x071010100":277,"\x070110100":278,"\x071110100":279,
+			// ---
+			"\x0800000011":280,"\x0810000011":281,"\x0801000011":282,"\x0811000011":283,"\x0800100011":284,"\x0810100011":285,"\x0801100011":286,"\x0811100011":287,
 		}
-		.setup(
+		.setup
+		({
+			MIN_BITS: 7,
+			MAX_BITS: 9,
+		}),
+		
+		// REVERSED Static DISTANCE Map :: <5><invStr> => 0..29
+		// - 1st charcode of the key: 5
+		// - next chars of the key: *reversed* code length [speed up]
+		// - result: DS symb
+		DSRV:
 		{
-			MASK_BITS: Array(0, 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535),
+			"\x0500000" : 0, "\x0510000" : 1, "\x0501000" : 2, "\x0511000" : 3, "\x0500100" : 4, "\x0510100" : 5, "\x0501100" : 6, "\x0511100" : 7,
+			"\x0500010" : 8, "\x0510010" : 9, "\x0501010": 10, "\x0511010": 11, "\x0500110": 12, "\x0510110": 13, "\x0501110": 14, "\x0511110": 15,
+			"\x0500001": 16, "\x0510001": 17, "\x0501001": 18, "\x0511001": 19, "\x0500101": 20, "\x0510101": 21, "\x0501101": 22, "\x0511101": 23,
+			"\x0500011": 24, "\x0510011": 25, "\x0501011": 26, "\x0511011": 27, "\x0500111": 28, "\x0510111": 29,
+		}
+		.setup
+		({
+			MIN_BITS: 5,
+			MAX_BITS: 5,
 		}),
 
-		NEED: function(/*uint*/n,/*fct*/DMP,  s,p,len,b)
-		//----------------------------------
-		// (Need-Bits.)
-		// => undef
-		{
-			for( s=callee.DATA, len=callee.LEN, p=callee.POS, b=DMP.BIT_LEN ; b < n ; b += 8 )
-			{
-				DMP.BIT_BUF |= ((len == p ? -1 : (255&s.charCodeAt(p++))) << b);
-			}
-
-			DMP.BIT_LEN = b;
-			callee.POS = p;
-		}
-		.setup({ DATA:false, LEN:0, POS:0 }),
-
-		DUMP: function(/*uint*/n)
-		//----------------------------------
-		// (Dump.)
-		// => callee
-		{
-			callee.BIT_BUF >>= n;
-			callee.BIT_LEN -= n;
-			return callee;
-		}
-		.setup({ BIT_BUF:-1, BIT_LEN:-1 }),
-
-		ADLR: function(/*str*/s,/*?uint16*/seed,  a,b,n,i,mn)
-		//----------------------------------
-		// (Adler32.) Shared implementation with ZDeflate
-		// => uint32
-		{
-			( seed && 'number'==typeof seed ) || (seed=0);
-			a = seed ? (0xFFFF&seed) : 1;
-			b = seed ? (seed >>> 16) : 0;
-
-			for( mn=0, n=s.length, i=-1 ; ++i < n ; )
-			{
-				3850 > (mn=n-i) || (mn=3850);
-				for( mn+=i ; i < mn ; b += (a+=0xFF&s.charCodeAt(i++)) );
-				a = (15*(a>>>16)+(a&65535));
-				b = (15*(b>>>16)+(b&65535));
-			}
-
-			return ((b%65521) << 16) | (a%65521);
-		},
 	})
 
 	//==========================================================================
-	// INNER PROCESS
+	// (RAW) INFLATE
 	//==========================================================================
 
 	[PRIVATE]
 	
 	({
-
-		HUFT: function HufTree(/*arr*/nbs,/*uint<=288*/nc,/*uint*/ns,/*arr*/bvs,/*arr*/xbs,/*uint*/mxb,  BL,SB,HN,TS,VO,BO,tail,zc,ne,di,mxc,lvl,bts,ptr,pid,i,j,q,w,xp,dum,zt,k,o)
+		SYMB: function(/*BitReader&*/BR,/*{ <n><revbin> => symb ; .MIN_BITS .MAX_BITS }*/rvMap,  mx,bin,nb,k)
 		//----------------------------------
-		// (Huffman Tree Constructor.)
-		// nbs ::  code lengths in bits (all assumed <= BMAX=16)
-		// nc  ::  number of codes ; <= 288
-		// ns  ::  number of simple-valued codes
-		// bvs ::  list of base values for non-simple codes
-		// xbs ::  list of extra bits for non-simple codes
-		// mxb ::  maximum lookup bits
+		// Return the next rvMap-related symbol.
+		// => uint [OK]  |  false [KO]
 		{
-			this.BMAX = 16;                  // maximum bit length of any code
-			this.status = 0;                 // 0: success, 1: incomplete table, 2: bad input
-			this.root = false;               // {next,list} starting table
-			this.mxLook = 0;                 // maximum lookup bits, returns actual
-
-			BL = new Array(1+this.BMAX);     // bit length count table
-			SB = new Array(1+this.BMAX);     // stack of bits per table
-			HN = { e:0, b:0, n:0, t:false }; // table entry for structure assignment
-			TS = new Array(this.BMAX);       // zip_HuftNode[BMAX][]  table stack
-			VO = new Array(288);             // values in order of bit length
-			BO = new Array(1+this.BMAX);     // bit offsets, then code stack
-
-			for( j=BL.length, i=-1 ; ++i < j ; BL[i] = 0 );
-			for( j=SB.length, i=-1 ; ++i < j ; SB[i] = 0 );
-			for( j=TS.length, i=-1 ; ++i < j ; TS[i] = false );
-			for( j=VO.length, i=-1 ; ++i < j ; VO[i] = 0 );
-			for( j=BO.length, i=-1 ; ++i < j ; BO[i] = 0 );
-
-			ne = nc > 256 ? nbs[256] : this.BMAX;
-
-			for( ptr=nbs, pid=0, i=nc ; i-- ; ++BL[ptr[pid]], ++pid );
-
-			if( BL[0] == nc )
-			{
-				this.root = false;
-				this.mxLook = this.status = 0;
-				return;
-			}
-
-			for( i=this.BMAX, j=0 ; ++j <= i && !BL[j] ; );
-			mxb < (bts=j) && (mxb=j);
-
-			for( i=this.BMAX ; i && !BL[i] ; i-- );
-			mxb > (mxc=i) && (mxb=i);
-
-			for( dum = 1 << j ; j < i ; (++j), dum <<= 1 )
-			{
-				if( (dum -= BL[j]) < 0 )
-				{
-					this.status = 2;
-					this.mxLook = mxb;
-					return;
-				}
-			}
-
-			if( (dum -= BL[i]) < 0 )
-			{
-				this.status = 2;
-				this.mxLook = mxb;
-				return;
-			}
-
-			BL[i] += dum;
-			for( BO[1]=j=0, ptr=BL, pid=1, xp=2 ; 0 < --i ; BO[xp++] = (j+=ptr[pid++]) );
-
-			ptr=nbs;
-			pid=i=0;
-			do{ (j=ptr[pid++])&&(VO[BO[j]++]=i) } while( ++i < nc );
-
-			ptr = VO;
-			nc = BO[mxc];
-			for( tail=false, lvl=-1, BO[0]=SB[0]=i=w=zt=pid=0 ; bts <= mxc ; ++bts )
-			{
-				zc = BL[bts];
-				while( zc-- > 0 )
-				{
-					while( bts > w + SB[1+lvl] )
-					{
-						w += SB[++lvl];
-						zt = (zt = mxc - w) > mxb ? mxb : zt;
-						if( (di = 1 << (j=bts-w)) > 1+zc )
-						{
-							for( di-=(1+zc), xp=bts ; ++j < zt && (di <<= 1) > BL[++xp] ; di -= BL[xp] );
-						}
-						w < ne && ( w + j > ne ) && (j = ne - w);
-
-						SB[1+lvl] = j;
-						for( q=Array(zt = 1 << j), k=-1 ; ++k < zt ; q[k]={ e:0, b:0, n:0, t:false } );
-
-						o = { next:false, list:q };
-						tail = tail ? (tail.next=o) : (this.root=o);
-						
-						TS[lvl] = q;
-						if( 0 >= lvl ) continue;
-
-						BO[lvl] = i;
-						HN.b = SB[lvl];
-						HN.e = 16 + j;
-						HN.t = q;
-						j = (i & (1 << w) - 1) >> (w - SB[lvl]);
-
-						o = TS[-1+lvl][j];
-						o.e = HN.e;
-						o.b = HN.b;
-						o.n = HN.n;
-						o.t = HN.t;
-					}
-
-					HN.b = bts - w;
-					if( pid >= nc )
-					{
-						HN.e = 99
-					}
-					else if( ptr[pid] < ns )
-					{
-						HN.e = 256 > ptr[pid] ? 16 : 15;
-						HN.n = ptr[pid++];
-					}
-					else 
-					{
-						HN.e = xbs[-ns+ptr[pid]];
-						HN.n = bvs[-ns+ptr[pid++]];
-					}
-
-					for( di = 1 << (bts-w), j = i >> w ; j < zt ; j += di )
-					{
-						(o=q[j]).e = HN.e;
-						o.b = HN.b;
-						o.n = HN.n;
-						o.t = HN.t;
-					}
-
-					for( j = 1 << (bts-1) ; (i&j) ; (i^=j),(j >>= 1) );
-					i ^= j;
-
-					for( ; (i&((1 << w)-1)) != BO[lvl] ; (w -= SB[lvl]),--lvl );
-				}
-			}
-
-			this.mxLook = SB[1];
-			this.status = dum && 1 != mxc ? 1 : 0;
+			const CHR = String.fromCharCode;
+			for
+			(
+				mx=rvMap.MAX_BITS, bin = BR.readBits(nb=rvMap.MIN_BITS,1) ;
+				(!rvMap.hasOwnProperty(k=CHR(nb)+bin)) && nb <= mx ;
+				(bin=BR.readBits(1,1)+bin), ++nb
+			);
+			return nb <= mx && rvMap[k];
 		},
 
-		ICOD: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*arr&*/w,  wm,DMP,NEE,GTB,n,t,e,s)
+		DDYN: function(/*BitReader&*/BR,  HLIT,HDIS,CL,rev,hTot,i,z,n,sb,pv)
 		//----------------------------------
-		// Inflate (decompress) the codes in a deflated (compressed) block.
+		// (Decode-Dyn-Trees.) Decode dynamic trees from the stream.
+		// this :: ~
+		// => { llRev, dsRev }
 		{
-			if( !size ) return 0;
+			HLIT = 257 + BR.readBits(5);                                   // Get 5 bits HLIT  :: 257..286
+			HDIS = 1 + BR.readBits(5);                                     // Get 5 bits HDIST :: 1..32
 
-			wm = -1+this.WMEM;
-			DMP = this.DUMP;
-			NEE = this.NEED;
-			GTB = this.GETB;
+			const ord = this.CL_ORDER;
+			CL = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];                  // Init freqs for the 19 CL symbols (0..18)
+			z =  4 + BR.readBits(4);                                       // z :: 4..19  (4+HCLEN)
+			for( i=-1 ; ++i < z ; CL[ord.charCodeAt(i)]=BR.readBits(3) );  // Read canonical code lengths in 0..7.
+			rev = this.HMAP(CL,'REVERSED');                                // rev :: <bits>bin_rev => CL symb
 
-			n = 0;
-			const CHR = String.fromCharCode;
-			while( 1 )
+			// Decode code lengths for the dynamic trees.
+			// ---
+			for( hTot=HLIT+HDIS, n=0 ; n < hTot ; )
 			{
-				NEE(RF.TABLE_BITS,DMP);
-				for( e=(t=RF.TABLE_DATA.list[GTB(RF.TABLE_BITS,DMP)]).e ; e > 16 ; e=(t=t.t[GTB(e,DMP)]).e )
+				if( 15 >= (sb=this.SYMB(BR,rev)) )
 				{
-					if( 99 == e ) return -1;
-					NEE(e-=16, DMP(t.b));
-				}
-				DMP(t.b);
-
-				if( 16 == e )
-				{
-					RF.SLIDE_POS &= wm;
-					BUFF.Q += CHR(w[RF.SLIDE_POS++]=t.n); ++n;
-					if( n == size ) return size;
+					// Values 0-15 represent the actual code lengths.
+					CL[n++] = sb;
 					continue;
 				}
-
-				if( 15 == e ) break;
-
-				NEE(e,DMP);
-				RF.COPY_SZ = t.n + GTB(e,DMP);
-				NEE(RF.DTABLE_BITS,DMP(e));
-				for( e=(t=RF.DTABLE_DATA.list[GTB(RF.DTABLE_BITS,DMP)]).e ; e > 16 ; e=(t=t.t[GTB(e,DMP)]).e )
+				if( 16 == sb )
 				{
-					if( 99 == e ) return -1;
-					NEE(e-=16,DMP(t.b));
+					// Copy previous code length 3-6 times (2 bits)
+					for( pv=CL[n-1], z=3+BR.readBits(2) ; z-- ; CL[n++]=pv );
+					continue;
 				}
-
-				NEE(e,DMP(t.b));
-				RF.COPY_DIST = RF.SLIDE_POS - t.n - GTB(e,DMP);
-				DMP(e);
-				for( s='' ; RF.COPY_SZ > 0 && n < size ; )
-				{
-					RF.COPY_SZ--;
-					RF.COPY_DIST &= wm;
-					RF.SLIDE_POS &= wm;
-					s+=CHR(w[RF.SLIDE_POS++]=w[RF.COPY_DIST++]); ++n;
-				}
-				BUFF.Q += s;
-				if( n == size ) return size;
+				// 17 -> Repeat code length 0 for 3-10 times (3 bits)
+				// 18 -> Repeat code length 0 for 11-138 times (7 bits)
+				z = 17==sb ? (3+BR.readBits(3)) : (11+BR.readBits(7));
+				while( 0 < z-- ) CL[n++]=0;
 			}
 
-			RF.METH = -1;
-			return n;
+			return {
+				llRev:this.HMAP(CL.slice(0,HLIT),'REVERSED'),
+				dsRev:this.HMAP(CL.slice(HLIT,HLIT+HDIS),'REVERSED')
+				};
 		},
 
-		ISTO: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*arr&*/w,  wm,DMP,NEE,GTB,n,s)
+		INFL: function(/*str*/src,  BR,eob,tpe,llRev,dsRev,sb,len,dis,n,p,i,s,t,ret)
 		//----------------------------------
-		// Decompress a type 0 (stored) block.
-		// => int
+		// (Raw-Inflate-Decompressor.) Inflate (i.e uncompress) stream from `src`.
+		// this :: ~
+		// => str [OK]  |  false [KO] + .EMSG
 		{
-			wm = -1+this.WMEM;
-			DMP = this.DUMP;
-			NEE = this.NEED;
-			GTB = this.GETB;
-			
-			NEE(16, DMP(n=7&DMP.BIT_LEN));
-			n = GTB(16, DMP);
-			NEE(16,DMP(16));
-			if( n != (65535 & ~DMP.BIT_BUF) ) return -1;
-
-			DMP(16);
-			RF.COPY_SZ = n;
-			
-			const CHR = String.fromCharCode;
-			for( s='', n=0 ; RF.COPY_SZ > 0 && n < size ; )
-			{
-				RF.COPY_SZ--;
-				RF.SLIDE_POS &= wm;
-				NEE(8,DMP);
-				s+=CHR(w[RF.SLIDE_POS++]=GTB(8,DMP)); ++n;
-				DMP(8);
-			}
-			BUFF.Q += s;
-
-			RF.COPY_SZ || (RF.METH=-1);
-			return n;
-		},
-
-		IFIX: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*unused*/w,  i,a,h)
-		//----------------------------------
-		// Decompress a type 1 (fixed Huffman codes) block.
-		{
-			if( false===callee.FIXED_TABLE )
-			{
-				a = Array(288);
-
-				for( i=0 ; i < 144 ; a[i++]=8 );
-				for(     ; i < 256 ; a[i++]=9 );
-				for(     ; i < 280 ; a[i++]=7 );
-				for(     ; i < 288 ; a[i++]=8 );
-
-				callee.FIXED_BITS = 7;
-				h = new this.HUFT(a, 288, 257, this.CPLN, this.CPEX, callee.FIXED_BITS);
-				if( h.status != 0 ) throw Error("HufBuild error: " + h.status);
-
-				callee.FIXED_TABLE = h.root;
-				callee.FIXED_BITS = h.mxLook;
-				for( i=0 ; i < 30 ; a[i++]=5 );
-				callee.FIXED_DBITS = 5;
-				h = new this.HUFT(a, 30, 0, this.CPDI, this.XDBT, callee.FIXED_DBITS);
-				if( h.status > 1 ) throw Error("HufBuild error: " + h.status);
-
-				callee.FIXED_DTABLE = h.root;
-				callee.FIXED_DBITS = h.mxLook;
-			}
-
-			RF.TABLE_DATA = callee.FIXED_TABLE;
-			RF.DTABLE_DATA = callee.FIXED_DTABLE;
-			RF.TABLE_BITS = callee.FIXED_BITS;
-			RF.DTABLE_BITS = callee.FIXED_DBITS;
-
-			return this.ICOD(BUFF, off, size, RF, w);
-		}
-		.setup(
-		{
-			FIXED_TABLE:  false,
-			FIXED_DTABLE: false,
-			FIXED_BITS:   -1,
-			FIXED_DBITS:  -1,
-		}),
-
-		IDYN: function(/*fct*/BUFF,/*int*/off,/*int*/size,/*obj&*/RF,/*unused*/w,  DMP,NEE,GTB,BLO,i,j,l,n,t,nb,nl,nd,a,h,v)
-		//----------------------------------
-		// Decompress a type 2 (dynamic Huffman codes) block.
-		{
-			DMP = this.DUMP;
-			NEE = this.NEED;
-			GTB = this.GETB;
-			BLO = this.BLOR;
-
-			a = Array(316);
-			for( i=0 ; i < 316 ; a[i++]=0 );
-
-			NEE(5,DMP);
-			nl = 257 + GTB(5,DMP);
-			NEE(5,DMP(5));
-			nd = 1 + GTB(5,DMP);
-			NEE(4,DMP(5));
-			nb = 4 + GTB(4,DMP);
-			DMP(4);
-
-			if( nl > 286 || nd > 30 ) return -1;
-
-			for( j=-1 ; ++j < nb ; NEE(3,DMP), (a[BLO[j]]=GTB(3,DMP)), DMP(3) );
-			for(  ; j < 19 ; a[BLO[j++]]=0 );
-
-			RF.TABLE_BITS = 7;
-			h = new this.HUFT(a, 19, 19, false, false, RF.TABLE_BITS);
-			if( h.status != 0 ) return -1;
-
-			RF.TABLE_DATA = h.root;
-			RF.TABLE_BITS = h.mxLook;
-			for( n=nl+nd, i=l=0 ; i < n ; )
-			{
-				NEE(RF.TABLE_BITS,DMP);
-				DMP(j=(t=RF.TABLE_DATA.list[GTB(RF.TABLE_BITS,DMP)]).b);
-				if( 16 > (j=t.n) ){ a[i++]=l=j; continue; }
-				v = 2*(16==j) || 3*(17==j) || 7;
-				NEE(v,DMP);
-				j = 3 + 8*(7==v) + GTB(v,DMP);
-				DMP(v);
-				if( i + j > n ) return -1;
-				2 == v || (l=0);
-				for( ; 0 < j-- ; a[i++]=l );
-			}
-
-			RF.TABLE_BITS = callee.L_BITS;
-			h = new this.HUFT(a, nl, 257, this.CPLN, this.CPEX, RF.TABLE_BITS);
-
-			RF.TABLE_BITS || (h.status=1);
-			if( h.status ) return -1;   // [REM] status == 1 <=> incomplete literal tree
-
-			RF.TABLE_DATA = h.root;
-			RF.TABLE_BITS = h.mxLook;
-			for( i=-1 ; ++i < nd ; a[i]= a[i+nl] );
-
-			RF.DTABLE_BITS = callee.D_BITS;
-			h = new this.HUFT(a, nd, 0, this.CPDI, this.XDBT, RF.DTABLE_BITS);
-			RF.DTABLE_DATA = h.root;
-			RF.DTABLE_BITS = h.mxLook;
-
-			if( 0 == RF.DTABLE_BITS && nl > 257 ) return -1;
-
-			if( h.status ) return -1;
-
-			return this.ICOD(BUFF, off, size, RF, w);
-		}
-		.setup(
-		{
-			L_BITS: 9,
-			D_BITS: 6,
-		}),
-
-		IINT: function(/*fct*/BUFF,/*int*/size,/*arr&*/w,  q,wm,DMP,NEE,GTB,n,i,k,s)
-		//----------------------------------
-		// Decompress an entry.
-		{
-			q = callee;
-			wm = -1+this.WMEM;
-			DMP = this.DUMP;
-			NEE = this.NEED;
-			GTB = this.GETB;
-			
 			const CHR = String.fromCharCode;
 
-			for( n=0 ; n < size ; n+=i )
-			{
-				if( q.EOF && -1 == q.METH ) return n;
-
-				if( q.COPY_SZ > 0 )
-				{
-					s = '';
-					if( q.METH != this.ESTO )
-					{
-						while( q.COPY_SZ > 0 && n < size )
-						{
-							q.COPY_SZ--;
-							q.COPY_DIST &= wm;
-							q.SLIDE_POS &= wm;
-							s+=CHR(w[q.SLIDE_POS++]=w[q.COPY_DIST++]); ++n;
-						}
-					}
-					else 
-					{
-						while( q.COPY_SZ > 0 && n < size )
-						{
-							q.COPY_SZ--;
-							q.SLIDE_POS &= wm;
-							NEE(8,DMP);
-							s+=CHR(w[q.SLIDE_POS++]=GTB(8,DMP)); ++n;
-							DMP(8);
-						}
-						q.COPY_SZ || (q.METH = -1);
-					}
-					BUFF.Q += s;
-					if( n == size ) return n;
-				}
-
-				if( -1 == q.METH )
-				{
-					if( q.EOF ) break;
-					NEE(1,DMP);
-					GTB(1,DMP) && (q.EOF=true);
-					NEE(2,DMP(1));
-					q.METH = GTB(2,DMP);
-					DMP(2);
-					q.TABLE_DATA = false;
-					q.COPY_SZ = 0;
-				}
-
-				k = (this.ESTO==q.METH && 'ISTO')
-				 || (this.ESTA==q.METH && (q.TABLE_DATA ? 'ICOD' : 'IFIX') )
-				 || (this.EDYN==q.METH && (q.TABLE_DATA ? 'ICOD' : 'IDYN') );
-
-				i = k ? this[k](BUFF, n, size-n, q, w) : -1;
-				if( i == -1 ) return q.EOF ? 0 : -1;
-			}
-			return n;
-		}
-		.setup(
-		{
-			EOF:         false,
-			METH:        -1,
-			// ---
-			COPY_SZ:     -1,
-			COPY_DIST:   -1,
-			SLIDE_POS:   -1,
-			// ---
-			TABLE_BITS:  -1,
-			DTABLE_BITS: -1,
-			TABLE_DATA:  false,
-			DTABLE_DATA: false,
-		}),
-
-		INFL: function(/*str*/data,  F,RF,BF,r,w,i)
-		//----------------------------------
-		{
-			// Data string.
-			// ---
-			(F=this.NEED).DATA=data;
-			F.LEN=data.length;
-			F.POS=0;
-
-			// Init.
-			// ---
-			this.DUMP.BIT_BUF = this.DUMP.BIT_LEN = 0;
+			const LSB = this.LS2B;   // LSym  -> Base   (str) ; use LSym - 257
+			const LSX = this.LS2X;   // LSym  -> Xbits  (str) ; use LSym - 257
+			const DSB = this.DS2B;   // DSym  -> Base   (str)
+			const DSX = this.DS2X;   // DSym  -> Xbits  (str)
 			
-			RF = this.IINT;
-			RF.SLIDE_POS = RF.COPY_SZ = RF.COPY_DIST = 0;
-			RF.METH = -1;
-			RF.EOF = false;
-			RF.TABLE_DATA = false;
+			callee.EMSG = '';
 
-			for( BF={Q:''}, r='', w=callee.WIN ; 0 < (i=RF.call(this, BF, 512, w)) ; (r+=BF.Q), (BF.Q='') );
-			return r;
+			if( this.MAX_TO_INFL < src.length )
+			{
+				callee.EMSG = __("The source stream (%1 KB) exceeds the maximum capacity %2 KB.", (src.length/1024).toFixed(1), this.MAX_TO_INFL/1024);
+				return false;
+			}
+
+			try
+			{
+				BR = $.global[callee.µ.__root__].BitReader(src);
+				for( ret='', eob=0 ; !eob ; )
+				{
+					eob = BR.readBits(1);        // Read final block flag.
+					tpe = BR.readBits(2);        // Read block type (0|1|2).
+					if( 2 < tpe ) throw "Invalid block type in the compressed stream.";
+
+					if( 0===tpe )
+					{
+						// Unprocessed bytes.
+						i = BR.idx - BR.byteAlign();
+						s = BR.bytes.slice(i);
+						// ---
+						n = 256*s.charCodeAt(1) + s.charCodeAt(0);
+						t = 256*s.charCodeAt(3) + s.charCodeAt(2);
+						if( n !== (~t&0xFFFF) ) throw __("Invalid length in stored block: n=%1 t=%2", n,t);
+						// ---
+						ret += s.slice(4,4+n);
+						BR.reset( s.slice(4+n) );
+						continue;
+					}
+					
+					2===tpe
+					? ( t=this.DDYN(BR), llRev=t.llRev, dsRev=t.dsRev )
+					: ( llRev=this.LLRV, dsRev = this.DSRV );
+
+					while( 1 )
+					{
+						if( false===(sb=this.SYMB(BR,llRev)) ) throw "Invalid LL symbol encoding in the compressed stream.";
+
+						if( 256 >= sb )
+						{
+							if( 256 == sb ) break; // End of block
+							ret += CHR(sb);
+							continue;
+						}
+
+						sb -= 257;
+						len = LSB.charCodeAt(sb) + BR.readBits(LSX.charCodeAt(sb));
+
+						if( false===(sb=this.SYMB(BR,dsRev)) ) throw "Invalid DS symbol encoding in the compressed stream.";
+						dis = DSB.charCodeAt(sb) + BR.readBits(DSX.charCodeAt(sb));
+
+						// Copy the match -> ret
+						p = (n=ret.length)-dis; // Start index
+						if( 0 > p ) throw "Invalid distance in the compressed stream.";
+						if( p+len < n )
+							ret += ret.substr(p,len);
+						else
+							for( i=p, p+=len ; i < p ; ret += ret.slice(i,++i) );
+					}
+				}
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				ret = false;
+			}
+
+			return ret;
 		}
-		.setup({ WIN: Array(0) }),
-
+		.setup
+		({
+			EMSG: '',
+		}),
 	})
 
 	//==========================================================================
-	// API
+	// GZIP ZLIB EXTRACTORS
 	//==========================================================================
 
-	[PUBLIC]
+	[PRIVATE]
 	
 	({
-		raw: function raw_S_S(/*str*/data,/*8..15=15*/wPower,  I,n)
+
+		GZEX: function(/*str*/gzip,  $$,T,n,cm,flg,xlen,p,cz,uz,crc32,ret)
 		//----------------------------------
-		// Raw inflate (decompress) data, using a 2^`wPower` window base size.
-		// [REM] The min. window base size is 2^8=256;
-		// the max. window base size is 2^15=32768.
-		// => str
+		// (GZIP-Extractor.) Parse a `gzip` stream and return the compressed
+		// (DEFLATE) stream with additional information. Extract the DEFLATE
+		// data when CM=8 and recover uncompressed size.
+		// [REM] ISIZE is modulo 2^32, so files >= 4GB cannot be handled reliably.
+		// Anyway, this routine excludes large streams (>32MB) for performance.
+		// this :: ~
+		// => { comp:str, compSize:uint, unSize:uint, crc32:uint } [OK]
+		// |  false [ERR] + .EMSG
 		{
-			// Check/set win size.
-			// ---
-			I = callee.µ['~'];
-			8 > (wPower>>>=0) && (wPower=15);
-			
-			15 < wPower
-			&& error(__("%1 > This library doesn't support win size greater than 32K.",callee.µ));
-			
-			n = 2*(I.WMEM = 1 << wPower);
-			n === I.INFL.WIN.length || ( (delete I.INFL.WIN),(I.INFL.WIN = Array(n)) );
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace) && $$.trace;
+			T&&T( __("%1 > [GZEX] Want to extract data from a gzip.", callee.µ) );
 
-			'string' == typeof data || (data=String(data));
-			
-			// Input validation
-			// ---
-			if( !data.length ) return '';  // Handle empty strings gracefully
-			
-			return callee.µ['~'].INFL(data);
-		},
+			callee.EMSG = '';
 
-		zlib: function zlib_S_b_S(/*str*/data,/*?bool*/lenient,  n,x,METH,INFO,D,r,adlr,exp)
-		//----------------------------------
-		// Inflate (decompress) zlib wrapped data.
-		// [REF] tools.ietf.org/html/rfc1950
-		// `lenient` :: if true, logs warning on checksum failure and returns data;
-		//              if false (default), checksum failure throws error.
-		{
-			'string' == typeof data || (data=String(data));
-			
-			// Input validation
-			// ---
-			if( !data.length ) return '';  // Handle empty strings gracefully
+			// GZIP Member Format (from RFC 1952)
+			// Offset  Size  Field
+			// ------------------------------------------------------
+			// 0       1     ID1 (0x1f)
+			// 1       1     ID2 (0x8b)
+			// 2       1     CM (Compression Method, 8=deflate)
+			// 3       1     FLG (flags)
+			// 4       4     MTIME
+			// 8       1     XFL
+			// 9       1     OS
+			// 10      ...   Optional fields based on FLG
+			// ...     ...   Compressed blocks
+			// -8      4     CRC32
+			// -4      4     ISIZE (uncompressed size mod 2^32)
+			// ------------------------------------------------------
 
-			7 <= (n=data.length)
-			|| error(__("%1 > Invalid data length (%2). Should be at least 7.",callee.µ,n));
-			
-			x = data.charCodeAt(0);
-
-			// METH
+			// Checkpoints
 			// ---
-			8 == ( METH=(15&x) )
-			|| error(__("%1 > Invalid METHOD (%2) in zlib stream.", callee.µ, METH));
-			
-			// INFO
-			// ---
-			7 >= ( INFO=(15&(x>>>4)) )
-			|| error(__("%1 > Invalid INFO (%2) in zlib stream.", callee.µ, INFO));
-
-			// Offset
-			// ---
-			x = data.charCodeAt(1);
-			D = (0x20&x) ? 1 : 0;   // DICT ID?
-			
-			// TODO: Handle preset dictionaries if D==1
-			D && error(__("%1 > Preset dictionaries not yet supported.",callee.µ));
-
-			// Decompress payload
-			// ---
-			r = callee.µ.raw( data.slice(2+D,n-4), 8+INFO );
-			
-			// Verify Adler32 checksum
-			// ---
-			exp = (data.charCodeAt(n-4)<<24) | (data.charCodeAt(n-3)<<16) | (data.charCodeAt(n-2)<<8) | data.charCodeAt(n-1);
-			adlr = callee.µ['~'].ADLR(r);
-			
-			// Check integrity
-			// ---
-			if( adlr !== exp )
+			try
 			{
-				if( lenient )
+				// Check length and magic bytes
+				if( 18 > (n=gzip.length) ) throw "GZIP stream too short!";
+				if( n > callee.MAX_INPUT_SIZE ) throw "GZIP stream too large!";
+				if( this.GZIN !== gzip.slice(0,this.GZIN.length) )
+					throw __("GZIP header signature not found. Expected 0x%1, found 0x%2."
+						, (256*this.GZIN.charCodeAt(0)+this.GZIN.charCodeAt(1)).toHexa("", 4)
+						, (256*gzip.charCodeAt(0)+gzip.charCodeAt(1)).toHexa("", 4)
+						);
+				
+				// Check compression method
+				cm = gzip.charCodeAt(2);
+				if( 8 != cm ) throw __("CM method should be 8. Found %1!", cm);
+
+				// Get flags and check reserved bits.
+				flg = gzip.charCodeAt(3);
+				if( 0xE0&flg ) throw __("Reserved FLG bits are non-zero: %1", flg.toHexa("", 2));
+
+				// Start after fixed header (10 bytes)
+				p = 10;
+
+				// Skip FEXTRA if present
+				if( 4&flg )
 				{
-					+$$.warn && $$.Log.warn(__("%1 > Adler32 checksum mismatch (lenient mode). Expected: %2, Got: %3 - Data may be corrupted!",callee.µ,exp,adlr));
+					if( p + 2 > n ) throw "Truncated FEXTRA field!";
+					xlen = gzip.charCodeAt(p) + 0x100*gzip.charCodeAt(p+1);
+					p += 2 + xlen;
+				}
+
+				// Skip FNAME if present (zero-terminated string)
+				if( 8&flg )
+				{
+					for( ; p < n && 0!==gzip.charCodeAt(p) ; ++p );
+					if( p >= n ) throw "Truncated FNAME field!";
+					++p; // skip zero terminator
+				}
+
+				// Skip FCOMMENT if present (zero-terminated string)
+				if( 16&flg )
+				{
+					for( ; p < n && 0!==gzip.charCodeAt(p) ; ++p );
+					if( p >= n ) throw "Truncated FCOMMENT field!";
+					++p; // skip zero terminator
+				}
+
+				// Skip FHCRC if present (2 bytes)
+				if( 2&flg ) p += 2;
+
+				// Check we have at least 8 bytes for trailer
+				if( p + 8 > n ) throw "GZIP stream truncated!";
+
+				// Compressed size = total - header - trailer(8)
+				cz = n - p - 8;
+				if( cz < 0 ) throw "Invalid compressed data size!";
+
+				// ISIZE is in last 4 bytes (little-endian, modulo 2^32)
+				uz = gzip.charCodeAt(n-4)
+				   + 0x100*gzip.charCodeAt(n-3)
+				   + 0x10000*gzip.charCodeAt(n-2)
+				   + 0x1000000*gzip.charCodeAt(n-1);
+				
+				// CRC32 is in the 4 bytes before ISIZE (last 8 bytes)
+				crc32 = gzip.charCodeAt(n-8)
+				   + 0x100*gzip.charCodeAt(n-7)
+				   + 0x10000*gzip.charCodeAt(n-6)
+				   + 0x1000000*gzip.charCodeAt(n-5);
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				$$.warn( __("%1 > [GZEX] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+			
+			// Return object with extracted info
+			ret =
+			{
+				compSize:   cz,
+				unSize:     uz,
+				crc32:      crc32,
+			};
+
+			T&&T( __("%1 > [GZEX] Returning the DEFLATE stream with extra info %2.", callee.µ, $$.JSON(ret)) );
+			
+			ret.comp = gzip.slice(p, p+cz);
+			return ret;
+		}
+		.setup
+		({
+			EMSG: '',
+			MAX_INPUT_SIZE: 32 * 1024 * 1024, // 32Mo
+		}),
+
+		ZLEX: function(/*str*/zlib,  $$,T,n,cmf,flg,dic,p,cz,adl32,t,ret)
+		//----------------------------------
+		// (ZLIB-Extractor.) Parse a `zlib` stream and return the compressed
+		// (DEFLATE) stream with additional information. Extract the DEFLATE
+		// data when CM=8 and recover dictionary ID if present.
+		// [REM] Since ZLIB does not encode the original uncompressed size,
+		// this extraction step will be followed by an internal DEFL (no
+		// boost) so compressed streams larger than about 2MB will be rejected.
+		// this :: ~
+		// => { comp:str, compSize:uint, adler32:uint [, dictId:uint] } [OK]
+		// |  false [ERR] + .EMSG
+		{
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace) && $$.trace;
+			T&&T( __("%1 > [ZLEX] Want to extract data from a zlib stream.", callee.µ) );
+
+			callee.EMSG = '';
+
+			// ZLIB Stream Format (from RFC 1950)
+			// Offset  Size  Field
+			// ------------------------------------------------------
+			// 0       1     CMF (Compression Method and Flags)
+			// 1       1     FLG (Flags)
+			// 2       4     DICTID (optional, if FDICT set)
+			// ...     ...   Compressed data (DEFLATE)
+			// -4      4     ADLER32 checksum
+			// ------------------------------------------------------
+
+			// Checkpoints
+			// ---
+			try
+			{
+				// Check minimum length (CMF + FLG + ADLER32)
+				if( 6 > (n=zlib.length) ) throw "ZLIB stream too short!";
+				if( n > callee.MAX_INPUT_SIZE ) throw "ZLIB stream too large!"; // Precheck, refined later.
+
+				// CMF byte
+				cmf = zlib.charCodeAt(0);
+				t = 0xF&cmf;           // bits 0-3: Compression Method
+				if( 8 != t ) throw __("CM method should be 8. Found %1!", t);
+				t = 0xF&(cmf>>4);   // bits 4-7: Compression Info (win size)
+				if( t > 7 ) throw __("CINFO value %1 not allowed (max 7)!", t);
+
+				// FLG byte
+				flg = zlib.charCodeAt(1);
+				// --- Verify FCHECK: (CMF*256 + FLG) must be multiple of 31
+				if( (256*cmf + flg) % 31 )
+					throw __("FCHECK validation failed for CMF=0x%1 FLG=0x%2!", cmf.toHexa("",2), flg.toHexa("",2));
+				dic = 1&(flg>>5);  // bit 5: Preset dictionary flag
+
+				// Start after CMF and FLG (2 bytes)
+				p = 2;
+
+				// Get DICTID if FDICT is set (4 bytes, big-endian)
+				if( dic )
+				{
+					if( p + 4 > n ) throw "Truncated DICTID field!";
+					dic = 0x1000000*zlib.charCodeAt(p)
+				        + 0x10000*zlib.charCodeAt(p+1)
+				        + 0x100*zlib.charCodeAt(p+2)
+				        + zlib.charCodeAt(p+3);
+					p += 4;
 				}
 				else
 				{
-					error(__("%1 > Adler32 checksum mismatch. Expected: %2, Got: %3",callee.µ,exp,adlr));
+					dic = false;
 				}
+
+				// Check we have at least 4 bytes for ADLER32 trailer
+				if( p + 4 > n ) throw "ZLIB stream truncated!";
+
+				// Compressed size = total - header - ADLER32(4)
+				cz = n - p - 4;
+				if( cz < 0 ) throw "Invalid compressed data size!";
+				if( cz > this.MAX_TO_INFL ) throw __("ZLIB's DEFLATE stream too large (%1 bytes) for internal decompression!", cz);
+
+				// ADLER32 is in last 4 bytes (big-endian)
+				adl32 = 0x1000000*zlib.charCodeAt(n-4)
+			            + 0x10000*zlib.charCodeAt(n-3)
+			            + 0x100*zlib.charCodeAt(n-2)
+			            + zlib.charCodeAt(n-1);
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				$$.warn( __("%1 > [ZLEX] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+			
+			// Return object with extracted info
+			ret =
+			{
+				compSize:   cz,
+				adler32:    adl32,
+			};
+
+			// Add dictionary ID if present
+			if( false !== dic ) ret.dictId = dic;
+
+			T&&T( __("%1 > [ZLEX] Returning the DEFLATE stream with extra info %2.", callee.µ, $$.JSON(ret)) );
+			
+			ret.comp = zlib.slice(p, p+cz);
+			return ret;
+		}
+		.setup
+		({
+			EMSG: '',
+			MAX_INPUT_SIZE: 2 * 1024*1024, // 2Mo
+		}),
+
+	})
+
+	//==========================================================================
+	// ZIP EXTRACTOR AND FAST DECOMPRESSOR
+	//==========================================================================
+
+	[PRIVATE]
+	
+	({
+		PKEX: function(/*str*/zip,  $$,T,isUtf8,cm,cz,uz,nn,mm,fn,p,ret)
+		//----------------------------------
+		// (PKZIP-Extractor.) Parse a `zip` stream assumed to address a
+		// SINGLE FILE and return the compressed (DEFLATE) stream with
+		// additional information.
+		// Used for extracting a valid DEFLATE stream when APUP is
+		// unavailable. The compressed data will then undergo 'manual
+		// inflate' (INFL) if possible.
+		// [REM] `ffName` is the desired *display name* (UTF16 string)
+		//       so ffName.toUTF8() is always applied.
+		// this :: ~
+		// => { comp:str, filename:str, compSize:uint, unSize:uint } [OK]
+		// |  false [ERR] + .EMSG
+		{
+			const PKIN = this.PKIN;
+			const UTF8_MASK = 0x800;
+
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace) && $$.trace;
+			T&&T( __("%1 > [PKEX] Want to extract data from a zip.", callee.µ) );
+
+			callee.EMSG = '';
+
+			// Offset  Size Field
+			// ------------------------------------------------------
+			// 0       4     Local file header signature (0x04034b50)³
+			// 4       2     Version needed to extract
+			// 6       2     General purpose bit flag
+			// 8       2     Compression method (0=stored, 8=deflate)
+			// 10      2     Last mod file time (Timestamp)
+			// 12      2     Last mod file date (Timestamp)
+			// 14      4     CRC-32
+			// 18      4     Compressed size (k)
+			// 22      4     Uncompressed size
+			// 26      2     File name length (n)
+			// 28      2     Extra field length (m)
+			// 30      n     File name
+			// 30+n    m     Extra field
+			// 30+n+m  k     FILE DATA (compressed or stored)
+			// ------------------------------------------------------
+			// Total size = 30 + n + m + k bytes
+
+			// Checkpoints
+			// ---
+			try
+			{
+				if( !zip.length ) throw "Empty zip!";
+				if( zip.slice(0,4) !== PKIN ) throw "PKZIP header signature not found.";
+				
+				// Is the UTF8 bit set in flags?
+				isUtf8 = UTF8_MASK & (zip.charCodeAt(6) + 0x100*zip.charCodeAt(7));
+
+				// CM method (16bits) : we expect cm==8
+				cm = zip.charCodeAt(8) + 0x100*zip.charCodeAt(9);
+				if( 8 != cm ) throw __("CM method should be 8. Found %1 (%2)!", cm, cm.toHexa("", 4));
+
+				cz = zip.charCodeAt(18) + 0x100*(zip.charCodeAt(19))  // Compressed size
+				   + 0x10000*zip.charCodeAt(20)
+				   + 0x1000000*zip.charCodeAt(21);
+
+				uz = zip.charCodeAt(22) + 0x100*(zip.charCodeAt(23))  // Uncompressed size
+				   + 0x10000*zip.charCodeAt(24)
+				   + 0x1000000*zip.charCodeAt(25);
+
+				nn = zip.charCodeAt(26) + 0x100*zip.charCodeAt(27);   // file name length
+				mm = zip.charCodeAt(28) + 0x100*zip.charCodeAt(29);   // extra length
+				fn = zip.slice(30,30+nn);                             // Get filename (maybe utf8)
+
+				// Start position (30+nn+mm)
+				p = 30+nn+mm;                                             // Start of (DEFLATE) data
+			}
+			catch(e)
+			{
+				callee.EMSG = ''+e;
+				$$.warn( __("%1 > [PKEX] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+			
+			// Warning: use a new Object and add `comp` after $$.trace (!)
+			ret =
+			{
+				filename:   (isUtf8 ? String.fromUTF8 : String)(fn),
+				compSize:   cz,
+				unSize:     uz,
+			};
+
+			T&&T( __("%1 > [PKEX] Returning the DEFLATE stream with extra info %2.", callee.µ, $$.JSON(ret)) );
+			
+			ret.comp = zip.slice(p,p+cz);
+			return ret;
+		}
+		.setup
+		({
+			EMSG: '',
+		}),
+
+		APUP: function(/*str|byte[]|File*/zip,  $$,T,isTmpZip,ffZip,fdDst,ucf,t,a,z,ff,ret)
+		//----------------------------------
+		// (App-Unpackage-ZIP.) Unpack a ZIP stream *owning a single file*
+		// through `app.unpackageUCF`.
+		// Return the decomrpessed stream as a string.
+		// ---
+		// this :: ~
+		// => str [OK]  |  false [ERR] + .EMSG? (only on FATAL error)
+		{
+			const PKIN = this.PKIN;
+			callee.LAST_FNAME = '';
+
+			$$ = $.global[callee.µ.__root__]; // agnostic reference
+			T = (+$$.trace) && $$.trace;
+			T&&T( __("%1 > [APUP] Want to unzip a %2 (length: %3).", callee.µ, (zip?zip.constructor.name:typeof zip), (zip||0).length) );
+			
+			callee.EMSG = '';
+
+			// 1. Make sure we have a valid source
+			// ---
+			isTmpZip = ffZip = 0;
+			while( zip===Object(zip) )
+			{
+				if( zip instanceof File )
+				{
+					if( !zip.exists )
+					{
+						callee.EMSG = __("The file %1 doesn't exist.", ''+zip);
+						$$.warn( __("%1 > [APUP] %2", callee.µ, callee.EMSG) );
+						return false;
+					}
+					ffZip = zip;
+					T&&T( __("%1 > [APUP] Source ZIP file: %2", callee.µ, ffZip.getDisplayName()) );
+					break;
+				}
+				
+				if( zip instanceof Array )
+				{
+					try
+					{
+						zip = String.fromCharCode.apply(0,zip);
+					}
+					catch(e)
+					{
+						(+$$.warn) && $$.warn( __("%1 > [APUP] Cannot create the byte string from array %2", callee.µ,$$.JSON(zip)) );
+						zip = false;
+					}
+					if( false !== zip )
+					{
+						T&&T( __("%1 > [APUP] Array successfully converted to string.", callee.µ) );
+						break;
+					}
+				}
+
+				callee.EMSG = __("Invalid source argument (%1).",src.constructor.name);
+				$$.warn( __("%1 > [APUP] %2", callee.µ, callee.EMSG) );
+				return false;
+			}
+			if( 0===ffZip )
+			{
+				if( 'string' != typeof zip )
+				{
+					callee.EMSG = __("Invalid zip argument (%1).",typeof zip);
+					return false;
+				}
+				if( !zip.length )
+				{
+					callee.EMSG = __("Empty string.");
+					return false;
+				}
+
+				T&&T( __("%1 > [APUP] Non-empty string available. (A temp ZIP file is required.)", callee.µ) );
+				isTmpZip = 1; // want a temp source ZIP File (pending)
+			}
+			// --- Precheck that the input has a minimal ZIP signature (PKIN)
+			t = ffZip ? $$.File.readBinary(ffZip,PKIN.length) : zip.slice(0,PKIN.length);
+			if( PKIN !== t )
+			{
+				$$.warn
+				(
+					false===t
+					? __("%1 > [APUP] Unable to check the signature of the ZIP file %2.", callee.µ, ''+ffZip)
+					: __("%1 > [APUP] Invalid `zip` argument (%2): does not start with the ZIP signature %3.", callee.µ, zip.constructor.name, PKIN.toBytes(true))
+				);
+				
+				callee.EMSG = __("Invalid zip signature");
+				return false;
+			}
+			T&&T( __("%1 > [APUP] Valid ZIP signature.", callee.µ) );
+
+			// 2. Create a temp destination folder (in Folder.temp)
+			// ---
+			for
+			(
+				t=$$.File.stamp(5) ;                           // e.g "bazbo"
+				(fdDst=new Folder(Folder.temp+'/'+t)).exists ; // While existing folder...
+				t = '_'+t                                      // ...preprend '_'
+			);
+			if( !fdDst.create() )
+			{
+				$$.warn( __("%1 > [APUP] Cannot create temp destination folder %2", callee.µ,''+fdDst) );
+				// NO EMSG
+				return false;
+			}
+			T&&T( __("%1 > [APUP] Set temp folder: %2", callee.µ, ''+fdDst) );
+
+			// 3. If needed, create a temp ffZip (from zip string) inside fdDst.
+			// ---
+			if( isTmpZip )
+			{
+				ffZip = $$.File.writeBinary(fdDst + '/' + callee.TMP_ZIP_NAME, zip);
+				if( !ffZip )
+				{
+					$$.warn( __("%1 > [APUP] Cannot write temp ZIP binary file.", callee.µ));
+					// NO EMSG
+					return false;
+				}
+				T&&T( __("%1 > [APUP] Temp ZIP file (%2) successfully created from the binary stream %3.", callee.µ, ffZip.getDisplayName(), zip.trunc(100).toSource()) );
 			}
 
-			return r;
+			// 4. Unpack the zip thru app.unpackageUCF(zipFile,destFolder)
+			try
+			{
+				app.unpackageUCF( ffZip, fdDst );
+				ucf = 1;
+				T&&T( __("%1 > [APUP] app.unpackageUCF returned successfully.", callee.µ) );
+			}
+			catch(e)
+			{
+				ucf = 0;
+				$$.warn( __("%1 > [APUP] app.unpackageUCF failed with args (%2,%3) -- %4", callee.µ,''+ffZip,''+fdDst, ''+e) );
+			}
+
+			// 5. Remove ffZip if temporary (IMPORTANT!)
+			if( isTmpZip )
+			{
+				try
+				{
+					ffZip.remove();
+					T&&T( __("%1 > [APUP] Removed temp ZIP file.", callee.µ) );
+				}
+				catch(e){ $$.warn( __("%1 > [APUP] Cannot remove ZIP file -- %2", callee.µ,''+e) ); }
+			}
+
+			if( !ucf )
+			{
+				try{ fdDst.remove(); } catch(_){}
+				// NO EMSG
+				return false;
+			}
+
+			T&&T( __("%1 > [APUP] Retrieving uncompressed data...", callee.µ) );
+			
+			// 6. Examine fdDst file(s) and assert SINGLE file.
+			for
+			(
+				ff=z=0, a=fdDst.getFiles() ;
+				t=a.pop() ;
+				t instanceof File && ( ++z, (ff&&ff.remove()), ff=t )
+			);
+			if( 1===z )
+			{
+				callee.LAST_FNAME = ff.name;
+				( ret=$$.File.readBinary(ff) )
+				? T&&T( __("%1 > [APUP] Uncompressed data (first bytes): %2", callee.µ, ret.slice(0,30).toBytes('hexa').join(' ')) )
+				: $$.warn( __("%1 > [APUP] Cannot read binary file!", callee.µ) );
+			}
+			else
+			{
+				1 < z
+				? $$.warn( __("%1 > [APUP] %1 files found in the ZIP. (This function only supports single zipped file.)", callee.µ, z) )
+				: $$.warn( __("%1 > [APUP] No file found in the ZIP!", callee.µ) );
+			}
+
+			// 7. Cleanup temp folder.
+			try
+			{
+				ff && ff.remove();
+				fdDst.remove();
+			}
+			catch(e){ $$.warn( __("%1 > [APUP] Cannot remove temp folder -- %2", callee.µ,''+e) ); }
+
+			return ret;
+		}
+		.setup
+		({
+			EMSG: '',
+			LAST_FNAME: '',
+			TMP_ZIP_NAME: 'data.zip',
+			GET_LAST_NAME: function(  fn)
+			//----------------------------------
+			// this :: APUP
+			{
+				fn = this.LAST_FNAME || '';
+				this.LAST_FNAME = '';
+				return fn;
+			},
+		}),
+
+	})
+
+	[PUBLIC]
+
+	//==========================================================================
+	// API   All decompressors support `input` as
+	//       - a JS string (assumed to deliver int8 char codes),
+	//       - an array of bytes,
+	//       - a (binary) File.
+	//==========================================================================
+
+	({
+		// Experimental flag: Setting `µ.ForceInternal` to 1
+		// entirely bypasses the (fast) `app.unpackageUCF` method
+		// in `unzip`. (Useful for testing, or in pure estk env.)
+		// ---
+		ForceInternal: !$$.Env.idVersion(6), // exclude estk
+
+		unCompress: function unCompress_SA$File$_S(/*str|byte[]|File*/input,  I,ME,src,n,t,out)
+		//----------------------------------
+		// Agnostic Decompressor: autodetect the wrapper (if any).
+		// [REM] Will return a File (as unZip would do) if input
+		// is a ZIP stream passed as a File.
+		// => str|File [OK]  |  ERR [KO]
+		{
+			I = callee.µ['~'];
+			ME = callee.µ + '.' + callee.name.split('_');
+
+			false===(src=I.SRCE(input,1/0)) // Forced string.
+			&& error( __("%1 error. %2",ME,I.SRCE.EMSG), callee ); // source error
+			
+			try
+			{
+				// Minimum sizes for each format:
+				// ZIP:  30 bytes (local file header minimum)
+				// GZIP: 18 bytes (header + trailer minimum)
+				// ZLIB: 6 bytes (CMF + FLG + ADLER32 minimum)
+				// ---
+				n = src.length;
+
+				if( 30 <= n )
+				{
+					t = I.PKIN; // '\x50\x4B\x03\x04'
+					if( t===src.slice(0,t.length) )
+					{
+						out = callee.µ.unZip(input);    // ZIP format (may error)
+						return out;
+					}
+				}
+
+				if( 18 <= n )
+				{
+					t = I.GZIN; // '\x1F\x8B'
+					if( t===src.slice(0,t.length) )
+					{
+						out = callee.µ.unGzip(input);   // GZIP format (may error)
+						return out;
+					}
+				}
+				
+				if( 6 <= n )
+				{
+					// Try ZLIB format (CMF byte with CM=8 in lower 4 bits: 0x78, 0x58, 0x38, 0x18)
+					t = src.charCodeAt(0);
+					if( 8 === (0xF&t) && t <= 0x9F )
+					{
+						out = callee.µ.unZlib(input);   // ZLIB format (may error)
+						return out;
+					}
+				}
+			}
+			catch(_){}
+
+			// Fallback: assume raw DEFLATE
+			return callee.µ.unRaw(input);
 		},
+
+		unRaw: function unRaw_SA$File$_S(/*str|byte[]|File*/input,  I,ME,src,out)
+		//----------------------------------
+		// Raw decompressor. Return the decompressed string (byte charcodes)
+		// from a pure DEFLATE input.
+		// [REM] This method cannot benefit from the APUP boost, so
+		// it does not support large input streams (maximum ~2MB).
+		// => str [OK]  |  ERR [KO]
+		{
+			I = callee.µ['~'];
+			ME = callee.µ + '.' + callee.name.split('_')[0];
+
+			false===(src=I.SRCE(input,1/0)) // Forced string.
+			&& error( __("%1 error. %2",ME,I.SRCE.EMSG), callee ); // source error
+
+			false===(out=I.INFL(src))
+			&& error( __("%1 decompression error. %2",ME,I.INFL.EMSG), callee ); // inflate error
+			
+			return out;
+		},
+
+		unZip: function unZip_SA$File$_S$File$(/*str|byte[]|File*/input,  I,ME,fn,out,zip,t,data)
+		//----------------------------------
+		// ZIP Decompressor:
+		// - As a ZIP archive, input MUST CONTAIN A SINGLE ELEMENT.
+		//   Should you need to unzip a multi-element archive, simply
+		//   call InDesign DOM's app.unpackageUCF(zipFile,destFolder)
+		// - If input is supplied as a string or array of bytes,
+		//   return the uncompressed file as a STRING (byte charcodes).
+		// - If input is supplied as a File, create and return the
+		//   uncompressed FILE at the same location. (A fresh filename
+		//   is generated in case of existing file.)
+		// - If you need to get a 'unzipped' *string* from a File,
+		//   just input `$$.File.readBinary(myInputZipFile)`.
+		// => str|File [OK]  |  ERR [KO]
+		{
+			I = callee.µ['~'];
+			ME = callee.µ + '.' + callee.name.split('_')[0];
+
+			fn = '';
+			out = (!callee.µ.ForceInternal) && I.APUP(input);  // out :: false | str  (trying the fastest method)
+
+			if( !out.length )                                  // Fallback (slower: use INFL).
+			{
+				I.APUP.EMSG
+				&& error( __("%1 unpackage error. %2",ME,I.APUP.EMSG), callee );
+
+				false===(zip = 'string' == typeof input ? input : I.SRCE(input,1/0)) // Forced string
+				&& error( __("%1 error. %2",ME,I.SRCE.EMSG), callee ); // source error
+
+				// data :: false | { comp:str, filename:str, compSize:uint, unSize:uint }
+				(data=I.PKEX(zip))
+				|| error( __("%1 unwrap error. %2",ME,I.PKEX.EMSG), callee ); // unwrap error
+				
+				I.MAX_TO_INFL < data.compSize
+				&& error( __("%1 cannot inflate %2 bytes: exceeds the limit (%3).",ME,data.compSize,I.MAX_TO_INFL), callee );
+
+				fn = data.filename;
+				false===(out=I.INFL(data.comp))
+				&& error( __("%1 decompression error. %2",ME,I.INFL.EMSG), callee ); // inflate error
+			}
+			else
+			{
+				fn = I.APUP.GET_LAST_NAME();
+			}
+
+			if( input instanceof File )                          // input File implies output File
+			{
+				fn || (fn=input.name.replace(callee.RE_EXT,'') + '.bin');
+				fn = input.parent + '/' + fn;
+				t = (new File(fn)).fresh();
+				out = $$.File.writeBinary( t, out );
+				out || error( __("%1 failed to create the output file %2.",ME,''+t), callee );
+			}
+
+			return out;
+		}
+		.setup
+		({
+			RE_EXT: /\.[^.]+$/,
+		}),
+
+		unGzip: function unGzip_SA$File$_S(/*str|byte[]|File*/input,  I,ME,src,data,zip,out)
+		//----------------------------------
+		// GZIP Decompressor. Given a valid GZIP stream based on CM=8
+		// (aka GZIP-wrapped INFLATE data), return the decompressed string
+		// (byte charcodes).
+		// => str [OK]  |  ERR [KO]
+		{
+			I = callee.µ['~'];
+			ME = callee.µ + '.' + callee.name.split('_')[0];
+
+			false===(src=I.SRCE(input,1/0)) // Forced string.
+			&& error( __("%1 error. %2",ME,I.SRCE.EMSG), callee ); // source error
+
+			// 1. Unwrap data.
+			(data=I.GZEX(src)) // false | { comp:str, compSize:uint, unSize:uint, crc32:uint }
+			|| error( __("%1 unwrap error. %2",ME,I.GZEX.EMSG), callee ); // unwrap error
+
+			// 2. Select the best strategy:
+			// - repack as a ZIP and call APUP :-)
+			// - or use internal INFLATE :-(
+			if( !callee.µ.ForceInternal )
+			{
+				zip = I.PKWP(data.unSize,data.crc32,data.comp); // Cannot fail (but the zip is unsafe!)
+				out = I.APUP(zip);                              // out :: false | str   ; errors have been $$.warned
+				if( out.length ) return out;                    // Done!
+			}
+			
+			I.MAX_TO_INFL < data.compSize
+			&& error( __("%1 cannot inflate %2 bytes: exceeds the limit (%3).",ME,data.compSize,I.MAX_TO_INFL), callee );
+
+			false===(out=I.INFL(data.comp))
+			&& error( __("%1 decompression error. %2",ME,I.INFL.EMSG), callee ); // inflate error
+
+			return out;
+		},
+
+		unZlib: function unZlib_SA$File$_S(/*str|byte[]|File*/input,  I,ME,src,data,out)
+		//----------------------------------
+		// ZLIB Decompressor. Given a valid ZLIB stream based on CM=8
+		// (aka ZLIB-wrapped INFLATE data), return the decompressed string
+		// (byte charcodes).
+		// [REM] This method cannot benefit from the APUP boost, so
+		// it does not support large input streams (maximum ~2MB).
+		// => str [OK]  |  ERR [KO]
+		{
+			I = callee.µ['~'];
+			ME = callee.µ + '.' + callee.name.split('_')[0];
+
+			false===(src=I.SRCE(input,1/0)) // Forced string.
+			&& error( __("%1 error. %2",ME,I.SRCE.EMSG), callee ); // source error
+
+			// Unwrap
+			(data=I.ZLEX(src)) // false | { comp:str, compSize:uint, adler32:uint [, dictId:uint] }
+			|| error( __("%1 unwrap error. %2",ME,I.ZLEX.EMSG), callee ); // unwrap error
+
+			false===(out=I.INFL(data.comp))
+			&& error( __("%1 decompression error. %2",ME,I.INFL.EMSG), callee ); // inflate error
+
+			return out;
+		},
+
 	})
 
