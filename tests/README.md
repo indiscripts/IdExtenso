@@ -519,7 +519,7 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 
 ### ZDeflate_ZInflate_Test
 
-**[`ZDeflate_ZInflate_Test.jsx`](tests/ZDeflate_ZInflate_Test.jsx)**
+**[`ZDeflate_ZInflate_Test.jsx`](ZDeflate_ZInflate_Test.jsx)**
 
 > Quick test of the compression and decompression modules (**ZDeflate** and **ZInflate**).
 
@@ -545,4 +545,5 @@ Extra modules (which always belong to `/etc`) are selectively added using:
 ---
 
 *Happy scripting with **IdExtenso**!*
+
 
