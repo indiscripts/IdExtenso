@@ -1,0 +1,256 @@
+/*******************************************************************************
+
+		Name:           Formats
+		Desc:           DEFLATE/ZIP/GZIP/ZLIB Format Info
+		Path:           /etc/ZDeflateInflate/formats.txt
+		Require:        ---
+		Encoding:       ÛȚF8
+		Core:           NO
+		Kind:           Info
+		API:            ---
+		DOM-access:     ---
+		Todo:           ---
+		Created:        260131 (YYMMDD)
+		Modified:       260205 (YYMMDD)
+
+*******************************************************************************/
+
+	[SOURCES]
+
+	- DEFLATE SPEC:
+	  <www.rfc-editor.org/rfc/rfc1951>
+
+	- GZIP FORMAT:
+	  <www.rfc-editor.org/rfc/rfc1952>
+
+	- ZLIB FORMAT:
+	  <www.rfc-editor.org/rfc/rfc1950>
+
+	- Bill Bird : Data Compression (Summer 2023) - Lecture 11
+
+	- zlib compression library:
+	  <github.com/madler/zlib>
+
+	- ZIP File Format Spec:
+	  <https://pkwaredownloads.blob.core.windows.net/pkware-general/Documentation/APPNOTE-6.3.9.TXT>
+
+
+	[REM] In the DEFLATE bitstream, bits are packed into bytes using
+	      the LSB first convention (first bit pushed becomes the least
+	      significant bit of the byte). For example:
+	                     BITSTREAM             BYTES
+	                ---------------------------------------
+	                     00101111...  <->    [11110100]...
+	                bit  01234567             76543210
+
+
+	GZIP FORMAT <Header><Blocks><Footer>
+	_______________________________________________________________________
+	
+	  <Header>  [ID1] [ID2] [CM] [FLG] [MTIME] [XFL] [OS] [XLEN]? [Extra]? [FileName]? [Comment]? [CRC16]?
+	   bytes:     1     1    1     1      4      1    1     2      XLEN      var          var        2
+	             0x1F  0x8B 0x08                          \--------------- OPTIONAL --------------------/
+	            
+	            [MTIME] 4-byte Unix timestamp (can be set to zero)
+	            [OS]    0x03 for Unix
+	            
+	            The optional [XLEN] field (2 bytes) tells the length, in bytes,
+	            of the [Extra] field, which is used if FLG.FEXTRA is set.
+	            
+	            The optional [FileName] and [Comment] fields are 0-terminated
+	            strings, used if FLG.FNAME and/or FLG.FCOMMENT bits are set.
+
+	            [FLG] Flags:
+	            ------------------------------------------------------------
+	            .FTEXT     bit 0   If set, the file is probably ASCII¹.
+	            .FHCRC     bit 1   If set, a CRC16² for the header is present.
+	            .FEXTRA    bit 2   If set, optional extra fields are present.
+	            .FNAME     bit 3   If set, a 0-terminated file name³ is present.
+	            .FCOMMENT  bit 4   If set, a 0-terminated file comment³ is present.
+	            <reserved> bit 5-7 Reserved FLG bits must be zero.
+
+	            ¹  FTEXT is an optional indication, which the compressor may set
+	               by checking a small amount of the input data to see whether any
+	               non-ASCII characters are present.
+	            
+	            ²  The CRC16 consists of the two least significant bytes of the
+	               CRC32 for all bytes of the gzip header up to and not including
+	               the CRC16.
+
+	            ³  The name must consist of ISO 8859-1 (LATIN-1) characters.
+	               In FCOMMENT Line breaks should be denoted by a single line
+	               feed character (10 decimal)
+
+	            [XFL]   extra flags specific to compression (can be left at 0x00)
+	            ------------------------------------------------------------
+	            XFL==2  compressor used maximum compression, slowest algorithm.
+	            XFL==4  compressor used fastest algorithm.
+
+	  <Blocks>  [BLOCK0] [BLOCK1] [...]       ; from DEFLATE spec.
+	
+	  <Footer>  [CRC32] [ISIZE]
+	   bytes:      4       4
+	   
+	            [CRC32]  CRC-32 checksum value of the *uncompressed* data.
+	            [ISIZE]  Size of the uncompressed input data modulo 2^32.
+
+
+	ZLIB FORMAT <Header><Blocks><Footer>
+	_______________________________________________________________________
+
+	  <Header>  (CM)(CINFO) [FLG] [DICTID]? [Dictionary]?
+	    bits:    4     4      8      32         var
+	    bytes   \---1----/    1       4         var
+	              [CMF]
+	    
+	            [CMF]
+	            ------------------------------------------------------------
+	            (CM)    bits 0-3  Compression method:
+	                              8  (deflate with window up to 32K)
+	                              15 (reserved)
+	            (CINFO) bits 4-7  Compression info: win_size = 1<<(CINFO+8)
+	                              (hence CINFO=7 for win_size=32K)
+
+	            [FLG] Flags:
+	            ------------------------------------------------------------
+	            .FCHECK bits 0-4  Check bits for [CMF] and FLG
+	                              Must satisfy (CMF*256 + FLG) mod 31 == 0
+	            .FDICT  bit 5     If set, a [DICTID] is present¹ after [FLG]
+	            .FLEVEL bits 6-7  Compression level² (for CM=8)
+	                              0 : compressor used fastest algorithm
+	                              1 : compressor used fast algorithm
+	                              2 : compressor used default algorithm
+	                              3 : compressor used max compression (slowest)
+	
+	             ¹  The Dictionary is a sequence of bytes which are initially fed to
+	                the compressor without producing any compressed output. DICTID is
+	                the Adler-32 checksum of this sequence of bytes.
+
+	             ² The information in FLEVEL is *not needed for decompression*;
+	                it is there to indicate if recompression might be worthwhile
+
+	  <Blocks>  [BLOCK0] [BLOCK1] [...]       ; from DEFLATE spec.
+
+	  <Footer>  (Adler32)                     ; checksum value of the uncompressed data
+	    bits:      32                         ; (excluding any dictionary data)
+
+	(PK)ZIP (MINIMAL STRUCTURE)
+	_______________________________________________________________________
+
+	Minimum Valid ZIP Structure (one file):
+	
+	   [Local File Header for File 1]          ; see below
+	   [File 1 Data (Assuming DEFLATE)]
+	   [Central Directory Header for File 1]¹  ; signature 0x02014b50
+	   [End of Central Directory Record]       ; signature 0x06054b50
+	
+	   ¹ The Central Directory starts after *all*
+	     local file headers and data.
+
+	Local File Header Structure:
+
+	   Offset  Size¹ Field²
+	   ------------------------------------------------------
+	   0       4     Local file header signature (0x04034b50)³
+	   4       2     Version needed to extract
+	   6       2     General purpose bit flag
+	   8       2     Compression method (0=stored, 8=deflate)
+	   10      2     Last mod file time (Timestamp)
+	   12      2     Last mod file date (Timestamp)
+	   14      4     CRC-32
+	   18      4     Compressed size (k)
+	   22      4     Uncompressed size
+	   26      2     File name length (n)
+	   28      2     Extra field length (m)
+	   30      n     File name
+	   30+n    m     Extra field
+	   30+n+m  k     FILE DATA (compressed or stored)
+	   ------------------------------------------------------
+	   Total size = 30 + n + m + k bytes
+	   
+	   ¹ All sizes in bytes.
+	   ² All fields in LE unless otherwise specified.
+	   ³ Aka "\x50\x4B\x03\x04" in the actual byte string.
+
+	Central Directory Entry Structure:
+
+	   Offset  Size  Field Name                          Value/Desc
+	   -------------------------------------------------------------------
+	   0       4     Central file header signature       0x02014b50
+	   4       2     Version made by                     
+	   6       2     Version needed to extract           
+	   8       2     General purpose bit flag            
+	   10      2     Compression method                  
+	   12      2     Last mod file time                  
+	   14      2     Last mod file date                  
+	   16      4     CRC-32                              
+	   20      4     Compressed size                     
+	   24      4     Uncompressed size                   
+	   28      2     File name length                    (n)
+	   30      2     Extra field length                  (m)
+	   32      2     File comment length                 (k)
+	   34      2     Disk number start                   
+	   36      2     Internal file attributes            
+	   38      4     External file attributes            
+	   42      4     Relative offset of local header
+	   46      n     File name (variable size)           
+	   46+n    m     Extra field (variable size)         
+	   46+n+m  k     File comment (variable size)        
+	   -------------------------------------------------------------------
+	   Total size = 46 + n + m + k bytes
+
+	End of Central Directory Record (EOCD) Structure:
+
+	   Offset  Size  Field Name                          Value/Desc
+	   -------------------------------------------------------------------
+	   0       4     EOCD signature                      0x06054b50¹
+	   4       2     Number of this disk                 
+	   6       2     Number of disk with start of CD     
+	   8       2     Total entries in CD on this disk    
+	   10      2     Total entries in CD                 
+	   12      4     Size of the central directory       
+	   16      4     Offset of start of CD               
+	   20      2     .ZIP file comment length            (k)
+	   22      k     .ZIP file comment (variable size)   
+	   -------------------------------------------------------------------
+	   Total size = 22 + k bytes
+	   
+	   ¹ The EOCD offset must satisfy:
+	     eocd_offset + 22 + k == len(zip_file)
+
+	[REM] When app.packageUCF(inputFolder, outputZipFile, mimeType) creates
+	a ZIP based on a SINGLE-FILE inputFolder, the complete structure of the
+	ZIP bytestream has File #1 (mimetype file) and File #2 (desired file)
+	expressed as follows:
+
+		[Local File Header 1]           ← File 1 (STORED, uncompressed)
+		  Signature: 0x04034b50
+		  Compression method: 0
+		  File name length, extra field length, etc.
+		  
+		[File 1 Data]                   ← Raw uncompressed data (mimetype stuff)
+		  (no compression)
+
+		[Local File Header 2]           ← File 2 (DEFLATE, compressed)
+		  Signature: 0x04034b50
+		  Compression method: 8
+		  File name length, extra field length, etc.
+		  
+		[File 2 Data]                   ← DEFLATE compressed stream
+		  (compressed data)
+
+		[Central Directory Header 1]    ← Metadata for File 1 (mimetype stuff)
+		  Signature: 0x02014b50
+		  File name, CRC-32, sizes, etc.
+		  Relative offset of local header: points to Local File Header 1
+		  
+		[Central Directory Header 2]    ← Metadata for File 2
+		  Signature: 0x02014b50
+		  File name, CRC-32, sizes, etc.
+		  Relative offset of local header: points to Local File Header 2
+
+		[End of Central Directory Record]
+		  Signature: 0x06054b50
+		  Total entries: 2
+		  Offset of start of central directory: points to Central Directory Header 1
+		  Size of central directory: (size of both headers combined)
