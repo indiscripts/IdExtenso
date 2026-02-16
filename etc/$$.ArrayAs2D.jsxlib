@@ -9,15 +9,15 @@
 		Kind:           Module.
 		API:            =on() off() onUnload() setEpsilon() equalNumbers()
 		   [].prototype `==` `<` `<=` `+` `-` `~` `*` `/`
-		                `>>` `<<` `>>>` `^` `|` `&`
+		                `>>` `<<` `>>>` `^` `|` `&` `%`
 		DOM-access:     ---
-		Todo:           Not yet implemented: %
+		Todo:           ---
 		Created:        240807 (YYMMDD)
-		Modified:       240828 (YYMMDD)
+		Modified:       260216 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ArrayAs2D') || eval(__(MODULE, $$, 'ArrayAs2D', 240828, 'on'))
+;$$.hasOwnProperty('ArrayAs2D') || eval(__(MODULE, $$, 'ArrayAs2D', 260216, 'on'))
 
 	//==========================================================================
 	// NOTICE
@@ -227,7 +227,8 @@
 	            equiv (P[0]=Q[0],P[1]=Q[1],P)
 	Cf indiscripts.com/post/2024/08/extendscript-make-ampersand-behave-as-a-reference-operator
 	----------------------------------------------------------------------------
-	P % Q       <not-implemented-yet>
+	P % f       Apply function f to each coord         (P=[-2,3])%Math.abs // => P& set to [2,3]
+	f % P       Same idea, but yield a new array       Math.abs%[-5,-7]    // => [5,7]
 
 	*/
 
@@ -485,7 +486,7 @@
 		'_|_': function(/*num[2]*/A,/*bool*/rv,  t)
 		// ---------------------------------
 		// Supports: `T|A`      (rv: same)
-		// Meaning:  distance(T,A) aka +(T-A)
+		// Meaning:  distance(T,A) aka +(T-A)  if Array(A)
 		// => unum
 		{
 			( 2 == (A||0).length )
@@ -504,6 +505,23 @@
 			|| error("Type error. The & operator expects two points in the form (destination & source).", callee.µ);
 
 			return (this[0]=A[0], this[1]=A[1]), this;
+		},
+
+		'_%_': function(/*fct*/A,/*bool*/rv,  t)
+		// ---------------------------------
+		// [ADD260216] Allows to apply a numeric function onto each coordinate.
+		// Warning: make sure the function takes a number and returns a number.
+		// Supports: `T%A`      (internal change)
+		//           `A%T`      (rv: new array)
+		// Meaning:  Apply the function A to each coordinate -> [A(T[0]),A(T[1])]
+		//           E.g Math.abs%[-2,1] => [2,1]   new array
+		//               [-2,1]%Math.abs => [2,1]&  internal change
+		// => this& | new [x,y]
+		{
+			( 'function' == typeof A )
+			|| error("Type error. The % operator expects a point and a numeric function.", callee.µ);
+
+			return rv ? [A(this[0]),A(this[1])] : ((this[0]=A(this[0]), this[1]=A(this[1])), this);
 		},
 
 	})
@@ -547,6 +565,7 @@
 		// => undef
 		{
 			I = callee.µ['~'];
+
 			P = Array.prototype;
 			for( k in I ) '_'==k.charAt(0) && 'function'==typeof(f=I[k]) && (P[k.slice(1,-1)]=f);
 
