@@ -1,3 +1,19 @@
+##### [260216]
+
+- The [ArrayAs2D](/etc/$$.ArrayAs2D.jsxlib) module now supports the `%` operator. Allows to quickly apply a numeric function to each coordinates:
+
+        // Basic usage: `fct % [x,y]`
+        var xy = [-2,-3];
+        var res = Math.abs % xy; // => res :: [2,3]     ; xy unchanged
+      
+	    // If you use `[x,y] % fct` instead (function as 2nd operand)
+		// then the array is internally modified:
+        var ref = [-2,-3];
+        ref % Math.abs; // now ref contains :: [2,3]
+
+   Any function that takes a number and returns a number is fine, including your own functions. The example above uses `Math.abs` to yield the absolute value of each coordinate.
+
+
 ##### [260205]
 
 ⚡ **New Implementation of [ZDeflate](/etc/$$.ZDeflate.jsxlib) (compressors) and [ZInflate](/etc/$$.ZInflate.jsxlib) (decompressors)**
@@ -1396,6 +1412,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
