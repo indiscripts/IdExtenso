@@ -7,17 +7,18 @@
 		Encoding:       ÛȚF8
 		Core:           NO
 		Kind:           Module.
-		API:            =on() off() onUnload() setEpsilon() equalNumbers()
+		API:            =on() off() onUnload()
+		                setEpsilon() getEpsilon() equalNumbers()
 		   [].prototype `==` `<` `<=` `+` `-` `~` `*` `/`
 		                `>>` `<<` `>>>` `^` `|` `&` `%`
 		DOM-access:     ---
 		Todo:           ---
 		Created:        240807 (YYMMDD)
-		Modified:       260216 (YYMMDD)
+		Modified:       260220 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.hasOwnProperty('ArrayAs2D') || eval(__(MODULE, $$, 'ArrayAs2D', 260216, 'on'))
+;$$.hasOwnProperty('ArrayAs2D') || eval(__(MODULE, $$, 'ArrayAs2D', 260220, 'on'))
 
 	//==========================================================================
 	// NOTICE
@@ -407,7 +408,8 @@
 					(
 						rv ?
 						// => this.normalize(A) | [0,0]
-						( x && y && isFinite(A/=Math.sqrt(x*x+y*y)) ? [x*A,y*A] : [0,0] ) :
+						// [FIX260220] (x||y)&&...
+						( (x||y) && isFinite(A/=Math.sqrt(x*x+y*y)) ? [x*A,y*A] : [0,0] ) :
 						// => this/A
 						( A ? [ x/A,y/A ] : error("Division by zero.", callee.µ) )
 					) :
@@ -541,20 +543,27 @@
 			&& callee.µ.off();
 		},
 
-		setEpsilon: function setEpsilon_n_(/*?unum>0=auto*/eps,  e2,I,k,f)
+		setEpsilon: function setEpsilon_n_(/*?unum>0=auto*/eps)
 		//----------------------------------
 		// Set the epsilon-machine used in comparison routines. Default is 1e-4.
 		// => undef
 		{
-			I = callee.µ['~'];
-
 			( 'number' == typeof eps && Math.pow(Number.EPSILON,.5) < eps ) || (eps=1e-4);
-			I.EQUA.EPSILON = eps;
+			callee.µ['~'].EQUA.EPSILON = eps;
+		},
+
+		getEpsilon: function getEpsilon_N()
+		//----------------------------------
+		// [ADD260220] Return the current epsilon-machine used in comparison routines.
+		// => unum
+		{
+			return callee.µ['~'].EQUA.EPSILON;
 		},
 		
-		equalNumbers: function equalNumbers_N_N_(/*num*/a,/*num*/b)
+		equalNumbers: function equalNumbers_N_N_B(/*num*/a,/*num*/b)
 		//----------------------------------
 		// Epsilon-aware utility for comparing numbers.
+		// => bool
 		{
 			return callee.µ['~'].EQUA(a,b);
 		},
