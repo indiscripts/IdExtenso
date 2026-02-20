@@ -1,3 +1,7 @@
+##### [260220]
+
+- [ArrayAs2D](/etc/$$.ArrayAs2D.jsxlib): Added the public method `getEpsilon()` (returns the current epsilon-machine). Bugfix: `1/U` was returning `[0,0]` instead of the normalized vector when one of the coordinates were 0. Corrected a few typos.
+
 ##### [260216]
 
 - The [ArrayAs2D](/etc/$$.ArrayAs2D.jsxlib) module now supports the `%` operator. Allows to quickly apply a numeric function to each coordinates:
@@ -1412,6 +1416,7 @@ This update (Jan. 20, 2019) applies an important change in the directory structu
 
 ## 1.70407
   - ***IdExtenso*** alpha release.
+
 
 
 
