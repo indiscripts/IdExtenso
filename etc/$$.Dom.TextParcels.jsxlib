@@ -20,11 +20,11 @@
 		DOM-access:     YES [READ-ONLY]
 		Todo:           ---
 		Created:        201110 (YYMMDD)
-		Modified:       241215 (YYMMDD)
+		Modified:       260504 (YYMMDD)
 
 *******************************************************************************/
 
-;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 241215, 'create'))
+;$$.Dom.hasOwnProperty('TextParcels') || eval(__(CLASS, $$.Dom.toSource(), 'TextParcels', 260504, 'create'))
 
 	//==========================================================================
 	// BACKGROUND
@@ -1279,7 +1279,13 @@
 			if( (exc=callee.µ.ExcludeStoryLabel) && 0 <= (t=SV.label).join('').indexOf(exc) ) // Quick test
 			{
 				ids = SV.id;
-				for( i=t.length ; i-- ; exc===t[i] ? t[i]=ids[i] : t.splice(i,1) );
+				
+				// [CHG260504] Support of ExcludeStoryLabelIsPrefix case.
+				if( callee.µ.ExcludeStoryLabelIsPrefix )
+					for( i=t.length ; i-- ; 0===String(t[i]).indexOf(exc) ? t[i]=ids[i] : t.splice(i,1) );
+				else
+					for( i=t.length ; i-- ; exc===t[i] ? t[i]=ids[i] : t.splice(i,1) );
+
 				t.length && callee.EXCL_STO_IDS=t.join('_');          // stoId_stoId_..._stoId
 			}
 
@@ -2338,6 +2344,12 @@
 		// tically ignore a particular set of stories (index, etc.)
 		// ---
 		ExcludeStoryLabel: '',
+
+		// [ADD260504] Whether ExcludeStoryLabel (if nonempty) is to be interpreted
+		// as a prefix. Default is 0, meaning that only stories exactly labelled
+		// <ExcludeStoryLabel> will be ignored. If ExcludeStoryLabelIsPrefix is 1,
+		// then any story *starting* with <ExcludeStoryLabel> will be ignored.
+		ExcludeStoryLabelIsPrefix: 0,
 
 		onEngine: function onEngine_(  $$)
 		// ---------------------------------
