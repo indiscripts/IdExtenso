@@ -1,3 +1,7 @@
+##### [260504]
+
+- [Dom.TextParcels](/etc/$$.Dom.TextParcels.jsxlib): Added the boolean option `ExcludeStoryLabelIsPrefix` (`0|1`). Tells whether `ExcludeStoryLabel` (if provided) is to be interpreted as a prefix. Default is 0, meaning that only `Story` instances *exactly* labelled `<ExcludeStoryLabel>` will be ignored.
+
 ## 2.60324
 
 Regular update (March 24, 2026.)
